@@ -36,3 +36,10 @@ body.btfw-chat-left #btfw-leftpad{ margin-right:0; margin-left:var(--bt-chat-w);
 #btfw-channels{ margin-top: var(--bt-gap); }
 .btfw-channels-scroll{ display:flex; gap:8px; overflow:auto; padding:8px; background:#0f141b; border:1px solid var(--bt-border); border-radius: var(--bt-radius); }
 .btfw-chip{ flex:0 0 auto; padding:6px 10px; border-radius:999px; background:#1b2130; color:#fff; border:1px solid var(--bt-border); text-decoration:none; }
+#btfw-chatcol #chatwrap{
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  background:transparent;
+  width:100%;              /* <<< makes chat area full width */
+}

@@ -1,7 +1,50 @@
+/* Chat top banner */
+#btfw-chatcol .btfw-chat-topbar{
+  padding:10px 12px;
+  background: linear-gradient(180deg, rgba(20,24,33,.96), rgba(16,20,28,.96));
+  border-bottom:1px solid var(--bt-border);
+  position:sticky; top:0; z-index:5;
+}
+.btfw-chat-banner{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.btfw-ctitle{
+  font-weight:700; font-size:14px; letter-spacing:.2px;
+  color: var(--bt-text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  max-width: calc(100% - 160px);
+}
+.btfw-chat-actions{ display:flex; align-items:center; gap:8px; }
+#btfw-me-avatar{
+  width:28px; height:28px; border-radius:50%;
+  border:1px solid var(--bt-border); object-fit:cover;
+  box-shadow: 0 4px 14px rgba(0,0,0,.3);
+}
 
-#btfw-chatcol .btfw-chat-topbar,
-#btfw-chatcol .btfw-chat-bottombar{ padding:6px 8px; border-bottom:1px solid var(--bt-border); display:flex; gap:6px; background:#0f141b; }
-#btfw-chatcol .btfw-chat-bottombar{ border-top:1px solid var(--bt-border); border-bottom:none; }
+/* Chat bottom bar */
+#btfw-chatcol .btfw-chat-bottombar{
+  padding:8px 10px;
+  border-top:1px solid var(--bt-border);
+  background:#0f141b;
+}
+.btfw-chat-bottom-actions{ display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+
+/* Icon buttons */
+.btfw-iconbtn{
+  width:32px; height:32px; border-radius:10px;
+  background:#1b2130; border:1px solid var(--bt-border);
+  cursor:pointer; color:#fff;
+}
+.btfw-ic-users::before{ content:"👥"; }
+.btfw-ic-emotes::before{ content:"😊"; }
+.btfw-ic-gif::before{ content:"GIF"; font-weight:800; font-size:12px; }
+
+/* Message avatars (left of lines) */
+body.btfw-chat-avatars #messagebuffer .btfw-avatar{
+  width:22px; height:22px; border-radius:50%;
+  margin-right:8px; vertical-align:middle;
+  border:1px solid var(--bt-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+
 
 .btfw-iconbtn{ width:32px; height:32px; border-radius:8px; background:#1b2130; border:1px solid var(--bt-border); cursor:pointer; color:#fff; }
 .btfw-ic-users::before{ content:"👥"; }
