@@ -1,10 +1,16 @@
-
+// modules/feature-layout.js
 BTFW.define("feature:layout", ["core"], async ({ require, BASE }) => {
   const core = require("core");
+
+  // Ensure base host layout exists
   function ensureShell() {
     const wrap = document.getElementById("wrap") || document.body;
+
+    // Kill the legacy header under the player — we’ll show title in chat topbar now
     const oldHeader = document.getElementById("videowrap-header");
     if (oldHeader) oldHeader.remove();
+
+    // Add a small right header button group (Theme Settings)
     const topnav = document.querySelector("#navbar .nav") || document.querySelector(".navbar .nav") || document.querySelector("#nav-collapsible") || document;
     if (!document.querySelector("#btfw-theme-settings-btn")) {
       const btn = document.createElement("button");
@@ -15,23 +21,40 @@ BTFW.define("feature:layout", ["core"], async ({ require, BASE }) => {
       btn.onclick = () => document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
       (document.querySelector("#userdropdown")?.parentElement || topnav).appendChild(btn);
     }
+
+    // Wrap main columns in a grid so left pad and chat don’t overlap
     if (!document.querySelector("#btfw-grid")) {
       const grid = document.createElement("div");
-      grid.id = "btfw-grid"; grid.className = "btfw-grid";
+      grid.id = "btfw-grid";
+      grid.className = "btfw-grid";
       const leftPad = document.getElementById("btfw-leftpad") || document.createElement("div");
-      leftPad.id = "btfw-leftpad"; leftPad.className = "btfw-leftpad";
+      leftPad.id = "btfw-leftpad";
+      leftPad.className = "btfw-leftpad";
+      // Move existing CyTube containers into left pad if they aren’t already
       const videoWrap = document.getElementById("videowrap");
-      const plWrap    = document.getElementById("playlistrow") || document.getElementById("playlistwrap") || document.getElementById("queuecontainer");
+      const plWrap    = document.getElementById("playlistrow") || document.getElementById("playlistwrap");
       if (videoWrap && !leftPad.contains(videoWrap)) leftPad.appendChild(videoWrap);
       if (plWrap && !leftPad.contains(plWrap)) leftPad.appendChild(plWrap);
+
       const rightCol = document.getElementById("btfw-chatcol") || document.createElement("aside");
-      rightCol.id = "btfw-chatcol"; rightCol.className = "btfw-chatcol";
+      rightCol.id = "btfw-chatcol";
+      rightCol.className = "btfw-chatcol";
+
       const chatWrap = document.getElementById("chatwrap");
       if (chatWrap && !rightCol.contains(chatWrap)) rightCol.appendChild(chatWrap);
-      grid.appendChild(leftPad); grid.appendChild(rightCol); wrap.prepend(grid);
+
+      grid.appendChild(leftPad);
+      grid.appendChild(rightCol);
+      wrap.prepend(grid);
     }
   }
-  function ready(){ document.dispatchEvent(new Event("btfw:layoutReady")); }
-  ensureShell(); setTimeout(ready, 0);
-  return { name: "feature:layout" };
+
+  ensureShell();
+
+  // Expose a hook for other modules (chat) to know we’re ready
+  setTimeout(() => document.dispatchEvent(new Event("btfw:layoutReady")), 0);
+
+  return {
+    name: "feature:layout"
+  };
 });
