@@ -38,7 +38,7 @@ BTFW.define("feature:chat", ["feature:layout"], async ({ require }) => {
     const bar = bottom.querySelector("#btfw-chat-actions");
 
     // Move native emotelist button into bottom bar
-    const emotebtn = qs("#emotelistbtn");
+    const emotebtn = qs("#emotelistbtn") || qs("#chatwrap .emotelistbtn");
     if (emotebtn && emotebtn.parentElement !== bar){
       emotebtn.className = "btfw-chatbtn";
       bar.appendChild(emotebtn);
@@ -75,9 +75,14 @@ BTFW.define("feature:chat", ["feature:layout"], async ({ require }) => {
     return bar;
   }
 
-  function toggleUserOverlay(){
+  function prepareUserlistOverlay(){
     const ul = qs("#userlist"); if(!ul) return;
     ul.classList.add("btfw-userlist-overlay");
+    ul.classList.remove("btfw-userlist-overlay--open"); // hidden by default
+  }
+  function toggleUserOverlay(){
+    const ul = qs("#userlist"); if(!ul) return;
+    if (!ul.classList.contains("btfw-userlist-overlay")) prepareUserlistOverlay();
     ul.classList.toggle("btfw-userlist-overlay--open");
   }
 
@@ -105,7 +110,7 @@ BTFW.define("feature:chat", ["feature:layout"], async ({ require }) => {
     qsa("#messagebuffer .username,.nick,.name").forEach(colorize);
   }
 
-  function boot(){ ensureBars(); setTitle(); observeColors(); }
+  function boot(){ ensureBars(); prepareUserlistOverlay(); setTitle(); observeColors(); }
   document.addEventListener("btfw:layoutReady", boot);
   (window.socket&&window.socket.on)&&window.socket.on("changeMedia", setTitle);
   setInterval(setTitle, 2500);
