@@ -1,14 +1,12 @@
 
 :root{
-  --bt-bg: #0e1116;
-  --bt-panel: #151922;
-  --bt-text: #e8edf2;
-  --bt-muted:#9aa7b1;
-  --bt-accent:#7c5cff;
-  --bt-border:#262b33;
-  --bt-gap:12px;
-  --bt-radius:14px;
-  --bt-offset-top: 48px;
-  --bt-chat-w: 28%;
-  --bt-video-ar: 16/9;
+  --btfw-bg: #0f1115;
+  --btfw-bg-soft: #17181b;
+  --btfw-border: rgba(255,255,255,.06);
+  --btfw-text: #e7e7ea;
+  --btfw-muted: #a9abb5;
+  --btfw-accent: #6c5ce7;
+  --btfw-accent-2: #00d1b2;
+  --btfw-surface: rgba(20,20,26,.85);
+  --btfw-surface-2: rgba(28,30,36,.85);
 }
