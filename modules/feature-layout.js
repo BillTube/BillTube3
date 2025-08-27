@@ -1,15 +1,4 @@
-
 BTFW.define("feature:layout", ["core"], async ({ require }) => {
-  function ensureFontAwesome(){
-    if ([...document.styleSheets].some(s=>s.href&&/font-awesome|fontawesome/i.test(s.href))) return;
-    if (document.querySelector('link[data-btfw-fa]')) return;
-    var fa = document.createElement("link");
-    fa.rel = "stylesheet";
-    fa.dataset.btfwFa = "1";
-    fa.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css";
-    document.head.appendChild(fa);
-  }
-
   function removeVideoHeaderOnce(){
     var vh = document.getElementById("videowrap-header");
     if (vh && vh.parentNode) vh.parentNode.removeChild(vh);
@@ -34,7 +23,6 @@ BTFW.define("feature:layout", ["core"], async ({ require }) => {
   function ensureShell(){
     var wrap = document.getElementById("wrap") || document.body;
 
-    ensureFontAwesome();
     removeVideoHeaderOnce();
     watchVideoHeader();
 
@@ -51,6 +39,16 @@ BTFW.define("feature:layout", ["core"], async ({ require }) => {
 
     if (!document.getElementById("btfw-grid")){
       var grid = document.createElement("div"); grid.id = "btfw-grid"; grid.className = "btfw-grid";
+
+      // --- BTFW CHANGE START ---
+      // 1. Create the new left sidebar element
+      var leftSidebar = document.createElement("nav");
+      leftSidebar.id = "btfw-left-sidebar";
+      leftSidebar.className = "btfw-left-sidebar";
+      // Add placeholder content for now
+      leftSidebar.innerHTML = `<button class="btfw-sidebar-btn" title="Home"><i class="fa fa-home"></i></button>`;
+      // --- BTFW CHANGE END ---
+
       var left = document.getElementById("btfw-leftpad") || document.createElement("div"); left.id = "btfw-leftpad"; left.className = "btfw-leftpad";
       var right = document.getElementById("btfw-chatcol") || document.createElement("aside"); right.id = "btfw-chatcol"; right.className = "btfw-chatcol";
       var video = document.getElementById("videowrap");
@@ -59,7 +57,15 @@ BTFW.define("feature:layout", ["core"], async ({ require }) => {
       if (video && !left.contains(video)) left.appendChild(video);
       if (queue && !left.contains(queue)) left.appendChild(queue);
       if (chat && !right.contains(chat)) right.appendChild(chat);
-      grid.appendChild(left); grid.appendChild(right); wrap.prepend(grid);
+      
+      // --- BTFW CHANGE START ---
+      // 2. Prepend the new sidebar and then append the other columns
+      grid.appendChild(leftSidebar);
+      // --- BTFW CHANGE END ---
+
+      grid.appendChild(left);
+      grid.appendChild(right);
+      wrap.prepend(grid);
     }
   }
 

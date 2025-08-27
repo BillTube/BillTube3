@@ -1,7 +1,38 @@
-
+/* --- BTFW CHANGE START --- */
 /* Grid keeps left and right separate */
-#btfw-grid.btfw-grid{ display:grid; grid-template-columns:minmax(700px,1fr) 380px; gap:12px; }
+#btfw-grid.btfw-grid{ display:grid; grid-template-columns:60px 1fr 380px; gap:12px; } /* Changed from 2 to 3 columns */
+/* --- BTFW CHANGE END --- */
+
 #btfw-chatcol.btfw-chatcol{ min-width:320px; position:relative; }
+
+/* --- BTFW CHANGE START --- */
+/* New Left Sidebar */
+#btfw-left-sidebar {
+  background: rgba(20, 20, 26, 0.85);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.btfw-sidebar-btn {
+  background: transparent;
+  border: 0;
+  color: #e7e7ea;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.btfw-sidebar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+/* --- BTFW CHANGE END --- */
+
 
 /* Left pad: force common CyTube blocks to full width */
 #btfw-leftpad #videowrap,
@@ -32,8 +63,8 @@
 /* Top and bottom bars */
 .btfw-chat-topbar,.btfw-chat-bottombar{
   display:flex; align-items:center; justify-content:space-between;
-  padding:8px 10px; border-radius:10px; background:var(--btfw-surface); backdrop-filter:blur(6px);
-  margin-bottom:8px; border:1px solid var(--btfw-border);
+  padding:8px 10px; border-radius:10px; background:rgba(20,20,26,.85); backdrop-filter:blur(6px);
+  margin-bottom:8px; border:1px solid rgba(255,255,255,.06);
 }
 .btfw-chat-title{ font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .btfw-chat-actions{ display:flex; gap:8px; }
@@ -56,13 +87,13 @@
 #userlist.btfw-userlist-overlay.btfw-userlist-overlay--open{ display:block; }
 
 /* Avatars */
-.btfw-chat-avatar{ width:28px; height:28px; border-radius:6px; margin-right:6px; vertical-align:middle; border:1px solid var(--btfw-border); }
+.btfw-chat-avatar{ width:28px; height:28px; border-radius:6px; margin-right:6px; vertical-align:middle; border:1px solid rgba(255,255,255,.06); }
 
 /* Modals */
 .btfw-modal{ position:fixed; inset:0; z-index:1000; display:grid; place-items:center; }
 .btfw-modal.hidden{ display:none; }
 .btfw-modal__backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55); }
-.btfw-modal__card{ position:relative; width:min(980px,92vw); max-height:88vh; background:#17181b; color:#e7e7ea; border-radius:16px; overflow:hidden; display:flex; flex-direction:column; border:1px solid var(--btfw-border); }
+.btfw-modal__card{ position:relative; width:min(980px,92vw); max-height:88vh; background:#17181b; color:#e7e7ea; border-radius:16px; overflow:hidden; display:flex; flex-direction:column; border:1px solid rgba(255,255,255,.06); }
 .btfw-modal__header{ display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.08); }
 .btfw-modal__body{ padding:12px; overflow:auto; }
 .btfw-modal .tabs{ display:flex; gap:6px; }
