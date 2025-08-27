@@ -1,0 +1,94 @@
+/* --- Global Takeover Styles --- */
+body {
+  background-color: #0e0e10 !important;
+  color: #efeff1;
+  font-family: Inter, Roobert, "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+* {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* --- Custom Header/Navbar --- */
+.btfw-navbar {
+  background: #18181b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 52px;
+  border-bottom: 1px solid #333;
+}
+.btfw-nav-left, .btfw-nav-center, .btfw-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+.btfw-nav-center { justify-content: center; }
+.btfw-nav-right { justify-content: flex-end; }
+.btfw-nav-brand { font-size: 1.2rem; font-weight: bold; color: #9147ff; }
+.btfw-nav-link { color: #efeff1; text-decoration: none; font-weight: 500; }
+.btfw-nav-link:hover { color: #9147ff; }
+.btfw-nav-search {
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #efeff1;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* --- Core Structure --- */
+#main {
+  height: calc(100vh - 52px);
+  padding: 0;
+}
+#wrap {
+  height: 100%;
+}
+#btfw-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  height: 100%;
+  gap: 12px;
+  padding: 12px;
+  box-sizing: border-box;
+}
+#btfw-leftpad, #btfw-chatcol {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* --- Left Column --- */
+#btfw-leftpad > #videowrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100% !important;
+  display: flex;
+  background: #000;
+  border-radius: 8px;
+}
+
+/* --- Right Column (Chat) --- */
+#btfw-chatcol > #chatwrap {
+  width: 100% !important;
+  height: 100% !important;
+  background: #18181b;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* (The rest of the CSS for chat bars, buttons, info panel, etc. remains largely the same) */
+.btfw-messagebuffer { flex: 1 1 auto; overflow-y: auto; padding: 0 12px; }
+.btfw-chat-topbar, .btfw-chat-bottombar { padding: 12px; flex-shrink: 0; }
+.btfw-chat-topbar { border-bottom: 1px solid rgba(255,255,255,0.15); }
+.btfw-chat-bottombar { border-top: 1px solid rgba(255,255,255,0.15); }
+.btfw-chat-title { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btfw-chat-actions { display: flex; gap: 8px; }
+#chat-controls { padding: 12px; flex-shrink: 0; }
+.btfw-chatbtn, #emotelistbtn { border: 0; padding: 8px 10px; border-radius: 6px; cursor: pointer; background: #333; color: #efeff1; }
+.btfw-chatbtn:hover, #emotelistbtn:hover { background: #444; }
