@@ -1,5 +1,15 @@
 
 BTFW.define("feature:layout", ["core"], async ({ require }) => {
+  function ensureFontAwesome(){
+    if ([...document.styleSheets].some(s=>s.href&&/font-awesome|fontawesome/i.test(s.href))) return;
+    if (document.querySelector('link[data-btfw-fa]')) return;
+    var fa = document.createElement("link");
+    fa.rel = "stylesheet";
+    fa.dataset.btfwFa = "1";
+    fa.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css";
+    document.head.appendChild(fa);
+  }
+
   function removeVideoHeaderOnce(){
     var vh = document.getElementById("videowrap-header");
     if (vh && vh.parentNode) vh.parentNode.removeChild(vh);
@@ -24,6 +34,7 @@ BTFW.define("feature:layout", ["core"], async ({ require }) => {
   function ensureShell(){
     var wrap = document.getElementById("wrap") || document.body;
 
+    ensureFontAwesome();
     removeVideoHeaderOnce();
     watchVideoHeader();
 
