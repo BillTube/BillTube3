@@ -26,14 +26,16 @@ BTFW.define("feature:chatAvatars", ["feature:chat"], async ({ require }) => {
     return "data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(svg)));
   }
   function getProfileFromUserlist(username){
-    const li = Array.from(document.querySelectorAll("#userlist .userlist_item")).find(el=>el.dataset.name===username||el.textContent.trim()===username);
+    const li = Array.from(document.querySelectorAll("#userlist .userlist_item, #userlist li")).find(el=>el.dataset?.name===username||el.textContent.trim()===username);
     const img = li && li.querySelector("img"); if (img) return img.src;
-    const profile = li && li.dataset.profile && JSON.parse(li.dataset.profile); return profile&&profile.image||null;
+    try { const profile = li && li.dataset && li.dataset.profile && JSON.parse(li.dataset.profile); return profile&&profile.image||null; } catch(e){}
+    return null;
   }
   function inject(node){
     if(!node||node._btfw_avatar) return;
-    const u=node.querySelector(".username"); if(!u) return;
-    const name=u.textContent.replace(":","").trim(); if(!name) return;
+    if (node.nodeType !== 1) return;
+    const u = node.querySelector(".username,.nick,.name"); if(!u) return;
+    const name=(u.textContent||"").replace(":","").trim(); if(!name) return;
     if(node.querySelector(".btfw-chat-avatar")) return;
     const img=document.createElement("img"); img.className="btfw-chat-avatar"; img.width=28; img.height=28;
     img.src = getProfileFromUserlist(name) || svgAvatar(name,28);
