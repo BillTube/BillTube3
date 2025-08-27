@@ -1,23 +1,23 @@
 
-/* Grid keeps left and right separate */
-#btfw-grid.btfw-grid{ display:grid; grid-template-columns:minmax(640px,1fr) 380px; gap:12px; }
-#btfw-chatcol.btfw-chatcol{ min-width:320px; position:relative; }
-
-/* Chat area sizing */
+/* Core grid */
+.btfw-grid{ display:grid; grid-template-columns:minmax(640px,1fr) 380px; gap:12px; }
+.btfw-chatcol{ min-width:320px; }
 #chatwrap.btfw-chatwrap{ display:flex; flex-direction:column; height:100%; }
 #messagebuffer.btfw-messagebuffer{ flex:1 1 auto; overflow:auto; width:100%; }
 
-/* Top and bottom bars */
+/* Bars */
 .btfw-chat-topbar,.btfw-chat-bottombar{
   display:flex; align-items:center; justify-content:space-between;
   padding:8px 10px; border-radius:10px; background:rgba(20,20,26,.85); backdrop-filter:blur(6px);
   margin-bottom:8px; border:1px solid rgba(255,255,255,.06);
 }
 .btfw-chat-title{ font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.btfw-chat-actions{ display:flex; gap:8px; }
 
-/* Buttons */
-.btfw-chatbtn,.btfw-topbtn,.btfw-ghost{ border:0; padding:8px 10px; border-radius:8px; cursor:pointer; background:rgba(255,255,255,.08); color:#e7e7ea; }
+.btfw-chat-actions{ display:flex; gap:8px; }
+.btfw-chatbtn,.btfw-topbtn,.btfw-ghost{
+  border:0; padding:8px 10px; border-radius:8px; cursor:pointer;
+  background:rgba(255,255,255,.08); color:#e7e7ea;
+}
 .btfw-ghost{ background:transparent; }
 .btfw-chatbtn:hover,.btfw-topbtn:hover{ background:rgba(255,255,255,.16); }
 .gif-badge{ font-weight:800; font-size:12px; }
@@ -36,7 +36,7 @@
 /* Avatars */
 .btfw-chat-avatar{ width:28px; height:28px; border-radius:6px; margin-right:6px; vertical-align:middle; border:1px solid rgba(255,255,255,.06); }
 
-/* Modals */
+/* Modals used by GIFs + Theme settings */
 .btfw-modal{ position:fixed; inset:0; z-index:1000; display:grid; place-items:center; }
 .btfw-modal.hidden{ display:none; }
 .btfw-modal__backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55); }
@@ -46,8 +46,6 @@
 .btfw-modal .tabs{ display:flex; gap:6px; }
 .btfw-modal .tab{ border:0; padding:8px 10px; border-radius:8px; background:#22242a; color:#cfd0d4; cursor:pointer; }
 .btfw-modal .tab.active{ background:#2c2f36; color:#fff; }
-.btfw-modal__toolbar input{ background:#1f2229; color:#e7e7ea; border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:8px; }
-
 .btfw-grid-9{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
 @media (min-width: 900px){ .btfw-grid-9{ grid-template-columns:repeat(6,1fr); } }
 .btfw-gif-item{ padding:0; background:transparent; border:0; cursor:pointer; border-radius:10px; overflow:hidden; }
