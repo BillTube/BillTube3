@@ -1,11 +1,8 @@
-/* --- BTFW CHANGE START --- */
 /* Grid keeps left and right separate */
-#btfw-grid.btfw-grid{ display:grid; grid-template-columns:60px 1fr 380px; gap:12px; } /* Changed from 2 to 3 columns */
-/* --- BTFW CHANGE END --- */
+#btfw-grid.btfw-grid{ display:grid; grid-template-columns:60px 1fr 380px; gap:12px; }
 
 #btfw-chatcol.btfw-chatcol{ min-width:320px; position:relative; }
 
-/* --- BTFW CHANGE START --- */
 /* New Left Sidebar */
 #btfw-left-sidebar {
   background: rgba(20, 20, 26, 0.85);
@@ -31,7 +28,6 @@
 .btfw-sidebar-btn:hover {
   background: rgba(255, 255, 255, 0.1);
 }
-/* --- BTFW CHANGE END --- */
 
 
 /* Left pad: force common CyTube blocks to full width */
@@ -51,6 +47,87 @@
 }
 #btfw-leftpad #videowrap{ margin-bottom:12px; }
 #btfw-leftpad #playlistrow{ margin-top:8px; }
+
+/* --- BTFW CHANGE START --- */
+/* New Streamer Info Panel styles */
+#btfw-streamer-info {
+  background: rgba(20, 20, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 16px;
+  color: #e7e7ea;
+}
+.btfw-si-top {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
+.btfw-si-avatar {
+  width: 50px;
+  height: 50px;
+  background: #c0392b; /* Placeholder color */
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.btfw-si-main {
+  flex-grow: 1;
+}
+.btfw-si-streamer {
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+.btfw-si-title {
+  font-size: 1rem;
+  margin-bottom: 8px;
+  opacity: 0.9;
+}
+.btfw-si-tags {
+  display: flex;
+  gap: 8px;
+}
+.btfw-si-tag {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.btfw-si-actions {
+  display: flex;
+  gap: 8px;
+}
+.btfw-si-actions .btfw-ghost {
+  padding: 10px 14px;
+}
+.btfw-si-bottom h4 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+.btfw-si-bottom p {
+  opacity: 0.8;
+  line-height: 1.5;
+}
+.btfw-si-socials {
+  display: flex;
+  gap: 20px;
+  margin-top: 16px;
+}
+.btfw-si-socials a {
+  color: #e7e7ea;
+  text-decoration: none;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+.btfw-si-socials a:hover {
+  opacity: 1;
+}
+.btfw-si-socials a i {
+  margin-right: 6px;
+}
+/* --- BTFW CHANGE END --- */
 
 /* Chat area sizing */
 #chatwrap.btfw-chatwrap{ display:flex; flex-direction:column; height:100%; }
