@@ -1,11 +1,33 @@
 
 /* Grid keeps left and right separate */
-#btfw-grid.btfw-grid{ display:grid; grid-template-columns:minmax(640px,1fr) 380px; gap:12px; }
+#btfw-grid.btfw-grid{ display:grid; grid-template-columns:minmax(700px,1fr) 380px; gap:12px; }
 #btfw-chatcol.btfw-chatcol{ min-width:320px; position:relative; }
+
+/* Left pad: force common CyTube blocks to full width */
+#btfw-leftpad #videowrap,
+#btfw-leftpad #playlistrow,
+#btfw-leftpad #playlistwrap,
+#btfw-leftpad #queuecontainer,
+#btfw-leftpad #queue,
+#btfw-leftpad #plmeta{
+  width:100% !important; max-width:100% !important; float:none !important; display:block;
+}
+#btfw-leftpad iframe,
+#btfw-leftpad .embed-responsive,
+#btfw-leftpad .video-js,
+#btfw-leftpad .video-js .vjs-tech{
+  width:100% !important; max-width:100% !important;
+}
+#btfw-leftpad #videowrap{ margin-bottom:12px; }
+#btfw-leftpad #playlistrow{ margin-top:8px; }
 
 /* Chat area sizing */
 #chatwrap.btfw-chatwrap{ display:flex; flex-direction:column; height:100%; }
 #messagebuffer.btfw-messagebuffer{ flex:1 1 auto; overflow:auto; width:100%; }
+
+/* Hide default in-column userlist and use overlay */
+#chatwrap #userlist:not(.btfw-userlist-overlay){ display:none !important; }  /* hidden by default */
+#chatwrap #messagebuffer{ width:100% !important; }
 
 /* Top and bottom bars */
 .btfw-chat-topbar,.btfw-chat-bottombar{
