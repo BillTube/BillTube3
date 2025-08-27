@@ -1,6 +1,7 @@
 /* --- Foundational Styles --- */
 #main {
   height: calc(100vh - 52px); /* Full viewport height minus top navbar */
+  background-color: #0e0e10;
 }
 #wrap {
   height: 100%;
@@ -14,7 +15,6 @@
   gap: 12px;
   padding: 12px;
   box-sizing: border-box;
-  background-color: #333; /* A background to see the grid area */
 }
 
 #btfw-leftpad, #btfw-chatcol {
@@ -25,30 +25,37 @@
 }
 
 /* --- Left Column (Video & Info) --- */
-#btfw-leftpad #videowrap {
-  background: #000;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 10px;
-  overflow: hidden;
-  flex-shrink: 0; /* Don't shrink the video player */
+/* Making #videowrap fill the available space */
+#btfw-leftpad > #videowrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100% !important;
+  display: flex;
+  flex-direction: column;
 }
-#btfw-leftpad #btfw-streamer-info {
+.embed-responsive {
+  width: 100%;
+  height: 100%;
+}
+
+#btfw-leftpad > #btfw-streamer-info {
   flex-shrink: 0;
-  background: #1f1f23;
+  background: #18181b;
   border-radius: 10px;
   margin-top: 12px;
   padding: 16px;
+  color: #efeff1;
 }
 
 /* --- Right Column (Chat) --- */
-#btfw-chatcol {
-  background: #1f1f23;
+/* Making #chatwrap fill its parent column completely */
+#btfw-chatcol > #chatwrap {
+  width: 100% !important;
+  height: 100% !important;
+  background: #18181b;
   border-radius: 10px;
-}
-.btfw-chatwrap {
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 .btfw-messagebuffer {
   flex: 1 1 auto;
@@ -62,16 +69,17 @@
   flex-shrink: 0;
 }
 .btfw-chat-topbar {
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255,255,255,0.15);
 }
 .btfw-chat-bottombar {
-  border-top: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid rgba(255,255,255,0.15);
 }
 .btfw-chat-title {
   font-weight: bold;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #efeff1;
 }
 .btfw-chat-actions {
   display: flex;
@@ -79,6 +87,7 @@
 }
 #chat-controls {
   padding: 12px;
+  flex-shrink: 0;
 }
 
 /* --- Buttons --- */
@@ -96,7 +105,7 @@
 
 /* --- Streamer Info Panel Styles --- */
 .btfw-si-top { display: flex; gap: 16px; align-items: center; }
-.btfw-si-avatar { width: 50px; height: 50px; background: #c0392b; border-radius: 50%; flex-shrink: 0; }
+.btfw-si-avatar { width: 50px; height: 50px; background: #9147ff; border-radius: 50%; flex-shrink: 0; }
 .btfw-si-main { flex-grow: 1; min-width: 0; }
 .btfw-si-streamer { font-weight: 700; font-size: 1.1rem; }
 .btfw-si-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.8; }
