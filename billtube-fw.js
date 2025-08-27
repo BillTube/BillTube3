@@ -1,51 +1,84 @@
-/*! BillTube Framework (BTFW) v2.1.1 — modular loader with BTFW.require */
+/*! BillTube Framework (BTFW) for CyTube — core loader (compat) */
 (function(){
-  var src = (document.currentScript && document.currentScript.src) || (function () {
-    var s = document.getElementsByTagName('script'); return s[s.length - 1].src;
+  // Find our base URL (folder that contains this script)
+  var current = (document.currentScript && document.currentScript.src) || (function(){
+    var scripts = document.getElementsByTagName('script');
+    return scripts[scripts.length - 1].src || "";
   })();
-  var clean = src.split("#")[0].split("?")[0];
-  var BASE = clean.replace(/\/[^\/]*$/, "");
+  var BASE = current.replace(/\/[^\/]*$/, "");
 
+  // --- tiny module system ----------------------------------------------------
+  var Registry = Object.create(null); // name -> { deps:[], factory:fn, instance:any }
+
+  function define(name, deps, factory){
+    Registry[name] = { deps: deps || [], factory: factory, instance: null };
+  }
+
+  // Synchronous require:
+  //  - returns the instance if already initialized
+  //  - returns undefined if not yet initialized (back-compat with older theme code)
+  function require(name){
+    var m = Registry[name];
+    return m ? m.instance : undefined;
+  }
+
+  async function init(name){
+    var m = Registry[name];
+    if (!m) throw new Error("Module not found: " + name);
+    if (m.instance) return m.instance;
+
+    // Initialize dependencies first (in order)
+    for (var i = 0; i < m.deps.length; i++){
+      await init(m.deps[i]);
+    }
+
+    // Call factory (provide module helpers + BASE)
+    m.instance = await m.factory({ define: define, require: require, init: init, BASE: BASE });
+    return m.instance;
+  }
+
+  // Expose API
+  window.BTFW = { define: define, require: require, init: init, BASE: BASE };
+
+  // --- helpers ---------------------------------------------------------------
   function preloadCSS(href){
     return new Promise(function(resolve){
-      var l=document.createElement("link"); l.rel="preload"; l.as="style"; l.href=href;
-      l.onload=function(){ l.rel="stylesheet"; resolve(true); };
-      l.onerror=function(){ l.rel="stylesheet"; resolve(false); };
+      var l = document.createElement("link");
+      l.rel = "preload";
+      l.as  = "style";
+      l.href = href;
+      l.onload  = function(){ l.rel = "stylesheet"; resolve(true); };
+      l.onerror = function(){ l.rel = "stylesheet"; resolve(false); };
       document.head.appendChild(l);
     });
   }
-  function loadScript(url){
-    return new Promise(function(resolve,reject){
-      var s=document.createElement("script"); s.src=url; s.async=false; s.defer=false;
-      s.onload=function(){ resolve(); };
-      s.onerror=function(){ reject(new Error("Failed to load "+url)); };
+
+  // Keep execution order deterministic for modules
+  function loadScript(src){
+    return new Promise(function(resolve, reject){
+      var s = document.createElement("script");
+      s.src   = src;
+      s.async = false;
+      s.defer = false;
+      s.onload = function(){ resolve(); };
+      s.onerror = function(){ reject(new Error("Failed to load " + src)); };
       document.head.appendChild(s);
     });
   }
 
-  (function(){
-    var REG={}; // name -> {d:[], f:fn, i:instance}
-    function define(name,deps,factory){ REG[name]={d:deps||[],f:factory,i:null}; }
-    function require(name){ var m=REG[name]; if(!m||!m.i) throw new Error("Module not initialized: "+name); return m.i; }
-    async function init(name){
-      var m=REG[name]; if(!m) throw new Error("Module not found: "+name);
-      if(m.i) return m.i;
-      for(var i=0;i<m.d.length;i++){ await init(m.d[i]); }
-      m.i = await m.f({define:init.define||define, init:init, require:require, BASE:BASE});
-      return m.i;
-    }
-    window.BTFW={define:define, init:init, require:require, BASE:BASE};
-  })();
-
+  // --- bootstrap -------------------------------------------------------------
+  // Preload core CSS (non-blocking; switches to stylesheet onload)
   Promise.all([
-    preloadCSS(BASE+"/css/tokens.css"),
-    preloadCSS(BASE+"/css/base.css"),
-    preloadCSS(BASE+"/css/player.css"),
-    preloadCSS(BASE+"/css/mobile.css"),
-    preloadCSS(BASE+"/css/overlays.css"),
-    preloadCSS(BASE+"/css/chat.css")
-  ]).then(function(){
-    var mods=[
+    preloadCSS(BASE + "/css/tokens.css"),
+    preloadCSS(BASE + "/css/base.css"),
+    preloadCSS(BASE + "/css/player.css"),
+    preloadCSS(BASE + "/css/mobile.css"),
+    preloadCSS(BASE + "/css/overlays.css"),
+    preloadCSS(BASE + "/css/chat.css")
+  ])
+  .then(function(){
+    // Load feature modules in strict order
+    var mods = [
       "modules/core.js",
       "modules/bridge-cytube.js",
       "modules/feature-layout.js",
@@ -60,10 +93,14 @@
       "modules/feature-chat-avatars.js",
       "modules/feature-channels.js"
     ];
-    return mods.reduce((p,f)=>p.then(()=>loadScript(BASE+"/"+f)), Promise.resolve());
-  }).then(function(){
+    return mods.reduce(function(p, file){
+      return p.then(function(){ return loadScript(BASE + "/" + file); });
+    }, Promise.resolve());
+  })
+  .then(function(){
+    // Init core first (so BTFW.require("core") is ready during feature init)
     return BTFW.init("core").then(function(core){
-      if(core && core.boot) core.boot();
+      if (core && typeof core.boot === "function") core.boot();
       return Promise.all([
         BTFW.init("feature:layout"),
         BTFW.init("feature:player"),
@@ -75,9 +112,14 @@
         BTFW.init("feature:themeSettings"),
         BTFW.init("feature:userlistOverlay"),
         BTFW.init("feature:chatAvatars"),
-        BTFW.init("feature:channels"),
+        BTFW.init("feature:channels")
       ]);
     });
-  }).then(function(){ console.log("[BTFW v2.1.1] Ready."); })
-    .catch(function(e){ console.error("[BTFW v2.1.1] boot failed:", e && e.message || e); });
+  })
+  .then(function(){
+    console.log("[BTFW compat] Ready.");
+  })
+  .catch(function(e){
+    console.error("[BTFW compat] boot failed:", e && e.message || e);
+  });
 })();
