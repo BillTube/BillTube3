@@ -25,7 +25,6 @@ BTFW.define("feature:resize",["core"],async function(){
     else { bar.style.right = w; bar.style.left = "auto"; }
   }
   function drag(){
-    var side=load(KEY_SIDE,"right");
     var startX, startW;
     function onDown(e){
       e.preventDefault();
@@ -35,18 +34,19 @@ BTFW.define("feature:resize",["core"],async function(){
       document.addEventListener("mouseup",onUp);
     }
     function onMove(e){
+      var side=load(KEY_SIDE,"right");
       var dx = e.clientX - startX;
       var vw = Math.max(document.documentElement.clientWidth, window.innerWidth||0);
       var newW;
       if (startW.indexOf("%")>0){
         var pct = parseFloat(startW);
         var px = pct/100 * vw;
-        var px2 = (load(KEY_SIDE,"right")==="left") ? (px+dx) : (px-dx);
+        var px2 = side==="left" ? (px+dx) : (px-dx);
         px2 = Math.min(Math.max(px2, 280), Math.min(800, vw*0.5));
         newW = (px2/vw*100).toFixed(2) + "%";
       } else {
         var px = parseFloat(startW);
-        var px2 = (load(KEY_SIDE,"right")==="left") ? (px+dx) : (px-dx);
+        var px2 = side==="left" ? (px+dx) : (px-dx);
         px2 = Math.min(Math.max(px2, 280), Math.min(800, vw*0.5));
         newW = px2 + "px";
       }
@@ -71,7 +71,7 @@ BTFW.define("feature:resize",["core"],async function(){
     var w=load(KEY_W,null); if(w){ setCSSVar("--bt-chat-w", w); }
     var ar=load(KEY_AR,"16/9"); setAspect(ar);
     drag();
-    window.BTFW_ui && (window.BTFW_ui.onSideChange = applySide, window.BTFW_ui.onRatioChange=setAspect);
+    window.addEventListener("resize", positionResizer);
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot); else boot();
   return { applySide, setAspect };

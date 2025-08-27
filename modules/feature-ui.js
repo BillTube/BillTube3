@@ -1,25 +1,37 @@
 
 BTFW.define("feature:ui",["core"],async function(){
-  var {load,save,$}=BTFW.require("core");
-  var KEY_SIDE="btfw.chat.side", KEY_AR="btfw.video.ar";
-  function button(txt, title){
-    var b=document.createElement("button"); b.className="btfw-btn"; b.textContent=txt; if(title) b.title=title; return b;
+  var {load,save}=BTFW.require("core");
+  function makeIconBtn(cls, title){
+    var b=document.createElement("button"); b.className="btfw-iconbtn "+cls; if(title) b.title=title; return b;
   }
-  function build(){
+  function addHeaderButtons(){
     var nav = document.querySelector("#nav-collapsible") || document.querySelector("nav .navbar-collapse") || document.querySelector("nav.navbar");
-    if(!nav) return;
+    if(!nav || nav.querySelector(".btfw-controls")) return;
     var wrap=document.createElement("div"); wrap.className="btfw-controls";
-    var swap=button("Swap chat"); var reset=button("Reset"); 
-    var select=document.createElement("select"); select.className="btfw-select";
-    [["16/9","16/9"],["21/9","21/9"],["4/3","4/3"],["1/1","1/1"]].forEach(function([v,l]){ var o=document.createElement("option"); o.value=v; o.textContent=l; select.appendChild(o); });
-    select.value = load(KEY_AR,"16/9");
-    swap.addEventListener("click", function(){ var cur=load(KEY_SIDE,"right"); var next = cur==="right"?"left":"right"; save(KEY_SIDE,next); document.body.classList.toggle("btfw-chat-left", next==="left"); });
-    reset.addEventListener("click", function(){ localStorage.removeItem("btfw.chat.width"); localStorage.removeItem("btfw.chat.side"); localStorage.removeItem("btfw.video.ar"); location.reload(); });
-    select.addEventListener("change", function(){ localStorage.setItem("btfw.video.ar", JSON.stringify(this.value)); document.documentElement.style.setProperty("--bt-video-ar", this.value); });
-    wrap.appendChild(swap); wrap.appendChild(select); wrap.appendChild(reset);
+    var themeBtn=document.createElement("button"); themeBtn.className="btfw-btn"; themeBtn.textContent="Theme Settings";
+    themeBtn.addEventListener("click", function(){ if (window.BTFW_themeSettings && window.BTFW_themeSettings.open){ window.BTFW_themeSettings.open(); } });
+    wrap.appendChild(themeBtn);
     nav.appendChild(wrap);
-    window.BTFW_ui = { onSideChange:null, onRatioChange:null };
   }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",build); else build();
+  function addChatButtons(){
+    var top = document.querySelector("#chatwrap .btfw-chat-topbar");
+    var bottom = document.querySelector("#chatwrap .btfw-chat-bottombar");
+    if(top && !top.querySelector(".btfw-iconbtn")){
+      var users = makeIconBtn("btfw-ic-users","Users");
+      users.addEventListener("click", function(){ if (window.BTFW_userlist && window.BTFW_userlist.toggle){ window.BTFW_userlist.toggle(); } });
+      var emotes = makeIconBtn("btfw-ic-emotes","Mote list");
+      var giphy = makeIconBtn("btfw-ic-gif","GIFs");
+      emotes.addEventListener("click", function(){ if(window.BTFW_overlays){ BTFW_overlays.openDrawer({title:"Emotes", side:"right", content:"<div class='p-16'>Emotes plugin here</div>"}); } });
+      giphy.addEventListener("click", function(){ if(window.BTFW_overlays){ BTFW_overlays.openDrawer({title:"GIFs", side:"right", content:"<div class='p-16'>Giphy/Tenor plugin hook</div>"}); } });
+      top.appendChild(users); top.appendChild(emotes); top.appendChild(giphy);
+    }
+    if(bottom && !bottom.querySelector(".btfw-iconbtn")){
+      var settings = makeIconBtn("btfw-ic-cog","Chat settings");
+      settings.addEventListener("click", function(){ if (window.BTFW_themeSettings && window.BTFW_themeSettings.open){ window.BTFW_themeSettings.open("chat"); } });
+      bottom.appendChild(settings);
+    }
+  }
+  function boot(){ addHeaderButtons(); addChatButtons(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot); else boot();
   return {};
 });

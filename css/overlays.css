@@ -1,0 +1,16 @@
+
+#btfw-overlay-root{ position:fixed; inset:0; pointer-events:none; z-index: 1000; }
+.btfw-overlay{ position:absolute; inset:0; pointer-events:auto; }
+.btfw-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.5); }
+.btfw-modal{ position:absolute; top:10%; left:50%; transform:translateX(-50%); width:min(640px, 92vw); background:#151922; border:1px solid #262b33; border-radius:14px; padding:16px; box-shadow:0 20px 60px rgba(0,0,0,.5); color:#e8edf2; }
+.btfw-close{ position:absolute; top:6px; right:8px; width:32px; height:32px; border-radius:8px; border:1px solid #262b33; background:#1b2130; color:#fff; cursor:pointer; }
+.btfw-modal-body{ margin-top:16px; }
+
+.btfw-drawer .btfw-panel{ position:absolute; top:0; bottom:0; right:0; width:min(420px, 92vw); background:#151922; border-left:1px solid #262b33; box-shadow:-10px 0 40px rgba(0,0,0,.4); display:flex; flex-direction:column; color:#e8edf2; }
+.btfw-drawer.btfw-left .btfw-panel{ left:0; right:auto; border-left:none; border-right:1px solid #262b33; box-shadow:10px 0 40px rgba(0,0,0,.4); }
+.btfw-drawer-header{ display:flex; align-items:center; justify-content:space-between; padding:12px; border-bottom:1px solid #262b33; }
+.btfw-drawer-body{ flex:1 1 auto; overflow:auto; padding:12px; }
+
+.btfw-settings h2{ margin:0 0 12px 0; }
+.btfw-settings label{ display:block; margin:8px 0; }
+.btfw-settings .row{ display:flex; gap:8px; margin-top:12px; }

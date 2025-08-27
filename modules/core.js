@@ -7,6 +7,8 @@ BTFW.define("core",[],async function(){
   function $(s,r){return (r||document).querySelector(s);} function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));}
   function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
   function load(k,def){try{var v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch(e){return def;}}
+  function setSetting(k,v){ save("btfw.setting."+k,v); emit("settings:changed",{key:k,value:v}); }
+  function getSetting(k,def){ return load("btfw.setting."+k, def); }
   function boot(){ try{ if(window.socket&&window.socket.on){["changeMedia","usercount","chatMsg","queue"].forEach(function(ev){window.socket.on(ev,function(p){emit(ev,p);});});} document.addEventListener("changeMedia",function(e){emit("changeMedia",e.detail||null);}); }catch(e){} }
-  return {on,off,emit,$,$$,save,load,boot};
+  return {on,off,emit,$,$$,save,load,setSetting,getSetting,boot};
 });

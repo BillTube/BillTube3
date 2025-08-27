@@ -1,0 +1,22 @@
+
+#btfw-chatcol .btfw-chat-topbar,
+#btfw-chatcol .btfw-chat-bottombar{ padding:6px 8px; border-bottom:1px solid var(--bt-border); display:flex; gap:6px; background:#0f141b; }
+#btfw-chatcol .btfw-chat-bottombar{ border-top:1px solid var(--bt-border); border-bottom:none; }
+
+.btfw-iconbtn{ width:32px; height:32px; border-radius:8px; background:#1b2130; border:1px solid var(--bt-border); cursor:pointer; color:#fff; }
+.btfw-ic-users::before{ content:"👥"; }
+.btfw-ic-emotes::before{ content:"😊"; }
+.btfw-ic-gif::before{ content:"GIF"; font-weight:bold; font-size:12px; }
+.btfw-ic-cog::before{ content:"⚙"; }
+
+body.btfw-chat-avatars #messagebuffer .btfw-avatar{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:22px; height:22px; margin-right:8px; border-radius:50%;
+  background:#243048; color:#fff; font-size:10px; font-weight:700;
+}
+body.btfw-chat-compact #messagebuffer li{ padding-top:2px; padding-bottom:2px; }
+
+.btfw-chat-overlay{ position:absolute; inset:auto 0 0 0; top:40px; height:calc(100% - 40px); background:rgba(12,16,24,.98); border-top:1px solid var(--bt-border); display:flex; flex-direction:column; z-index:50; }
+.btfw-chat-overlay-head{ display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid var(--bt-border); }
+.btfw-chat-overlay-body{ flex:1 1 auto; overflow:auto; padding:8px; }
+.btfw-chat-overlay .btfw-close{ width:28px; height:28px; border-radius:6px; background:#1b2130; border:1px solid var(--bt-border); color:#fff; cursor:pointer; }

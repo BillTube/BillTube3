@@ -2,5 +2,5 @@
 @media (max-width: 900px){
   #btfw-chatcol{ position:static; width:auto; height:auto; }
   #btfw-resizer{ display:none; }
-  #btfw-leftpad{ margin:0; }
+  #btfw-leftpad{ margin:0; width:auto; }
 }
