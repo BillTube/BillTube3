@@ -6,6 +6,8 @@ BTFW.define("bridge",["core"],async function(){function $(s,r){return (r||docume
     videowrap: $("#videowrap"),
     chatwrap: $("#chatwrap"),
     messageBuffer: $("#messagebuffer"),
+    userList: $("#userlist"),
+    userCount: $("#usercount"),
     queue: $("#queue"),
     plmeta: $("#plmeta"),
     ploptions: $("#ploptions"),
