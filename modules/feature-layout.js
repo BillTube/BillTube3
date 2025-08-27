@@ -1,60 +1,37 @@
 
-BTFW.define("feature:layout", ["core"], async ({ require }) => {
-  function removeVideoHeaderOnce(){
-    var vh = document.getElementById("videowrap-header");
-    if (vh && vh.parentNode) vh.parentNode.removeChild(vh);
-  }
-  function watchVideoHeader(){
-    var v = document.getElementById("videowrap");
-    if (!v) return;
-    removeVideoHeaderOnce();
-    var mo = new MutationObserver(function(m){
-      m.forEach(function(r){
-        if (r.addedNodes) r.addedNodes.forEach(function(n){
-          if (!n) return;
-          if (n.id === "videowrap-header" || (n.querySelector && n.querySelector("#videowrap-header"))) {
-            removeVideoHeaderOnce();
-          }
-        });
-      });
-    });
-    mo.observe(v, { childList: true, subtree: true });
-  }
-
-  function ensureShell(){
-    var wrap = document.getElementById("wrap") || document.body;
-
-    removeVideoHeaderOnce();
-    watchVideoHeader();
-
-    var topnav = document.querySelector("#nav-collapsible") || document.querySelector(".navbar") || document;
-    if (!document.getElementById("btfw-theme-settings-btn")){
-      var btn = document.createElement("button");
+BTFW.define("feature:layout", ["core"], async ({ require, BASE }) => {
+  const core = require("core");
+  function ensureShell() {
+    const wrap = document.getElementById("wrap") || document.body;
+    const oldHeader = document.getElementById("videowrap-header");
+    if (oldHeader) oldHeader.remove();
+    const topnav = document.querySelector("#navbar .nav") || document.querySelector(".navbar .nav") || document.querySelector("#nav-collapsible") || document;
+    if (!document.querySelector("#btfw-theme-settings-btn")) {
+      const btn = document.createElement("button");
       btn.id = "btfw-theme-settings-btn";
       btn.className = "btfw-topbtn";
       btn.title = "Theme settings";
-      btn.innerHTML = "<i class=\"fa fa-sliders\"></i>";
-      btn.addEventListener("click", function(){ document.dispatchEvent(new CustomEvent("btfw:openThemeSettings")); });
+      btn.innerHTML = `<i class="fa fa-sliders" aria-hidden="true"></i>`;
+      btn.onclick = () => document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
       (document.querySelector("#userdropdown")?.parentElement || topnav).appendChild(btn);
     }
-
-    if (!document.getElementById("btfw-grid")){
-      var grid = document.createElement("div"); grid.id = "btfw-grid"; grid.className = "btfw-grid";
-      var left = document.getElementById("btfw-leftpad") || document.createElement("div"); left.id = "btfw-leftpad"; left.className = "btfw-leftpad";
-      var right = document.getElementById("btfw-chatcol") || document.createElement("aside"); right.id = "btfw-chatcol"; right.className = "btfw-chatcol";
-      var video = document.getElementById("videowrap");
-      var chat  = document.getElementById("chatwrap");
-      var queue = document.getElementById("playlistrow") || document.getElementById("playlistwrap") || document.getElementById("queuecontainer");
-      if (video && !left.contains(video)) left.appendChild(video);
-      if (queue && !left.contains(queue)) left.appendChild(queue);
-      if (chat && !right.contains(chat)) right.appendChild(chat);
-      grid.appendChild(left); grid.appendChild(right); wrap.prepend(grid);
+    if (!document.querySelector("#btfw-grid")) {
+      const grid = document.createElement("div");
+      grid.id = "btfw-grid"; grid.className = "btfw-grid";
+      const leftPad = document.getElementById("btfw-leftpad") || document.createElement("div");
+      leftPad.id = "btfw-leftpad"; leftPad.className = "btfw-leftpad";
+      const videoWrap = document.getElementById("videowrap");
+      const plWrap    = document.getElementById("playlistrow") || document.getElementById("playlistwrap") || document.getElementById("queuecontainer");
+      if (videoWrap && !leftPad.contains(videoWrap)) leftPad.appendChild(videoWrap);
+      if (plWrap && !leftPad.contains(plWrap)) leftPad.appendChild(plWrap);
+      const rightCol = document.getElementById("btfw-chatcol") || document.createElement("aside");
+      rightCol.id = "btfw-chatcol"; rightCol.className = "btfw-chatcol";
+      const chatWrap = document.getElementById("chatwrap");
+      if (chatWrap && !rightCol.contains(chatWrap)) rightCol.appendChild(chatWrap);
+      grid.appendChild(leftPad); grid.appendChild(rightCol); wrap.prepend(grid);
     }
   }
-
   function ready(){ document.dispatchEvent(new Event("btfw:layoutReady")); }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ ensureShell(); ready(); });
-  else { ensureShell(); ready(); }
-
+  ensureShell(); setTimeout(ready, 0);
   return { name: "feature:layout" };
 });

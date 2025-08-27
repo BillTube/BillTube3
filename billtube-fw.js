@@ -1,5 +1,5 @@
 
-/*! BillTube Framework (BTFW) compat loader — patched mods list (v2.5) */
+/*! BillTube Framework (BTFW) compat loader — patched mods list (v2.2) */
 (function(){
   var current=(document.currentScript&&document.currentScript.src)||function(){var s=document.getElementsByTagName('script');return s[s.length-1].src||"";}();
   var BASE=current.replace(/\/[^\/]*$/, "");
@@ -55,7 +55,7 @@
       "modules/feature-userlist-overlay.js",
       "modules/feature-chat-avatars.js",
       "modules/feature-channels.js",
-      "modules/feature-gifs.js"
+      "modules/feature-gifs.js"           /* NEW */
     ];
     return mods.reduce((p,f)=>p.then(()=>loadScript(BASE+"/"+f)), Promise.resolve());
   }).then(function(){
@@ -76,6 +76,6 @@
         BTFW.init("feature:gifs")
       ]);
     });
-  }).then(function(){ console.log("[BTFW v2.5] Ready."); })
-    .catch(function(e){ console.error("[BTFW v2.5] boot failed:", e&&e.message||e); });
+  }).then(function(){ console.log("[BTFW v2.2] Ready."); })
+    .catch(function(e){ console.error("[BTFW v2.2] boot failed:", e&&e.message||e); });
 })();
