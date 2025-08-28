@@ -1,1 +1,94 @@
-/* use existing */
+/* ======================================================================
+   BillTube Framework — chat.css
+   Chat column structure, message area, avatars, and controls row
+   ====================================================================== */
+
+:root{
+  --btfw-top: 48px;
+  --btfw-border: rgba(255,255,255,.08);
+  --btfw-radius: 12px;
+}
+
+#chatwrap{
+  display:flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+/* Bars are visually styled further in overlays.css */
+#chatwrap .btfw-chat-topbar,
+#chatwrap .btfw-chat-bottombar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px 10px;
+  margin:0 0 8px 0;
+  border:1px solid var(--btfw-border);
+  border-radius: var(--btfw-radius);
+}
+
+#btfw-nowplaying-slot{
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Scrollable messages */
+#messagebuffer{
+  flex: 1 1 auto;
+  overflow: auto;
+  min-height: 0;
+  padding: 6px;
+}
+
+#messagebuffer .chat-msg{ display:block; padding:3px 2px; }
+#messagebuffer .timestamp{ opacity:.6; font-size: 0.85em; margin-right:6px; }
+#messagebuffer .username{ font-weight:600; margin-right:6px; }
+
+/* Keep images/GIFs reasonable inside chat */
+#messagebuffer .chat-msg img{
+  max-width: 100%;
+  height: auto;
+}
+
+/* Controls row sits below messages, stays visible */
+.btfw-controls-row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  padding:6px;
+  border-top:1px solid var(--btfw-border);
+  background: rgba(20,24,34,.92);
+  border-radius: 10px;
+  margin-top:6px;
+}
+
+/* Bottom action buttons container */
+.btfw-chat-actions{ display:flex; gap:6px; flex-wrap:wrap; }
+.button.btfw-chatbtn{ display:inline-flex; align-items:center; gap:6px; }
+
+/* Avatars next to names */
+.btfw-chat-avatar{
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  margin-right: 8px;
+  vertical-align: middle;
+  object-fit: cover;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+#messagebuffer .btfw-chat-avatar + .username{ vertical-align: middle; }
+
+/* Emote size inside chat messages */
+#messagebuffer img.emoji,
+#messagebuffer img.emote,
+#messagebuffer .emote{
+  max-height: 32px; vertical-align: middle;
+}
+
+/* Mobile refinements */
+@media (max-width: 768px){
+  .btfw-controls-row{ flex-wrap:wrap; }
+  #chatline{ flex: 1 1 100%; }
+}
