@@ -1,5 +1,5 @@
 
-/*! BillTube Framework (BTFW) loader — v3.3 */
+/*! BillTube Framework (BTFW) loader — v3.4 */
 (function(){
   var current=(document.currentScript&&document.currentScript.src)||function(){var s=document.getElementsByTagName('script');return s[s.length-1].src||"";}();
   var BASE=current.replace(/\/[^\/]*$/, "");
@@ -10,7 +10,7 @@
     var m=Registry[name]; if(!m) throw new Error("Module not found: "+name);
     if(m.instance) return m.instance;
     for(var i=0;i<m.deps.length;i++){ await init(m.deps[i]); }
-    m.instance = await m.factory({define:BTFW.define, require:()=>null, init, BASE});
+    m.instance = await m.factory({define:BTFW.define, init, BASE});
     return m.instance;
   }
   window.BTFW = { define, init, BASE };
@@ -56,6 +56,7 @@
       "modules/feature-chat.js",
       "modules/feature-chat-avatars.js",
       "modules/feature-gifs.js",
+      "modules/feature-pip.js",
       "modules/feature-sync-guard.js",
       "modules/feature-theme-settings.js",
       "modules/feature-ui.js"
@@ -74,10 +75,11 @@
       BTFW.init("feature:chat"),
       BTFW.init("feature:chatAvatars"),
       BTFW.init("feature:gifs"),
+      BTFW.init("feature:pip"),
       BTFW.init("feature:syncGuard"),
       BTFW.init("feature:themeSettings"),
       BTFW.init("feature:ui")
     ]);
-  }).then(function(){ console.log("[BTFW v3.3] Ready."); })
-    .catch(function(e){ console.error("[BTFW v3.3] boot failed:", e&&e.message||e); });
+  }).then(function(){ console.log("[BTFW v3.4] Ready."); })
+    .catch(function(e){ console.error("[BTFW v3.4] boot failed:", e&&e.message||e); });
 })();

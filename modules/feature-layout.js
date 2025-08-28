@@ -12,31 +12,30 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     if (header && "ResizeObserver" in window) new ResizeObserver(setTopOffsetVar).observe(header);
     setTimeout(setTopOffsetVar, 500); setTimeout(setTopOffsetVar, 2000);
   }
-  const BOOT = /^(col(-(xs|sm|md|lg|xl))?-(\d+|auto)|row|container(-fluid)?|pull-(left|right)|offset-\d+)$/;
-  function stripClassesOn(el){ if (!el||!el.classList) return; const rm=[]; el.classList.forEach(c=>{ if(BOOT.test(c)) rm.push(c); }); rm.forEach(c=>el.classList.remove(c)); }
+  const BOOT=/^(col(-(xs|sm|md|lg|xl))?-(\d+|auto)|row|container(-fluid)?|pull-(left|right)|offset-\d+)$/;
+  function stripClassesOn(el){ if(!el||!el.classList) return; const rm=[]; el.classList.forEach(c=>{ if(BOOT.test(c)) rm.push(c); }); rm.forEach(c=>el.classList.remove(c)); }
   function stripDeep(root){ if(!root) return; stripClassesOn(root); root.querySelectorAll("[class]").forEach(stripClassesOn); }
-  function neutralizeCommonBlocks(){ ["videowrap","playlistrow","playlistwrap","queuecontainer","queue","plmeta"].forEach(id=>stripDeep(document.getElementById(id))); }
-  function neutralizeChatWrap(){ const cw=document.getElementById("chatwrap"); stripDeep(cw); }
-  function killVideoHeader(){
+  function neutralize(){ ["videowrap","playlistrow","playlistwrap","queuecontainer","queue","plmeta"].forEach(id=>stripDeep(document.getElementById(id))); }
+  function neutralizeChat(){ const cw=document.getElementById("chatwrap"); stripDeep(cw); }
+  function moveCurrentTitleOut(){
     const vh=document.getElementById("videowrap-header");
-    if (vh){
-      const ct = vh.querySelector("#currenttitle");
-      if (ct){
-        const top = document.querySelector("#chatwrap .btfw-chat-topbar");
-        if (top){
-          let slot = top.querySelector("#btfw-nowplaying-slot");
-          if (!slot){ slot=document.createElement("div"); slot.id="btfw-nowplaying-slot"; slot.className="btfw-chat-title"; top.innerHTML=""; top.appendChild(slot); }
-          slot.appendChild(ct);
-        }
+    if (!vh) return;
+    const ct = vh.querySelector("#currenttitle");
+    if (ct){
+      const top = document.querySelector("#chatwrap .btfw-chat-topbar");
+      if (top){
+        let slot = top.querySelector("#btfw-nowplaying-slot");
+        if (!slot){ slot=document.createElement("div"); slot.id="btfw-nowplaying-slot"; slot.className="btfw-chat-title"; top.innerHTML=""; top.appendChild(slot); }
+        slot.appendChild(ct);
       }
-      vh.parentNode.removeChild(vh);
     }
+    vh.remove();
   }
   function observeVideoWrap(){
     const vw=document.getElementById("videowrap"); if(!vw) return;
     new MutationObserver(list=>list.forEach(r=>r.addedNodes&&r.addedNodes.forEach(n=>{
       if(n.nodeType!==1) return;
-      if(n.id==="videowrap-header" || n.querySelector?.("#videowrap-header")) killVideoHeader();
+      if(n.id==="videowrap-header" || n.querySelector?.("#videowrap-header")) moveCurrentTitleOut();
       if(n.id==="videowrap" || n.closest?.("#videowrap")) stripDeep(document.getElementById("videowrap"));
     }))).observe(vw,{childList:true,subtree:true});
   }
@@ -63,7 +62,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       if(queue && !left.contains(queue)) left.appendChild(queue);
       if(chat && !right.contains(chat)) right.appendChild(chat);
     }
-    neutralizeCommonBlocks(); neutralizeChatWrap(); killVideoHeader(); observeVideoWrap();
+    neutralize(); neutralizeChat(); moveCurrentTitleOut(); observeVideoWrap();
   }
   function ready(){ document.dispatchEvent(new Event("btfw:layoutReady")); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ ensureShell(); wireTopOffset(); ready(); });

@@ -21,11 +21,10 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       hdr.className = "btfw-stack-header";
       hdr.innerHTML = `<div class="btfw-stack-title">Page Modules</div>`;
       stack.appendChild(hdr);
-      const list = document.createElement("div");
-      list.className = "btfw-stack-list";
-      stack.appendChild(list);
+      const list = document.createElement("div"); list.className = "btfw-stack-list"; stack.appendChild(list);
+      const footer = document.createElement("div"); footer.id="btfw-stack-footer"; footer.className="btfw-stack-footer"; stack.appendChild(footer);
     }
-    return stack.querySelector(".btfw-stack-list");
+    return { list: stack.querySelector(".btfw-stack-list"), footer: stack.querySelector("#btfw-stack-footer") };
   }
 
   function normalizeId(el) { if (!el) return null; if (el.id) return el.id; el.id = "stackitem-" + Math.random().toString(36).slice(2,7); return el.id; }
@@ -59,7 +58,14 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
   function saveOrder(list){ try { localStorage.setItem(SKEY, JSON.stringify(currentOrder(list))); } catch(e){} }
   function loadOrder(){ try { return JSON.parse(localStorage.getItem(SKEY) || "[]"); } catch(e){ return []; } }
 
-  function moveIntoStack(list) {
+  function attachFooter(footer){
+    const real = document.getElementById("footer") || document.querySelector("footer");
+    if (!real) return;
+    real.classList.add("btfw-footer");
+    if (!footer.contains(real)) { footer.innerHTML=""; footer.appendChild(real); }
+  }
+
+  function moveIntoStack({list, footer}) {
     const found = [];
     DEFAULT_SELECTORS.forEach(sel => {
       const el = document.querySelector(sel);
@@ -85,13 +91,13 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     });
     Array.from(byId.values()).forEach(el => list.appendChild(makeItemFor(el)));
     saveOrder(list);
+    attachFooter(footer);
   }
 
   function init(){
-    const list = ensureStack();
-    if (!list) return;
-    moveIntoStack(list);
-    const obs = new MutationObserver(() => moveIntoStack(list));
+    const refs = ensureStack(); if (!refs) return;
+    moveIntoStack(refs);
+    const obs = new MutationObserver(() => moveIntoStack(refs));
     obs.observe(document.body, { childList:true, subtree:true });
   }
   document.addEventListener("btfw:layoutReady", init);

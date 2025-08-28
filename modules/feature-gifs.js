@@ -2,7 +2,6 @@
 BTFW.define("feature:gifs", ["feature:chat"], async ({}) => {
   const GIPHY_KEY = "bb2006d9d3454578be1a99cfad65913d";
   const TENOR_KEY = "5WPAZ4EXST2V";
-
   function ensureModal(){
     if (document.getElementById("btfw-gif-modal")) return;
     const m=document.createElement("div"); m.id="btfw-gif-modal"; m.className="modal";
@@ -24,12 +23,8 @@ BTFW.define("feature:gifs", ["feature:chat"], async ({}) => {
             <div class="control is-expanded">
               <input id="btfw-gif-q" class="input" placeholder="Search GIFs…">
             </div>
-            <div class="control">
-              <button id="btfw-gif-search" class="button is-info is-light">Search</button>
-            </div>
-            <div class="control">
-              <button id="btfw-gif-trending" class="button is-dark is-light">Trending</button>
-            </div>
+            <div class="control"><button id="btfw-gif-search" class="button is-info is-light">Search</button></div>
+            <div class="control"><button id="btfw-gif-trending" class="button is-dark is-light">Trending</button></div>
           </div>
           <div class="content" id="btfw-gif-panes">
             <div class="pane" data-pane="giphy"></div>
@@ -54,7 +49,6 @@ BTFW.define("feature:gifs", ["feature:chat"], async ({}) => {
   function hide(){ const m=document.getElementById("btfw-gif-modal"); if(m) m.classList.remove("is-active"); }
   function trimGif(u){ return (u||"").split("?")[0]; }
   function insertText(text){
-    if (window.insertText) return window.insertText(text);
     const line=document.getElementById("chatline"); if(!line) return;
     const start=line.selectionStart||line.value.length; const end=line.selectionEnd||line.value.length;
     line.value = line.value.slice(0,start) + text + line.value.slice(end);
@@ -83,7 +77,6 @@ BTFW.define("feature:gifs", ["feature:chat"], async ({}) => {
         render(list, pane);
       }
     }catch(e){
-      console.error("GIF fetch failed", e);
       pane.innerHTML="<p>Failed to load GIFs.</p>";
     }
   }
@@ -93,14 +86,12 @@ BTFW.define("feature:gifs", ["feature:chat"], async ({}) => {
     (urls||[]).filter(Boolean).slice(0,48).forEach(u=>{
       const col=document.createElement("div"); col.className="column is-one-quarter-desktop is-one-third-tablet is-half-mobile";
       const b=document.createElement("button"); b.className="button is-dark is-light"; b.style.padding="0"; b.style.width="100%";
-      b.innerHTML=`<img loading="lazy" src="${u}" style="display:block;width:100%;height:auto;border-radius:6px;">`;
+      b.innerHTML=`<img loading="lazy" src="${u}" style="display:block;width:100%;height:auto;border-radius:8px;">`;
       b.onclick=()=>{ insertText(u+" "); hide(); };
-      col.appendChild(b);
-      g.appendChild(col);
+      col.appendChild(b); g.appendChild(col);
     });
     pane.innerHTML=""; pane.appendChild(g);
   }
   document.addEventListener("btfw:openGifs", show);
-  window.BTFW_Gifs = { open: show };
   return { name:"feature:gifs" };
 });

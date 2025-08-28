@@ -1,1 +1,15 @@
-:root{}
+
+:root{
+  --btfw-top: 48px;
+  --btfw-accent: #7C6CFF;
+  --btfw-accent-2: #5F8AFF;
+  --btfw-bg: #0d0f14;
+  --btfw-bg-soft: #141720;
+  --btfw-surface: #1a1e2a;
+  --btfw-surface-2: #202637;
+  --btfw-border: rgba(255,255,255,.07);
+  --btfw-text: #e9e9ee;
+  --btfw-muted: #aeb1c4;
+  --btfw-radius: 14px;
+  --btfw-shadow: 0 10px 30px rgba(0,0,0,.45);
+}
