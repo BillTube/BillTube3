@@ -47,7 +47,7 @@ BTFW.define("feature:bulma", [], async ({}) => {
       .observe(document.body,{childList:true,subtree:true});
   }
 
-  disableBootstrapAndSlate();
+  //disableBootstrapAndSlate();
   ensureBulma();
   ensureFA();
   bridgeBootstrapToBulma(document);
