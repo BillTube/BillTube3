@@ -29,11 +29,9 @@
 
 .btfw-chat-avatar{ width:28px; height:28px; border-radius:6px; margin-right:6px; vertical-align:middle; border:1px solid var(--btfw-border); }
 
-/* splitter look */
 #btfw-vsplit{ cursor: col-resize; background: rgba(255,255,255,.06); position:relative; z-index:2; }
 #btfw-vsplit::after{ content:""; position:absolute; inset:0; border-left:2px solid rgba(255,255,255,.18); pointer-events:none; }
 
-/* Modal */
 .btfw-modal{ position:fixed; inset:0; z-index:1000; display:grid; place-items:center; }
 .btfw-modal.hidden{ display:none; }
 .btfw-modal__backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55); }

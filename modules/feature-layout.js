@@ -1,5 +1,5 @@
 
-BTFW.define("feature:layout", ["feature:bulma"], async ({ require }) => {
+BTFW.define("feature:layout", ["feature:styleCore"], async ({ require }) => {
   function setTopOffsetVar(){
     var header=document.querySelector(".navbar, #nav-collapsible, #navbar");
     var h=header?header.offsetHeight:48;
