@@ -1,35 +1,47 @@
-/* --- grid & sticky chat --- */
+:root{
+  --btfw-top: 48px; /* JS updates this */
+  --btfw-bg: #0f1115;
+  --btfw-bg-soft: #17181b;
+  --btfw-border: rgba(255,255,255,.06);
+  --btfw-text: #e7e7ea;
+  --btfw-muted: #a9abb5;
+  --btfw-surface: rgba(20,20,26,.85);
+  --btfw-surface-2: rgba(28,30,36,.85);
+}
+
+/* BTFW grid */
 #btfw-grid{
   display:grid;
-  grid-template-columns: minmax(600px, var(--btfw-leftpx, 1fr)) 6px minmax(320px, 1fr);
+  grid-template-columns:minmax(600px, var(--btfw-leftpx, 1fr)) 6px minmax(320px, 1fr);
   gap:0;
+  margin-top: calc(var(--btfw-top) + 6px); /* leave space for fixed navbar */
 }
-#btfw-leftpad{ margin-top: calc(var(--btfw-top, 48px) + 8px); }
+#btfw-leftpad{ /* no extra margin here; grid now has margin-top */ }
+#btfw-vsplit{ cursor: col-resize; background: rgba(255,255,255,.06); position:relative; z-index:2; }
+#btfw-vsplit::after{ content:""; position:absolute; inset:0; border-left:2px solid rgba(255,255,255,.18); pointer-events:none; }
+
+/* Chat column sticks under the navbar and fills viewport */
 #btfw-chatcol{
   position: sticky;
-  top: var(--btfw-top, 48px);
-  height: calc(100vh - var(--btfw-top, 48px) - 12px);
-  display: flex; flex-direction: column;
-  min-width: 320px;
+  top: var(--btfw-top);
+  height: calc(100vh - var(--btfw-top) - 8px);
+  display:flex; flex-direction:column; min-width:320px;
+}
+@supports (height: 100dvh){
+  #btfw-chatcol{ height: calc(100dvh - var(--btfw-top) - 8px); }
 }
 
-/* --- make chat full width & flex --- */
-#chatwrap.btfw-chatwrap{
-  display: flex; flex-direction: column;
-  width: 100% !important; max-width: 100% !important;
-}
-#messagebuffer.btfw-messagebuffer{
-  flex: 1 1 auto; overflow: auto; width: 100%;
-  min-height: 0;
-}
+/* Chat structure: bars always visible, messages scroll */
+#chatwrap.btfw-chatwrap{ display:flex; flex-direction:column; width:100% !important; max-width:100% !important; height:100%; }
+#messagebuffer.btfw-messagebuffer{ flex:1 1 auto; overflow:auto; width:100%; min-height:0; }
 
-/* --- visible chat bars --- */
+/* Top/Bottom bars */
 .btfw-chat-topbar,.btfw-chat-bottombar{
   display:flex; align-items:center; justify-content:space-between;
   padding:8px 10px; border-radius:10px;
-  background: var(--btfw-surface);
+  background:var(--btfw-surface);
   margin-bottom:8px; border:1px solid var(--btfw-border);
-  color: var(--btfw-text);
+  color:var(--btfw-text);
 }
 .btfw-chat-title{ font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .btfw-chat-actions{ display:flex; gap:8px; }
@@ -39,9 +51,18 @@
 }
 .btfw-ghost{ background:transparent; }
 .btfw-chatbtn:hover,.btfw-topbtn:hover{ background:var(--btfw-surface-2); }
-.btfw-controls-row{ margin-top:8px; width:100%; }
 
-/* --- user list overlay --- */
+/* Place native chat controls just under the bottom bar and keep visible */
+.btfw-controls-row{
+  margin-top:8px; width:100%;
+  position: sticky; bottom: max(0px, env(safe-area-inset-bottom));
+  background: var(--btfw-bg-soft);
+  border-top: 1px solid var(--btfw-border);
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 1;
+}
+
+/* User list overlay */
 #userlist.btfw-userlist-overlay{
   position:absolute; right:12px; top:60px; bottom:140px; width:300px;
   background:rgba(18,18,22,.95); border-radius:12px; overflow:auto;
@@ -50,17 +71,24 @@
 #userlist.btfw-userlist-overlay.btfw-userlist-overlay--open{ display:block; }
 #chatwrap #userlist:not(.btfw-userlist-overlay){ display:none !important; }
 
-/* --- avatars --- */
+/* Avatars */
 .btfw-chat-avatar{ width:28px; height:28px; border-radius:6px; margin-right:6px; vertical-align:middle; border:1px solid var(--btfw-border); }
 
-/* --- splitter look --- */
-#btfw-vsplit{ cursor: col-resize; background: rgba(255,255,255,.06); position:relative; z-index:2; }
-#btfw-vsplit::after{ content:""; position:absolute; inset:0; border-left:2px solid rgba(255,255,255,.18); pointer-events:none; }
-
-/* --- neutralize Bootstrap floats inside left pads --- */
+/* Left side: neutralize Bootstrap floats */
 #btfw-leftpad [class*="col-"], #btfw-leftpad .row, #btfw-leftpad .container, #btfw-leftpad .container-fluid{
   width:100% !important; max-width:100% !important; float:none !important;
 }
 #videowrap, #playlistrow, #playlistwrap, #queuecontainer, #queue, #plmeta{
   width:100% !important; max-width:100% !important; float:none !important; display:block !important;
+}
+
+/* Mobile: stack columns and keep chat full-height */
+@media (max-width: 900px){
+  #btfw-grid{ grid-template-columns: 1fr; }
+  #btfw-vsplit{ display:none; }
+  #btfw-chatcol{
+    position: sticky;
+    top: var(--btfw-top);
+    height: calc(100dvh - var(--btfw-top) - 6px);
+  }
 }
