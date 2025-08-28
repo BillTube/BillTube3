@@ -1,5 +1,5 @@
 
-/*! BillTube Framework (BTFW) loader — v3.0 (Bulma bridge + resizer) */
+/*! BillTube Framework (BTFW) loader — v3.1 (Bootstrap kept, resizer intact) */
 (function(){
   var current=(document.currentScript&&document.currentScript.src)||function(){var s=document.getElementsByTagName('script');return s[s.length-1].src||"";}();
   var BASE=current.replace(/\/[^\/]*$/, "");
@@ -45,7 +45,7 @@
     var mods=[
       "modules/core.js",
       "modules/bridge-cytube.js",
-      "modules/feature-bulma-bridge.js",
+      "modules/feature-style-core.js",
       "modules/feature-layout.js",
       "modules/feature-resize.js",
       "modules/feature-player.js",
@@ -60,7 +60,7 @@
     return BTFW.init("core").then(function(core){
       if(core&&core.boot) core.boot();
       return Promise.all([
-        BTFW.init("feature:bulma"),
+        BTFW.init("feature:styleCore"),
         BTFW.init("feature:layout"),
         BTFW.init("feature:resize"),
         BTFW.init("feature:player"),
@@ -71,6 +71,6 @@
         BTFW.init("feature:ui")
       ]);
     });
-  }).then(function(){ console.log("[BTFW v3.0] Ready."); })
-    .catch(function(e){ console.error("[BTFW v3.0] boot failed:", e&&e.message||e); });
+  }).then(function(){ console.log("[BTFW v3.1] Ready."); })
+    .catch(function(e){ console.error("[BTFW v3.1] boot failed:", e&&e.message||e); });
 })();
