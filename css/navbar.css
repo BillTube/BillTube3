@@ -7,7 +7,7 @@
 
 /* Z-index is enforced in overlays.css; here we ensure spacing below it */
 #btfw-grid{
-  margin-top: calc(var(--btfw-top) + 10px);
+  margin-top: calc(var(--btfw-top));
 }
 
 /* Theme button in navbar */

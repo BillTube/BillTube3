@@ -14,7 +14,6 @@
   position: relative;
   display: block;
   height: 0;
-  padding-top: 56.25%; /* 16:9 */
   overflow: hidden;
 }
 #videowrap .embed-responsive iframe,
