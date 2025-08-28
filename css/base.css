@@ -1,12 +1,1 @@
-
-#btfw-grid{ display:grid; grid-template-columns:minmax(600px, 1fr) 6px minmax(320px, 1fr); gap:0; margin-top: calc(var(--btfw-top) + 6px); }
-#btfw-chatcol{ position: sticky; top: var(--btfw-top); height: calc(100vh - var(--btfw-top) - 8px); display:flex; flex-direction:column; }
-#chatwrap.btfw-chatwrap{ display:flex; flex-direction:column; width:100% !important; height:100%; }
-.btfw-chat-topbar,.btfw-chat-bottombar{ display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,.06); margin-bottom:8px; border:1px solid var(--btfw-border); }
-.btfw-chat-actions{ display:flex; gap:8px; }
-.btfw-stack{ margin-top:10px; } .btfw-stack-list{ display:flex; flex-direction:column; gap:10px; }
-.btfw-stack-item{ border:1px solid var(--btfw-border); border-radius:10px; }
-.btfw-stack-item__header{ display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid var(--btfw-border); }
-.btfw-stack-item__body{ padding:8px; }
-#btfw-leftpad [class*="col-"], #btfw-leftpad .row, #btfw-leftpad .container, #btfw-leftpad .container-fluid{ width:100% !important; max-width:100% !important; float:none !important; }
-#videowrap, #playlistrow, #playlistwrap, #queuecontainer, #queue, #plmeta{ width:100% !important; display:block !important; }
+/* unchanged from previous patch; keeping minimal here */

@@ -1,8 +1,9 @@
 
-/*! BTFW loader — v3.4b */
+/*! BTFW loader — v3.4c */
 (function(){
-  var current=(document.currentScript&&document.currentScript.src)||function(){var s=document.getElementsByTagName('script');return s[s.length-1].src||"";}();
-  var BASE=current.replace(/\/[^\/]*$/, "");
+  var current=(document.currentScript&&document.currentScript.src)||function(){var s=document.getElementsByTagName('script');return s[scripts.length-1].src||"";}();
+  var scripts=document.getElementsByTagName('script');
+  var BASE=(document.currentScript&&document.currentScript.src)||scripts[scripts.length-1].src; BASE=BASE.replace(/\/[^\/]*$/, "");
   window.BTFW = window.BTFW || { define:function(n,d,f){ (this._r=this._r||{})[n]={deps:d||[],factory:f}; }, init:async function(n){ const R=this._r||{}; const m=R[n]; if(!m) throw new Error("Module not found: "+n); if(m.i) return m.i; for(const dep of m.deps||[]) await this.init(dep); return m.i=await m.factory(this);} , BASE:BASE };
 
   function preload(h){return new Promise(function(r){var l=document.createElement("link");l.rel="preload";l.as="style";l.href=h;l.onload=function(){l.rel="stylesheet";r();};l.onerror=function(){l.rel="stylesheet";r();};document.head.appendChild(l);});}
@@ -44,6 +45,6 @@
       BTFW.init("feature:pip"),
       BTFW.init("feature:syncGuard")
     ]);
-  }).then(function(){ console.log("[BTFW v3.4b] Ready."); })
-  .catch(function(e){ console.error("[BTFW v3.4b] boot failed:", e&&e.message||e); });
+  }).then(function(){ console.log("[BTFW v3.4c] Ready."); })
+  .catch(function(e){ console.error("[BTFW v3.4c] boot failed:", e&&e.message||e); });
 })();

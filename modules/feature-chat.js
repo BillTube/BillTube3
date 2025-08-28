@@ -22,8 +22,8 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     const bar = bottom.querySelector("#btfw-chat-actions");
 
     // Move/ensure buttons
-    const emSel = "#emotelistbtn, #emotelist";
-    const emotebtn = $(emSel); if (emotebtn && emotebtn.parentElement !== bar){ emotebtn.className = "button is-dark is-small btfw-chatbtn"; bar.appendChild(emotebtn); }
+    const emotebtn = $("#emotelistbtn, #emotelist");
+    if (emotebtn && emotebtn.parentElement !== bar){ emotebtn.className = "button is-dark is-small btfw-chatbtn"; bar.appendChild(emotebtn); }
     if (!$("#btfw-gif-btn", bar)){
       const b=document.createElement("button"); b.id="btfw-gif-btn"; b.className="button is-dark is-small btfw-chatbtn"; b.innerHTML=`<span class="gif-badge">GIF</span>`; b.onclick=()=>document.dispatchEvent(new Event("btfw:openGifs")); bar.appendChild(b);
     }
@@ -49,8 +49,11 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   function usernameColor(el){
     const n = el.matches?.(".username,.nick,.name") ? el : el.querySelector?.(".username,.nick,.name");
     if (!n) return; const t=(n.textContent||"").replace(":","").trim(); if(!t) return;
-    for(let i=0,h=0;i<t.length;h=t.charCodeAt(i++)+((h<<5)-h)); let c="#"; for(let i=0;i<3;i++) c+=("00"+((h>>i*8)&0xff).toString(16)).slice(-2);
-    n.style.color=c;
+    let hash = 0;
+    for (let i=0;i<t.length;i++) hash = t.charCodeAt(i) + ((hash<<5) - hash);
+    let c = "#";
+    for (let i=0;i<3;i++) c += ("00"+((hash>> (i*8)) & 0xff).toString(16)).slice(-2);
+    n.style.color = c;
   }
 
   function observe(){
