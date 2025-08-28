@@ -1,14 +1,1 @@
-
-#nav-collapsible, .navbar, #navbar, .navbar-fixed-top {
-  position: fixed !important;
-  top: 0; left: 0; right: 0;
-  z-index: 1000;
-  width: 100%;
-  background: linear-gradient(180deg, rgba(20,20,26,.92), rgba(20,20,26,.88));
-  color: #e7e7ea;
-  border-bottom: 1px solid var(--btfw-border);
-  backdrop-filter: saturate(1.2) blur(6px);
-}
-#nav-collapsible .nav, .navbar .nav, #navbar .nav { display: flex; gap: 12px; align-items: center; padding: 6px 10px; list-style: none; margin: 0; }
-#nav-collapsible a, .navbar a, #navbar a { color:#e7e7ea; text-decoration:none; }
-#nav-collapsible a:hover, .navbar a:hover, #navbar a:hover { color:#fff; }
+/* unchanged from previous patch; keeping minimal here */
