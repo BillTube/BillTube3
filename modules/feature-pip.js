@@ -40,16 +40,11 @@ BTFW.define("feature:pip", ["feature:layout"], async ({}) => {
     toOriginal();
   }
 
-  // react to theme settings toggle
   document.addEventListener("btfw:pip:refresh", function(){
     if (pref()) start(); else stop();
   });
 
-  // initialize from saved pref
   if (pref()) start();
-
-  // expose helper so theme settings can change it
   window.BTFW_setPiP = setPref;
-
   return { name:"feature:pip", set: setPref };
 });

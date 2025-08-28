@@ -1,5 +1,5 @@
 
-/*! BTFW — v3.4e */
+/*! BillTube Framework — v3.4f */
 (function(){
   var scripts=document.getElementsByTagName('script');
   var BASE=(document.currentScript&&document.currentScript.src)||scripts[scripts.length-1].src; BASE=BASE.replace(/\/[^\/]*$/, "");
@@ -57,6 +57,6 @@
       BTFW.init("feature:syncGuard"),
       BTFW.init("feature:themeSettings")
     ]);
-  }).then(function(){ console.log("[BTFW v3.4e] Ready."); })
-  .catch(function(e){ console.error("[BTFW v3.4e] boot failed:", e&&e.message||e); });
+  }).then(function(){ console.log("[BTFW v3.4f] Ready."); })
+  .catch(function(e){ console.error("[BTFW v3.4f] boot failed:", e&&e.message||e); });
 })();

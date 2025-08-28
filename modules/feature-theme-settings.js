@@ -20,7 +20,6 @@ BTFW.define("feature:themeSettings", ["feature:layout"], async ({}) => {
               <input id="btfw-pip-toggle" type="checkbox"> Enable Picture-in-Picture (dock video above chat when scrolled)
             </label>
           </div>
-          <p class="help">This moves the live video into a small dock above the chat when the main player scrolls off screen.</p>
         </section>
         <footer class="modal-card-foot">
           <button class="button is-primary" id="btfw-theme-save">Save</button>
@@ -49,10 +48,8 @@ BTFW.define("feature:themeSettings", ["feature:layout"], async ({}) => {
     hide();
   }
 
-  // Wire open from chat button
   document.addEventListener("btfw:openThemeSettings", open);
 
-  // Also try to add a button to the top navbar
   function addNavButton(){
     const nav = document.querySelector("#nav-collapsible .nav, .navbar .nav, #navbar .nav");
     if (!nav || document.getElementById("btfw-theme-btn-nav")) return;
