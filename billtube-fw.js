@@ -46,6 +46,7 @@
       "modules/core.js",
       "modules/bridge-cytube.js",
       "modules/feature-style-core.js",
+	  "modules/feature-bulma-layer.js",
       "modules/feature-layout.js",
       "modules/feature-resize.js",
       "modules/feature-player.js",
@@ -61,6 +62,7 @@
       if(core&&core.boot) core.boot();
       return Promise.all([
         BTFW.init("feature:styleCore"),
+		BTFW.init("feature:bulma"),
         BTFW.init("feature:layout"),
         BTFW.init("feature:resize"),
         BTFW.init("feature:player"),
