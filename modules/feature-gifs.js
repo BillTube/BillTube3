@@ -1,1 +1,1 @@
-/* use v3.4 GIFs module by keeping previous URL; not re-adding here for brevity */
+BTFW.define('feature:gifs', [], async ()=>({name:'feature:gifs'}));
