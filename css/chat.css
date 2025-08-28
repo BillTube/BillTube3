@@ -1,5 +1,5 @@
 
-/* Buttons & icons styling (uses tokens) */
+/* Buttons & icons styling */
 .btfw-topbtn,
 .btfw-chatbtn{
   background: var(--btfw-surface) !important;
@@ -16,5 +16,4 @@
   border: 1px solid var(--btfw-border) !important;
   color: var(--btfw-text) !important;
 }
-/* icon sizes */
 .btfw-chatbtn .fa, .btfw-topbtn .fa{ font-size: 14px; }
