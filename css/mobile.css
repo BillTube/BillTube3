@@ -1,1 +1,124 @@
-/* use existing */
+/* ======================================================================
+   BillTube Framework — mobile.css
+   Mobile + small screens refinements
+   IMPORTANT: All rules are wrapped in @media so desktop stays unchanged.
+   ====================================================================== */
+
+/* --------- Tablet & down (<= 1100px): stack columns, unstick chat --------- */
+@media (max-width: 1100px){
+  #btfw-grid{
+    grid-template-columns: 1fr;
+    grid-row-gap: 10px;
+    padding: 0 8px;
+    margin-top: calc(var(--btfw-top,48px) + 8px);
+  }
+  #btfw-vsplit{ display:none; }
+  #btfw-chatcol{
+    position: relative;
+    top: auto;
+    height: auto;
+    min-height: 420px;
+  }
+}
+
+/* --------- Phones (<= 768px): larger touch targets, overlay sizes ---------- */
+@media (max-width: 768px){
+  /* Chat bars */
+  #chatwrap .btfw-chat-topbar,
+  #chatwrap .btfw-chat-bottombar{
+    padding: 8px;
+    border-radius: 12px;
+  }
+  .btfw-chat-actions{ gap: 6px; }
+  .button.btfw-chatbtn{
+    font-size: 14px;
+    line-height: 1.2;
+    padding: 6px 10px;
+    min-height: 36px;
+    border-radius: 10px;
+  }
+
+  /* Message area scroll with momentum */
+  #messagebuffer{
+    -webkit-overflow-scrolling: touch;
+    padding: 6px;
+  }
+
+  /* Keep controls row visible; allow wrapping */
+  .btfw-controls-row{
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  #chatline{ flex: 1 1 100%; min-height: 38px; }
+
+  /* Userlist overlay as a sheet */
+  #userlist.btfw-userlist-overlay{
+    left: 8px; right: 8px; width: auto;
+    top: calc(var(--btfw-top,48px) + 8px);
+    bottom: 120px;
+    padding: 8px;
+  }
+
+  /* GIF/Theme modals fit viewport nicely */
+  .modal .modal-card{
+    width: 96vw !important;
+    max-height: 90vh !important;
+  }
+
+  /* Video overlay buttons: keep accessible spacing */
+  #videowrap .btfw-video-overlay .btfw-vo-right{
+    top: 8px; right: 8px; gap: 6px;
+  }
+  #videowrap .btfw-video-overlay .btfw-vo-btn{
+    padding: 6px 8px;
+    border-radius: 10px;
+  }
+
+  /* Content stack spacing tighter on mobile */
+  #btfw-stack .btfw-stack-list{ gap: 8px; }
+  .btfw-stack-item__body{ padding: 6px; }
+
+  /* Footer spacing inside stack */
+  #btfw-stack-footer{ margin-top: 8px; }
+}
+
+/* --------- Small phones (<= 480px): extra tightening ---------------------- */
+@media (max-width: 480px){
+  #btfw-grid{ padding: 0 6px; }
+  .button.btfw-chatbtn{ padding: 6px 8px; min-height: 34px; }
+  #messagebuffer .chat-msg{ padding: 2px 0; }
+  #btfw-nowplaying-slot{ font-size: 14px; }
+}
+
+/* --------- Safe-area insets (iOS notch) ---------------------------------- */
+@supports (padding: max(0px)){
+  @media (max-width: 768px){
+    #btfw-grid{
+      padding-left: max(8px, env(safe-area-inset-left));
+      padding-right: max(8px, env(safe-area-inset-right));
+    }
+    .btfw-controls-row{
+      padding-bottom: max(6px, env(safe-area-inset-bottom));
+    }
+    .modal .modal-card{
+      margin-top: max(10px, env(safe-area-inset-top));
+      margin-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+  }
+}
+
+/* --------- Misc mobile polish -------------------------------------------- */
+@media (max-width: 768px){
+  /* Make big images dropped in chat scale down gracefully */
+  #messagebuffer img{
+    max-width: 100%;
+    height: auto;
+  }
+  /* Avatars next to names keep size but don’t overflow */
+  .btfw-chat-avatar{
+    width: 28px; height: 28px; object-fit: cover;
+  }
+}
