@@ -1,8 +1,5 @@
-
 BTFW.define("feature:themeSettings", ["feature:layout"], async ({}) => {
   const KEY_PIP="btfw:pip";
-  function get(k, d){ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } }
-  function set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
 
   function ensureModal(){
     if (document.getElementById("btfw-theme-modal")) return;
@@ -17,7 +14,8 @@ BTFW.define("feature:themeSettings", ["feature:layout"], async ({}) => {
         <section class="modal-card-body">
           <div class="field">
             <label class="checkbox">
-              <input id="btfw-pip-toggle" type="checkbox"> Enable Picture-in-Picture (dock video above chat when scrolled)
+              <input id="btfw-pip-toggle" type="checkbox">
+              Enable Picture-in-Picture (dock video above chat when scrolled)
             </label>
           </div>
         </section>
@@ -27,38 +25,45 @@ BTFW.define("feature:themeSettings", ["feature:layout"], async ({}) => {
         </footer>
       </div>`;
     document.body.appendChild(m);
-    m.querySelector(".delete").onclick=hide;
-    m.querySelector(".modal-background").onclick=hide;
-    m.querySelector("#btfw-theme-cancel").onclick=hide;
-    m.querySelector("#btfw-theme-save").onclick=save;
+
+    // Close wiring
+    const close = ()=>m.classList.remove("is-active");
+    m.querySelector(".delete").onclick = close;
+    m.querySelector(".modal-background").onclick = close;
+    m.querySelector("#btfw-theme-cancel").onclick = close;
+    m.querySelector("#btfw-theme-save").onclick = save;
   }
 
   function open(){
     ensureModal();
     const m=document.getElementById("btfw-theme-modal");
-    const pip=get(KEY_PIP,"0")==="1";
-    document.getElementById("btfw-pip-toggle").checked = pip;
+    const pip = (localStorage.getItem(KEY_PIP) === "1");
+    const cb = m.querySelector("#btfw-pip-toggle"); if (cb) cb.checked = pip;
     m.classList.add("is-active");
   }
-  function hide(){ const m=document.getElementById("btfw-theme-modal"); if(m) m.classList.remove("is-active"); }
+
   function save(){
-    const pip = document.getElementById("btfw-pip-toggle").checked;
-    set(KEY_PIP, pip ? "1":"0");
-    if (typeof window.BTFW_setPiP === "function") window.BTFW_setPiP(pip);
-    hide();
+    const m=document.getElementById("btfw-theme-modal");
+    const on = !!m.querySelector("#btfw-pip-toggle")?.checked;
+    localStorage.setItem(KEY_PIP, on ? "1":"0");
+    if (typeof window.BTFW_setPiP === "function") window.BTFW_setPiP(on);
+    m.classList.remove("is-active");
   }
 
+  // Public opener + events
   document.addEventListener("btfw:openThemeSettings", open);
+  window.BTFW_openTheme = open;
 
+  // Navbar button (retry to catch late nav)
   function addNavButton(){
     const nav = document.querySelector("#nav-collapsible .nav, .navbar .nav, #navbar .nav");
     if (!nav || document.getElementById("btfw-theme-btn-nav")) return;
     const li=document.createElement("li");
     li.innerHTML = '<a id="btfw-theme-btn-nav" class="button is-dark is-small" style="margin-left:8px;"><i class="fa fa-sliders"></i> Theme</a>';
     li.querySelector("a").onclick=open;
-    if (nav.appendChild) nav.appendChild(li);
+    nav.appendChild(li);
   }
-  addNavButton(); setTimeout(addNavButton, 1200);
+  addNavButton(); setTimeout(addNavButton, 800);
 
   return { name:"feature:themeSettings", open };
 });

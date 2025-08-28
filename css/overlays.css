@@ -1,1 +1,160 @@
-/* use existing */
+/* ======================================================================
+   BillTube Framework — overlays.css
+   Scope: overlay layers, modals, userlist overlay, video overlay chrome,
+          and z-index fixes so UI stays interactive and above content.
+   ====================================================================== */
+
+/* ---------- Navbar should stay above app content ---------- */
+#nav-collapsible,
+.navbar,
+#navbar,
+.navbar-fixed-top {
+  /* Don’t force position here (CyTube/Bootswatch handles it). */
+  z-index: 5000 !important;
+}
+
+/* ---------- Bulma/CyTube modal layering (card above backdrop) ---------- */
+.modal { z-index: 6000 !important; }
+.modal .modal-background { z-index: 6001 !important; }
+.modal .modal-card,
+.modal .modal-content { z-index: 6002 !important; }
+
+/* ======================================================================
+   USERLIST OVERLAY
+   - Closed by default; opens as an overlay panel over the chat column.
+   - Toggled by #btfw-users-toggle.
+   ====================================================================== */
+
+#userlist.btfw-userlist-overlay {
+  position: absolute;
+  right: 12px;
+  /* Sit under the navbar; --btfw-top is set by layout module */
+  top: calc(var(--btfw-top, 48px) + 16px);
+  /* Leave room above chat input / bottom bar */
+  bottom: 140px;
+
+  width: 300px;
+  max-width: calc(100vw - 24px);
+  background: rgba(20, 24, 34, 0.97);
+  color: #e9e9ee;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+
+  overflow: auto;
+  padding: 6px;
+
+  z-index: 4500;
+  pointer-events: auto;
+}
+
+/* CLOSED by default (like v3.3). JS toggles the --open class. */
+#userlist.btfw-userlist-overlay:not(.btfw-userlist-overlay--open) {
+  display: none !important;
+}
+
+/* Mobile tweaks */
+@media (max-width: 768px) {
+  #userlist.btfw-userlist-overlay {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: 160px; /* a bit more space for mobile keyboards */
+  }
+}
+
+/* Make inner list items tighter and readable on dark bg */
+#userlist.btfw-userlist-overlay li,
+#userlist.btfw-userlist-overlay .userlist_item {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 6px 8px !important;
+  color: inherit !important;
+}
+#userlist.btfw-userlist-overlay img {
+  border-radius: 6px;
+}
+
+/* ======================================================================
+   VIDEO OVERLAY CHROME (refresh, voteskip) inside #videowrap
+   ====================================================================== */
+
+#videowrap {
+  position: relative; /* ensure overlay anchors correctly */
+}
+
+#videowrap .btfw-video-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;      /* allow clicks to pass through except buttons */
+  z-index: 1200;
+}
+
+#videowrap .btfw-video-overlay .btfw-vo-right {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;      /* buttons remain clickable */
+}
+
+#videowrap .btfw-video-overlay .btfw-vo-btn {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: saturate(130%) blur(4px);
+  padding: 6px 10px;
+  line-height: 1;
+}
+#videowrap .btfw-video-overlay .btfw-vo-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ======================================================================
+   (Optional) PiP Dock styling — harmless if PiP is disabled.
+   ====================================================================== */
+
+#btfw-pip-dock {
+  /* When PiP is enabled in future, the dock can sit above chat column. */
+  width: 100%;
+  padding: 6px 0;
+  display: flex;
+  justify-content: center;
+}
+#videowrap.btfw-pip {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.5);
+}
+
+/* ======================================================================
+   CHAT BARS — only small overlay-ish cosmetics kept here.
+   (Primary layout/spacing for chat lives in chat.css / base.css)
+   ====================================================================== */
+
+.btfw-chat-topbar,
+.btfw-chat-bottombar {
+  background: linear-gradient(180deg, #1b2130, #212a3f);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.btfw-chat-actions .button.btfw-chatbtn {
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(0,0,0,.25);
+}
+.btfw-chat-actions .button.btfw-chatbtn:hover {
+  background: rgba(255,255,255,.12);
+}
+
+/* Keep the chat controls row visible at the bottom of chat column */
+.btfw-controls-row {
+  position: sticky;
+  bottom: 0;
+  background: #141a26;
+  border-top: 1px solid rgba(255,255,255,.08);
+  z-index: 10;
+}

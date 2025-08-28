@@ -1,1 +1,22 @@
-/* use existing */
+/* ======================================================================
+   BillTube Framework — navbar.css
+   Keep content clear of fixed navbar; theme button styling
+   ====================================================================== */
+
+:root{ --btfw-top: 48px; }
+
+/* Z-index is enforced in overlays.css; here we ensure spacing below it */
+#btfw-grid{
+  margin-top: calc(var(--btfw-top) + 10px);
+}
+
+/* Theme button in navbar */
+#btfw-theme-btn-nav.button{
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(0,0,0,.25);
+  padding: 6px 10px;
+}
+#btfw-theme-btn-nav.button:hover{
+  background: rgba(255,255,255,.12);
+}

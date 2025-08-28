@@ -1,1 +1,102 @@
-#btfw-grid{display:grid;grid-template-columns:minmax(600px,1fr) 6px minmax(320px,1fr);margin-top:calc(var(--btfw-top) + 6px);} #btfw-chatcol{position:sticky;top:var(--btfw-top);height:calc(100vh - var(--btfw-top));display:flex;flex-direction:column;} .btfw-chat-topbar,.btfw-chat-bottombar{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid var(--btfw-border);border-radius:10px;margin-bottom:8px;} .btfw-stack{margin-top:10px;} .btfw-stack-list{display:flex;flex-direction:column;gap:10px;} .btfw-stack-item{border:1px solid var(--btfw-border);border-radius:10px;} .btfw-stack-item__header{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--btfw-border);} .btfw-stack-item__body{padding:8px;}
+/* ======================================================================
+   BillTube Framework — base.css
+   Layout grid, content stack, and core spacing
+   ====================================================================== */
+
+:root {
+  --btfw-top: 48px;                 /* set dynamically by layout module */
+  --btfw-gap: 10px;
+  --btfw-border: rgba(255,255,255,.08);
+  --btfw-card-bg: rgba(20,24,34,.92);
+  --btfw-radius: 12px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ---------- Main 2-column grid: left content + splitter + right chat ---------- */
+#btfw-grid{
+  display: grid;
+  grid-template-columns: minmax(640px,1fr) 8px minmax(320px,26vw);
+  grid-column-gap: var(--btfw-gap);
+  grid-row-gap: var(--btfw-gap);
+  margin-top: calc(var(--btfw-top) + var(--btfw-gap));
+  padding: 0 var(--btfw-gap);
+}
+
+#btfw-leftpad{ min-width: 0; }
+#btfw-chatcol{
+  position: sticky;
+  top: var(--btfw-top);
+  height: calc(100vh - var(--btfw-top));
+  display: flex;
+  flex-direction: column;
+  min-width: 280px;
+}
+
+/* Visual splitter (no drag in CSS; JS can attach drag later) */
+#btfw-vsplit{
+  width: 8px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+  border-radius: 4px;
+  cursor: col-resize;
+}
+
+/* ---------- Content Stack under video ---------- */
+#btfw-stack{ display:block; }
+#btfw-stack .btfw-stack-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 8px;
+  border:1px solid var(--btfw-border);
+  border-radius: var(--btfw-radius);
+  background: var(--btfw-card-bg);
+}
+#btfw-stack .btfw-stack-title{ font-weight:600; opacity:.9; }
+#btfw-stack .btfw-stack-list{
+  display:flex; flex-direction:column; gap: var(--btfw-gap);
+  margin-top: var(--btfw-gap);
+}
+.btfw-stack-item{
+  border:1px solid var(--btfw-border);
+  border-radius: var(--btfw-radius);
+  background: var(--btfw-card-bg);
+}
+.btfw-stack-item__header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 8px;
+  border-bottom:1px solid var(--btfw-border);
+}
+.btfw-stack-arrows{ display:flex; gap:6px; }
+.btfw-arrow{
+  background:rgba(0,0,0,.25);
+  border:1px solid var(--btfw-border);
+  border-radius:8px;
+  padding:2px 8px; line-height:1; cursor:pointer;
+}
+.btfw-arrow:hover{ background:rgba(255,255,255,.12); }
+.btfw-stack-item__body{ padding:8px; }
+
+/* Footer pinned to bottom of stack area */
+#btfw-stack-footer{ margin-top: var(--btfw-gap); }
+#btfw-stack-footer .btfw-footer{ margin:0; }
+
+/* ---------- Ensure key wrappers expand and not float ---------- */
+#videowrap, #playlistwrap, #queuecontainer, #main, #mainpage, #mainpane, #motdrow{
+  width:100%; min-width:0;
+}
+#videowrap, #chatwrap{ float:none !important; }
+
+/* ---------- Responsive: stack chat under content on narrow screens ---------- */
+@media (max-width: 1100px){
+  #btfw-grid{
+    grid-template-columns: 1fr;
+    grid-row-gap: var(--btfw-gap);
+  }
+  #btfw-vsplit{ display:none; }
+  #btfw-chatcol{
+    position: relative;
+    top: auto; height: auto; min-height: 420px;
+  }
+}
+
+/* Utility */
+.btfw-hide{ display:none !important; }
