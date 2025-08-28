@@ -5,15 +5,12 @@ BTFW.define("feature:chat", ["feature:layout"], async ({ require }) => {
     const cw = qs("#chatwrap"); if (!cw) return;
     cw.classList.add("btfw-chatwrap");
 
-    // TOP BAR: title only
-    let top = qs(".btfw-chat-topbar", cw);
-    if (!top) {
-      top = document.createElement("div"); top.className = "btfw-chat-topbar";
-      top.innerHTML = `<div class="btfw-chat-title" id="btfw-chat-title">Now Playing</div>`;
-      cw.prepend(top);
-    } else {
-      top.classList.remove("is-hidden");
-    }
+// Inside ensureBars(), top bar:
+if (!top) {
+  top = document.createElement("div"); top.className = "btfw-chat-topbar";
+  top.innerHTML = `<div class="btfw-chat-title" id="btfw-nowplaying-slot"></div>`;
+  cw.prepend(top);
+}
 
     // BOTTOM BAR: all controls
     let bottom = qs(".btfw-chat-bottombar", cw);

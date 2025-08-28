@@ -44,10 +44,29 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({ re
     stripDeep(cw); // remove ALL bootstrap grid classes from chat area
   }
 
-  function killVideoHeader(){
-    const vh = document.getElementById("videowrap-header");
-    if (vh && vh.parentNode) vh.parentNode.removeChild(vh);
+function killVideoHeader(){
+  const vh = document.getElementById("videowrap-header");
+  if (vh) {
+    // If it holds #currenttitle, let nowplaying adopt it by moving the node out first
+    const ct = vh.querySelector("#currenttitle");
+    if (ct) {
+      const top = document.querySelector("#chatwrap .btfw-chat-topbar");
+      if (top) {
+        let slot = top.querySelector("#btfw-nowplaying-slot");
+        if (!slot) {
+          slot = document.createElement("div");
+          slot.id = "btfw-nowplaying-slot";
+          slot.className = "btfw-chat-title";
+          top.innerHTML = "";
+          top.appendChild(slot);
+        }
+        slot.appendChild(ct); // move the live node
+      }
+    }
+    vh.parentNode.removeChild(vh);
   }
+}
+
   function observeVideoWrap(){
     const vw = document.getElementById("videowrap"); if (!vw) return;
     new MutationObserver(list => list.forEach(r => r.addedNodes && r.addedNodes.forEach(n => {
