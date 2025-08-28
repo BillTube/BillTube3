@@ -1,5 +1,5 @@
 
-BTFW.define("feature:themeSettings", ["feature:layout"], async () => {
+BTFW.define("feature:themeSettings", [], async () => {
   function ensure(){
     if(document.getElementById("btfw-theme-modal")) return;
     const m=document.createElement("div"); m.id="btfw-theme-modal"; m.className="btfw-modal hidden";
