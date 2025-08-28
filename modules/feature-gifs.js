@@ -1,44 +1,57 @@
 
-BTFW.define("feature:gifs", ["feature:chat"], async ({ require }) => {
+BTFW.define("feature:gifs", ["feature:chat"], async ({}) => {
   const GIPHY_KEY = "bb2006d9d3454578be1a99cfad65913d";
   const TENOR_KEY = "5WPAZ4EXST2V";
 
   function ensureModal(){
     if (document.getElementById("btfw-gif-modal")) return;
-    const m=document.createElement("div"); m.id="btfw-gif-modal"; m.className="btfw-modal hidden";
+    const m=document.createElement("div"); m.id="btfw-gif-modal"; m.className="modal";
     m.innerHTML=`
-      <div class="btfw-modal__backdrop"></div>
-      <div class="btfw-modal__card">
-        <div class="btfw-modal__header">
-          <div class="tabs">
-            <button class="tab active" data-tab="giphy">Giphy</button>
-            <button class="tab" data-tab="tenor">Tenor</button>
+      <div class="modal-background"></div>
+      <div class="modal-card" style="width:min(980px,92vw);max-height:88vh;">
+        <header class="modal-card-head">
+          <p class="modal-card-title">GIFs</p>
+          <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+          <div class="tabs is-boxed is-small">
+            <ul>
+              <li class="is-active" data-tab="giphy"><a>Giphy</a></li>
+              <li data-tab="tenor"><a>Tenor</a></li>
+            </ul>
           </div>
-          <button class="btfw-close" title="Close">&times;</button>
-        </div>
-        <div class="btfw-modal__toolbar" style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.08)">
-          <input id="btfw-gif-q" placeholder="Search GIFs…" style="flex:1 1 auto;min-width:0">
-          <button id="btfw-gif-search" class="btfw-ghost">Search</button>
-          <button id="btfw-gif-trending" class="btfw-ghost">Trending</button>
-        </div>
-        <div class="btfw-modal__body">
-          <div class="pane" data-pane="giphy"></div>
-          <div class="pane hidden" data-pane="tenor"></div>
-        </div>
+          <div class="field has-addons" style="margin-bottom:10px;">
+            <div class="control is-expanded">
+              <input id="btfw-gif-q" class="input" placeholder="Search GIFs…">
+            </div>
+            <div class="control">
+              <button id="btfw-gif-search" class="button is-info is-light">Search</button>
+            </div>
+            <div class="control">
+              <button id="btfw-gif-trending" class="button is-dark is-light">Trending</button>
+            </div>
+          </div>
+          <div class="content" id="btfw-gif-panes">
+            <div class="pane" data-pane="giphy"></div>
+            <div class="pane is-hidden" data-pane="tenor"></div>
+          </div>
+        </section>
       </div>`;
     document.body.appendChild(m);
-    m.querySelector(".btfw-close").onclick=hide;
-    m.querySelector(".btfw-modal__backdrop").onclick=hide;
-    m.querySelectorAll(".tab").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
-    m.querySelector("#btfw-gif-search").onclick=()=>perform(false);
-    m.querySelector("#btfw-gif-trending").onclick=()=>perform(true);
+    m.querySelector(".delete").onclick=hide;
+    m.querySelector(".modal-background").onclick=hide;
+    m.querySelectorAll(".tabs li").forEach(li => li.onclick = () => switchTab(li.dataset.tab));
+    m.querySelector("#btfw-gif-search").onclick = () => perform(false);
+    m.querySelector("#btfw-gif-trending").onclick = () => perform(true);
   }
   function switchTab(tab){
-    document.querySelectorAll("#btfw-gif-modal .tab").forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
-    document.querySelectorAll("#btfw-gif-modal .pane").forEach(p=>p.classList.toggle("hidden", p.dataset.pane!==tab));
+    const tabs = Array.from(document.querySelectorAll("#btfw-gif-modal .tabs li"));
+    tabs.forEach(li => li.classList.toggle("is-active", li.dataset.tab===tab));
+    const panes = document.querySelectorAll("#btfw-gif-panes .pane");
+    panes.forEach(p => p.classList.toggle("is-hidden", p.dataset.pane!==tab));
   }
-  function show(){ ensureModal(); document.getElementById("btfw-gif-modal").classList.remove("hidden"); }
-  function hide(){ const m=document.getElementById("btfw-gif-modal"); if(m) m.classList.add("hidden"); }
+  function show(){ ensureModal(); document.getElementById("btfw-gif-modal").classList.add("is-active"); perform(true); }
+  function hide(){ const m=document.getElementById("btfw-gif-modal"); if(m) m.classList.remove("is-active"); }
   function trimGif(u){ return (u||"").split("?")[0]; }
   function insertText(text){
     if (window.insertText) return window.insertText(text);
@@ -50,9 +63,9 @@ BTFW.define("feature:gifs", ["feature:chat"], async ({ require }) => {
   async function perform(trending){
     ensureModal();
     const q=document.getElementById("btfw-gif-q").value.trim();
-    const active=document.querySelector("#btfw-gif-modal .tab.active").dataset.tab;
-    const pane=document.querySelector(`#btfw-gif-modal .pane[data-pane="${active}"]`);
-    pane.innerHTML="<div class='btfw-grid-9'>Loading…</div>";
+    const active=document.querySelector("#btfw-gif-modal .tabs li.is-active").dataset.tab;
+    const pane=document.querySelector(`#btfw-gif-panes .pane[data-pane="${active}"]`);
+    pane.innerHTML="<p>Loading…</p>";
     try{
       if(active==="giphy"){
         const base="https://api.giphy.com/v1/gifs/";
@@ -71,15 +84,19 @@ BTFW.define("feature:gifs", ["feature:chat"], async ({ require }) => {
       }
     }catch(e){
       console.error("GIF fetch failed", e);
-      pane.innerHTML="<div style='padding:12px'>Failed to load GIFs. Check network console for details.</div>";
+      pane.innerHTML="<p>Failed to load GIFs.</p>";
     }
   }
   function render(urls, pane){
-    const g=document.createElement("div"); g.className="btfw-grid-9";
-    (urls||[]).filter(Boolean).slice(0,50).forEach(u=>{
-      const b=document.createElement("button"); b.className="btfw-gif-item"; b.innerHTML=`<img loading="lazy" src="${u}">`;
+    const g=document.createElement("div");
+    g.className="columns is-multiline is-mobile";
+    (urls||[]).filter(Boolean).slice(0,48).forEach(u=>{
+      const col=document.createElement("div"); col.className="column is-one-quarter-desktop is-one-third-tablet is-half-mobile";
+      const b=document.createElement("button"); b.className="button is-dark is-light"; b.style.padding="0"; b.style.width="100%";
+      b.innerHTML=`<img loading="lazy" src="${u}" style="display:block;width:100%;height:auto;border-radius:6px;">`;
       b.onclick=()=>{ insertText(u+" "); hide(); };
-      g.appendChild(b);
+      col.appendChild(b);
+      g.appendChild(col);
     });
     pane.innerHTML=""; pane.appendChild(g);
   }
