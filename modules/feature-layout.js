@@ -1,12 +1,24 @@
 BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({ require }) => {
-  /** Keep header height as a CSS var so nothing sits under it */
+  /** Keep header height in a CSS var so nothing sits under it */
   function setTopOffsetVar(){
-    // cover both legacy and new CyTube navs
     const header = document.querySelector(
       ".navbar, #nav-collapsible, #navbar, header.navbar, .navbar-fixed-top"
     );
     const h = header ? header.offsetHeight : 48;
     document.documentElement.style.setProperty("--btfw-top", h + "px");
+  }
+
+  // Recompute when the header changes size (collapse/expand) or window resizes
+  function wireTopOffset(){
+    setTopOffsetVar();
+    window.addEventListener("resize", setTopOffsetVar);
+    const header = document.querySelector(".navbar, #nav-collapsible, #navbar, .navbar-fixed-top");
+    if (header && "ResizeObserver" in window) {
+      new ResizeObserver(setTopOffsetVar).observe(header);
+    }
+    // safety checks in case the nav mounts late
+    setTimeout(setTopOffsetVar, 500);
+    setTimeout(setTopOffsetVar, 2000);
   }
 
   /** Strip Bootstrap grid classes wherever they fight our layout */
@@ -23,7 +35,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({ re
     root.querySelectorAll("[class]").forEach(stripClassesOn);
   }
 
-  /** Specific neutralizers */
   function neutralizeCommonBlocks(){
     ["videowrap","playlistrow","playlistwrap","queuecontainer","queue","plmeta"]
       .forEach(id => stripDeep(document.getElementById(id)));
@@ -33,7 +44,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({ re
     stripDeep(cw); // remove ALL bootstrap grid classes from chat area
   }
 
-  /** CyTube sometimes re-injects a video header; kill it */
   function killVideoHeader(){
     const vh = document.getElementById("videowrap-header");
     if (vh && vh.parentNode) vh.parentNode.removeChild(vh);
@@ -54,7 +64,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({ re
     const chat   = document.getElementById("chatwrap");
     const queue  = document.getElementById("playlistrow") || document.getElementById("playlistwrap") || document.getElementById("queuecontainer");
 
-    // shell
     if (!document.getElementById("btfw-grid")){
       const grid  = document.createElement("div");  grid.id = "btfw-grid";  grid.className = "btfw-grid";
       const left  = document.createElement("div");  left.id = "btfw-leftpad"; left.className = "btfw-leftpad";
@@ -67,7 +76,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({ re
       grid.appendChild(right);
       wrap.prepend(grid);
     } else {
-      // make sure pieces are inside the correct columns if page was hot-swapped
       const grid  = document.getElementById("btfw-grid");
       const left  = document.getElementById("btfw-leftpad");
       const right = document.getElementById("btfw-chatcol");
@@ -76,20 +84,10 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({ re
       if (chat  && !right.contains(chat)) right.appendChild(chat);
     }
 
-    // neutralize Bootstrap where it breaks our sizing
     neutralizeCommonBlocks();
     neutralizeChatWrap();
     killVideoHeader();
     observeVideoWrap();
-  }
-
-  /** keep header sticky height updated */
-  function wireTopOffset(){
-    setTopOffsetVar();
-    window.addEventListener("resize", setTopOffsetVar);
-    // some themes mount navbar late
-    setTimeout(setTopOffsetVar, 500);
-    setTimeout(setTopOffsetVar, 2000);
   }
 
   function ready(){ document.dispatchEvent(new Event("btfw:layoutReady")); }
