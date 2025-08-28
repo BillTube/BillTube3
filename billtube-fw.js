@@ -56,7 +56,7 @@
       BTFW.init("feature:videoOverlay"),
       BTFW.init("feature:pip"),
       BTFW.init("feature:syncGuard"),
-	  BTFW.init("feature:themeSettings")
+	  BTFW.init("feature:themeSettings"),
       BTFW.init("feature:player")
     ]);
   }).then(function(){ console.log("[BTFW v3.4f] Ready."); })
