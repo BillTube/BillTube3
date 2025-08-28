@@ -1,24 +1,47 @@
-
-#btfw-grid{ display:grid; grid-template-columns:minmax(600px, var(--btfw-leftpx, 1fr)) 6px minmax(320px, 1fr); gap:0; }
+/* --- grid & sticky chat --- */
+#btfw-grid{
+  display:grid;
+  grid-template-columns: minmax(600px, var(--btfw-leftpx, 1fr)) 6px minmax(320px, 1fr);
+  gap:0;
+}
 #btfw-leftpad{ margin-top: calc(var(--btfw-top, 48px) + 8px); }
-#btfw-chatcol{ position:sticky; top: var(--btfw-top, 48px); height: calc(100vh - var(--btfw-top, 48px) - 12px); display:flex; flex-direction:column; }
+#btfw-chatcol{
+  position: sticky;
+  top: var(--btfw-top, 48px);
+  height: calc(100vh - var(--btfw-top, 48px) - 12px);
+  display: flex; flex-direction: column;
+  min-width: 320px;
+}
 
-#chatwrap.btfw-chatwrap{ display:flex; flex-direction:column; height:100%; }
-#messagebuffer.btfw-messagebuffer{ flex:1 1 auto; overflow:auto; width:100%; }
+/* --- make chat full width & flex --- */
+#chatwrap.btfw-chatwrap{
+  display: flex; flex-direction: column;
+  width: 100% !important; max-width: 100% !important;
+}
+#messagebuffer.btfw-messagebuffer{
+  flex: 1 1 auto; overflow: auto; width: 100%;
+  min-height: 0;
+}
 
+/* --- visible chat bars --- */
 .btfw-chat-topbar,.btfw-chat-bottombar{
   display:flex; align-items:center; justify-content:space-between;
-  padding:8px 10px; border-radius:10px; background:var(--btfw-surface);
-  margin-bottom:8px; border:1px solid var(--btfw-border); color:var(--btfw-text);
+  padding:8px 10px; border-radius:10px;
+  background: var(--btfw-surface);
+  margin-bottom:8px; border:1px solid var(--btfw-border);
+  color: var(--btfw-text);
 }
 .btfw-chat-title{ font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .btfw-chat-actions{ display:flex; gap:8px; }
-.btfw-chatbtn,.btfw-topbtn,.btfw-ghost{ border:0; padding:8px 10px; border-radius:8px; cursor:pointer; background:var(--btfw-surface); color:var(--btfw-text); border:1px solid var(--btfw-border); }
+.btfw-chatbtn,.btfw-topbtn,.btfw-ghost{
+  border:0; padding:8px 10px; border-radius:8px; cursor:pointer;
+  background:var(--btfw-surface); color:var(--btfw-text); border:1px solid var(--btfw-border);
+}
 .btfw-ghost{ background:transparent; }
 .btfw-chatbtn:hover,.btfw-topbtn:hover{ background:var(--btfw-surface-2); }
-.gif-badge{ font-weight:800; font-size:12px; }
 .btfw-controls-row{ margin-top:8px; width:100%; }
 
+/* --- user list overlay --- */
 #userlist.btfw-userlist-overlay{
   position:absolute; right:12px; top:60px; bottom:140px; width:300px;
   background:rgba(18,18,22,.95); border-radius:12px; overflow:auto;
@@ -27,25 +50,14 @@
 #userlist.btfw-userlist-overlay.btfw-userlist-overlay--open{ display:block; }
 #chatwrap #userlist:not(.btfw-userlist-overlay){ display:none !important; }
 
+/* --- avatars --- */
 .btfw-chat-avatar{ width:28px; height:28px; border-radius:6px; margin-right:6px; vertical-align:middle; border:1px solid var(--btfw-border); }
 
+/* --- splitter look --- */
 #btfw-vsplit{ cursor: col-resize; background: rgba(255,255,255,.06); position:relative; z-index:2; }
 #btfw-vsplit::after{ content:""; position:absolute; inset:0; border-left:2px solid rgba(255,255,255,.18); pointer-events:none; }
 
-.btfw-modal{ position:fixed; inset:0; z-index:1000; display:grid; place-items:center; }
-.btfw-modal.hidden{ display:none; }
-.btfw-modal__backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55); }
-.btfw-modal__card{ position:relative; width:min(980px,92vw); max-height:88vh; background:var(--btfw-bg-soft); color:var(--btfw-text); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; border:1px solid var(--btfw-border); }
-.btfw-modal__header{ display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--btfw-border); }
-.btfw-modal__body{ padding:12px; overflow:auto; }
-.btfw-modal .tabs{ display:flex; gap:6px; }
-.btfw-modal .tab{ border:0; padding:8px 10px; border-radius:8px; background:#22242a; color:#cfd0d4; cursor:pointer; }
-.btfw-modal .tab.active{ background:#2c2f36; color:#fff; }
-.btfw-modal__toolbar input{ background:#1f2229; color:#e7e7ea; border:1px solid var(--btfw-border); border-radius:8px; padding:8px; }
-
-#btfw-gif-btn .fa-gif:before{ content:"GIF"; font-weight:800; }
-
-/* Neutralize Bootstrap floats/widths in left area */
+/* --- neutralize Bootstrap floats inside left pads --- */
 #btfw-leftpad [class*="col-"], #btfw-leftpad .row, #btfw-leftpad .container, #btfw-leftpad .container-fluid{
   width:100% !important; max-width:100% !important; float:none !important;
 }
