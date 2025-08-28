@@ -39,7 +39,8 @@
       "modules/feature-video-overlay.js",
       "modules/feature-pip.js",
       "modules/feature-sync-guard.js",
-      "modules/feature-theme-settings.js"
+      "modules/feature-theme-settings.js",
+	  "modules/feature-player.js"
     ];
     return mods.reduce((p,f)=>p.then(()=>load(BASE+"/"+f)), Promise.resolve());
   }).then(function(){
