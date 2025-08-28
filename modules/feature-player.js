@@ -1,6 +1,8 @@
-BTFW.define("feature:player", ["core"], async () => {
+/* BillTube Framework — feature:player
+   Custom Video.js control-bar theme + robust attach when player appears */
+BTFW.define("feature:player", ["feature:layout"], async ({}) => {
 
-  // This is the CSS from the CodePen, translated to target Video.js classes.
+  // CSS from your CodePen, scoped to Video.js
   const videoPlayerThemeCSS = `
     /* Main control bar background and layout */
     .video-js .vjs-control-bar {
@@ -12,7 +14,7 @@ BTFW.define("feature:player", ["core"], async () => {
       box-shadow: 0 -2px 6px rgba(0,0,0,.3);
     }
 
-    /* Removing default background gradients */
+    /* Remove default gradients */
     .video-js .vjs-control-bar,
     .video-js .vjs-big-play-button,
     .video-js .vjs-menu-button-popup .vjs-menu .vjs-menu-content {
@@ -21,7 +23,7 @@ BTFW.define("feature:player", ["core"], async () => {
     }
 
     /* Big Play Button in the center */
-    .vjs-big-play-button {
+    .video-js .vjs-big-play-button {
       width: 150px !important;
       height: 150px !important;
       border-radius: 50% !important;
@@ -32,21 +34,21 @@ BTFW.define("feature:player", ["core"], async () => {
       margin-top: -75px !important;
       margin-left: -75px !important;
     }
-    .vjs-big-play-button .vjs-icon-placeholder::before {
+    .video-js .vjs-big-play-button .vjs-icon-placeholder::before {
       font-size: 80px !important;
       line-height: 150px !important;
     }
 
-    /* General icon styling */
+    /* General icon sizing */
     .video-js .vjs-control {
       width: 30px;
     }
 
-    /* Progress bar / Seek bar */
+    /* Progress / Seek bar */
     .video-js .vjs-progress-control {
       position: absolute !important;
       left: 60px !important;
-      right: 200px !important; /* Make space for time and volume */
+      right: 200px !important; /* space for time + volume */
       top: 50% !important;
       transform: translateY(-50%);
       height: 5px !important;
@@ -56,14 +58,15 @@ BTFW.define("feature:player", ["core"], async () => {
       border-radius: 20px !important;
       margin: 0 !important;
     }
-    .video-js .vjs-play-progress, .video-js .vjs-load-progress {
+    .video-js .vjs-play-progress,
+    .video-js .vjs-load-progress {
       border-radius: 20px !important;
     }
     .video-js .vjs-slider-handle {
       width: 20px !important;
       height: 20px !important;
       border-radius: 50% !important;
-      top: -7.5px !important; /* Center the handle on the bar */
+      top: -7.5px !important; /* center handle */
     }
 
     /* Time display */
@@ -76,24 +79,24 @@ BTFW.define("feature:player", ["core"], async () => {
       padding: 0 15px !important;
     }
 
-    /* Volume control (vertical) */
+    /* Volume (vertical) */
     .video-js .vjs-volume-panel {
       width: 30px !important;
       position: absolute !important;
       right: 15px;
-      top: -120px; /* Position above the control bar */
+      top: -120px; /* above the bar */
       transform: rotate(-90deg);
       transform-origin: bottom right;
     }
     .video-js .vjs-volume-panel .vjs-volume-control.vjs-volume-horizontal {
-      width: 150px !important; /* Set width for the rotated bar */
+      width: 150px !important;
       height: 5px !important;
     }
     .vjs-volume-bar.vjs-slider-horizontal {
       margin: 2px 0 !important;
     }
 
-    /* Hiding elements we don't need from the custom theme */
+    /* Hide elements not used in this custom theme */
     .video-js .vjs-remaining-time,
     .video-js .vjs-fullscreen-control,
     .video-js .vjs-picture-in-picture-control {
@@ -101,58 +104,46 @@ BTFW.define("feature:player", ["core"], async () => {
     }
   `;
 
-  // This function injects our CSS into the page head.
   function applyPlayerTheme() {
-    // Check if our style block already exists
-    if (document.getElementById('btfw-video-theme')) {
-      return;
-    }
-    console.log("[BTFW Player] Applying custom video player theme.");
-    
-    const style = document.createElement('style');
-    style.id = 'btfw-video-theme';
-    style.type = 'text/css';
+    if (document.getElementById("btfw-video-theme")) return;
+    const style = document.createElement("style");
+    style.id = "btfw-video-theme";
+    style.type = "text/css";
     style.appendChild(document.createTextNode(videoPlayerThemeCSS));
-    
     document.head.appendChild(style);
+    console.log("[feature:player] custom Video.js theme applied");
   }
 
-  // --- Main Execution ---
+  function hasVideoJS() {
+    return !!document.querySelector("#videowrap .video-js");
+  }
 
-  // Create a MutationObserver to watch for when the video player is added to the page.
-  // This is robust and works even when CyTube changes media.
-  const observer = new MutationObserver((mutationsList, observer) => {
-    for (const mutation of mutationsList) {
-      if (mutation.type === 'childList') {
-        // Check if the added node is the video player or contains it
-        const playerElement = document.querySelector('.video-js');
-        if (playerElement) {
-          applyPlayerTheme();
-          // Optional: once we've found it and applied the theme, we might not need to observe anymore.
-          // observer.disconnect();
-        }
-      }
-    }
-  });
-
-  // Start observing the part of the page where the video player appears.
-  const targetNode = document.getElementById('videowrap');
-  if (targetNode) {
-    observer.observe(targetNode, { childList: true, subtree: true });
-  } else {
-    // Fallback if videowrap isn't there yet
-    document.addEventListener("DOMContentLoaded", () => {
-        const targetNode = document.getElementById('videowrap');
-        if (targetNode) {
-            observer.observe(targetNode, { childList: true, subtree: true });
-        }
+  // Watch #videowrap for Video.js player insertion / media changes
+  let mo;
+  function watch() {
+    const target = document.getElementById("videowrap");
+    if (!target) return;
+    if (mo) mo.disconnect();
+    mo = new MutationObserver(() => {
+      if (hasVideoJS()) applyPlayerTheme();
     });
+    mo.observe(target, { childList: true, subtree: true });
   }
 
-  // Also try to apply it once on load, just in case the player is already there.
-  if (document.querySelector('.video-js')) {
-    applyPlayerTheme();
+  function boot() {
+    // If a Video.js player is already present, style immediately
+    if (hasVideoJS()) applyPlayerTheme();
+    // Always watch for later swaps (changeMedia, etc.)
+    watch();
   }
 
-  return { name: "feature:player" };
+  // Run after layout so #videowrap is in place
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+  document.addEventListener("btfw:layoutReady", () => setTimeout(boot, 0));
+
+  return { name: "feature:player", apply: applyPlayerTheme };
 });
