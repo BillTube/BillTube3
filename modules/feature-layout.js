@@ -1,71 +1,17 @@
 
 BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) => {
-  function setTopOffsetVar(){
-    const header = document.querySelector(".navbar, #nav-collapsible, #navbar, header.navbar, .navbar-fixed-top");
-    const h = header ? header.offsetHeight : 48;
-    document.documentElement.style.setProperty("--btfw-top", h + "px");
-  }
-  function wireTopOffset(){
-    setTopOffsetVar();
-    window.addEventListener("resize", setTopOffsetVar);
-    const header = document.querySelector(".navbar, #nav-collapsible, #navbar, .navbar-fixed-top");
-    if (header && "ResizeObserver" in window) new ResizeObserver(setTopOffsetVar).observe(header);
-    setTimeout(setTopOffsetVar, 500); setTimeout(setTopOffsetVar, 2000);
-  }
+  function setTop(){ const h=(document.querySelector(".navbar, #nav-collapsible, #navbar, .navbar-fixed-top")||{}).offsetHeight||48; document.documentElement.style.setProperty("--btfw-top", h+"px"); }
   const BOOT=/^(col(-(xs|sm|md|lg|xl))?-(\d+|auto)|row|container(-fluid)?|pull-(left|right)|offset-\d+)$/;
-  function stripClassesOn(el){ if(!el||!el.classList) return; const rm=[]; el.classList.forEach(c=>{ if(BOOT.test(c)) rm.push(c); }); rm.forEach(c=>el.classList.remove(c)); }
-  function stripDeep(root){ if(!root) return; stripClassesOn(root); root.querySelectorAll("[class]").forEach(stripClassesOn); }
-  function neutralize(){ ["videowrap","playlistrow","playlistwrap","queuecontainer","queue","plmeta"].forEach(id=>stripDeep(document.getElementById(id))); }
-  function neutralizeChat(){ const cw=document.getElementById("chatwrap"); stripDeep(cw); }
-  function moveCurrentTitleOut(){
-    const vh=document.getElementById("videowrap-header");
-    if (!vh) return;
-    const ct = vh.querySelector("#currenttitle");
-    if (ct){
-      const top = document.querySelector("#chatwrap .btfw-chat-topbar");
-      if (top){
-        let slot = top.querySelector("#btfw-nowplaying-slot");
-        if (!slot){ slot=document.createElement("div"); slot.id="btfw-nowplaying-slot"; slot.className="btfw-chat-title"; top.innerHTML=""; top.appendChild(slot); }
-        slot.appendChild(ct);
-      }
-    }
-    vh.remove();
-  }
-  function observeVideoWrap(){
-    const vw=document.getElementById("videowrap"); if(!vw) return;
-    new MutationObserver(list=>list.forEach(r=>r.addedNodes&&r.addedNodes.forEach(n=>{
-      if(n.nodeType!==1) return;
-      if(n.id==="videowrap-header" || n.querySelector?.("#videowrap-header")) moveCurrentTitleOut();
-      if(n.id==="videowrap" || n.closest?.("#videowrap")) stripDeep(document.getElementById("videowrap"));
-    }))).observe(vw,{childList:true,subtree:true});
-  }
+  function stripDeep(root){ if(!root) return; (root.classList||[]).forEach(c=>{ if(BOOT.test(c)) root.classList.remove(c); }); root.querySelectorAll("[class]").forEach(el=>{ Array.from(el.classList).forEach(c=>{ if(BOOT.test(c)) el.classList.remove(c); }); }); }
+  function moveCurrent(){ const vh=document.getElementById("videowrap-header"); if(!vh) return; const ct=vh.querySelector("#currenttitle"); const top=document.querySelector("#chatwrap .btfw-chat-topbar"); if(ct&&top){ let slot=top.querySelector("#btfw-nowplaying-slot"); if(!slot){ slot=document.createElement("div"); slot.id="btfw-nowplaying-slot"; slot.className="btfw-chat-title"; top.innerHTML=""; top.appendChild(slot);} slot.appendChild(ct);} vh.remove(); }
   function ensureShell(){
-    const wrap=document.getElementById("wrap")||document.body;
-    const video=document.getElementById("videowrap");
-    const chat=document.getElementById("chatwrap");
-    const queue=document.getElementById("playlistrow")||document.getElementById("playlistwrap")||document.getElementById("queuecontainer");
-    if(!document.getElementById("btfw-grid")){
-      const grid=document.createElement("div"); grid.id="btfw-grid"; grid.className="btfw-grid";
-      const left=document.createElement("div"); left.id="btfw-leftpad"; left.className="btfw-leftpad";
-      const right=document.createElement("aside"); right.id="btfw-chatcol"; right.className="btfw-chatcol";
-      if(video) left.appendChild(video);
-      if(queue) left.appendChild(queue);
-      if(chat) right.appendChild(chat);
-      grid.appendChild(left);
-      const split=document.createElement("div"); split.id="btfw-vsplit"; grid.appendChild(split);
-      grid.appendChild(right);
-      wrap.prepend(grid);
-    } else {
-      const left=document.getElementById("btfw-leftpad");
-      const right=document.getElementById("btfw-chatcol");
-      if(video && !left.contains(video)) left.appendChild(video);
-      if(queue && !left.contains(queue)) left.appendChild(queue);
-      if(chat && !right.contains(chat)) right.appendChild(chat);
-    }
-    neutralize(); neutralizeChat(); moveCurrentTitleOut(); observeVideoWrap();
+    const wrap=document.getElementById("wrap")||document.body; const v=document.getElementById("videowrap"); const c=document.getElementById("chatwrap"); const q=document.getElementById("playlistrow")||document.getElementById("playlistwrap")||document.getElementById("queuecontainer");
+    if(!document.getElementById("btfw-grid")){ const grid=document.createElement("div"); grid.id="btfw-grid"; const left=document.createElement("div"); left.id="btfw-leftpad"; const right=document.createElement("aside"); right.id="btfw-chatcol"; if(v) left.appendChild(v); if(q) left.appendChild(q); if(c) right.appendChild(c); const split=document.createElement("div"); split.id="btfw-vsplit"; grid.appendChild(left); grid.appendChild(split); grid.appendChild(right); wrap.prepend(grid); } else { const left=document.getElementById("btfw-leftpad"); const right=document.getElementById("btfw-chatcol"); if(v && !left.contains(v)) left.appendChild(v); if(q && !left.contains(q)) left.appendChild(q); if(c && !right.contains(c)) right.appendChild(c); }
+    ["videowrap","playlistrow","playlistwrap","queuecontainer","queue","plmeta","chatwrap"].forEach(id=>stripDeep(document.getElementById(id))); moveCurrent();
   }
   function ready(){ document.dispatchEvent(new Event("btfw:layoutReady")); }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ ensureShell(); wireTopOffset(); ready(); });
-  else { ensureShell(); wireTopOffset(); ready(); }
-  return { name:"feature:layout" };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ ensureShell(); setTop(); ready(); });
+  else { ensureShell(); setTop(); ready(); }
+  setTimeout(setTop, 500);
+  return {name:"feature:layout"};
 });
