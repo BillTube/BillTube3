@@ -1,5 +1,9 @@
 
 BTFW.define("feature:syncGuard", [], async () => {
+  if (!window.BTFW_SYNC_GUARD) {
+    console.info("[BTFW] syncGuard is disabled (vanilla sync). Set window.BTFW_SYNC_GUARD=true to enable.");
+    return { name:"feature:syncGuard", disabled:true };
+  }
   let last = { t: 0, serverCT: 0, paused: false };
   function onMediaUpdate(data){
     if (!data || typeof data.currentTime !== "number") return;
@@ -20,7 +24,7 @@ BTFW.define("feature:syncGuard", [], async () => {
     const expect = last.serverCT + (last.paused ? 0 : dt);
     const now = getPlayerTime();
     const drift = now - expect;
-    if (Math.abs(drift) > 1.5) seekTo(expect);
+    if (Math.abs(drift) > 2.5) seekTo(expect);
     const isPaused = (()=>{ try { if (window.PLAYER && typeof PLAYER.isPaused === "function") return !!PLAYER.isPaused(); const v=document.querySelector("video"); return v ? v.paused : false; } catch(e){ return false; } })();
     if (isPaused !== last.paused) setPaused(last.paused);
   }
@@ -28,6 +32,6 @@ BTFW.define("feature:syncGuard", [], async () => {
     socket.on("mediaUpdate", onMediaUpdate);
     socket.on("changeMedia", ()=>{ last.t=0; });
   }
-  setInterval(tick, 1500);
+  setInterval(tick, 2000);
   return { name:"feature:syncGuard" };
 });

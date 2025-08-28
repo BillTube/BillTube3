@@ -18,11 +18,11 @@ BTFW.define("feature:chatAvatars", ["feature:chat"], async ({}) => {
     return out;
   }
   function svgAvatar(name, size=28){
-    const colors=["#1abc9c","#16a085","#f1c40f","#f39c12","#2ecc71","#27ae60","#e67e22","#d35400","#3498db","#2980b9","#e74c3c","#c0392b","#9b59b6","#8e44ad","#0080a5","#34495e","#2c3e50","#87724b","#7300a7","#ec87bf","#d870ad","#f69785","#9ba37e","#b49255","#a94136"];
+    const colors=["#7C6CFF","#5F8AFF","#FF6FD8","#FF9F6E","#2ECC71","#27AE60","#3498DB","#2980B9","#E74C3C","#C0392B","#9B59B6","#8E44AD","#34495E","#2C3E50"];
     const letters = unicodeSlice(name||"?",0,2).toUpperCase();
     const ci = (letters.codePointAt(0)||0) % colors.length;
     const bg = colors[ci];
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><rect width="100%" height="100%" rx="6" fill="${bg}"/><text x="50%" y="50%" dy=".35em" text-anchor="middle" fill="#fff" font-family="Inter,system-ui,Arial" font-weight="600" font-size="${Math.floor(size*0.5)}">${letters}</text></svg>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><rect width="100%" height="100%" rx="8" fill="${bg}"/><text x="50%" y="50%" dy=".35em" text-anchor="middle" fill="#fff" font-family="Inter,system-ui,Arial" font-weight="700" font-size="${Math.floor(size*0.52)}">${letters}</text></svg>`;
     return "data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(svg)));
   }
   function getProfileFromUserlist(username){
