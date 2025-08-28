@@ -1,5 +1,5 @@
 
-/*! BillTube Framework (BTFW) loader — v3.1 (Bootstrap kept, resizer intact) */
+/*! BillTube Framework (BTFW) loader — v3.2 (Bootstrap kept, Slate fallback, resizer intact) */
 (function(){
   var current=(document.currentScript&&document.currentScript.src)||function(){var s=document.getElementsByTagName('script');return s[s.length-1].src||"";}();
   var BASE=current.replace(/\/[^\/]*$/, "");
@@ -71,6 +71,6 @@
         BTFW.init("feature:ui")
       ]);
     });
-  }).then(function(){ console.log("[BTFW v3.1] Ready."); })
-    .catch(function(e){ console.error("[BTFW v3.1] boot failed:", e&&e.message||e); });
+  }).then(function(){ console.log("[BTFW v3.2] Ready."); })
+    .catch(function(e){ console.error("[BTFW v3.2] boot failed:", e&&e.message||e); });
 })();
