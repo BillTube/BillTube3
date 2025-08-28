@@ -39,8 +39,7 @@
       "modules/feature-video-overlay.js",
       "modules/feature-pip.js",
       "modules/feature-sync-guard.js",
-      "modules/feature-theme-settings.js",
-	  "modules/feature-player.js"
+      "modules/feature-theme-settings.js"
     ];
     return mods.reduce((p,f)=>p.then(()=>load(BASE+"/"+f)), Promise.resolve());
   }).then(function(){
@@ -56,8 +55,7 @@
       BTFW.init("feature:videoOverlay"),
       BTFW.init("feature:pip"),
       BTFW.init("feature:syncGuard"),
-	  BTFW.init("feature:themeSettings"),
-      BTFW.init("feature:player")
+	  BTFW.init("feature:themeSettings")
     ]);
   }).then(function(){ console.log("[BTFW v3.4f] Ready."); })
   .catch(function(e){ console.error("[BTFW v3.4f] boot failed:", e&&e.message||e); });
