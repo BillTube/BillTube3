@@ -13,22 +13,9 @@ BTFW.define("feature:chat", ["feature:layout"], async ({ require }) => {
       top = document.createElement("div"); top.className = "btfw-chat-topbar";
       top.innerHTML = `<div class="btfw-chat-title" id="btfw-chat-title">Now Playing</div>`;
       cw.prepend(top);
-    } else {
-      const strayActions = top.querySelector(".btfw-chat-actions");
-      if (strayActions){
-        const bottomActions = qs("#btfw-chat-actions") || ensureBottomActions(cw);
-        Array.from(strayActions.children).forEach(ch => bottomActions.appendChild(ch));
-        strayActions.remove();
-      }
     }
 
     // Bottom: all controls
-    ensureBottomActions(cw);
-
-    const msg = qs("#messagebuffer"); if (msg){ msg.classList.add("btfw-messagebuffer"); }
-  }
-
-  function ensureBottomActions(cw){
     let bottom = qs(".btfw-chat-bottombar", cw);
     if(!bottom){
       bottom = document.createElement("div"); bottom.className = "btfw-chat-bottombar";
@@ -39,12 +26,9 @@ BTFW.define("feature:chat", ["feature:layout"], async ({ require }) => {
 
     // Emotes button
     const emotebtn = qs("#emotelistbtn");
-    if (emotebtn && emotebtn.parentElement !== bar){
-      emotebtn.className = "btfw-chatbtn";
-      bar.appendChild(emotebtn);
-    }
+    if (emotebtn && emotebtn.parentElement !== bar){ emotebtn.className = "btfw-chatbtn"; bar.appendChild(emotebtn); }
 
-    // Users overlay
+    // Users overlay toggle
     if (!qs("#btfw-users-toggle", bar)){
       const b = document.createElement("button");
       b.id="btfw-users-toggle"; b.className="btfw-chatbtn"; b.title="Users"; b.innerHTML=`<i class="fa fa-users"></i>`;
@@ -67,31 +51,24 @@ BTFW.define("feature:chat", ["feature:layout"], async ({ require }) => {
       bar.appendChild(b);
     }
 
+    const msg = qs("#messagebuffer"); if (msg){ msg.classList.add("btfw-messagebuffer"); }
     const controls = qs("#chatcontrols,#chat-controls") || (qs("#chatline") && qs("#chatline").parentElement);
     if (controls && controls.nextElementSibling !== bottom.nextElementSibling){
       controls.classList.add("btfw-controls-row");
       bottom.after(controls);
     }
-    return bar;
   }
 
-  function prepareUserlistOverlay(){
-    const ul = qs("#userlist"); if(!ul) return;
-    ul.classList.add("btfw-userlist-overlay");
-    ul.classList.remove("btfw-userlist-overlay--open");
-  }
   function toggleUserOverlay(){
-    const ul = qs("#userlist"); if(!ul) return;
-    if (!ul.classList.contains("btfw-userlist-overlay")) prepareUserlistOverlay();
+    const ul = document.getElementById("userlist"); if(!ul) return;
+    ul.classList.add("btfw-userlist-overlay");
     ul.classList.toggle("btfw-userlist-overlay--open");
   }
-
-  // Title
   function getCurrentTitle(){
-    const el = qs("#currenttitle") || qs("#plmeta .title") || qs("#videowrap .title");
+    const el = document.querySelector("#currenttitle") || document.querySelector("#plmeta .title") || document.querySelector("#videowrap .title");
     return el ? (el.textContent||"").trim() : ((window.CHANNEL&&CHANNEL.media&&CHANNEL.media.title)||"");
   }
-  function setTitle(){ const t=qs("#btfw-chat-title"); if(t) t.textContent = getCurrentTitle() || "Now Playing"; }
+  function setTitle(){ const t=document.getElementById("btfw-chat-title"); if(t) t.textContent = getCurrentTitle() || "Now Playing"; }
 
   // Username colors
   function stringToColour(str){ for(var i=0,hash=0;i<str.length;hash=str.charCodeAt(i++)+((hash<<5)-hash)); for(var i=0,colour="#";i<3;colour+=("00"+((hash>>i++*8)&0xFF).toString(16)).slice(-2)); return colour; }
@@ -105,12 +82,12 @@ BTFW.define("feature:chat", ["feature:layout"], async ({ require }) => {
     u.dataset.btfwColored = "1";
   }
   function observeColors(){
-    const buf = qs("#messagebuffer"); if(!buf || buf._btfw_colors) return; buf._btfw_colors = true;
+    const buf = document.getElementById("messagebuffer"); if(!buf || buf._btfw_colors) return; buf._btfw_colors = true;
     new MutationObserver(m=>m.forEach(r=>r.addedNodes.forEach(n=>{ if(n.nodeType===1) colorize(n); }))).observe(buf,{childList:true});
-    qsa("#messagebuffer .username,.nick,.name").forEach(colorize);
+    Array.from(buf.querySelectorAll(".username,.nick,.name")).forEach(colorize);
   }
 
-  function boot(){ ensureBars(); prepareUserlistOverlay(); setTitle(); observeColors(); }
+  function boot(){ ensureBars(); setTitle(); observeColors(); }
   document.addEventListener("btfw:layoutReady", boot);
   (window.socket&&window.socket.on)&&window.socket.on("changeMedia", setTitle);
   setInterval(setTitle, 2500);

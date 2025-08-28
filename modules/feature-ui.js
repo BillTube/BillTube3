@@ -1,4 +1,2 @@
 
-BTFW.define("feature:ui", ["feature:layout"], async () => {
-  return { name: "feature:ui" };
-});
+BTFW.define("feature:ui", [], async () => ({ name:"feature:ui" }));

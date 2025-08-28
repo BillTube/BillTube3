@@ -1,5 +1,1 @@
-
-.btfw-modal__card{ background: var(--btfw-bg-soft) !important; color: var(--btfw-text) !important; }
-.btfw-modal__header{ border-bottom: 1px solid var(--btfw-border) !important; }
-.btfw-modal .tab{ background:#22242a; color:#cfd0d4; }
-.btfw-modal .tab.active{ background:#2c2f36; color:#fff; }
+/* overlay extras (optional) */
