@@ -1,5 +1,5 @@
 
-BTFW.define("feature:chatAvatars", ["feature:chat"], async ({ require }) => {
+BTFW.define("feature:chatAvatars", ["feature:chat"], async ({}) => {
   function unicodeCharAt(str, index) {
     const first = str.charCodeAt(index);
     if (first >= 0xD800 && first <= 0xDBFF && str.length > index + 1) {

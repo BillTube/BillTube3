@@ -1,20 +1,19 @@
 
-/*! BillTube Framework (BTFW) loader — v3.2 (Bootstrap kept, Slate fallback, resizer intact) */
+/*! BillTube Framework (BTFW) loader — v3.3 */
 (function(){
   var current=(document.currentScript&&document.currentScript.src)||function(){var s=document.getElementsByTagName('script');return s[s.length-1].src||"";}();
   var BASE=current.replace(/\/[^\/]*$/, "");
 
   var Registry=Object.create(null);
   function define(name,deps,factory){ Registry[name]={deps:deps||[],factory:factory,instance:null}; }
-  function require(name){ var m=Registry[name]; return m?m.instance:undefined; }
   async function init(name){
     var m=Registry[name]; if(!m) throw new Error("Module not found: "+name);
     if(m.instance) return m.instance;
     for(var i=0;i<m.deps.length;i++){ await init(m.deps[i]); }
-    m.instance = await m.factory({define, require, init, BASE});
+    m.instance = await m.factory({define:BTFW.define, require:()=>null, init, BASE});
     return m.instance;
   }
-  window.BTFW = { define, require, init, BASE };
+  window.BTFW = { define, init, BASE };
 
   function preloadCSS(href){
     return new Promise(function(resolve){
@@ -46,7 +45,7 @@
       "modules/core.js",
       "modules/bridge-cytube.js",
       "modules/feature-style-core.js",
-	  "modules/feature-bulma-layer.js",
+      "modules/feature-bulma-layer.js",
       "modules/feature-layout.js",
       "modules/feature-stack.js",
       "modules/feature-nowplaying.js",
@@ -57,30 +56,28 @@
       "modules/feature-chat.js",
       "modules/feature-chat-avatars.js",
       "modules/feature-gifs.js",
+      "modules/feature-sync-guard.js",
       "modules/feature-theme-settings.js",
       "modules/feature-ui.js"
     ];
     return mods.reduce((p,f)=>p.then(()=>loadScript(BASE+"/"+f)), Promise.resolve());
   }).then(function(){
-    return BTFW.init("core").then(function(core){
-      if(core&&core.boot) core.boot();
-      return Promise.all([
-        BTFW.init("feature:styleCore"),
-		BTFW.init("feature:bulma"),
-        BTFW.init("feature:layout"),
-		BTFW.init("feature:stack"),
-        BTFW.init("feature:nowplaying"),
-        BTFW.init("feature:videoOverlay"),
-        BTFW.init("feature:channels"),
-        BTFW.init("feature:resize"),
-        BTFW.init("feature:player"),
-        BTFW.init("feature:chat"),
-        BTFW.init("feature:chatAvatars"),
-        BTFW.init("feature:gifs"),
-        BTFW.init("feature:themeSettings"),
-        BTFW.init("feature:ui")
-      ]);
-    });
-  }).then(function(){ console.log("[BTFW v3.2] Ready."); })
-    .catch(function(e){ console.error("[BTFW v3.2] boot failed:", e&&e.message||e); });
+    return Promise.all([
+      BTFW.init("feature:styleCore"),
+      BTFW.init("feature:bulma"),
+      BTFW.init("feature:layout"),
+      BTFW.init("feature:stack"),
+      BTFW.init("feature:nowplaying"),
+      BTFW.init("feature:videoOverlay"),
+      BTFW.init("feature:channels"),
+      BTFW.init("feature:resize"),
+      BTFW.init("feature:chat"),
+      BTFW.init("feature:chatAvatars"),
+      BTFW.init("feature:gifs"),
+      BTFW.init("feature:syncGuard"),
+      BTFW.init("feature:themeSettings"),
+      BTFW.init("feature:ui")
+    ]);
+  }).then(function(){ console.log("[BTFW v3.3] Ready."); })
+    .catch(function(e){ console.error("[BTFW v3.3] boot failed:", e&&e.message||e); });
 })();
