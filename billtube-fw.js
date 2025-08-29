@@ -53,7 +53,7 @@
       BTFW.init("feature:stack"),
       BTFW.init("feature:chat"),
 	  BTFW.init("feature:chat-tools"),
-      BTFW.init("feature:chatAvatars"),
+      BTFW.init("feature:chat-avatars"),
       BTFW.init("feature:nowplaying"),
       BTFW.init("feature:gifs"),
       BTFW.init("feature:videoOverlay"),
