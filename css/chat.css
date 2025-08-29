@@ -256,3 +256,33 @@
 @media (max-width: 768px){
   #btfw-ct-modal .btfw-ct-grid{ grid-template-columns: repeat(3, minmax(80px,1fr)); }
 }
+/* ===== Chat Avatars (sizes + margins + consecutive collapse) ===== */
+
+#chatwrap.btfw-avatars-off  .btfw-chat-avatar { display: none !important; }
+#chatwrap.btfw-avatars-small .btfw-chat-avatar { width: 28px; height: 28px; border-radius: 8px; }
+#chatwrap.btfw-avatars-big   .btfw-chat-avatar { width: 40px; height: 40px; border-radius: 10px; }
+
+#messagebuffer .chat-msg.btfw-has-avatar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 2px;
+}
+#messagebuffer .chat-msg.btfw-has-avatar .username,
+#messagebuffer .chat-msg.btfw-has-avatar .nick,
+#messagebuffer .chat-msg.btfw-has-avatar .name {
+  vertical-align: middle;
+}
+
+/* Consecutive messages from same user: hide avatar and tighten spacing */
+#messagebuffer .chat-msg.btfw-consecutive .btfw-chat-avatar { visibility: hidden; width: 0 !important; height: 0 !important; margin: 0 !important; }
+#messagebuffer .chat-msg.btfw-consecutive { padding-top: 2px; }
+
+/* Fallback quick control styling (if Theme Settings modal is absent) */
+.btfw-avatars-dd .btfw-avatars-select{
+  background: rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.08);
+  color: #e9e9ee;
+  border-radius: 8px;
+  padding: 4px 8px;
+}
