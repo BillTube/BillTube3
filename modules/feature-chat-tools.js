@@ -1,9 +1,6 @@
 /* BillTube Framework — feature:chat-tools
    Mini modal above chat input: BBCode buttons, AFK/Clear, and Color tools.
-   - Color swatch inserts [color=#HEX]...[/color] into the chatline
-   - Optional "Keep color" toggles auto-wrap on send (colors only)
-   - Correct caret/selection placement for all tags
-   - No keyboard hotkey for GIFs
+   Color uses BillTube2 format: prefix 'col:#RRGGBB:' at the start of the message.
 */
 BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
   const $  = (s, r=document) => r.querySelector(s);
@@ -11,13 +8,20 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
 
   const LS = {
     hist:       "btfw:chat:history",
-    stickColor: "btfw:chat:stickColor" // hex string like "#3498db" or ""
+    stickColor: "btfw:chat:stickColor" // "#rrggbb" or ""
   };
 
   const COLORS = ["#1abc9c","#16a085","#f1c40f","#f39c12","#2ecc71","#27ae60","#e67e22",
                   "#d35400","#3498db","#2980b9","#e74c3c","#c0392b","#9b59b6","#8e44ad",
                   "#0080a5","#34495e","#2c3e50","#87724b","#7300a7","#ec87bf","#d870ad",
                   "#f69785","#9ba37e","#b49255","#a94136"];
+
+  /* ---------- one-time cleanup: never color usernames ---------- */
+  try { localStorage.removeItem("btfw:chat:nameColor"); } catch(e){}
+  (function clearUsernameTint(){
+    $$("#messagebuffer .username, #messagebuffer .nick, #messagebuffer .name")
+      .forEach(n => { try { n.style.color = ""; } catch(e){} });
+  })();
 
   /* ---------- helpers ---------- */
   const chatline = () => $("#chatline");
@@ -40,46 +44,50 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
 
       if (s.mid.length === 0) {
         const pos = s.before.length + open.length;
-        l.focus(); l.setSelectionRange(pos, pos); // caret between tags
+        l.focus(); l.setSelectionRange(pos, pos);  // caret between tags
       } else {
         const start = s.before.length + open.length;
         const end   = start + s.mid.length;
-        l.focus(); l.setSelectionRange(start, end); // keep selection inside
+        l.focus(); l.setSelectionRange(start, end); // keep selection inside tags
       }
     });
   }
 
-  function insertColorTag(hex){
-    hex = (hex||"").trim();
-    if (!/^#?[0-9a-f]{6}$/i.test(hex)) return;
-    if (hex[0] !== "#") hex = "#"+hex;
-    withSelection((l, s)=>{
-      const open = `[color=${hex}]`, close = `[/color]`;
-      l.value = s.before + open + s.mid + close + s.after;
-
-      if (s.mid.length === 0) {
-        const pos = s.before.length + open.length;
-        l.focus(); l.setSelectionRange(pos, pos);
-      } else {
-        const start = s.before.length + open.length;
-        const end   = start + s.mid.length;
-        l.focus(); l.setSelectionRange(start, end);
-      }
-    });
+  function normalizeHex(x){
+    if (!x) return "";
+    x = x.trim();
+    if (/^[0-9a-f]{6}$/i.test(x)) x = "#"+x;
+    if (!/^#[0-9a-f]{6}$/i.test(x)) return "";
+    return x.toLowerCase();
   }
 
-  // Sticky color: auto-wrap entire message on send if set and line doesn't already contain a color tag
+  // Insert/replace prefix col:#hex: at the very start of the line
+  function applyColPrefix(hex){
+    hex = normalizeHex(hex); if (!hex) return;
+    const l = chatline(); if (!l) return;
+    const prefixRe = /^col:\s*#?[0-9a-fA-F]{6}:\s*/;
+    const current = l.value || "";
+    const without = current.replace(prefixRe, "");          // remove existing color prefix if any
+    const prefix  = `col:${hex}:`;
+    // Add a space after prefix only if there is content
+    const glue = without && !/^\s/.test(without) ? " " : "";
+    l.value = prefix + glue + without;
+    // Move caret to end so user can keep typing
+    const pos = l.value.length;
+    l.focus(); l.setSelectionRange(pos, pos);
+  }
+
+  // On send, auto-prefix with sticky color if enabled and line lacks a prefix
   function getStickColor(){ try { return localStorage.getItem(LS.stickColor)||""; } catch(e){ return ""; } }
-  function setStickColor(hex){ try { localStorage.setItem(LS.stickColor, hex||""); } catch(e){} }
+  function setStickColor(hex){ try { localStorage.setItem(LS.stickColor, normalizeHex(hex)||""); } catch(e){} }
 
   function applyStickyColorBeforeSend(){
     const hex = getStickColor(); if (!hex) return;
     const l = chatline(); if (!l) return;
-    const v = (l.value||"").trim();
-    if (!v) return;
-    if (/\[color=.+?\]/i.test(v)) return; // already colored by user
-    // wrap whole message
-    l.value = `[color=${hex}]` + v + `[/color]`;
+    const v = (l.value||"").trimStart();
+    if (/^col:\s*#?[0-9a-fA-F]{6}:/i.test(v)) return; // already has color prefix
+    // Prepend prefix, keep rest of message as-is
+    l.value = `col:${normalizeHex(hex)}:` + (v ? " " : "") + v;
   }
 
   /* ---------- UI: actions button + mini modal ---------- */
@@ -122,7 +130,7 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
 
           <div class="btfw-ct-section">
             <div class="btfw-ct-row">
-              <div class="btfw-ct-title">Text Color</div>
+              <div class="btfw-ct-title">Text Color (col:#RRGGBB:)</div>
               <label class="btfw-ct-keep">
                 <input type="checkbox" id="btfw-ct-keepcolor">
                 Keep color for messages
@@ -169,8 +177,7 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     const m = $("#btfw-ct-modal"); if (!m) return;
     const c = controlsRow(); if (!c) return;
     const card = m.querySelector(".btfw-ct-card");
-    // sit above controls with small gap
-    const bottom = c.offsetHeight + 12;
+    const bottom = c.offsetHeight + 12; // sit above controls
     card.style.bottom = bottom + "px";
   }
 
@@ -205,7 +212,7 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
       if (e.target.closest && e.target.closest(".btfw-ct-close")) { e.preventDefault(); closeMiniModal(); return; }
       if (e.target.closest && e.target.closest(".btfw-ct-backdrop")) { e.preventDefault(); closeMiniModal(); return; }
 
-      // BBCode buttons
+      // BBCode buttons (one-shot)
       const bb = e.target.closest && e.target.closest(".btfw-ct-item[data-tag]");
       if (bb) { e.preventDefault(); wrapWithTag(bb.dataset.tag); closeMiniModal(); return; }
 
@@ -215,21 +222,27 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
       const clr = e.target.closest && e.target.closest('.btfw-ct-item[data-act="clear"]');
       if (clr) { e.preventDefault(); const mb=$("#messagebuffer"); if(mb) mb.innerHTML=""; closeMiniModal(); return; }
 
-      // Color clicks
+      // Color swatch -> fill hex box (no auto insert)
       const swb = e.target.closest && e.target.closest(".btfw-ct-swatchbtn");
       if (swb) {
         e.preventDefault();
         $("#btfw-ct-hex").value = swb.dataset.color;
-        // Do not auto-insert — user confirms via "Insert Color"
+        // If keep is checked, update persistent color immediately
+        const keep = $("#btfw-ct-keepcolor");
+        if (keep && keep.checked) setStickColor(swb.dataset.color);
         return;
       }
+
+      // Insert Color button -> apply prefix in input now
       if (e.target.id === "btfw-ct-insertcolor") {
         e.preventDefault();
         const hex = ($("#btfw-ct-hex").value||"").trim();
-        insertColorTag(hex);
+        applyColPrefix(hex);
         closeMiniModal();
         return;
       }
+
+      // Clear Keep -> disable sticky color
       if (e.target.id === "btfw-ct-clearcolor") {
         e.preventDefault();
         setStickColor("");
@@ -241,15 +254,18 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     // Keep color toggle
     document.addEventListener("change", (e)=>{
       if (e.target && e.target.id === "btfw-ct-keepcolor") {
-        setStickColor(e.target.checked ? ($("#btfw-ct-hex").value||"").trim() : "");
+        const hex = normalizeHex(($("#btfw-ct-hex").value||"").trim());
+        setStickColor(e.target.checked ? hex : "");
+        // If turned on with empty/invalid hex, immediately turn off
+        if (e.target.checked && !hex) { setStickColor(""); e.target.checked = false; }
       }
     }, true);
 
-    // Chatline keys (no 'g' hotkey)
+    // Chatline keys (no GIF hotkey)
     const l = chatline(); if (l) {
       l.addEventListener("keydown", (ev)=>{
-        if (ev.key === "Enter" && !ev.shiftKey) { // before send, apply sticky color if any
-          applyStickyColorBeforeSend();
+        if (ev.key === "Enter" && !ev.shiftKey) {
+          applyStickyColorBeforeSend();  // prefix if needed
           commitToHist(l.value.trim());
         }
         if (ev.key === "ArrowUp" && !ev.shiftKey && l.selectionStart===l.selectionEnd && l.selectionStart===0) {
