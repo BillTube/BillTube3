@@ -1,44 +1,103 @@
-/* BTFW — feature:themeSettings (lazy module resolution + live binds)
-   - General: theme mode (bulma-layer)
-   - Chat: avatars size (off/small/big), chat text size, emote/GIF size (dropdown),
-           GIF autoplay (via feature:chatMedia)
-   - Video: PiP toggle
-   Notes:
-   * All dependencies are resolved LAZILY at open/time-of-use to avoid stale/null refs.
-   * Works even if some features are not loaded; controls auto-disable.
+/* BTFW — feature:themeSettings (Apply/Cancel workflow + async-safe apply)
+   - Nothing is saved or applied until "Apply" is clicked.
+   - On Apply: persist to localStorage and apply live if modules are ready.
+   - If a module isn't loaded yet, fall back (no blocking). Modules will
+     read the saved values on their own boot and apply.
 */
 BTFW.define("feature:themeSettings", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
-  // ---- lazy resolvers (avoid capturing null before features init) ----
+  // Lazy resolvers (avoid stale/null refs)
   const BULMA = () => { try { return BTFW.require("feature:bulma-layer"); } catch(_) { return null; } };
   const AV    = () => { try { return BTFW.require("feature:chat-avatars") || BTFW.require("feature:chatAvatars") || BTFW.require("feature:avatars-bridge"); } catch(_) { return null; } };
   const CM    = () => { try { return BTFW.require("feature:chatMedia"); } catch(_) { return null; } };
   const PIP   = () => { try { return BTFW.require("feature:pip"); } catch(_) { return null; } };
 
-  const LS = { chatTextSize: "btfw:chat:textSize", pip: "btfw:pip:enabled" };
+  const LS = {
+    chatTextSize : "btfw:chat:textSize",
+    pip          : "btfw:pip:enabled",
+    themeMode    : "btfw:theme:mode",       // backup if bulma-layer isn't ready
+    avatarsMode  : "btfw:avatars:mode",     // bridge fallback
+    emoteSize    : "btfw:chat:emoteSize",   // used by chatMedia
+    gifAutoplay  : "btfw:chat:gifAutoplay"  // used by chatMedia
+  };
 
-  function getChatTextSize(){
-    try { return parseInt(localStorage.getItem(LS.chatTextSize)||"14",10); } catch(e){ return 14; }
-  }
-  function setChatTextSize(px){
-    try { localStorage.setItem(LS.chatTextSize, String(px)); } catch(e){}
-    const wrap = $("#chatwrap"); if (wrap) wrap.style.setProperty("--btfw-chat-text", px+"px");
+  function lsGet(k, d){ try { const v = localStorage.getItem(k); return (v==null?d:v); } catch(_) { return d; } }
+  function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(_) {} }
+
+  // Current effective values (read from modules or LS as fallback)
+  function readEffective() {
+    const bulma = BULMA();
+    const cm    = CM();
+    const av    = AV();
+    const pip   = PIP();
+
+    return {
+      themeMode:  (bulma?.getTheme && bulma.getTheme()) || lsGet(LS.themeMode, "dark"),
+      avatars:    (av?.getMode && av.getMode()) || lsGet(LS.avatarsMode, "small"),
+      chatText:   parseInt(lsGet(LS.chatTextSize, "14"), 10) || 14,
+      emoteSize:  (cm?.getEmoteSize && cm.getEmoteSize()) || lsGet(LS.emoteSize, "md"),
+      gifAuto:    ((cm?.getGifAutoplayOn && cm.getGifAutoplayOn()) ? "1" : lsGet(LS.gifAutoplay, "1")) === "1",
+      pip:        (pip?.isEnabled && !!pip.isEnabled()) || lsGet(LS.pip, "0")==="1"
+    };
   }
 
-  function pipGet(){
+  // Apply helpers (non-blocking, with graceful fallbacks)
+  function applyThemeMode(mode){
+    const b = BULMA();
+    if (b?.setTheme) b.setTheme(mode);
+    lsSet(LS.themeMode, mode);
+    // lightweight fallback so CSS can react if you want:
+    document.documentElement.setAttribute("data-btfw-theme", mode);
+  }
+  function applyAvatarsMode(mode){
+    const a = AV();
+    if (a?.setMode) a.setMode(mode);
+    lsSet(LS.avatarsMode, mode);
+    // fallback CSS (same as avatars-bridge)
+    const px = mode==="off" ? 0 : (mode==="big" ? 36 : 24);
+    document.documentElement.style.setProperty("--btfw-avatar-size", px+"px");
+    document.body.classList.remove("btfw-avatars-off","btfw-avatars-small","btfw-avatars-big");
+    document.body.classList.add("btfw-avatars-"+mode);
+  }
+  function applyChatText(px){
+    lsSet(LS.chatTextSize, String(px));
+    const wrap = $("#chatwrap");
+    if (wrap) wrap.style.setProperty("--btfw-chat-text", px+"px");
+  }
+  function applyEmoteSize(mode){
+    // Prefer chatMedia API
+    const cm = CM();
+    if (cm?.setEmoteSize) cm.setEmoteSize(mode);
+    lsSet(LS.emoteSize, mode);
+    // Fallback: at least set the CSS var so size changes without module
+    const map = { sm:100, md:130, lg:170 };
+    const px = map[mode] || map.md;
+    document.documentElement.style.setProperty("--btfw-emote-size", px+"px");
+    // Optional runtime force for existing images if module missing:
+    if (!cm) {
+      const SEL = "#messagebuffer img.giphy.chat-picture, #messagebuffer img.tenor.chat-picture";
+      document.querySelectorAll(SEL).forEach(img=>{
+        ["width","height","maxWidth","maxHeight"].forEach(prop=>{
+          img.style.setProperty(prop.replace(/[A-Z]/g, m=>"-"+m.toLowerCase()), "var(--btfw-emote-size)", "important");
+        });
+      });
+    }
+  }
+  function applyGifAutoplay(on){
+    const cm = CM();
+    if (cm?.setGifAutoplayOn) cm.setGifAutoplayOn(!!on);
+    lsSet(LS.gifAutoplay, on ? "1":"0");
+  }
+  function applyPip(on){
     const pip = PIP();
-    if (pip?.isEnabled) return !!pip.isEnabled();
-    try { return localStorage.getItem(LS.pip)==="1"; } catch(e){ return false; }
-  }
-  function pipSet(v){
-    const pip = PIP();
-    if (pip?.setEnabled) { pip.setEnabled(!!v); }
-    else { try { localStorage.setItem(LS.pip, v ? "1":"0"); } catch(e){} }
-    document.dispatchEvent(new CustomEvent("btfw:pip:toggled",{detail:{enabled:!!v}}));
+    if (pip?.setEnabled) pip.setEnabled(!!on);
+    lsSet(LS.pip, on ? "1":"0");
+    document.dispatchEvent(new CustomEvent("btfw:pip:toggled",{detail:{enabled:!!on}}));
   }
 
+  // ---- Modal creation (with Apply/Cancel) ----
   function ensureOpeners(){
     ["#btfw-theme-btn-nav", "#btfw-theme-btn", ".btfw-theme-open", "#btfw-theme-btn-chat"].forEach(sel => {
       $$(sel).forEach(el => {
@@ -48,12 +107,12 @@ BTFW.define("feature:themeSettings", [], async () => {
       });
     });
   }
-
   function nukeLegacy(){
     ["#themesettings", "#themeSettingsModal", ".themesettings", "#btfw-theme-modal"]
       .forEach(sel => $$(sel).forEach(el => el.remove()));
   }
 
+  let staged = null; // staged (unsaved) values
   function ensureModal(){
     let m = $("#btfw-theme-modal");
     if (m) return m;
@@ -121,7 +180,6 @@ BTFW.define("feature:themeSettings", [], async () => {
                       </select>
                     </div>
                   </div>
-                  <p class="help">Applies to the message list.</p>
                 </div>
 
                 <div class="field">
@@ -157,16 +215,17 @@ BTFW.define("feature:themeSettings", [], async () => {
           </div>
         </section>
         <footer class="modal-card-foot">
-          <button class="button is-link" id="btfw-ts-close">Close</button>
+          <button class="button" id="btfw-ts-cancel">Cancel</button>
+          <button class="button is-link" id="btfw-ts-apply">Apply</button>
         </footer>
       </div>
     `;
     document.body.appendChild(m);
 
-    // Close hooks
+    // Close/Cancel
     $(".modal-background", m).addEventListener("click", close);
     $(".delete", m).addEventListener("click", close);
-    $("#btfw-ts-close", m).addEventListener("click", close);
+    $("#btfw-ts-cancel", m).addEventListener("click", close);
 
     // Tabs
     $("#btfw-ts-tabs ul", m).addEventListener("click", (e)=>{
@@ -178,59 +237,54 @@ BTFW.define("feature:themeSettings", [], async () => {
       });
     });
 
-    // Wire: theme mode
-    $$('input[name="btfw-theme-mode"]', m).forEach(i => {
-      i.addEventListener("change", () => BULMA()?.setTheme && BULMA().setTheme(i.value));
+    // Stage-only listeners (no live apply)
+    m.addEventListener("change", (e)=>{
+      const t = e.target;
+      if (!staged) return;
+      if (t.name === "btfw-theme-mode")        staged.themeMode = t.value;
+      if (t.name === "btfw-avatars-mode")      staged.avatars   = t.value;
+      if (t.id   === "btfw-chat-textsize")     staged.chatText  = parseInt(t.value,10);
+      if (t.id   === "btfw-emote-size")        staged.emoteSize = t.value;
+      if (t.id   === "btfw-gif-autoplay")      staged.gifAuto   = !!t.checked;
+      if (t.id   === "btfw-pip-toggle")        staged.pip       = !!t.checked;
     });
 
-    // Wire: avatar size (works with either your avatar module OR the bridge)
-    $$('input[name="btfw-avatars-mode"]', m).forEach(i => {
-      i.addEventListener("change", () => AV()?.setMode && AV().setMode(i.value));
+    // Apply button
+    $("#btfw-ts-apply", m).addEventListener("click", async ()=>{
+      const btn = $("#btfw-ts-apply", m);
+      btn.classList.add("is-loading"); btn.disabled = true;
+      try {
+        await applyAll(staged);
+        close();
+      } finally {
+        btn.classList.remove("is-loading"); btn.disabled = false;
+      }
     });
-
-    // Wire: chat text size
-    $("#btfw-chat-textsize", m).addEventListener("change", ()=> {
-      setChatTextSize(parseInt($("#btfw-chat-textsize", m).value,10));
-    });
-
-    // Wire: Emote/GIF size (chatMedia)
-    $("#btfw-emote-size", m).addEventListener("change", ()=> {
-      const v = $("#btfw-emote-size", m).value;
-      CM()?.setEmoteSize && CM().setEmoteSize(v);
-    });
-
-    // Wire: GIF autoplay
-    $("#btfw-gif-autoplay", m).addEventListener("change", ()=> {
-      const on = $("#btfw-gif-autoplay", m).checked;
-      CM()?.setGifAutoplayOn && CM().setGifAutoplayOn(on);
-    });
-
-    // Wire: PiP
-    $("#btfw-pip-toggle", m).addEventListener("change", ()=> pipSet($("#btfw-pip-toggle", m).checked));
 
     return m;
   }
 
   function refreshModalState(m){
+    const eff = readEffective();
+    staged = { ...eff }; // copy to stage
+
     // Theme
-    const mode = BULMA()?.getTheme ? BULMA().getTheme() : "dark";
-    $$('input[name="btfw-theme-mode"]', m).forEach(i => i.checked = (i.value === mode));
+    $$('input[name="btfw-theme-mode"]', m).forEach(i => i.checked = (i.value === eff.themeMode));
 
     // Avatars
-    const avm = (AV()?.getMode && AV().getMode()) || "small";
-    $$('input[name="btfw-avatars-mode"]', m).forEach(i => i.checked = (i.value === avm));
+    $$('input[name="btfw-avatars-mode"]', m).forEach(i => i.checked = (i.value === eff.avatars));
 
     // Chat text size
-    $("#btfw-chat-textsize", m).value = String(getChatTextSize());
+    $("#btfw-chat-textsize", m).value = String(eff.chatText);
 
     // Emote/GIF size
-    $("#btfw-emote-size", m).value = (CM()?.getEmoteSize && CM().getEmoteSize()) || "md";
+    $("#btfw-emote-size", m).value = eff.emoteSize;
 
     // GIF autoplay
-    $("#btfw-gif-autoplay", m).checked = !!(CM()?.getGifAutoplayOn && CM().getGifAutoplayOn());
+    $("#btfw-gif-autoplay", m).checked = !!eff.gifAuto;
 
     // PiP
-    $("#btfw-pip-toggle", m).checked = !!pipGet();
+    $("#btfw-pip-toggle", m).checked = !!eff.pip;
   }
 
   function open(){
@@ -239,11 +293,41 @@ BTFW.define("feature:themeSettings", [], async () => {
     m.classList.add("is-active");
     document.dispatchEvent(new CustomEvent("btfw:themeSettings:open"));
   }
+
   function close(){ $("#btfw-theme-modal")?.classList.remove("is-active"); }
 
+  // Apply everything in a non-blocking way; if modules are missing, fall back and persist so they pick up on boot.
+  async function applyAll(s){
+    if (!s) return;
+    // Theme
+    applyThemeMode(s.themeMode);
+    // Avatars
+    applyAvatarsMode(s.avatars);
+    // Chat text size
+    applyChatText(s.chatText);
+    // Emote/GIF size
+    applyEmoteSize(s.emoteSize);
+    // GIF autoplay
+    applyGifAutoplay(s.gifAuto);
+    // PiP
+    applyPip(s.pip);
+
+    // Optionally, schedule a short retry to catch late-loaded modules without blocking UI
+    setTimeout(()=> {
+      try { BULMA()?.setTheme && BULMA().setTheme(s.themeMode); } catch(_){}
+      try { AV()?.setMode && AV().setMode(s.avatars); } catch(_){}
+      try { CM()?.setEmoteSize && CM().setEmoteSize(s.emoteSize); } catch(_){}
+      try { CM()?.setGifAutoplayOn && CM().setGifAutoplayOn(s.gifAuto); } catch(_){}
+      try { PIP()?.setEnabled && PIP().setEnabled(!!s.pip); } catch(_){}
+    }, 300);
+  }
+
   function boot(){
+    // Apply persisted chat text size ASAP on page load
+    const px = parseInt(lsGet(LS.chatTextSize, "14"),10) || 14;
+    const wrap = $("#chatwrap"); if (wrap) wrap.style.setProperty("--btfw-chat-text", px+"px");
+
     ensureOpeners();
-    setChatTextSize(getChatTextSize()); // apply persisted size ASAP
   }
 
   document.addEventListener("btfw:layoutReady", () => setTimeout(boot,0));
