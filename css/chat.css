@@ -321,3 +321,17 @@ img.twemoji {
   transition: opacity .12s ease-in;
 }
 img.twemoji.is-ready { opacity: 1; }
+
+:root { --btfw-emote-size: 32px; } 
+
+#messagebuffer img.channel-emote,
+#messagebuffer img.giphy.chat-picture,
+#messagebuffer img.tenor.chat-picture {
+  height: var(--btfw-emote-size);
+  max-height: var(--btfw-emote-size);
+  width: auto;
+  display: inline-block;
+  vertical-align: text-bottom;
+  margin: 0 2px;
+  border-radius: 6px;
+}

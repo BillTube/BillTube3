@@ -1,188 +1,191 @@
-/* BillTube Framework — feature:player
-   Custom Video.js skin to match the provided mockup. */
-BTFW.define("feature:player", ["feature:layout"], async ({}) => {
+/* BillTube Framework — feature:player (THEME + GUARD merged)
+   - Applies a dark, streamlined Video.js theme
+   - Disables context menu on the player surface
+   - Prevents left-click on the video surface from toggling pause
+     (control-bar interactions are unaffected)
+*/
+
+BTFW.define("feature:player", [], async () => {
+  const THEME_ID = "btfw-video-theme";
 
   const videoPlayerThemeCSS = `
-    /* ====== CONTAINER ====== */
-    #videowrap .video-js {
-      border-radius: 16px !important;
-      overflow: hidden !important;
-      box-shadow: 0 16px 40px rgba(0,0,0,.45) !important;
-      background: #0e141a !important;
+    /* ==== BillTube Player Theme ==== */
+    .video-js {
+      --btfw-bg: #0e141a;
+      --btfw-bar: #162027;
+      --btfw-fg: #e6eef7;
+      --btfw-sub: #a9b2c3;
+      --btfw-accent: #6d4df6;
+      --btfw-accent-2: #8b5cf6;
+      color: var(--btfw-fg);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background-color: #000; /* keep canvas black on load */
     }
-    /* Dark glass overlay (subtle) */
-    #videowrap .video-js::after{
-      content:"";
-      position:absolute; inset:0;
-      background: rgba(0,0,0,.22);
-      pointer-events:none;
-      transition: opacity .25s ease;
-    }
-    #videowrap .video-js.vjs-has-started::after { opacity: .12; }
 
-    /* ====== BIG CENTER PLAY ====== */
-    #videowrap .video-js .vjs-big-play-button{
-      width: 150px !important;
-      height: 150px !important;
+    /* Control bar */
+    .video-js .vjs-control-bar {
+      background-color: var(--btfw-bar) !important;
+      height: 56px !important;
+      display: flex; align-items: center;
+      padding: 0 14px !important;
+      box-shadow: 0 -2px 8px rgba(0,0,0,.35);
+    }
+    .video-js .vjs-control { width: 30px; }
+    .video-js .vjs-time-control { width: auto !important; padding: 0 10px; color: var(--btfw-sub); letter-spacing: .06em; font-size: 12px; }
+
+    /* Strip default gradients */
+    .video-js .vjs-control-bar,
+    .video-js .vjs-big-play-button,
+    .video-js .vjs-menu-button-popup .vjs-menu .vjs-menu-content {
+      background: none !important;
+    }
+
+    /* Big Play */
+    .video-js .vjs-big-play-button {
+      width: 120px !important; height: 120px !important;
       border-radius: 50% !important;
-      border: 6px solid #fff !important;
-      background: rgba(22,32,39,.45) !important;
+      border: 1px solid #fff !important;
+      background-color: rgba(22, 32, 39, 0.45) !important;
       top: 50% !important; left: 50% !important;
-      transform: translate(-50%,-50%);
-      box-shadow: 0 10px 28px rgba(0,0,0,.35);
+      margin-top: -60px !important; margin-left: -60px !important;
+      transition: transform .12s ease, background-color .12s ease;
     }
-    #videowrap .video-js .vjs-big-play-button .vjs-icon-placeholder::before{
-      font-size: 80px !important;
-      line-height: 150px !important;
-      color: #fff !important;
-      text-shadow: 0 2px 8px rgba(0,0,0,.35);
-    }
+    .video-js .vjs-big-play-button:hover { transform: scale(1.04); background-color: rgba(22,32,39,.6)!important; }
+    .video-js .vjs-big-play-button .vjs-icon-placeholder::before { font-size: 64px !important; line-height: 120px !important; }
 
-    /* ====== CONTROL BAR LAYOUT (minimal, at bottom) ====== */
-    #videowrap .video-js .vjs-control-bar{
+    /* Progress area */
+    .video-js .vjs-progress-control {
       position: absolute !important;
-      left: 0; right: 0; bottom: 0;
-      height: 64px !important;
-      background: transparent !important;
-      display: block !important; /* we position children absolutely */
-      box-shadow: none !important;
-      padding: 0 !important;
+      left: 58px !important; right: 180px !important;
+      top: 50% !important; transform: translateY(-50%); height: 6px !important;
+    }
+    .video-js .vjs-progress-holder {
+      height: 100% !important; margin: 0 !important; border-radius: 999px !important;
+      background: rgba(255,255,255,.1) !important;
+    }
+    .video-js .vjs-load-progress, .video-js .vjs-play-progress { border-radius: 999px !important; }
+    .video-js .vjs-load-progress { background: rgba(255,255,255,.18) !important; }
+    .video-js .vjs-play-progress {
+      background: linear-gradient(90deg, var(--btfw-accent), var(--btfw-accent-2)) !important;
+    }
+    .video-js .vjs-slider-handle {
+      width: 18px !important; height: 18px !important; border-radius: 50% !important;
+      top: -6px !important; background: #fff !important; box-shadow: 0 2px 6px rgba(0,0,0,.45);
     }
 
-    /* Play button bottom-left */
-    #videowrap .video-js .vjs-play-control{
-      position: absolute !important;
-      bottom: 14px; left: 16px;
-      width: 36px !important; height: 36px !important;
-      color: #fff !important;
-      background: transparent !important;
+    /* Volume menu look */
+    .video-js .vjs-volume-panel { margin-left: 8px; }
+    .video-js .vjs-volume-panel .vjs-volume-control .vjs-volume-bar {
+      border-radius: 999px; overflow: hidden;
+      background: rgba(255,255,255,.1);
     }
-    #videowrap .video-js .vjs-play-control .vjs-icon-placeholder::before{
-      font-size: 20px !important;
-      line-height: 36px !important;
-    }
+    .video-js .vjs-volume-level { background: linear-gradient(90deg, var(--btfw-accent), var(--btfw-accent-2)); }
 
-    /* Mute button bottom-right (speaker icon) */
-    #videowrap .video-js .vjs-mute-control{
-      position: absolute !important;
-      bottom: 14px; right: 16px;
-      width: 36px !important; height: 36px !important;
-      color: #fff !important;
-      background: transparent !important;
-    }
-    #videowrap .video-js .vjs-mute-control .vjs-icon-placeholder::before{
-      font-size: 18px !important;
-      line-height: 36px !important;
-    }
+    /* Hide stuff we don't need (toggle as you like) */
+    .video-js .vjs-remaining-time,
+    .video-js .vjs-picture-in-picture-control { display: none !important; }
 
-    /* ====== SEEK LINE ACROSS BOTTOM ====== */
-    #videowrap .video-js .vjs-progress-control{
-      position: absolute !important;
-      left: 64px !important;   /* room for play icon */
-      right: 64px !important;  /* room for volume/mute */
-      bottom: 24px !important;
-      height: 6px !important;
-      display: block !important;
+    /* Menu styling (quality, captions) */
+    .video-js .vjs-menu-button-popup .vjs-menu .vjs-menu-content {
+      background: rgba(15,20,26,.96) !important;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px;
+      backdrop-filter: blur(6px) saturate(120%);
+      box-shadow: 0 10px 28px rgba(0,0,0,.45);
     }
-    #videowrap .video-js .vjs-progress-holder{
-      height: 6px !important;
-      border-radius: 999px !important;
-      margin: 0 !important;
-      background: rgba(255,255,255,.25) !important;
+    .video-js .vjs-menu li { color: var(--btfw-fg); }
+    .video-js .vjs-menu li.vjs-selected, .video-js .vjs-menu li:focus, .video-js .vjs-menu li:hover {
+      background: rgba(109,77,246,.18);
     }
-    #videowrap .video-js .vjs-load-progress{
-      background: rgba(255,255,255,.35) !important;
-      border-radius: 999px !important;
-    }
-    #videowrap .video-js .vjs-play-progress{
-      background: #ffffff !important;
-      border-radius: 999px !important;
-      box-shadow: 0 0 0 1px rgba(0,0,0,.08) inset;
-    }
-    #videowrap .video-js .vjs-slider-handle{
-      width: 20px !important; height: 20px !important;
-      border-radius: 50% !important;
-      top: -7px !important; /* center on the 6px track */
-      background: #ffffff !important;
-      border: 0 !important;
-      box-shadow: 0 2px 6px rgba(0,0,0,.35);
-    }
-
-    /* ====== VERTICAL VOLUME on RIGHT ====== */
-    /* We emulate a vertical slider by rotating the horizontal bar. */
-    #videowrap .video-js .vjs-volume-panel{
-      position: absolute !important;
-      right: 24px; bottom: 78px; /* above the control bar */
-      width: 30px !important; height: 180px !important;
-      transform: rotate(-90deg);
-      transform-origin: bottom right;
-      background: transparent !important;
-    }
-    #videowrap .video-js .vjs-volume-panel .vjs-volume-control.vjs-volume-horizontal{
-      width: 160px !important; height: 6px !important;
-      background: rgba(255,255,255,.25) !important;
-      border-radius: 999px !important;
-    }
-    #videowrap .video-js .vjs-volume-panel .vjs-volume-bar{
-      height: 6px !important;
-      border-radius: 999px !important;
-    }
-    #videowrap .video-js .vjs-volume-level{
-      background: #ffffff !important;
-      border-radius: 999px !important;
-    }
-    #videowrap .video-js .vjs-volume-bar .vjs-volume-handle{
-      width: 20px !important; height: 20px !important;
-      border-radius: 50% !important;
-      top: -7px !important;
-      background: #ffffff !important;
-      box-shadow: 0 2px 6px rgba(0,0,0,.35);
-    }
-
-    /* ====== HIDE CLUTTER ====== */
-    #videowrap .video-js .vjs-remaining-time,
-    #videowrap .video-js .vjs-current-time,
-    #videowrap .video-js .vjs-time-divider,
-    #videowrap .video-js .vjs-duration,
-    #videowrap .video-js .vjs-fullscreen-control,
-    #videowrap .video-js .vjs-picture-in-picture-control,
-    #videowrap .video-js .vjs-progress-control .vjs-time-tooltip { display: none !important; }
-
-    /* Make all icons white by default */
-    #videowrap .video-js .vjs-control .vjs-icon-placeholder::before{ color:#fff !important; }
   `;
 
   function applyPlayerTheme() {
-    if (document.getElementById("btfw-video-theme")) return;
+    if (document.getElementById(THEME_ID)) return;
     const style = document.createElement("style");
-    style.id = "btfw-video-theme";
+    style.id = THEME_ID;
     style.type = "text/css";
     style.appendChild(document.createTextNode(videoPlayerThemeCSS));
     document.head.appendChild(style);
-    console.log("[feature:player] Video.js theme applied");
   }
 
-  function hasVideoJS() {
-    return !!document.querySelector("#videowrap .video-js");
+  /* ===== Guard: block context menu + surface click-to-pause ===== */
+  const GUARD_MARK = "_btfwGuarded";
+
+  function shouldAllowClick(target) {
+    // Allow clicks on any control UI
+    if (target.closest(".vjs-control-bar,.vjs-control,.vjs-menu,.vjs-menu-content,.vjs-slider,.vjs-volume-panel")) {
+      return true;
+    }
+    return false;
   }
 
-  let mo;
-  function watch() {
-    const target = document.getElementById("videowrap");
-    if (!target) return;
-    if (mo) mo.disconnect();
-    mo = new MutationObserver(() => { if (hasVideoJS()) applyPlayerTheme(); });
+  function attachGuardsTo(el) {
+    if (!el || el[GUARD_MARK]) return;
+    el[GUARD_MARK] = true;
+
+    // No right-click menu
+    el.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }, true);
+
+    // Block surface left-click (capture) so Video.js doesn't toggle pause
+    const block = (e) => {
+      // Only block direct video surface / poster / spinner, not controls
+      if (shouldAllowClick(e.target)) return;
+      // Only block primary button
+      if (e.type === "click" && e.button !== 0) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
+    el.addEventListener("click", block, true);
+    el.addEventListener("pointerdown", (e)=> { if (!shouldAllowClick(e.target) && e.button===0) e.preventDefault(); }, true);
+    el.addEventListener("touchstart", block, true);
+  }
+
+  function attachGuards() {
+    // CyTube container + Video.js root + tech element
+    const candidates = [
+      ...document.querySelectorAll("#ytapiplayer"),
+      ...document.querySelectorAll(".video-js"),
+      ...document.querySelectorAll(".video-js .vjs-tech"),
+      ...document.querySelectorAll(".video-js .vjs-poster"),
+      ...document.querySelectorAll(".video-js .vjs-loading-spinner")
+    ];
+    candidates.forEach(attachGuardsTo);
+  }
+
+  /* ===== Observe player mount/reloads ===== */
+  let mo = null;
+  function watchPlayerMount() {
+    const target = document.getElementById("videowrap") || document.body;
+    if (mo) { try { mo.disconnect(); } catch(_){} mo = null; }
+    mo = new MutationObserver(() => {
+      // Each mutation pass: ensure theme + guards
+      applyPlayerTheme();
+      attachGuards();
+    });
     mo.observe(target, { childList: true, subtree: true });
   }
 
   function boot() {
-    if (hasVideoJS()) applyPlayerTheme();
-    watch();
+    applyPlayerTheme();
+    attachGuards();
+    watchPlayerMount();
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
+  // Boot on ready and when layout signals ready
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
   document.addEventListener("btfw:layoutReady", () => setTimeout(boot, 0));
 
-  return { name: "feature:player", apply: applyPlayerTheme };
+  return {
+    name: "feature:player",
+    applyTheme: applyPlayerTheme,
+    attachGuards
+  };
 });
