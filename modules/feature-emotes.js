@@ -128,7 +128,7 @@ BTFW.define("feature:emotes", [], async () => {
         </div>
         <div class="btfw-emotes-search">
           <input id="btfw-emotes-search" type="text" placeholder="Search…">
-          <button id="btfw-emotes-clear" title="Clear">×</button>
+          <button id="btfw-emotes-clear" title="Clear">Clear</button>
         </div>
         <button class="btfw-emotes-close" title="Close">×</button>
       </div>
