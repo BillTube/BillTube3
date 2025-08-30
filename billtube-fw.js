@@ -15,8 +15,35 @@
   }
   window.BTFW = { define, init, BASE };
 
-  function preload(h){return new Promise(function(r){var l=document.createElement("link");l.rel="preload";l.as="style";l.href=h;l.onload=function(){l.rel="stylesheet";r(true);};l.onerror=function(){l.rel="stylesheet";r(false);};document.head.appendChild(l);});}
-  function load(src){return new Promise(function(res,rej){var s=document.createElement("script");s.src=src;s.async=false;s.defer=false;s.onload=res;s.onerror=function(){rej(new Error("Failed to load "+src));};document.head.appendChild(s);});}
+function qparam(u, kv){ return u + (u.indexOf('?')>=0?'&':'?') + kv; }
+
+var BTFW_VERSION = (function(){
+  var m = /[?&]v=([^&]+)/.exec(location.search);
+  return (m && m[1]) || ('dev-' + Date.now());
+})();
+
+function preload(href){
+  return new Promise(function(resolve){
+    var l = document.createElement("link");
+    l.rel = "preload";
+    l.as  = "style";
+    l.href = qparam(href, "v="+encodeURIComponent(BTFW_VERSION));
+    l.onload = function(){ l.rel = "stylesheet"; resolve(true); };
+    l.onerror = function(){ l.rel = "stylesheet"; resolve(false); };
+    document.head.appendChild(l);
+  });
+}
+
+function load(src){
+  return new Promise(function(resolve, reject){
+    var s = document.createElement("script");
+    s.async = true; s.defer = true;
+    s.src = qparam(src, "v="+encodeURIComponent(BTFW_VERSION)) + "&t=" + Date.now();
+    s.onload = function(){ resolve(); };
+    s.onerror = function(){ reject(new Error("Failed to load "+src)); };
+    document.head.appendChild(s);
+  });
+}
 
   Promise.all([
     preload(BASE+"/css/tokens.css"),
