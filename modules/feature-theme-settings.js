@@ -1,108 +1,69 @@
-/* BillTube Framework — feature:themeSettings (Tabbed, Bulma, robust)
-   - General: Theme Mode (Auto / Dark / Light) -> feature:bulma-layer
-   - Chat: Avatar size (off/small/big) + Chat text size + Twemoji toggle (optional)
-   - Video: PiP toggle (optional)
-   - Works even if BTFW.require is unavailable (falls back to init())
+/* BTFW — feature:themeSettings (tabs + persisted options)
+   - General: theme mode (auto/dark/light) via feature:bulma-layer
+   - Chat: avatars size (off/small/big) via feature:chat-avatars
+           chat text size (12/14/16/18)
+           emote/GIF size (sm/md/lg) via feature:chatMedia
+           GIF autoplay toggle via feature:chatMedia
+   - Video: PiP toggle via feature:pip (if present)
 */
 BTFW.define("feature:themeSettings", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
-  const LS = {
-    chatTextSize: "btfw:chat:textSize",
-    pip:          "btfw:pip:enabled"
-  };
-
-  let modalEl = null; // <— single source of truth for the modal node
-
-  /* --------------------- small helpers --------------------- */
+  const LS = { chatTextSize: "btfw:chat:textSize", pip: "btfw:pip:enabled" };
   function getChatTextSize(){ try { return parseInt(localStorage.getItem(LS.chatTextSize)||"14",10); } catch(e){ return 14; } }
   function setChatTextSize(px){
     try { localStorage.setItem(LS.chatTextSize, String(px)); } catch(e){}
-    const wrap = $("#chatwrap");
-    if (wrap) wrap.style.setProperty("--btfw-chat-text", px + "px");
+    const wrap = $("#chatwrap"); if (wrap) wrap.style.setProperty("--btfw-chat-text", px+"px");
   }
 
-  async function safeInit(names){
-    for (const name of (Array.isArray(names)?names:[names])) {
-      try { return await BTFW.init(name); } catch(_) {}
-    }
-    return null;
+  // Optional modules
+  const bulma   = (()=>{ try { return BTFW.require("feature:bulma-layer"); } catch(_) { return null; }})();
+  const avatars = (()=>{ try { return BTFW.require("feature:chat-avatars") || BTFW.require("feature:chatAvatars"); } catch(_) { return null; }})();
+  const pip     = (()=>{ try { return BTFW.require("feature:pip"); } catch(_) { return null; }})();
+  const chatMedia = (()=>{ try { return BTFW.require("feature:chatMedia"); } catch(_) { return null; }})();
+
+  function pipGet(){
+    if (pip?.isEnabled) return !!pip.isEnabled();
+    try { return localStorage.getItem(LS.pip)==="1"; } catch(e){ return false; }
   }
-
-  async function getBulmaLayer(){ return await safeInit("feature:bulma-layer"); }
-  async function getAvatars(){ return await safeInit(["feature:chat-avatars","feature:chatAvatars"]); }
-  async function getPip(){ return await safeInit("feature:pip"); }
-  async function getEmojiCompat(){ return await safeInit("feature:emoji-compat"); }
-
-  function nukeLegacy(){
-    // Remove any existing “Theme Settings” modal DOM
-    ["#themesettings", "#themeSettingsModal", ".themesettings", "#btfw-theme-modal"]
-      .forEach(sel => $$(sel).forEach(el => el.remove()));
-
-    // Also remove any modal with a header titled "Theme Settings"
-    $$(".modal, .modal.in, .modal.is-active").forEach(m => {
-      const title = m.querySelector(".modal-title, .modal-card-title");
-      if (title && /theme settings/i.test(title.textContent || "")) m.remove();
-    });
-
-    // Disable any global legacy opener, if present
-    if (typeof window.showThemeSettings === "function") {
-      try { window.showThemeSettings = function(){ return false; }; } catch(e){}
-    }
+  function pipSet(v){
+    if (pip?.setEnabled) { pip.setEnabled(!!v); }
+    else { try { localStorage.setItem(LS.pip, v ? "1":"0"); } catch(e){} }
+    document.dispatchEvent(new CustomEvent("btfw:pip:toggled",{detail:{enabled:!!v}}));
   }
 
   function ensureOpeners(){
-    const selectors = [
-      "#btfw-theme-btn-nav",
-      "#btfw-theme-btn",
-      "#btfw-theme-btn-chat",   // chat bar button
-      ".btfw-theme-open"
-    ];
-
-    selectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach(el => {
-        // Strip inline & jQuery handlers (legacy)
-        el.removeAttribute("onclick");
-        if (window.jQuery) { try { jQuery(el).off("click"); } catch(_){} }
-
-        // Clone to remove any remaining listeners
-        const clone = el.cloneNode(true);
-        el.parentNode.replaceChild(clone, el);
-
-        if (!clone._btfw_ts) {
-          clone._btfw_ts = true;
-          clone.addEventListener("click", (ev)=>{
-            ev.preventDefault();
-            ev.stopPropagation();
-            ev.stopImmediatePropagation();
-            open(); // our modal
-          }, {capture:true});
-        }
+    ["#btfw-theme-btn-nav", "#btfw-theme-btn", ".btfw-theme-open", "#btfw-theme-btn-chat"].forEach(sel => {
+      $$(sel).forEach(el => {
+        if (el._btfw_ts) return;
+        el._btfw_ts = true;
+        el.addEventListener("click", (e)=>{ e.preventDefault(); open(); }, {capture:true});
       });
     });
-
-    // Optional global helper any other code can call
-    window.BTFWOpenThemeSettings = () => open();
   }
 
-  /* --------------------- modal creation --------------------- */
+  function nukeLegacy(){
+    ["#themesettings", "#themeSettingsModal", ".themesettings", "#btfw-theme-modal"]
+      .forEach(sel => $$(sel).forEach(el => el.remove()));
+  }
+
   function ensureModal(){
-    if (modalEl) return modalEl;
+    let m = $("#btfw-theme-modal");
+    if (m) return m;
 
     nukeLegacy();
 
-    modalEl = document.createElement("div");
-    modalEl.id = "btfw-theme-modal";
-    modalEl.className = "modal";
-    modalEl.innerHTML = `
+    m = document.createElement("div");
+    m.id = "btfw-theme-modal";
+    m.className = "modal";
+    m.innerHTML = `
       <div class="modal-background"></div>
-      <div class="modal-card">
+      <div class="modal-card btfw-modal">
         <header class="modal-card-head">
           <p class="modal-card-title">Theme Settings</p>
           <button class="delete" aria-label="close"></button>
         </header>
-
         <section class="modal-card-body">
           <div class="tabs is-boxed is-small" id="btfw-ts-tabs">
             <ul>
@@ -117,7 +78,6 @@ BTFW.define("feature:themeSettings", [], async () => {
             <div class="btfw-ts-panel" data-tab="general" style="display:block;">
               <div class="content">
                 <h4>Appearance</h4>
-
                 <div class="field">
                   <label class="label">Theme mode</label>
                   <div class="control">
@@ -131,7 +91,6 @@ BTFW.define("feature:themeSettings", [], async () => {
                       <input type="radio" name="btfw-theme-mode" value="light"> Light
                     </label>
                   </div>
-                  <p class="help">Controls Bulma surfaces (modals, tabs, inputs).</p>
                 </div>
               </div>
             </div>
@@ -139,7 +98,7 @@ BTFW.define("feature:themeSettings", [], async () => {
             <!-- Chat -->
             <div class="btfw-ts-panel" data-tab="chat" style="display:none;">
               <div class="content">
-                <h4>Chat Appearance</h4>
+                <h4>Chat</h4>
 
                 <div class="field">
                   <label class="label">Avatar size</label>
@@ -164,29 +123,22 @@ BTFW.define("feature:themeSettings", [], async () => {
                   </div>
                   <p class="help">Applies to the message list.</p>
                 </div>
-<!-- Emote/GIF size -->
-<div class="field">
-  <label class="label">Emote/GIF size</label>
-  <div class="control">
-    <label class="radio" style="margin-right:12px;"><input type="radio" name="btfw-emote-size" value="sm"> Small</label>
-    <label class="radio" style="margin-right:12px;"><input type="radio" name="btfw-emote-size" value="md"> Medium</label>
-    <label class="radio"><input type="radio" name="btfw-emote-size" value="lg"> Big</label>
-  </div>
-</div>
 
-<!-- GIF autoplay -->
-<div class="field">
-  <label class="checkbox">
-    <input type="checkbox" id="btfw-gif-autoplay"> Autoplay GIFs (hover-to-play when off)
-  </label>
-</div>
+                <div class="field">
+                  <label class="label">Emote/GIF size</label>
+                  <div class="control">
+                    <label class="radio" style="margin-right:12px;"><input type="radio" name="btfw-emote-size" value="sm"> Small (100×100)</label>
+                    <label class="radio" style="margin-right:12px;"><input type="radio" name="btfw-emote-size" value="md"> Medium (130×130)</label>
+                    <label class="radio"><input type="radio" name="btfw-emote-size" value="lg"> Big (170×170)</label>
+                  </div>
+                </div>
 
                 <div class="field">
                   <label class="checkbox">
-                    <input type="checkbox" id="btfw-emoji-twemoji"> Use Twemoji images for emoji
+                    <input type="checkbox" id="btfw-gif-autoplay"> Autoplay GIFs (hover-to-play when off)
                   </label>
-                  <p class="help">Ensures emoji look the same on all devices (if Emoji Compat is loaded).</p>
                 </div>
+
               </div>
             </div>
 
@@ -201,126 +153,111 @@ BTFW.define("feature:themeSettings", [], async () => {
             </div>
           </div>
         </section>
-
         <footer class="modal-card-foot">
           <button class="button is-link" id="btfw-ts-close">Close</button>
         </footer>
       </div>
     `;
-    document.body.appendChild(modalEl);
+    document.body.appendChild(m);
 
-    // Close behavior
-    $(".modal-background", modalEl).addEventListener("click", close);
-    $(".delete", modalEl).addEventListener("click", close);
-    $("#btfw-ts-close", modalEl).addEventListener("click", close);
+    // Close hooks
+    $(".modal-background", m).addEventListener("click", close);
+    $(".delete", m).addEventListener("click", close);
+    $("#btfw-ts-close", m).addEventListener("click", close);
 
     // Tabs
-    $("#btfw-ts-tabs ul", modalEl).addEventListener("click", (e)=>{
-      const li = e.target.closest("li[data-tab]");
-      if (!li) return;
-      $$("#btfw-ts-tabs li", modalEl).forEach(x => x.classList.toggle("is-active", x===li));
+    $("#btfw-ts-tabs ul", m).addEventListener("click", (e)=>{
+      const li = e.target.closest("li[data-tab]"); if (!li) return;
+      $$("#btfw-ts-tabs li", m).forEach(x => x.classList.toggle("is-active", x===li));
       const tab = li.getAttribute("data-tab");
-      $$("#btfw-ts-panels .btfw-ts-panel", modalEl).forEach(p => {
+      $$("#btfw-ts-panels .btfw-ts-panel", m).forEach(p => {
         p.style.display = (p.getAttribute("data-tab") === tab) ? "block" : "none";
       });
     });
 
-    // Wire: Chat text size (immediate, no async deps)
-    const sel = $("#btfw-chat-textsize", modalEl);
+    // --- Wire: Theme mode
+    const themeNow = (bulma && bulma.getTheme) ? bulma.getTheme() : "dark";
+    $$('input[name="btfw-theme-mode"]', m).forEach(i => {
+      i.checked = (i.value === themeNow);
+      if (bulma?.setTheme) i.addEventListener("change", () => bulma.setTheme(i.value));
+      else i.disabled = true;
+    });
+
+    // --- Wire: Avatars
+    if (avatars && avatars.setMode) {
+      const mode = (avatars.getMode ? avatars.getMode() : "small");
+      $$('input[name="btfw-avatars-mode"]', m).forEach(i => {
+        i.checked = (i.value === mode);
+        i.addEventListener("change", () => avatars.setMode(i.value));
+      });
+    } else {
+      $$('input[name="btfw-avatars-mode"]', m).forEach(i => i.disabled = true);
+    }
+
+    // --- Wire: Chat text size
+    const sel = $("#btfw-chat-textsize", m);
     sel.value = String(getChatTextSize());
     sel.addEventListener("change", ()=> setChatTextSize(parseInt(sel.value,10)));
 
-    // Wire: Theme Mode (async so it works even if require is absent)
-    $$('input[name="btfw-theme-mode"]', modalEl).forEach(i => {
-      i.addEventListener("change", async () => {
-        const bulma = await getBulmaLayer();
-        if (bulma?.setTheme) bulma.setTheme(i.value);
+    // --- Wire: Emote/GIF size (via chatMedia)
+    (function(){
+      const radios = $$('input[name="btfw-emote-size"]', m);
+      if (!radios.length) return;
+      const cur = chatMedia?.getEmoteSize ? chatMedia.getEmoteSize() : "md";
+      radios.forEach(r=>{
+        r.checked = (r.value === cur);
+        r.addEventListener("change", ()=> chatMedia?.setEmoteSize && chatMedia.setEmoteSize(r.value));
       });
-    });
+    })();
 
-    // Wire: Avatar mode (async)
-    $$('input[name="btfw-avatars-mode"]', modalEl).forEach(i => {
-      i.addEventListener("change", async () => {
-        const avatars = await getAvatars();
-        if (avatars?.setMode) avatars.setMode(i.value);
-      });
-    });
+    // --- Wire: GIF autoplay (via chatMedia)
+    (function(){
+      const box = $("#btfw-gif-autoplay", m);
+      if (!box) return;
+      box.checked = !!(chatMedia?.getGifAutoplayOn && chatMedia.getGifAutoplayOn());
+      box.addEventListener("change", ()=> chatMedia?.setGifAutoplayOn && chatMedia.setGifAutoplayOn(box.checked));
+    })();
 
-    // Wire: PiP toggle (async)
-    $("#btfw-pip-toggle", modalEl).addEventListener("change", async (e)=>{
-      const enabled = !!e.target.checked;
-      const pip = await getPip();
-      if (pip?.setEnabled) pip.setEnabled(enabled);
-      else { try { localStorage.setItem(LS.pip, enabled ? "1":"0"); } catch(_){} }
-      document.dispatchEvent(new CustomEvent("btfw:pip:toggled",{detail:{enabled}}));
-    });
+    // --- Wire: PiP
+    const pipBox = $("#btfw-pip-toggle", m);
+    pipBox.checked = !!pipGet();
+    pipBox.addEventListener("change", ()=> pipSet(pipBox.checked));
 
-    // Wire: Twemoji toggle (async)
-    $("#btfw-emoji-twemoji", modalEl).addEventListener("change", async (e)=>{
-      const compat = await getEmojiCompat();
-      compat?.setEnabled?.(!!e.target.checked);
-    });
-// Chat media APIs
-const chatMedia = (function(){ try { return BTFW.require("feature:chatMedia"); } catch(_){ return null; }})();
-
-// Emote/GIF size radios
-(function(){
-  const radios = document.querySelectorAll('#btfw-theme-modal input[name="btfw-emote-size"]');
-  if (!radios.length || !chatMedia) return;
-  // initialize
-  const cur = chatMedia.getEmoteSize ? chatMedia.getEmoteSize() : "md";
-  radios.forEach(r => {
-    r.checked = (r.value === cur);
-    r.addEventListener("change", ()=> chatMedia.setEmoteSize(r.value));
-  });
-})();
-
-// GIF autoplay checkbox
-(function(){
-  const box = document.querySelector('#btfw-theme-modal #btfw-gif-autoplay');
-  if (!box || !chatMedia) return;
-  // initialize
-  box.checked = !!(chatMedia.getGifAutoplayOn && chatMedia.getGifAutoplayOn());
-  box.addEventListener("change", ()=> chatMedia.setGifAutoplayOn(box.checked));
-})();
-
-    return modalEl;
+    return m;
   }
 
-  /* --------------------- open/close --------------------- */
-  async function open(){
-    const el = ensureModal();
+  function open(){
+    const m = ensureModal();
+    // refresh radio/checkbox states whenever opened
+    const themeNow = (bulma && bulma.getTheme) ? bulma.getTheme() : "dark";
+    $$('input[name="btfw-theme-mode"]', m).forEach(i => i.checked = (i.value === themeNow));
 
-    // Refresh control states each open (so it reflects current modules)
-    setChatTextSize(getChatTextSize()); // ensure CSS var applied
+    if (avatars?.getMode) {
+      const mode = avatars.getMode();
+      $$('input[name="btfw-avatars-mode"]', m).forEach(i => i.checked = (i.value === mode));
+    }
 
-    const bulma = await getBulmaLayer();
-    const themeNow = bulma?.getTheme ? bulma.getTheme() : "dark";
-    $$('input[name="btfw-theme-mode"]', el).forEach(i => i.checked = (i.value === themeNow));
+    $("#btfw-chat-textsize", m).value = String(getChatTextSize());
 
-    const avatars = await getAvatars();
-    const mode = avatars?.getMode ? avatars.getMode() : "small";
-    $$('input[name="btfw-avatars-mode"]', el).forEach(i => i.checked = (i.value === mode));
+    // refresh chat-media bits if available
+    if (chatMedia) {
+      const cur = chatMedia.getEmoteSize ? chatMedia.getEmoteSize() : "md";
+      $$('input[name="btfw-emote-size"]', m).forEach(r => r.checked = (r.value === cur));
+      const ap = chatMedia.getGifAutoplayOn ? chatMedia.getGifAutoplayOn() : true;
+      $("#btfw-gif-autoplay", m).checked = !!ap;
+    }
 
-    $("#btfw-chat-textsize", el).value = String(getChatTextSize());
+    $("#btfw-pip-toggle", m).checked = !!pipGet();
 
-    const pip = await getPip();
-    const pipEnabled = pip?.isEnabled ? !!pip.isEnabled() : (localStorage.getItem(LS.pip) === "1");
-    $("#btfw-pip-toggle", el).checked = pipEnabled;
-
-    const emojiCompat = await getEmojiCompat();
-    $("#btfw-emoji-twemoji", el).checked = !!(emojiCompat?.getEnabled && emojiCompat.getEnabled());
-
-    el.classList.add("is-active");
+    m.classList.add("is-active");
     document.dispatchEvent(new CustomEvent("btfw:themeSettings:open"));
   }
 
-  function close(){ modalEl && modalEl.classList.remove("is-active"); }
+  function close(){ $("#btfw-theme-modal")?.classList.remove("is-active"); }
 
-  /* --------------------- boot --------------------- */
   function boot(){
     ensureOpeners();
-    setChatTextSize(getChatTextSize()); // apply persisted value
+    setChatTextSize(getChatTextSize()); // apply persisted size
   }
 
   document.addEventListener("btfw:layoutReady", () => setTimeout(boot,0));
