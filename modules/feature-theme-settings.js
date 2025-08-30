@@ -11,15 +11,39 @@ BTFW.define("feature:themeSettings", [], async () => {
       .forEach(sel => $$(sel).forEach(el => el.remove()));
   }
 
-  function ensureOpeners(){
-    ["#btfw-theme-btn-nav", "#btfw-theme-btn", ".btfw-theme-open"].forEach(sel => {
-      const el = $(sel);
-      if (el && !el._btfw_ts) {
-        el._btfw_ts = true;
-        el.addEventListener("click", (e)=>{ e.preventDefault(); open(); }, false);
+function ensureOpeners(){
+  const selectors = [
+    "#btfw-theme-btn-nav",
+    "#btfw-theme-btn",
+    "#btfw-theme-btn-chat",   // <- chat button
+    ".btfw-theme-open"        // <- any future buttons, just add this class
+  ];
+
+  selectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => {
+      // strip any legacy bindings
+      el.removeAttribute("onclick");
+      if (window.jQuery) { try { jQuery(el).off("click"); } catch(_){} }
+
+      // cloning removes ALL listeners cleanly
+      const clone = el.cloneNode(true);
+      el.parentNode.replaceChild(clone, el);
+
+      if (!clone._btfw_ts) {
+        clone._btfw_ts = true;
+        clone.addEventListener("click", ev => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          ev.stopImmediatePropagation();
+          open();
+        }, { capture: true });
       }
     });
-  }
+  });
+
+  // Optional global helper so any legacy code can call us:
+  window.BTFWOpenThemeSettings = () => open();
+}
 
   // ---- Chat text size ----
   function getChatTextSize(){ try { return parseInt(localStorage.getItem(LS.chatTextSize)||"14",10); } catch(e){ return 14; } }
