@@ -1,14 +1,13 @@
-/* BillTube Framework — feature:emotes (popover version)
-   - Compact popover anchored to chat (not a fullscreen modal)
-   - Tabs: Channel / Emoji / Recent
-   - Search, keyboard nav, “recently used”, insert into #chatline
-   - Removes legacy CyTube emote button and injects our own
+/* BillTube Framework — feature:emotes (popover, anchored to chat)
+   - Compact popover above the chat bottom bar
+   - Tabs: Channel / Emoji / Recent + search + keyboard nav
+   - Removes legacy emote button; injects our own
+   - FIXED: robust positioning + watcher so it stays just above the bottom bar
 */
 BTFW.define("feature:emotes", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
-  // ------------------------- helpers -------------------------
   function insertAtCursor(input, text){
     input.focus();
     const s = input.selectionStart ?? input.value.length;
@@ -28,13 +27,12 @@ BTFW.define("feature:emotes", [], async () => {
     }
   }
 
-  // ------------------------- state -------------------------
-  const chatline      = $("#chatline");
-  const CHANNEL_NAME  = (window.CHANNEL && window.CHANNEL.name) || "default";
-  const RECENT_KEY    = `btfw:recent:emotes:${CHANNEL_NAME}`;
+  // ---------- state ----------
+  const CHANNEL_NAME = (window.CHANNEL && window.CHANNEL.name) || "default";
+  const RECENT_KEY   = `btfw:recent:emotes:${CHANNEL_NAME}`;
 
   let state = {
-    tab: "emotes",           // emotes | emoji | recent
+    tab: "emotes",
     list: { emotes: [], emoji: [], recent: [] },
     filtered: [],
     highlight: 0,
@@ -42,7 +40,7 @@ BTFW.define("feature:emotes", [], async () => {
     search: ""
   };
 
-  // ------------------------- data -------------------------
+  // ---------- data ----------
   function loadChannelEmotes(){
     const src = Array.isArray(window.CHANNEL?.emotes) ? window.CHANNEL.emotes : [];
     state.list.emotes = src.filter(x => x && x.name)
@@ -54,12 +52,9 @@ BTFW.define("feature:emotes", [], async () => {
       const raw = localStorage.getItem("btfw:emoji:cache");
       if (raw) {
         state.list.emoji = JSON.parse(raw);
-        state.emojiReady = true;
-        render();
-        return;
+        state.emojiReady = true; render(); return;
       }
-    } catch(_) {}
-
+    } catch(_){}
     const url = "https://cdn.jsdelivr.net/npm/emoji.json@13.1.0/emoji.json";
     try {
       const res = await fetch(url, {cache:"force-cache"});
@@ -79,13 +74,12 @@ BTFW.define("feature:emotes", [], async () => {
         {char:"🎉", name:"party popper", keywords:"celebrate confetti"},
       ];
     }
-    state.emojiReady = true;
-    render();
+    state.emojiReady = true; render();
   }
 
   function loadRecent(){
     try { state.list.recent = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); }
-    catch(_) { state.list.recent = []; }
+    catch(_){ state.list.recent = []; }
   }
   function pushRecent(item){
     const key = item.kind === "emoji" ? item.char : item.name;
@@ -95,7 +89,7 @@ BTFW.define("feature:emotes", [], async () => {
     try { localStorage.setItem(RECENT_KEY, JSON.stringify(state.list.recent)); } catch(_){}
   }
 
-  // ------------------------- popover UI -------------------------
+  // ---------- popover ----------
   function ensurePopover(){
     let pop = $("#btfw-emotes-pop");
     if (pop) return pop;
@@ -113,13 +107,12 @@ BTFW.define("feature:emotes", [], async () => {
           <button class="btfw-tab" data-tab="recent">Recent</button>
         </div>
         <div class="btfw-emotes-search">
-          <input id="btfw-emotes-search" type="text" placeholder="Search…" />
+          <input id="btfw-emotes-search" type="text" placeholder="Search…">
           <button id="btfw-emotes-clear" title="Clear">×</button>
         </div>
       </div>
       <div id="btfw-emotes-grid" class="btfw-emotes-grid" tabindex="0" aria-label="Emote grid"></div>
     `;
-    // anchor it inside chatwrap so it never covers video
     const wrap = $("#chatwrap") || document.body;
     wrap.appendChild(pop);
 
@@ -143,7 +136,6 @@ BTFW.define("feature:emotes", [], async () => {
       state.search = ""; $("#btfw-emotes-search").value = ""; render(); $("#btfw-emotes-grid").focus();
     });
 
-    // keyboard grid nav
     $("#btfw-emotes-grid", pop).addEventListener("keydown", ev=>{
       const grid = $("#btfw-emotes-grid");
       const count = grid.children.length;
@@ -155,84 +147,103 @@ BTFW.define("feature:emotes", [], async () => {
 
       switch(ev.key){
         case "ArrowRight": state.highlight = Math.min(count-1, state.highlight+1); break;
-        case "ArrowLeft":  state.highlight = Math.max(0, state.highlight-1); break;
+        case "ArrowLeft":  state.highlight = Math.max(0, state.highlight-1);       break;
         case "ArrowDown":  state.highlight = Math.min(count-1, (row+1)*cols + col); break;
-        case "ArrowUp":    state.highlight = Math.max(0, (row-1)*cols + col); break;
+        case "ArrowUp":    state.highlight = Math.max(0, (row-1)*cols + col);       break;
         case "Enter":
           const tile = grid.children[state.highlight]; tile && tile.click();
           ev.preventDefault(); return;
-        case "Escape":
-          close(); return;
+        case "Escape": close(); return;
         default: return;
       }
       ev.preventDefault();
       highlightActive(); ensureVisible();
     });
 
-    // click outside to close (but only inside chatwrap area)
+    // click outside to close (stay within chat area)
     document.addEventListener("click", (e)=>{
       if (pop.classList.contains("hidden")) return;
       const within = e.target.closest("#btfw-emotes-pop") || e.target.closest("#btfw-btn-emotes");
       if (!within) close();
     }, true);
 
-    window.addEventListener("resize", positionPopover);
+    // initial position
     positionPopover();
 
     return pop;
   }
 
-function positionPopover(){
-  const pop  = document.getElementById("btfw-emotes-pop");
-  if (!pop) return;
-
-  const wrap = document.getElementById("chatwrap") || document.body;
-  const bar  = document.getElementById("btfw-chat-bottombar")
-           ||  document.getElementById("chatcontrols")
-           ||  wrap;
-
-  // Make sure we’re absolutely positioned relative to the chat wrapper
-  if (wrap.id === "chatwrap" && getComputedStyle(wrap).position === "static") {
-    wrap.style.position = "relative";
+  // ---------- anchoring & watchers ----------
+  function findBottomBar(){
+    // prefer custom bottom bar → fallback to CyTube controls → final fallback: input itself
+    return document.getElementById("btfw-chat-bottombar")
+        || document.getElementById("chatcontrols")
+        || document.getElementById("chatline");
   }
 
-  // A small gap above the bottom bar
-  const margin = 8;
-  const barH   = Math.max(36, bar?.offsetHeight || 36); // sensible minimum
+  function positionPopover(){
+    const pop    = document.getElementById("btfw-emotes-pop");
+    if (!pop) return;
 
-  // Anchor to the right, just above the bottom bar
-  pop.style.right  = "8px";
-  pop.style.bottom = (barH + margin) + "px";
+    const wrap   = document.getElementById("chatwrap") || document.body;
+    const anchor = findBottomBar() || wrap;
 
-  // Width capped to chat width; keep it compact
-  const wrapWidth = wrap.clientWidth || window.innerWidth;
-  const width     = Math.min(560, Math.max(320, wrapWidth - 24));
-  pop.style.width = width + "px";
+    if (wrap.id === "chatwrap" && getComputedStyle(wrap).position === "static") {
+      wrap.style.position = "relative";
+    }
 
-  // Don’t grow too tall for the chat column
-  const wrapHeight = wrap.clientHeight || (window.innerHeight - 120);
-  const maxH       = Math.max(240, Math.min(480, wrapHeight - (barH + 80)));
-  pop.style.maxHeight = maxH + "px";
-}
+    const margin     = 8;
+    const wrapRect   = wrap.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
 
+    // distance from anchor top to wrap bottom (viewport coordinates), plus margin
+    let bottomPx = Math.round((wrapRect.bottom - anchorRect.top) + margin);
 
-  function open(){
-    const pop = ensurePopover();
-    loadChannelEmotes(); loadRecent();
-    state.tab="emotes"; state.search=""; state.highlight=0;
-    pop.querySelectorAll(".btfw-tab").forEach(b=>b.classList.toggle("is-active", b.getAttribute("data-tab")==="emotes"));
-    $("#btfw-emotes-search").value = "";
-    render();
-    positionPopover();
-    pop.classList.remove("hidden");
-    $("#btfw-emotes-grid").focus();
+    // if anchored to wrap or weird value, pick a sane default
+    if (anchor === wrap || !isFinite(bottomPx) || bottomPx <= 0) bottomPx = 56;
+
+    // clamp inside the wrap
+    bottomPx = Math.max(8, Math.min(bottomPx, wrap.clientHeight - 48));
+
+    // width & height within chat column
+    const maxWidth = Math.min(560, Math.max(320, (wrap.clientWidth || window.innerWidth) - 24));
+    pop.style.right     = "8px";
+    pop.style.bottom    = bottomPx + "px";
+    pop.style.width     = maxWidth + "px";
+
+    const maxH = Math.max(240, Math.min(480, (wrap.clientHeight || (window.innerHeight - 120)) - (bottomPx + 40)));
+    pop.style.maxHeight = maxH + "px";
   }
 
-  function close(){
-    $("#btfw-emotes-pop")?.classList.add("hidden");
+  function watchPosition(){
+    const wrap   = document.getElementById("chatwrap") || document.body;
+    const anchor = findBottomBar() || wrap;
+
+    // Avoid double binding
+    if (wrap._btfwEmoteWatch) return;
+    wrap._btfwEmoteWatch = true;
+
+    // Reposition on resize / scroll
+    const onReflow = () => positionPopover();
+    window.addEventListener("resize", onReflow);
+    window.addEventListener("scroll", onReflow, true);
+
+    // Prefer ResizeObserver (layout changes)
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(onReflow);
+      ro.observe(wrap);
+      if (anchor && anchor !== wrap) ro.observe(anchor);
+      wrap._btfwEmoteRO = ro;
+    } else {
+      // Fallback: MutationObserver for DOM changes
+      const mo = new MutationObserver(onReflow);
+      mo.observe(wrap, { attributes:true, childList:true, subtree:true });
+      if (anchor && anchor !== wrap) mo.observe(anchor, { attributes:true, childList:true, subtree:true });
+      wrap._btfwEmoteMO = mo;
+    }
   }
 
-  // ------------------------- render -------------------------
+  // ---------- render ----------
   function filterLists(){
     const q = state.search.toLowerCase();
     if (state.tab === "emotes") {
@@ -293,7 +304,6 @@ function positionPopover(){
     const grid = $("#btfw-emotes-grid");
     Array.from(grid.children).forEach((el,i)=>el.classList.toggle("is-active", i===state.highlight));
   }
-
   function ensureVisible(){
     const grid = $("#btfw-emotes-grid");
     const a = grid.children[state.highlight]; if (!a) return;
@@ -302,7 +312,7 @@ function positionPopover(){
     else if (r.bottom > gr.bottom) grid.scrollTop += (r.bottom - gr.bottom) + 8;
   }
 
-  // ------------------------- button management -------------------------
+  // ---------- buttons ----------
   function removeLegacyButtons(){
     const sels = [
       "#emotelistbtn", "#emotelist", "#emote-list", "#emote-btn",
@@ -311,16 +321,16 @@ function positionPopover(){
     sels.forEach(sel => $$(sel).forEach(el => el.remove()));
   }
 
-  function findBottomBar(){
-    return $("#btfw-chat-bottombar")
-        || $("#chatcontrols .input-group-btn")
-        || $("#chatcontrols")
-        || $("#chatwrap");
+  function findBottomBarContainer(){
+    return document.getElementById("btfw-chat-bottombar")
+        || document.querySelector("#chatcontrols .input-group-btn")
+        || document.getElementById("chatcontrols")
+        || document.getElementById("chatwrap");
   }
 
   function ensureOurButton(){
     if ($("#btfw-btn-emotes")) return;
-    const bar = findBottomBar(); if (!bar) return;
+    const bar = findBottomBarContainer(); if (!bar) return;
 
     const btn = document.createElement("button");
     btn.id = "btfw-btn-emotes";
@@ -331,7 +341,6 @@ function positionPopover(){
       : '<span aria-hidden="true">🙂</span>';
     btn.title = "Emotes / Emoji";
 
-    // place before GIF if present
     const gifBtn = bar.querySelector("#btfw-btn-gif, .btfw-btn-gif");
     if (gifBtn && gifBtn.parentNode) gifBtn.parentNode.insertBefore(btn, gifBtn);
     else bar.appendChild(btn);
@@ -351,12 +360,27 @@ function positionPopover(){
     });
   }
 
-  // ------------------------- boot -------------------------
+  // ---------- open / close ----------
+  function open(){
+    const pop = ensurePopover();
+    loadChannelEmotes(); loadRecent();
+    state.tab="emotes"; state.search=""; state.highlight=0;
+    $("#btfw-emotes-search").value = "";
+    pop.querySelectorAll(".btfw-tab").forEach(b=>b.classList.toggle("is-active", b.getAttribute("data-tab")==="emotes"));
+    render();
+    positionPopover();         // make sure it’s placed correctly *now*
+    pop.classList.remove("hidden");
+    $("#btfw-emotes-grid").focus();
+  }
+  function close(){ $("#btfw-emotes-pop")?.classList.add("hidden"); }
+
+  // ---------- boot ----------
   function boot(){
     removeLegacyButtons();
     ensureOurButton();
     bindAnyExistingOpeners();
-    setTimeout(()=>loadEmoji(), 1000); // warm cache quietly
+    watchPosition();           // ← start watching layout changes
+    setTimeout(()=>loadEmoji(), 1000);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
