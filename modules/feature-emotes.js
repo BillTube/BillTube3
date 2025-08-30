@@ -182,19 +182,39 @@ BTFW.define("feature:emotes", [], async () => {
     return pop;
   }
 
-  function positionPopover(){
-    const pop = $("#btfw-emotes-pop"); if (!pop) return;
-    // anchor above the chat input bottom bar
-    const bar = $("#btfw-chat-bottombar") || $("#chatcontrols") || $("#chatwrap");
-    const wrap = $("#chatwrap") || document.body;
-    const rightPad = 8, bottomOffset = (bar ? (wrap.offsetHeight - (bar.offsetTop || 0)) : 60) + 8;
-    pop.style.right  = rightPad + "px";
-    pop.style.bottom = bottomOffset + "px";
-    // width: cap to chat width
-    const w = Math.min(560, Math.max(320, wrap.clientWidth - 24));
-    pop.style.width = w + "px";
-    pop.style.maxHeight = Math.max(240, Math.min(480, wrap.clientHeight - 150)) + "px";
+function positionPopover(){
+  const pop  = document.getElementById("btfw-emotes-pop");
+  if (!pop) return;
+
+  const wrap = document.getElementById("chatwrap") || document.body;
+  const bar  = document.getElementById("btfw-chat-bottombar")
+           ||  document.getElementById("chatcontrols")
+           ||  wrap;
+
+  // Make sure we’re absolutely positioned relative to the chat wrapper
+  if (wrap.id === "chatwrap" && getComputedStyle(wrap).position === "static") {
+    wrap.style.position = "relative";
   }
+
+  // A small gap above the bottom bar
+  const margin = 8;
+  const barH   = Math.max(36, bar?.offsetHeight || 36); // sensible minimum
+
+  // Anchor to the right, just above the bottom bar
+  pop.style.right  = "8px";
+  pop.style.bottom = (barH + margin) + "px";
+
+  // Width capped to chat width; keep it compact
+  const wrapWidth = wrap.clientWidth || window.innerWidth;
+  const width     = Math.min(560, Math.max(320, wrapWidth - 24));
+  pop.style.width = width + "px";
+
+  // Don’t grow too tall for the chat column
+  const wrapHeight = wrap.clientHeight || (window.innerHeight - 120);
+  const maxH       = Math.max(240, Math.min(480, wrapHeight - (barH + 80)));
+  pop.style.maxHeight = maxH + "px";
+}
+
 
   function open(){
     const pop = ensurePopover();
