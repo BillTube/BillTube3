@@ -30,7 +30,6 @@
     var mods=[
       "modules/feature-style-core.js",
       "modules/feature-bulma-layer.js",
-      "modules/alias-bulma.js",
       "modules/feature-layout.js",
 	  "modules/feature-player.js",
       "modules/feature-stack.js",
