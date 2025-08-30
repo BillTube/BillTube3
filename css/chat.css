@@ -312,3 +312,12 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 #userlist, #messagebuffer, #chatheader, #videowrap-header {
     border: 0px solid #aaaaaa!important;
 }
+/* Keep emoji images sized like text and fade them in only when loaded */
+img.twemoji {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  opacity: 0;
+  transition: opacity .12s ease-in;
+}
+img.twemoji.is-ready { opacity: 1; }

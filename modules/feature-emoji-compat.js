@@ -1,9 +1,4 @@
-/* BillTube Framework — feature:emoji-compat
-   Optional: unify emoji appearance using Twemoji (SVG).
-   - Parses the emotes popover grid when it renders
-   - Parses new chat messages in #messagebuffer via MutationObserver
-   - Toggle via Theme Settings
-*/
+
 BTFW.define("feature:emoji-compat", [], async () => {
   const LS = "btfw:emoji:twemoji";     // "1" | "0"
   const TW_VER = "14.0.2";
@@ -20,7 +15,7 @@ BTFW.define("feature:emoji-compat", [], async () => {
     enabled = !!v;
     try { localStorage.setItem(LS, v ? "1":"0"); } catch(_){}
     if (enabled) { ensureTwemoji().then(() => { parsePicker(); startChatObserver(); }); }
-    else { stopChatObserver(); /* we leave existing images alone to avoid churn */ }
+    else { stopChatObserver(); }
   }
 
   function ensureTwemoji(){
@@ -35,6 +30,29 @@ BTFW.define("feature:emoji-compat", [], async () => {
     });
   }
 
+  // Hide until loaded + set attrs + remove broken/orphan FE0F images
+  function prepImages(root){
+    if (!root) return;
+    root.querySelectorAll("img.twemoji").forEach(img => {
+      // Add attrs for smoother loading
+      img.setAttribute("loading", "lazy");
+      img.setAttribute("decoding", "async");
+      // Fade-in on load; if already cached, mark ready immediately
+      if (img.complete && img.naturalWidth > 0) img.classList.add("is-ready");
+      else {
+        img.addEventListener("load", ()=> img.classList.add("is-ready"), { once:true });
+      }
+      // If the src is an orphaned FE0F (variation selector) image, remove it
+      try {
+        if (img.alt === "\uFE0F" || /\/fe0f(?:\.svg|\.png)$/.test(img.src)) {
+          img.remove();
+        }
+      } catch(_) {}
+      // Also remove truly broken images
+      img.addEventListener("error", ()=> img.remove(), { once:true });
+    });
+  }
+
   function parseNode(node){
     if (!window.twemoji || !enabled || !node) return;
     window.twemoji.parse(node, {
@@ -42,16 +60,17 @@ BTFW.define("feature:emoji-compat", [], async () => {
       folder: "svg",
       ext: ".svg",
       className: "twemoji",
+      // add attributes to every generated <img>
+      attributes: () => ({ loading: "lazy", decoding: "async" })
     });
+    prepImages(node);
   }
 
-  // Parse the mini popover grid whenever it renders
   function parsePicker(){
     const grid = document.getElementById("btfw-emotes-grid");
     if (grid) parseNode(grid);
   }
 
-  // Observe the message buffer and parse new messages
   function startChatObserver(){
     const buf = document.getElementById("messagebuffer");
     if (!buf) return;
@@ -64,19 +83,19 @@ BTFW.define("feature:emoji-compat", [], async () => {
       }
     });
     mo.observe(buf, { childList: true, subtree: true });
-    // initial pass (in case there are existing messages)
+    // initial pass
     parseNode(buf);
   }
   function stopChatObserver(){
     if (mo) { try { mo.disconnect(); } catch(_){} mo = null; }
   }
 
-  // Wire lifecycle hooks
-  document.addEventListener("btfw:emotes:rendered", (e)=> { if (enabled) parseNode(e.detail?.container || null); });
+  // Re-parse just the picker window when it renders/updates
+  document.addEventListener("btfw:emotes:rendered", (e)=> {
+    if (enabled) parseNode(e.detail?.container || null);
+  });
 
-  // Public API
   function boot(){ setEnabled(getEnabled()); }
-
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 

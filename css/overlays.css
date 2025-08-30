@@ -264,3 +264,141 @@
 
 /* Slightly larger row height matches ROW_H=64 math better */
 #btfw-emotes-grid { grid-auto-rows: 64px; }
+
+
+
+/* ==== BTFW — Universal Modal Theme (Dark / Glass) ==== */
+/* Scope to Bulma modals; works for Theme Settings, GIFs, etc.            */
+/* Reads CSS variables if you have tokens.css, otherwise uses fallbacks.   */
+
+:root {
+  --btfw-surface-0: rgba(12, 16, 22, 0.92);
+  --btfw-surface-1: #0f131a;
+  --btfw-surface-2: #0c1118;
+  --btfw-border: rgba(255,255,255,.08);
+  --btfw-text-1: #e8ecf3;
+  --btfw-text-2: #a9b2c3;
+  --btfw-accent: #6d4df6;
+  --btfw-accent-2: #8b5cf6;
+  --btfw-shadow-xxl: 0 18px 48px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.35);
+}
+
+/* Backdrop */
+.modal.is-active .modal-background {
+  background:
+    radial-gradient(1200px 700px at 20% -10%, rgba(109,77,246,.18), transparent 55%),
+    radial-gradient(1000px 800px at 120% 120%, rgba(24,182,255,.12), transparent 50%),
+    rgba(3, 6, 10, .82);
+  backdrop-filter: blur(3px) saturate(110%);
+  -webkit-backdrop-filter: blur(3px) saturate(110%);
+}
+
+/* Card shell */
+.modal-card {
+  background: var(--btfw-surface-1);
+  color: var(--btfw-text-1);
+  border: 1px solid var(--btfw-border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--btfw-shadow-xxl);
+}
+
+/* Header / footer */
+.modal-card-head,
+.modal-card-foot {
+  background: var(--btfw-surface-2);
+  border-color: var(--btfw-border);
+}
+
+.modal-card-head {
+  align-items: center;
+  min-height: 60px;
+}
+
+.modal-card-title {
+  color: var(--btfw-text-1);
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+/* Close (X) in header */
+.modal-card-head .delete {
+  filter: none;
+  opacity: .85;
+}
+.modal-card-head .delete:hover { opacity: 1; }
+
+/* Body */
+.modal-card-body {
+  background: var(--btfw-surface-1);
+  color: var(--btfw-text-1);
+}
+
+/* Tabs (boxy) */
+.modal .tabs.is-boxed a {
+  border-color: var(--btfw-border) !important;
+  background: rgba(255,255,255,.03);
+  color: var(--btfw-text-2);
+}
+.modal .tabs.is-boxed li.is-active a {
+  background: rgba(109,77,246,.22) !important;
+  color: #fff !important;
+  border-color: rgba(109,77,246,.55) !important;
+}
+
+/* Inputs */
+.modal .input,
+.modal .textarea,
+.modal .select select {
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--btfw-border);
+  color: var(--btfw-text-1);
+  box-shadow: none;
+}
+.modal .input::placeholder,
+.modal .textarea::placeholder { color: rgba(233,240,255,.5); }
+.modal .input:focus,
+.modal .textarea:focus,
+.modal .select select:focus {
+  border-color: var(--btfw-accent);
+  box-shadow: 0 0 0 2px rgba(109,77,246,.35);
+}
+
+/* Checkboxes / radios (modern browsers) */
+.modal .checkbox input,
+.modal .radio input { accent-color: var(--btfw-accent); }
+
+/* Buttons */
+.modal .button {
+  border-radius: 10px;
+  border: 1px solid var(--btfw-border);
+  background: rgba(255,255,255,.05);
+  color: var(--btfw-text-1);
+}
+.modal .button:hover { background: rgba(255,255,255,.08); }
+
+.modal .button.is-link,
+.modal .button.is-primary {
+  background: linear-gradient(135deg, var(--btfw-accent), var(--btfw-accent-2));
+  border: none;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(109,77,246,.35);
+}
+.modal .button.is-link:hover,
+.modal .button.is-primary:hover {
+  filter: brightness(1.05);
+}
+
+/* Footer layout: actions to the right with breathing room */
+.modal-card-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Ensure modals sit above all overlays */
+.modal.is-active { z-index: 6000; }
+
+/* Optional: compact content spacing inside modal bodies */
+.modal-card-body .content h4 { color: var(--btfw-text-1); }
+.modal-card-body .field { margin-bottom: 1rem; }
