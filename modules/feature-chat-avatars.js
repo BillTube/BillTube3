@@ -1,8 +1,9 @@
-/* BillTube Framework — feature:chat-avatars
-   - Avatar sizes: off/small/big (persisted)
-   - Sourcing: userlist jQuery data().profile.image -> <img> in userlist -> DROPBOX noavatar -> initials SVG
+/* BillTube Framework — feature:chat-avatars (CyTube variant)
+   Works with chat nodes like: <div class="chat-msg-<nick>"> ... </div>
+   - Sources: userlist jQuery data().profile.image -> <img> -> DROPBOX noavatar -> initials
+   - Sizes: off/small/big (Theme Settings tab)
    - Consecutive collapse
-   - No more chat-bar dropdown; settings live in Theme Settings (Chat tab)
+   - Also injects current user's avatar in navbar (old theme parity)
 */
 BTFW.define("feature:chat-avatars", ["feature:chat"], async ({}) => {
   const $  = (s, r=document) => r.querySelector(s);
@@ -16,6 +17,8 @@ BTFW.define("feature:chat-avatars", ["feature:chat"], async ({}) => {
                   "#d35400","#3498db","#2980b9","#e74c3c","#c0392b","#9b59b6","#8e44ad",
                   "#0080a5","#34495e","#2c3e50","#87724b","#7300a7","#ec87bf","#d870ad",
                   "#f69785","#9ba37e","#b49255","#a94136"];
+
+  const MSG_SEL = '#messagebuffer > div.chat-msg, #messagebuffer > div[class^="chat-msg"]';
 
   function initialsDataURL(name, size, radius=8){
     name = (name || "?").trim();
@@ -33,6 +36,7 @@ BTFW.define("feature:chat-avatars", ["feature:chat"], async ({}) => {
     return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
   }
 
+  /* ---- resolve avatar like the old theme: userlist jQuery data().profile.image ---- */
   function findUserlistItem(nick){
     if (!jQ) return null;
     const $items = jQ("#userlist .userlist_item");
@@ -61,11 +65,12 @@ BTFW.define("feature:chat-avatars", ["feature:chat"], async ({}) => {
     return "";
   }
 
+  /* ---- settings ---- */
   function getMode(){ try { return localStorage.getItem(LS_MODE) || DEFAULT_MODE; } catch(e){ return DEFAULT_MODE; } }
   function setMode(mode){
     try { localStorage.setItem(LS_MODE, mode); } catch(e){}
     applyModeClass(mode);
-    $$(`#messagebuffer .chat-msg`).forEach(decorateMessage);
+    $$(MSG_SEL).forEach(decorateMessage);
   }
   function applyModeClass(mode){
     const wrap = $("#chatwrap"); if (!wrap) return;
@@ -73,25 +78,34 @@ BTFW.define("feature:chat-avatars", ["feature:chat"], async ({}) => {
     wrap.classList.add("btfw-avatars-"+mode);
   }
 
+  /* ---- message helpers ---- */
   function usernameOf(msg){
     const u = msg.querySelector(".username,.nick,.name");
-    return u ? (u.textContent || "").trim() : "";
+    if (!u) return "";
+    // Remove trailing colon if present: "bill2: " -> "bill2"
+    return (u.textContent || "").replace(/:\s*$/, "").trim();
   }
   function prevUserMsg(node){
     let p = node.previousElementSibling;
-    while (p){ if (p.classList?.contains("chat-msg")) return p; p = p.previousElementSibling; }
+    while (p){
+      if (p.matches?.('div[class^="chat-msg"], .chat-msg')) return p;
+      p = p.previousElementSibling;
+    }
     return null;
   }
 
   function decorateMessage(msg){
-    if (!msg || msg._btfw_avatar_done || !msg.classList?.contains("chat-msg")) return;
+    if (!msg || msg._btfw_avatar_done) return;
+    if (!msg.matches || !msg.matches('div[class^="chat-msg"], .chat-msg')) return;
+
     msg._btfw_avatar_done = true;
 
     const mode = getMode(); if (mode === "off") return;
-    if (msg.classList.contains("server-msg") || msg.classList.contains("cm")) return;
 
-    const nick = usernameOf(msg); if (!nick) return;
+    const nick = usernameOf(msg);
+    if (!nick) return;
 
+    // consecutive collapse
     const prev = prevUserMsg(msg);
     if (prev && usernameOf(prev) === nick) msg.classList.add("btfw-consecutive");
 
@@ -101,31 +115,67 @@ BTFW.define("feature:chat-avatars", ["feature:chat"], async ({}) => {
     let url = resolveAvatarURL(nick);
     if (!url) url = initialsDataURL(nick, size, Math.round(size/3));
 
-    const u = msg.querySelector(".username,.nick,.name");
-    if (!u) return;
-
     const img = document.createElement("img");
     img.className = "btfw-chat-avatar";
     img.src = url; img.width = size; img.height = size; img.alt = nick;
 
-    u.parentNode.insertBefore(img, u);
+    // Insert avatar as first child so flex layout aligns avatar + existing spans
+    msg.insertBefore(img, msg.firstChild);
     msg.classList.add("btfw-has-avatar");
   }
 
+  function decorateExisting(){
+    $$(MSG_SEL).forEach(decorateMessage);
+  }
+
+  /* ---- observers ---- */
   function observeBuffer(){
     const buf = $("#messagebuffer");
     if (!buf || buf._btfw_avatar_obs) return;
     buf._btfw_avatar_obs = true;
 
-    $$(`#messagebuffer .chat-msg`).forEach(decorateMessage);
+    decorateExisting();
+
     new MutationObserver(muts => muts.forEach(m => m.addedNodes.forEach(n => {
-      if (n.nodeType === 1 && n.classList.contains("chat-msg")) decorateMessage(n);
+      if (n.nodeType === 1 && (n.matches?.('div[class^="chat-msg"], .chat-msg'))) {
+        decorateMessage(n);
+      }
     }))).observe(buf, {childList:true});
   }
 
+  /* ---- navbar avatar (current user) ---- */
+  function injectNavbarAvatar(){
+    if (!jQ) return;
+    const name = (window.CLIENT && CLIENT.name) || "";
+    if (!name) return;
+
+    const $navbarNav =
+      jQ(".navbar .nav.navbar-nav").first().length     ? jQ(".navbar .nav.navbar-nav").first() :
+      jQ("#nav-collapsible ul.nav").first().length     ? jQ("#nav-collapsible ul.nav").first() :
+      jQ("ul.navbar-nav").first();
+
+    if (!$navbarNav || !$navbarNav.length) return;
+    if ($navbarNav.find("#useravatar").length) return;
+
+    let img = resolveAvatarURL(name);
+    if (!img) {
+      const data = initialsDataURL(name, 24, 6);
+      img = data;
+    }
+    const html = `
+      <li class="centered">
+        <a href="/account/profile" target="_blank">
+          <img id="useravatar" src="${img}" title="${name}" alt="User Avatar" />
+        </a>
+      </li>`;
+    $navbarNav.append(html);
+  }
+
+  /* ---- boot ---- */
   function boot(){
     applyModeClass(getMode());
     observeBuffer();
+    injectNavbarAvatar();
   }
 
   document.addEventListener("btfw:layoutReady", () => setTimeout(boot, 0));
@@ -135,5 +185,5 @@ BTFW.define("feature:chat-avatars", ["feature:chat"], async ({}) => {
   return { name: "feature:chat-avatars", setMode, getMode };
 });
 
-/* Loader compatibility: allow init("feature:chatAvatars") */
-BTFW.define("feature:chatAvatars", ["feature:chat-avatars"], async (api) => ({ name: "feature:chatAvatars" }));
+/* Compatibility alias so init("feature:chatAvatars") still works */
+BTFW.define("feature:chatAvatars", ["feature:chat-avatars"], async () => ({ name: "feature:chatAvatars" }));
