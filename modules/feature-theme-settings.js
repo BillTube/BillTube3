@@ -1,10 +1,8 @@
-/* BTFW — feature:themeSettings (tabs + persisted options)
-   - General: theme mode (auto/dark/light) via feature:bulma-layer
-   - Chat: avatars size (off/small/big) via feature:chat-avatars
-           chat text size (12/14/16/18)
-           emote/GIF size (sm/md/lg) via feature:chatMedia
-           GIF autoplay toggle via feature:chatMedia
-   - Video: PiP toggle via feature:pip (if present)
+/* BTFW — feature:themeSettings (dropdown for emote size, live updates)
+   Tabs:
+   - General: theme mode (bulma-layer)
+   - Chat: avatars size, chat text size, emote/GIF size (dropdown), GIF autoplay
+   - Video: PiP toggle
 */
 BTFW.define("feature:themeSettings", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
@@ -124,12 +122,17 @@ BTFW.define("feature:themeSettings", [], async () => {
                   <p class="help">Applies to the message list.</p>
                 </div>
 
+                <!-- Emote/GIF size dropdown -->
                 <div class="field">
                   <label class="label">Emote/GIF size</label>
                   <div class="control">
-                    <label class="radio" style="margin-right:12px;"><input type="radio" name="btfw-emote-size" value="sm"> Small (100×100)</label>
-                    <label class="radio" style="margin-right:12px;"><input type="radio" name="btfw-emote-size" value="md"> Medium (130×130)</label>
-                    <label class="radio"><input type="radio" name="btfw-emote-size" value="lg"> Big (170×170)</label>
+                    <div class="select is-small">
+                      <select id="btfw-emote-size">
+                        <option value="sm">Small (100×100)</option>
+                        <option value="md">Medium (130×130)</option>
+                        <option value="lg">Big (170×170)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
@@ -160,7 +163,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     `;
     document.body.appendChild(m);
 
-    // Close hooks
+    // Close
     $(".modal-background", m).addEventListener("click", close);
     $(".delete", m).addEventListener("click", close);
     $("#btfw-ts-close", m).addEventListener("click", close);
@@ -175,7 +178,7 @@ BTFW.define("feature:themeSettings", [], async () => {
       });
     });
 
-    // --- Wire: Theme mode
+    // Theme mode
     const themeNow = (bulma && bulma.getTheme) ? bulma.getTheme() : "dark";
     $$('input[name="btfw-theme-mode"]', m).forEach(i => {
       i.checked = (i.value === themeNow);
@@ -183,7 +186,7 @@ BTFW.define("feature:themeSettings", [], async () => {
       else i.disabled = true;
     });
 
-    // --- Wire: Avatars
+    // Avatars
     if (avatars && avatars.setMode) {
       const mode = (avatars.getMode ? avatars.getMode() : "small");
       $$('input[name="btfw-avatars-mode"]', m).forEach(i => {
@@ -194,31 +197,22 @@ BTFW.define("feature:themeSettings", [], async () => {
       $$('input[name="btfw-avatars-mode"]', m).forEach(i => i.disabled = true);
     }
 
-    // --- Wire: Chat text size
-    const sel = $("#btfw-chat-textsize", m);
-    sel.value = String(getChatTextSize());
-    sel.addEventListener("change", ()=> setChatTextSize(parseInt(sel.value,10)));
+    // Chat text size
+    const tsel = $("#btfw-chat-textsize", m);
+    tsel.value = String(getChatTextSize());
+    tsel.addEventListener("change", ()=> setChatTextSize(parseInt(tsel.value,10)));
 
-    // --- Wire: Emote/GIF size (via chatMedia)
-    (function(){
-      const radios = $$('input[name="btfw-emote-size"]', m);
-      if (!radios.length) return;
-      const cur = chatMedia?.getEmoteSize ? chatMedia.getEmoteSize() : "md";
-      radios.forEach(r=>{
-        r.checked = (r.value === cur);
-        r.addEventListener("change", ()=> chatMedia?.setEmoteSize && chatMedia.setEmoteSize(r.value));
-      });
-    })();
+    // Emote/GIF size dropdown (live)
+    const esel = $("#btfw-emote-size", m);
+    if (chatMedia?.getEmoteSize) esel.value = chatMedia.getEmoteSize();
+    esel.addEventListener("change", ()=> chatMedia?.setEmoteSize && chatMedia.setEmoteSize(esel.value));
 
-    // --- Wire: GIF autoplay (via chatMedia)
-    (function(){
-      const box = $("#btfw-gif-autoplay", m);
-      if (!box) return;
-      box.checked = !!(chatMedia?.getGifAutoplayOn && chatMedia.getGifAutoplayOn());
-      box.addEventListener("change", ()=> chatMedia?.setGifAutoplayOn && chatMedia.setGifAutoplayOn(box.checked));
-    })();
+    // GIF autoplay
+    const box = $("#btfw-gif-autoplay", m);
+    if (chatMedia?.getGifAutoplayOn) box.checked = !!chatMedia.getGifAutoplayOn();
+    box.addEventListener("change", ()=> chatMedia?.setGifAutoplayOn && chatMedia.setGifAutoplayOn(box.checked));
 
-    // --- Wire: PiP
+    // PiP
     const pipBox = $("#btfw-pip-toggle", m);
     pipBox.checked = !!pipGet();
     pipBox.addEventListener("change", ()=> pipSet(pipBox.checked));
@@ -228,25 +222,17 @@ BTFW.define("feature:themeSettings", [], async () => {
 
   function open(){
     const m = ensureModal();
-    // refresh radio/checkbox states whenever opened
+
+    // refresh states on each open
     const themeNow = (bulma && bulma.getTheme) ? bulma.getTheme() : "dark";
     $$('input[name="btfw-theme-mode"]', m).forEach(i => i.checked = (i.value === themeNow));
-
     if (avatars?.getMode) {
       const mode = avatars.getMode();
       $$('input[name="btfw-avatars-mode"]', m).forEach(i => i.checked = (i.value === mode));
     }
-
     $("#btfw-chat-textsize", m).value = String(getChatTextSize());
-
-    // refresh chat-media bits if available
-    if (chatMedia) {
-      const cur = chatMedia.getEmoteSize ? chatMedia.getEmoteSize() : "md";
-      $$('input[name="btfw-emote-size"]', m).forEach(r => r.checked = (r.value === cur));
-      const ap = chatMedia.getGifAutoplayOn ? chatMedia.getGifAutoplayOn() : true;
-      $("#btfw-gif-autoplay", m).checked = !!ap;
-    }
-
+    if (chatMedia?.getEmoteSize) $("#btfw-emote-size", m).value = chatMedia.getEmoteSize();
+    if (chatMedia?.getGifAutoplayOn) $("#btfw-gif-autoplay", m).checked = !!chatMedia.getGifAutoplayOn();
     $("#btfw-pip-toggle", m).checked = !!pipGet();
 
     m.classList.add("is-active");
@@ -257,7 +243,7 @@ BTFW.define("feature:themeSettings", [], async () => {
 
   function boot(){
     ensureOpeners();
-    setChatTextSize(getChatTextSize()); // apply persisted size
+    setChatTextSize(getChatTextSize()); // apply persisted size on load
   }
 
   document.addEventListener("btfw:layoutReady", () => setTimeout(boot,0));
