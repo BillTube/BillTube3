@@ -305,3 +305,6 @@
   height: 0 !important;
   margin: 0 !important;
 }
+/* Inline emoji images sized like text */
+img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
+#messagebuffer img.twemoji { width: 1.1em; height: 1.1em; }

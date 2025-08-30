@@ -284,7 +284,7 @@ BTFW.define("feature:emotes", [], async () => {
       tile.addEventListener("click", ()=>{
         const input = $("#chatline"); if (!input) return;
         if (state.tab==="emoji" || item.kind==="emoji") {
-          insertAtCursor(input, item.char + " ");
+          insertAtCursor(input, normalizeEmojiForInsert(item.char) + " ");
           pushRecent({kind:"emoji", char:item.char, name:item.name, keywords:item.keywords});
         } else {
           insertAtCursor(input, " " + item.name + " ");
@@ -298,6 +298,7 @@ BTFW.define("feature:emotes", [], async () => {
 
     grid.appendChild(frag);
     highlightActive();
+	document.dispatchEvent(new CustomEvent("btfw:emotes:rendered", {detail:{container: grid}}));
   }
 
   function highlightActive(){
@@ -388,3 +389,11 @@ BTFW.define("feature:emotes", [], async () => {
 
   return { name:"feature:emotes", open, close, render };
 });
+// Ensures single-codepoint emoji use emoji presentation (U+FE0F)
+// (prevents some from showing as monochrome text on certain platforms)
+function normalizeEmojiForInsert(s){
+  if (/\uFE0F/.test(s)) return s;         // already has VS16
+  const cps = Array.from(s);
+  if (cps.length === 1) return s + "\uFE0F";
+  return s; // multi-codepoint ZWJ sequences are fine as-is
+}
