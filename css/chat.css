@@ -286,3 +286,5 @@
   border-radius: 8px;
   padding: 4px 8px;
 }
+/* Chat text size is controlled by a CSS var set by Theme Settings */
+#messagebuffer { font-size: var(--btfw-chat-text, 14px); line-height: 1.35; }
