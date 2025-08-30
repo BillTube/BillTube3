@@ -311,24 +311,26 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 
 #userlist, #messagebuffer, #chatheader, #videowrap-header {
     border: 0px solid #aaaaaa!important;
+	scroll-behavior: smooth;
+    overflow-x: hidden;
 }
 
-/* Emote/GIF sizing controlled by --btfw-emote-size */
 :root { --btfw-emote-size: 130px; } /* default medium = 130px */
 
 #messagebuffer img.channel-emote,
 #messagebuffer img.giphy.chat-picture,
 #messagebuffer img.tenor.chat-picture {
-  width: var(--btfw-emote-size);
-  height: var(--btfw-emote-size);
-  max-width: var(--btfw-emote-size);
-  max-height: var(--btfw-emote-size);
-  object-fit: contain;           /* don’t distort */
+  width: var(--btfw-emote-size) !important;
+  height: var(--btfw-emote-size) !important;
+  max-width: var(--btfw-emote-size) !important;
+  max-height: var(--btfw-emote-size) !important;
+  object-fit: contain;
   display: inline-block;
   vertical-align: middle;
   margin: 2px 3px;
   border-radius: 8px;
 }
+
 
 /* Make chat emojis bigger (Twemoji images) */
 #messagebuffer img.twemoji {

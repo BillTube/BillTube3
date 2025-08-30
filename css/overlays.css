@@ -289,8 +289,6 @@
     radial-gradient(1200px 700px at 20% -10%, rgba(109,77,246,.18), transparent 55%),
     radial-gradient(1000px 800px at 120% 120%, rgba(24,182,255,.12), transparent 50%),
     rgba(3, 6, 10, .82);
-  backdrop-filter: blur(3px) saturate(110%);
-  -webkit-backdrop-filter: blur(3px) saturate(110%);
 }
 
 /* Card shell */
