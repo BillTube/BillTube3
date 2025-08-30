@@ -30,6 +30,7 @@
     var mods=[
       "modules/feature-style-core.js",
       "modules/feature-bulma-layer.js",
+      "modules/alias-bulma.js",
       "modules/feature-layout.js",
 	  "modules/feature-player.js",
       "modules/feature-stack.js",
@@ -48,7 +49,7 @@
   }).then(function(){
     return Promise.all([
       BTFW.init("feature:styleCore"),
-      BTFW.init("feature:bulma"),
+      BTFW.init("feature:bulma-layer"),
       BTFW.init("feature:layout"),
 	  BTFW.init("feature:player"),
       BTFW.init("feature:stack"),
