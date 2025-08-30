@@ -159,13 +159,14 @@
   z-index: 10;
 }
 /* --- BTFW Emotes Popover (mini) --- */
+/* Fixed-size popover container (JS sets an explicit height) */
 #btfw-emotes-pop {
   position: absolute;
   right: 8px;
-  bottom: 64px;               /* adjusted in JS to sit above bottom bar */
-  width: 520px;
+  bottom: 56px;            /* JS overrides; keep as safe fallback */
+  width: 520px;            /* JS adjusts within 320–560 */
+  height: 360px;           /* fallback; JS sets exact height per open */
   max-width: calc(100% - 16px);
-  max-height: 420px;
   display: flex;
   flex-direction: column;
   background: rgba(18, 22, 29, 0.92);
@@ -173,32 +174,25 @@
   border-radius: 12px;
   box-shadow: 0 8px 26px rgba(0,0,0,.45);
   backdrop-filter: saturate(120%) blur(8px);
-  z-index: 6000;               /* above chat input and toolbars */
+  z-index: 6000;
   overflow: hidden;
 }
 #btfw-emotes-pop.hidden { display: none; }
 
 #btfw-emotes-pop .btfw-emotes-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: flex; align-items: center; gap: 8px;
   padding: 8px 10px;
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
 
-#btfw-emotes-pop .btfw-emotes-tabs {
-  display: inline-flex;
-  gap: 4px;
-}
+#btfw-emotes-pop .btfw-emotes-tabs { display: inline-flex; gap: 4px; }
 #btfw-emotes-pop .btfw-tab {
   background: rgba(255,255,255,.05);
   color: #cfe2ff;
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 8px;
   padding: 6px 10px;
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
+  font-size: 12px; line-height: 1; cursor: pointer;
 }
 #btfw-emotes-pop .btfw-tab.is-active {
   background: rgba(109,77,246,.25);
@@ -208,64 +202,63 @@
 
 #btfw-emotes-pop .btfw-emotes-search {
   margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: inline-flex; align-items: center; gap: 6px;
 }
 #btfw-emotes-pop #btfw-emotes-search {
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.12);
   color: #e7ecf5;
   border-radius: 8px;
-  font-size: 12px;
-  padding: 6px 8px;
-  width: 180px;
+  font-size: 12px; padding: 6px 8px; width: 180px;
 }
 #btfw-emotes-pop #btfw-emotes-clear {
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.12);
   color: #cfe2ff;
   border-radius: 8px;
-  width: 28px;
-  height: 28px;
-  line-height: 1;
-  cursor: pointer;
+  width: 28px; height: 28px; line-height: 1; cursor: pointer;
+}
+#btfw-emotes-pop .btfw-emotes-close {
+  margin-left: 8px;
+  width: 28px; height: 28px;
+  border-radius: 8px; border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: #cfe2ff; cursor: pointer;
 }
 
+/* Fixed grid: constant tile size & no hover-jump */
 #btfw-emotes-grid {
-  padding: 10px;
+  flex: 1 1 auto;
   overflow: auto;
+  padding: 10px;
   display: grid;
   grid-template-columns: repeat(8, 1fr);
-  grid-auto-rows: 56px;
+  grid-auto-rows: 56px;              /* fixed row height → constant squares */
   gap: 8px;
+  content-visibility: auto;
+  contain-intrinsic-size: 320px 320px;
 }
 
 #btfw-emotes-grid .btfw-emote-tile {
   display:flex; align-items:center; justify-content:center;
-  background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: transform .08s ease, background .1s ease, border-color .1s ease;
+  border-radius: 10px; cursor: pointer;
+  background: rgba(255,255,255,.04);
+  /* keep size constant: no transform on hover */
+  transition: background .12s ease, border-color .12s ease;
 }
 #btfw-emotes-grid .btfw-emote-tile:hover {
   background: rgba(255,255,255,.08);
-  transform: translateY(-1px);
 }
-#btfw-emotes-grid .btfw-emote-tile.is-active {
-  outline: 2px solid #6d4df6;
-}
+#btfw-emotes-grid .btfw-emote-tile.is-active { outline: 2px solid #6d4df6; }
 .btfw-emote-img { max-width: 42px; max-height: 42px; }
 .btfw-emoji { font-size: 26px; line-height: 1; }
 
 /* Compact on narrow chat columns */
-@media (max-width: 800px){
-  #btfw-emotes-grid { grid-template-columns: repeat(6, 1fr); }
-}
-@media (max-width: 560px){
-  #btfw-emotes-grid { grid-template-columns: repeat(5, 1fr); }
-}
+@media (max-width: 800px){ #btfw-emotes-grid { grid-template-columns: repeat(6, 1fr); } }
+@media (max-width: 560px){ #btfw-emotes-grid { grid-template-columns: repeat(5, 1fr); } }
+
+
 /* Virtualized grid: avoid layout on offscreen parts */
 #btfw-emotes-grid { content-visibility: auto; contain-intrinsic-size: 320px 320px; }
 
