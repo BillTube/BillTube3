@@ -312,26 +312,30 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 #userlist, #messagebuffer, #chatheader, #videowrap-header {
     border: 0px solid #aaaaaa!important;
 }
-/* Keep emoji images sized like text and fade them in only when loaded */
-img.twemoji {
-  width: 1em;
-  height: 1em;
-  vertical-align: -0.15em;
-  opacity: 0;
-  transition: opacity .12s ease-in;
-}
-img.twemoji.is-ready { opacity: 1; }
 
-:root { --btfw-emote-size: 32px; } 
+/* Emote/GIF sizing controlled by --btfw-emote-size */
+:root { --btfw-emote-size: 130px; } /* default medium = 130px */
 
 #messagebuffer img.channel-emote,
 #messagebuffer img.giphy.chat-picture,
 #messagebuffer img.tenor.chat-picture {
+  width: var(--btfw-emote-size);
   height: var(--btfw-emote-size);
+  max-width: var(--btfw-emote-size);
   max-height: var(--btfw-emote-size);
-  width: auto;
+  object-fit: contain;           /* don’t distort */
   display: inline-block;
-  vertical-align: text-bottom;
-  margin: 0 2px;
-  border-radius: 6px;
+  vertical-align: middle;
+  margin: 2px 3px;
+  border-radius: 8px;
 }
+
+/* Make chat emojis bigger (Twemoji images) */
+#messagebuffer img.twemoji {
+  width: var(--btfw-chat-emoji-size, 26px);
+  height: var(--btfw-chat-emoji-size, 26px);
+  vertical-align: -0.15em;
+  opacity: 0;
+  transition: opacity .12s ease-in;
+}
+#messagebuffer img.twemoji.is-ready { opacity: 1; }
