@@ -20,3 +20,76 @@
 #btfw-theme-btn-nav.button:hover{
   background: rgba(255,255,255,.12);
 }
+/* === BTFW Top Bar (non-destructive: only styles when .btfw-topbar is present) === */
+
+.btfw-topbar {
+  /* make the UL a proper app bar */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 56px;
+  padding: 6px 12px;
+  background: #0f131a; /* dark slate */
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  position: sticky; /* stays pinned but doesn't overlay fullscreen video */
+  top: 0;
+  z-index: 3000;
+  border-radius: 12px 12px 0 0; /* subtle rounded like your reference */
+}
+
+/* Each list item behaves as a flex item */
+.btfw-topbar > li.btfw-topitem,
+.btfw-topbar > li { display: flex; align-items: center; }
+
+/* Push everything after Theme button to the right */
+.btfw-topbar > li.btfw-flex-spacer { margin-left: auto; }
+
+/* Links look tidy */
+.btfw-topbar > li > a {
+  color: #dfe6f3 !important;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+.btfw-topbar > li > a:hover {
+  background: rgba(255,255,255,.06);
+  color: #fff !important;
+}
+
+/* Theme button pill (purple gradient) */
+.btfw-topbar > li > a#btfw-theme-btn-nav {
+  background: linear-gradient(90deg, #6d4df6 0%, #9a63ff 100%);
+  color: #fff !important;
+  border: 0;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(109,77,246,.25);
+}
+.btfw-topbar > li > a#btfw-theme-btn-nav:hover {
+  filter: brightness(1.06);
+}
+
+/* Avatar chip on the right */
+.btfw-topbar #useravatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  border: 2px solid rgba(255,255,255,.16);
+  box-shadow: 0 4px 10px rgba(0,0,0,.25);
+}
+
+/* Space around avatar link */
+.btfw-topbar li.btfw-avatar-li .btfw-avatar-link {
+  display: flex; align-items: center; justify-content: center;
+  padding: 4px;
+  border-radius: 999px;
+}
+.btfw-topbar li.btfw-avatar-li .btfw-avatar-link:hover {
+  background: rgba(255,255,255,.06);
+}
+
+/* Optional: hide the old Bootstrap divider lines inside dropdowns when using dark bar */
+.btfw-topbar .dropdown-menu .divider { background-color: rgba(255,255,255,.08); }
