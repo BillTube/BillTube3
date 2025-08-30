@@ -266,3 +266,8 @@
 @media (max-width: 560px){
   #btfw-emotes-grid { grid-template-columns: repeat(5, 1fr); }
 }
+/* Virtualized grid: avoid layout on offscreen parts */
+#btfw-emotes-grid { content-visibility: auto; contain-intrinsic-size: 320px 320px; }
+
+/* Slightly larger row height matches ROW_H=64 math better */
+#btfw-emotes-grid { grid-auto-rows: 64px; }
