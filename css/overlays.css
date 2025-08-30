@@ -402,3 +402,63 @@
 /* Optional: compact content spacing inside modal bodies */
 .modal-card-body .content h4 { color: var(--btfw-text-1); }
 .modal-card-body .field { margin-bottom: 1rem; }
+/* ===== GIF modal grid ===== */
+.btfw-gif-toolbar {
+  display:flex; align-items:center; gap:10px; margin-bottom:10px;
+}
+.btfw-gif-toolbar .btfw-gif-search {
+  margin-left:auto; display:flex; gap:8px; align-items:center;
+  min-width: 280px;
+}
+
+#btfw-gif-notice {
+  margin: 6px 0 10px;
+  color: #ffc;
+  background: rgba(255,255,0,.08);
+  border: 1px solid rgba(255,255,0,.25);
+  border-radius: 8px; padding: 8px 10px;
+}
+#btfw-gif-notice.is-hidden { display:none; }
+
+#btfw-gif-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  min-height: 320px;
+}
+
+.btfw-gif-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;        /* square */
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.04);
+  cursor: pointer;
+  padding: 0;
+}
+.btfw-gif-cell:hover { outline: 2px solid rgba(109,77,246,.45); }
+.btfw-gif-cell.is-broken { background: rgba(255, 102, 102, .15); }
+
+.btfw-gif-cell img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display:block;
+}
+
+/* Skeleton tiles while loading */
+.btfw-gif-cell.is-skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.08), rgba(255,255,255,.04));
+  background-size: 200% 100%;
+  animation: btfw-shimmer 1s linear infinite;
+}
+@keyframes btfw-shimmer {
+  0% { background-position: 0% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.btfw-gif-pager {
+  margin-top: 14px;
+  display:flex; align-items:center; gap:10px;
+}
+.btfw-gif-pages { color: #cfd8ea; min-width: 72px; text-align:center; }
