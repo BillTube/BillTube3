@@ -1,6 +1,6 @@
-/* BillTube Framework — feature:gifs (BillTube2-compatible)
-   - Uses BillTube2 keys by default
-   - Inserts classic, filter-friendly URLs
+/* BillTube Framework — feature:gifs (BillTube2-compatible, classic GIPHY URL)
+   - Inserts GIPHY as https://media1.giphy.com/media/<ID>/giphy.gif  (matches your filter)
+   - Inserts Tenor as direct .gif with params stripped
    - 3×3 grid, search/trending, pagination
 */
 
@@ -9,17 +9,18 @@ BTFW.define("feature:gifs", [], async () => {
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const PER_PAGE = 9;
 
-  /* ---- Keys (BillTube2 defaults, override via localStorage if needed) ---- */
+  /* ---- Keys (BillTube2 defaults; can override via localStorage) ---- */
   const K = { giphy: "btfw:giphy:key", tenor: "btfw:tenor:key" };
+  const DEFAULT_GIPHY = "bb2006d9d3454578be1a99cfad65913d";
+  const DEFAULT_TENOR = "5WPAZ4EXST2V"; // Tenor v1 used by BillTube2
+
   function getKey(which) {
     try { return (localStorage.getItem(K[which]) || "").trim(); } catch (_) { return ""; }
   }
-  function effectiveKey(which, fallback) {
-    const k = getKey(which);
-    return k || fallback;
+  function effKey(which, fallback) {
+    const v = getKey(which);
+    return v || fallback;
   }
-  const DEFAULT_GIPHY = "bb2006d9d3454578be1a99cfad65913d";
-  const DEFAULT_TENOR = "5WPAZ4EXST2V";      // Tenor v1 key used in BillTube2
 
   /* ---- State ---- */
   const state = {
@@ -27,11 +28,11 @@ BTFW.define("feature:gifs", [], async () => {
     query: "",
     page: 1,
     total: 0,
-    items: [],          // { id, thumb, url }
+    items: [],          // { id, thumb, urlClassic }
     loading: false
   };
 
-  /* ---- Utilities ---- */
+  /* ---- Utils ---- */
   function insertAtCursor(input, text) {
     input.focus();
     const s = input.selectionStart ?? input.value.length;
@@ -44,55 +45,24 @@ BTFW.define("feature:gifs", [], async () => {
     input.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
-  // Trim query/hash
-  function stripQuery(u) { return (u || "").split("?")[0].split("#")[0]; }
-
-  // Normalize GIPHY URL to classic format:
-  //   https://media.giphy.com/media/<ID>/giphy.gif
-  function normGiphy(originalUrl, idMaybe) {
-    let id = idMaybe || "";
-    const clean = stripQuery(originalUrl);
-
-    // Try to extract ID from any giphy URL shape
-    // Examples:
-    //   https://media4.giphy.com/media/abc123/giphy-downsized.gif
-    //   https://media.giphy.com/media/abc123/giphy.gif
-    //   https://i.giphy.com/media/abc123/giphy.gif
-    const m = clean.match(/\/media\/([^/]+)\//) || clean.match(/\/gifs\/([^/?#]+)/);
-    if (m && m[1]) id = m[1];
-
-    if (!id && clean) {
-      // sometimes v1 paths: /media/v1.Y2lk.../<ID>/giphy-downsized.gif
-      const m2 = clean.match(/\/([A-Za-z0-9]+)\/giphy(?:-[a-z]+)?\.gif$/i);
-      if (m2 && m2[1]) id = m2[1];
-    }
-
-    if (!id) return clean; // fallback
-
-    return `https://media.giphy.com/media/${id}/giphy.gif`;
-  }
-
-  // Normalize Tenor URL: use gif URL and strip params
-  function normTenor(url) {
-    return stripQuery(url || "");
-  }
+  function stripQuery(u){ return (u||"").split("?")[0].split("#")[0]; }
+  function buildGiphyClassic(id){ return `https://media1.giphy.com/media/${id}/giphy.gif`; } // NOTE: media1 (digit) for your regex
+  function normTenor(u){ return stripQuery(u); }
 
   function ensureOpeners() {
-    // bind any existing buttons (including legacy)
-    ["#btfw-btn-gif", ".btfw-btn-gif", "#giphybtn", "#gifbtn"].forEach(sel => {
-      $$(sel).forEach(el => {
+    ["#btfw-btn-gif", ".btfw-btn-gif", "#giphybtn", "#gifbtn"].forEach(sel=>{
+      $$(sel).forEach(el=>{
         el.removeAttribute("onclick");
         const c = el.cloneNode(true);
         el.parentNode.replaceChild(c, el);
-        c.addEventListener("click", e => { e.preventDefault(); open(); }, { capture: true });
+        c.addEventListener("click", e => { e.preventDefault(); open(); }, { capture:true });
       });
     });
-    // add one if missing
     if (!$("#btfw-btn-gif")) {
       const bar = document.getElementById("btfw-chat-bottombar")
-        || document.querySelector("#chatcontrols .input-group-btn")
-        || document.getElementById("chatcontrols")
-        || document.getElementById("chatwrap");
+             || document.querySelector("#chatcontrols .input-group-btn")
+             || document.getElementById("chatcontrols")
+             || document.getElementById("chatwrap");
       if (bar) {
         const btn = document.createElement("button");
         btn.id = "btfw-btn-gif";
@@ -101,14 +71,14 @@ BTFW.define("feature:gifs", [], async () => {
         btn.innerHTML = (document.querySelector(".fa")) ? '<i class="fa fa-gif"></i>' : 'GIF';
         btn.title = "GIFs";
         bar.appendChild(btn);
-        btn.addEventListener("click", e => { e.preventDefault(); open(); }, { capture: true });
+        btn.addEventListener("click", e => { e.preventDefault(); open(); }, { capture:true });
       }
     }
   }
 
   /* ---- Modal ---- */
   let modal = null;
-  function ensureModal() {
+  function ensureModal(){
     if (modal) return modal;
     modal = document.createElement("div");
     modal.id = "btfw-gif-modal";
@@ -151,33 +121,29 @@ BTFW.define("feature:gifs", [], async () => {
     `;
     document.body.appendChild(modal);
 
-    // Close
     modal.querySelector(".modal-background").addEventListener("click", close);
     modal.querySelector(".delete").addEventListener("click", close);
     $("#btfw-gif-close", modal).addEventListener("click", close);
 
-    // Tabs
-    modal.querySelector(".btfw-gif-tabs ul").addEventListener("click", e => {
+    modal.querySelector(".btfw-gif-tabs ul").addEventListener("click", e=>{
       const li = e.target.closest("li[data-p]"); if (!li) return;
-      modal.querySelectorAll(".btfw-gif-tabs li").forEach(x => x.classList.toggle("is-active", x === li));
+      modal.querySelectorAll(".btfw-gif-tabs li").forEach(x=>x.classList.toggle("is-active", x===li));
       state.provider = li.getAttribute("data-p");
       state.page = 1;
       search();
     });
 
-    // Search & trending
-    $("#btfw-gif-go",  modal).addEventListener("click", () => { state.page = 1; search(); });
-    $("#btfw-gif-q",   modal).addEventListener("keydown", e => { if (e.key === "Enter") { state.page = 1; search(); }});
-    $("#btfw-gif-trending", modal).addEventListener("click", () => {
+    $("#btfw-gif-go", modal).addEventListener("click", ()=> { state.page = 1; search(); });
+    $("#btfw-gif-q",  modal).addEventListener("keydown", e=> { if (e.key === "Enter") { state.page = 1; search(); }});
+    $("#btfw-gif-trending", modal).addEventListener("click", ()=>{
       $("#btfw-gif-q").value = "";
       state.page = 1; search();
     });
 
-    // Pager
-    $("#btfw-gif-prev", modal).addEventListener("click", () => {
+    $("#btfw-gif-prev", modal).addEventListener("click", ()=>{
       if (state.page > 1) { state.page--; render(); }
     });
-    $("#btfw-gif-next", modal).addEventListener("click", () => {
+    $("#btfw-gif-next", modal).addEventListener("click", ()=>{
       const totalPages = Math.max(1, Math.ceil(state.total / PER_PAGE));
       if (state.page < totalPages) { state.page++; render(); }
     });
@@ -185,15 +151,15 @@ BTFW.define("feature:gifs", [], async () => {
     return modal;
   }
 
-  function showNotice(msg) {
+  function showNotice(msg){
     const n = $("#btfw-gif-notice", modal);
     n.textContent = msg || "";
     n.classList.toggle("is-hidden", !msg);
   }
 
   /* ---- Fetching ---- */
-  async function fetchGiphy(q) {
-    const key = effectiveKey("giphy", DEFAULT_GIPHY);
+  async function fetchGiphy(q){
+    const key = effKey("giphy", DEFAULT_GIPHY);
     const endpoint = q ? "https://api.giphy.com/v1/gifs/search"
                        : "https://api.giphy.com/v1/gifs/trending";
     const url = new URL(endpoint);
@@ -207,19 +173,19 @@ BTFW.define("feature:gifs", [], async () => {
 
     const json = await res.json();
     const list = (json.data || []).map(g => {
-      const id = g.id;
-      const thumb = (g.images && (g.images.fixed_width_small?.url || g.images.fixed_width?.url || g.images.downsized_still?.url)) || "";
-      // Use ORIGINAL for insertion, then normalize to classic /media/<ID>/giphy.gif
-      const raw  = g.images?.original?.url || "";
-      const url  = normGiphy(raw, id) || (id ? `https://media.giphy.com/media/${id}/giphy.gif` : raw);
-      return { id, thumb, url };
+      const id    = g.id || ""; // always present
+      const thumb = (g.images && (g.images.fixed_width_small?.url
+                               || g.images.fixed_width?.url
+                               || g.images.downsized_still?.url)) || "";
+      const urlClassic = id ? buildGiphyClassic(id) : ""; // <— classic format ONLY
+      return { id, thumb, urlClassic };
     });
     return { items: list, total: list.length };
   }
 
-  async function fetchTenor(q) {
-    // Use Tenor v1 to match BillTube2 behavior
-    const key = effectiveKey("tenor", DEFAULT_TENOR);
+  async function fetchTenor(q){
+    const key = effKey("tenor", DEFAULT_TENOR);
+    // Tenor v1 to match BillTube2
     const endpoint = q ? "https://api.tenor.com/v1/search"
                        : "https://api.tenor.com/v1/trending";
     const url = new URL(endpoint);
@@ -232,15 +198,14 @@ BTFW.define("feature:gifs", [], async () => {
 
     const json = await res.json();
     const list = (json.results || []).map(t => {
-      // BillTube2 used result.media[0].gif.url
       const gif  = t.media?.[0]?.gif?.url || t.media?.[0]?.mediumgif?.url || t.media?.[0]?.tinygif?.url || "";
       const tiny = t.media?.[0]?.nanogif?.url || t.media?.[0]?.tinygif?.url || gif;
-      return { id: t.id, thumb: tiny, url: normTenor(gif) };
+      return { id: t.id, thumb: tiny, urlClassic: normTenor(gif) };
     });
     return { items: list, total: list.length };
   }
 
-  async function search() {
+  async function search(){
     const q = ($("#btfw-gif-q", ensureModal()).value || "").trim();
     state.query = q;
     state.page = 1;
@@ -252,25 +217,23 @@ BTFW.define("feature:gifs", [], async () => {
       state.items = items;
       state.total = total;
       state.loading = false;
-
       showNotice(total ? "" : "No results. Try a different search.");
       render();
     } catch (e) {
       state.items = [];
       state.total = 0;
       state.loading = false;
-      // Keys may be revoked/rate limited; just show friendly text
       showNotice("Failed to load GIFs (key limit or network). Try again, or set your own keys in localStorage.");
       render();
     }
   }
 
   /* ---- Rendering ---- */
-  function renderSkeleton() {
+  function renderSkeleton(){
     const grid = $("#btfw-gif-grid", ensureModal());
     grid.innerHTML = "";
     const frag = document.createDocumentFragment();
-    for (let i = 0; i < PER_PAGE; i++) {
+    for (let i=0;i<PER_PAGE;i++){
       const sk = document.createElement("div");
       sk.className = "btfw-gif-cell is-skeleton";
       frag.appendChild(sk);
@@ -279,7 +242,7 @@ BTFW.define("feature:gifs", [], async () => {
     $("#btfw-gif-pages").textContent = "… / …";
   }
 
-  function render() {
+  function render(){
     const grid = $("#btfw-gif-grid", ensureModal());
     grid.innerHTML = "";
 
@@ -300,14 +263,15 @@ BTFW.define("feature:gifs", [], async () => {
       img.alt = "gif";
       img.loading = "lazy";
       img.decoding = "async";
-      img.onerror = () => cell.classList.add("is-broken");
+      img.onerror = ()=> cell.classList.add("is-broken");
       cell.appendChild(img);
 
       cell.addEventListener("click", () => {
         const input = document.getElementById("chatline");
         if (!input) return;
-        // Insert the normalized link wrapped with spaces so filters catch it cleanly
-        insertAtCursor(input, " " + item.url + " ");
+        // Always insert the classic URL we computed
+        const url = item.urlClassic || "";
+        if (url) insertAtCursor(input, " " + url + " ");
         close();
       });
 
@@ -321,7 +285,7 @@ BTFW.define("feature:gifs", [], async () => {
   }
 
   /* ---- open / close ---- */
-  function open() {
+  function open(){
     ensureModal();
     showNotice("");
     state.page = 1;
@@ -330,12 +294,12 @@ BTFW.define("feature:gifs", [], async () => {
     setTimeout(search, 0);
     modal.classList.add("is-active");
   }
-  function close() { modal?.classList.remove("is-active"); }
+  function close(){ modal?.classList.remove("is-active"); }
 
   /* ---- boot ---- */
-  function boot() { ensureOpeners(); }
+  function boot(){ ensureOpeners(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
-  return { name: "feature:gifs", open, close };
+  return { name:"feature:gifs", open, close };
 });
