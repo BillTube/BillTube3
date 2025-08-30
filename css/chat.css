@@ -308,3 +308,7 @@
 /* Inline emoji images sized like text */
 img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 #messagebuffer img.twemoji { width: 1.1em; height: 1.1em; }
+
+#userlist, #messagebuffer, #chatheader, #videowrap-header {
+    border: 0px solid #aaaaaa!important;
+}
