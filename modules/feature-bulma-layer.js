@@ -110,3 +110,5 @@ BTFW.define("feature:bulma-layer", [], async () => {
 
   return { name: "feature:bulma-layer", setTheme, getTheme, isDark: () => document.documentElement.classList.contains("btfw-dark") };
 });
+/* Compatibility alias so code that calls init("feature:bulma") keeps working */
+BTFW.define("feature:bulma", ["feature:bulma-layer"], async ({}) => ({ name: "feature:bulma" }));
