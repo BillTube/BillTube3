@@ -164,6 +164,22 @@ BTFW.define("feature:themeSettings", [], async () => {
                   </div>
                   <p class="help">Applies to the message list.</p>
                 </div>
+<!-- Emote/GIF size -->
+<div class="field">
+  <label class="label">Emote/GIF size</label>
+  <div class="control">
+    <label class="radio" style="margin-right:12px;"><input type="radio" name="btfw-emote-size" value="sm"> Small</label>
+    <label class="radio" style="margin-right:12px;"><input type="radio" name="btfw-emote-size" value="md"> Medium</label>
+    <label class="radio"><input type="radio" name="btfw-emote-size" value="lg"> Big</label>
+  </div>
+</div>
+
+<!-- GIF autoplay -->
+<div class="field">
+  <label class="checkbox">
+    <input type="checkbox" id="btfw-gif-autoplay"> Autoplay GIFs (hover-to-play when off)
+  </label>
+</div>
 
                 <div class="field">
                   <label class="checkbox">
@@ -244,6 +260,29 @@ BTFW.define("feature:themeSettings", [], async () => {
       const compat = await getEmojiCompat();
       compat?.setEnabled?.(!!e.target.checked);
     });
+// Chat media APIs
+const chatMedia = (function(){ try { return BTFW.require("feature:chatMedia"); } catch(_){ return null; }})();
+
+// Emote/GIF size radios
+(function(){
+  const radios = document.querySelectorAll('#btfw-theme-modal input[name="btfw-emote-size"]');
+  if (!radios.length || !chatMedia) return;
+  // initialize
+  const cur = chatMedia.getEmoteSize ? chatMedia.getEmoteSize() : "md";
+  radios.forEach(r => {
+    r.checked = (r.value === cur);
+    r.addEventListener("change", ()=> chatMedia.setEmoteSize(r.value));
+  });
+})();
+
+// GIF autoplay checkbox
+(function(){
+  const box = document.querySelector('#btfw-theme-modal #btfw-gif-autoplay');
+  if (!box || !chatMedia) return;
+  // initialize
+  box.checked = !!(chatMedia.getGifAutoplayOn && chatMedia.getGifAutoplayOn());
+  box.addEventListener("change", ()=> chatMedia.setGifAutoplayOn(box.checked));
+})();
 
     return modalEl;
   }
