@@ -20,10 +20,8 @@
 #btfw-theme-btn-nav.button:hover{
   background: rgba(255,255,255,.12);
 }
-/* === BTFW Top Bar (non-destructive: only styles when .btfw-topbar is present) === */
 
 .btfw-topbar {
-  /* make the UL a proper app bar */
   display: flex;
   align-items: center;
   gap: 10px;
@@ -32,10 +30,9 @@
   padding: 6px 12px;
   background: #0f131a; /* dark slate */
   border-bottom: 1px solid rgba(255,255,255,.08);
-  position: sticky; /* stays pinned but doesn't overlay fullscreen video */
+  position: sticky; 
   top: 0;
   z-index: 3000;
-  border-radius: 12px 12px 0 0; /* subtle rounded like your reference */
 }
 
 /* Each list item behaves as a flex item */
