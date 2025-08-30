@@ -144,32 +144,30 @@ BTFW.define("feature:chat-avatars", ["feature:chat"], async ({}) => {
   }
 
   /* ---- navbar avatar (current user) ---- */
-  function injectNavbarAvatar(){
-    if (!jQ) return;
-    const name = (window.CLIENT && CLIENT.name) || "";
-    if (!name) return;
+function injectNavbarAvatar(){
+  if (!jQ) return;
+  const name = (window.CLIENT && CLIENT.name) || "";
+  if (!name) return;
 
-    const $navbarNav =
-      jQ(".navbar .nav.navbar-nav").first().length     ? jQ(".navbar .nav.navbar-nav").first() :
-      jQ("#nav-collapsible ul.nav").first().length     ? jQ("#nav-collapsible ul.nav").first() :
-      jQ("ul.navbar-nav").first();
+  const $navbarNav =
+    jQ(".navbar .nav.navbar-nav").first().length ? jQ(".navbar .nav.navbar-nav").first() :
+    jQ("#nav-collapsible ul.nav").first().length ? jQ("#nav-collapsible ul.nav").first() :
+    jQ("ul.navbar-nav").first();
 
-    if (!$navbarNav || !$navbarNav.length) return;
-    if ($navbarNav.find("#useravatar").length) return;
+  if (!$navbarNav || !$navbarNav.length) return;
+  if ($navbarNav.find("#useravatar").length) return;
 
-    let img = resolveAvatarURL(name);
-    if (!img) {
-      const data = initialsDataURL(name, 24, 6);
-      img = data;
-    }
-    const html = `
-      <li class="centered">
-        <a href="/account/profile" target="_blank">
-          <img id="useravatar" src="${img}" title="${name}" alt="User Avatar" />
-        </a>
-      </li>`;
-    $navbarNav.append(html);
-  }
+  let img = resolveAvatarURL(name);
+  if (!img) img = initialsDataURL(name, 32, 8);
+
+  const html = `
+    <li class="centered btfw-avatar-li">
+      <a href="/account/profile" target="_blank" class="btfw-avatar-link">
+        <img id="useravatar" src="${img}" title="${name}" alt="User Avatar" />
+      </a>
+    </li>`;
+  $navbarNav.append(html);
+}
 
   /* ---- boot ---- */
   function boot(){
