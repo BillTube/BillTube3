@@ -140,6 +140,12 @@ function ensureOpeners(){
                   </div>
                   <p class="help">Applies to the message list.</p>
                 </div>
+				<div class="field">
+  <label class="checkbox">
+    <input type="checkbox" id="btfw-emoji-twemoji"> Use Twemoji images for emoji
+  </label>
+  <p class="help">Ensures emoji look the same on all devices.</p>
+</div>
               </div>
             </div>
 
@@ -214,6 +220,7 @@ function ensureOpeners(){
     // refresh states each open
     const themeNow = (bulma && bulma.getTheme) ? bulma.getTheme() : "dark";
     $$('input[name="btfw-theme-mode"]', m).forEach(i => i.checked = (i.value === themeNow));
+    $("#btfw-emoji-twemoji", m).checked = !!emojiCompat?.getEnabled?.();
 
     if (avatars?.getMode) {
       const mode = avatars.getMode();
@@ -240,3 +247,12 @@ function ensureOpeners(){
 
   return { name: "feature:themeSettings", open, close };
 });
+// Emoji compat toggle
+const emojiCompat = (function(){ try { return BTFW.require("feature:emoji-compat"); } catch(_) { return null; }})();
+const twChk = $("#btfw-emoji-twemoji", m);
+if (emojiCompat) {
+  twChk.checked = !!emojiCompat.getEnabled?.();
+  twChk.addEventListener("change", () => emojiCompat.setEnabled?.(twChk.checked));
+} else {
+  twChk.disabled = true;
+}
