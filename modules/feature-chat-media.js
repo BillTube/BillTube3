@@ -1,72 +1,75 @@
-/* BTFW — feature:chatMedia
-   - Adds .channel-emote to Giphy/Tenor embeds in chat
-   - Emote/GIF size setting: small(100) / medium(130) / big(170)  (persisted)
-   - GIF autoplay: ON (default) or hover-to-play (persisted)
-   - Works with BillTube2 filters that emit:
-       <img class="giphy chat-picture"> / <img class="tenor chat-picture">
+/* BTFW — feature:chatMedia (stable, no mutation loops)
+   - Adds .channel-emote to Giphy/Tenor chat images
+   - Emote/GIF size: small(100) / medium(130) / big(170)  [persisted]
+   - GIF autoplay: ON (default) or hover-to-play           [persisted]
+   - IMPORTANT: observes childList only (no attribute observe) to avoid loops
 */
 BTFW.define("feature:chatMedia", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
-  const LS_SIZE = "btfw:chat:emoteSize";   // "sm" | "md" | "lg"
-  const LS_AUTO = "btfw:chat:gifAutoplay"; // "1" | "0"
+  const LS_SIZE = "btfw:chat:emoteSize";   // "sm"|"md"|"lg"
+  const LS_AUTO = "btfw:chat:gifAutoplay"; // "1"|"0"
+  const SIZE_PX = { sm:100, md:130, lg:170 };
 
-  // Exact pixel sizes
-  const SIZE_PX = { sm: 100, md: 130, lg: 170 };
-
-  function getSize(){
-    try { return localStorage.getItem(LS_SIZE) || "md"; } catch(_) { return "md"; }
-  }
+  function getSize(){ try { return localStorage.getItem(LS_SIZE) || "md"; } catch(_) { return "md"; } }
   function setSize(v){
     if (!SIZE_PX[v]) v = "md";
     try { localStorage.setItem(LS_SIZE, v); } catch(_){}
     applySize(v);
   }
-
-  function getAutoplay(){
-    try { return localStorage.getItem(LS_AUTO) ?? "1"; } catch(_) { return "1"; }
+  function applySize(v){
+    const px = SIZE_PX[v] || SIZE_PX.md;
+    document.documentElement.style.setProperty("--btfw-emote-size", px+"px");
   }
+
+  function getAutoplay(){ try { return localStorage.getItem(LS_AUTO) ?? "1"; } catch(_) { return "1"; } }
   function setAutoplay(on){
     try { localStorage.setItem(LS_AUTO, on ? "1" : "0"); } catch(_){}
-    applyAutoplay();
+    applyAutoplay(); // rewire existing images without loops
   }
 
-  function applySize(mode){
-    const px = SIZE_PX[mode] || SIZE_PX.md;
-    document.documentElement.style.setProperty("--btfw-emote-size", px + "px");
-  }
+  // Helpers
+  const isGiphy = (img)=> img.classList.contains("giphy") || /media\d\.giphy\.com\/media\/.+\/.+\.gif/i.test(img.src);
+  const isTenor = (img)=> img.classList.contains("tenor") || /media\.tenor\.com\/.+\.gif/i.test(img.src);
+  const toAnimated = (src)=> src.replace(/\/200_s\.gif$/i, "/200.gif");
+  const toStatic   = (src)=> src.replace(/\/200\.gif$/i,   "/200_s.gif");
 
-  function isGiphy(img){
-    return img.classList.contains("giphy") || /media\d\.giphy\.com\/media\/.+\/.+\.gif/i.test(img.src);
-  }
-  function isTenor(img){
-    return img.classList.contains("tenor") || /media\.tenor\.com\/.+\.gif/i.test(img.src);
-  }
-
-  // For Giphy filter: 200_s.gif (static) ↔ 200.gif (animated)
-  function toAnimated(src){ return src.replace(/\/200_s\.gif$/i, "/200.gif"); }
-  function toStatic(src){   return src.replace(/\/200\.gif$/i,   "/200_s.gif"); }
-
-  function tagAndSize(img){
+  function ensureTagged(img){
     if (!img.classList.contains("channel-emote")) img.classList.add("channel-emote");
-    // sizing comes from CSS via --btfw-emote-size
   }
 
-  function wireAutoplay(img){
+  function setSrcIfDifferent(img, next){
+    if (!next || img.src === next) return;
+    img.src = next;
+  }
+
+  // (Re)wire a single image according to current autoplay setting
+  function wireOne(img){
+    ensureTagged(img);
+
+    // Mark wired so we don't attach listeners repeatedly
+    if (!img._btfwWired) {
+      img._btfwWired = true;
+      // We will (re)assign handlers below each time, but mark prevents
+      // duplicate observers elsewhere from piling up.
+    }
+
     const auto = getAutoplay() === "1";
     if (isGiphy(img)) {
       if (auto) {
-        img.src = toAnimated(img.src);
+        // Ensure animated at rest
+        setSrcIfDifferent(img, toAnimated(img.src));
         img.onmouseenter = null;
         img.onmouseleave = null;
       } else {
-        img.src = toStatic(img.src);
-        img.onmouseenter = () => { img.src = toAnimated(img.src); };
-        img.onmouseleave = () => { img.src = toStatic(img.src); };
+        // Rest static; animate on hover
+        setSrcIfDifferent(img, toStatic(img.src));
+        img.onmouseenter = () => { setSrcIfDifferent(img, toAnimated(img.src)); };
+        img.onmouseleave = () => { setSrcIfDifferent(img, toStatic(img.src));   };
       }
     } else if (isTenor(img)) {
-      // Tenor usually lacks static variants; leave animated
+      // Tenor: typically always animated (no static variant from filter)
       img.onmouseenter = null;
       img.onmouseleave = null;
     }
@@ -77,26 +80,28 @@ BTFW.define("feature:chatMedia", [], async () => {
     const direct = (node.matches && node.matches("img.giphy.chat-picture, img.tenor.chat-picture")) ? [node] : [];
     const list = direct.length ? direct
       : (node.querySelectorAll ? node.querySelectorAll("img.giphy.chat-picture, img.tenor.chat-picture") : []);
-    list.forEach(img => {
-      tagAndSize(img);
-      wireAutoplay(img);
-    });
+    list.forEach(wireOne);
+  }
+
+  function applyAutoplay(){
+    // Rewire all existing images idempotently (no attribute observer here)
+    $$("#messagebuffer img.giphy.chat-picture, #messagebuffer img.tenor.chat-picture").forEach(wireOne);
   }
 
   function boot(){
-    // Initial pass
-    processNode($("#messagebuffer"));
-
-    // Watch new chat content
     const buf = $("#messagebuffer");
-    if (buf && !buf._btfwMediaMO) {
+    if (buf) processNode(buf);
+
+    // Observe ONLY new nodes; DO NOT observe attributes (prevents loops)
+    if (buf && !buf._btfwMediaMO){
       const mo = new MutationObserver(muts=>{
-        muts.forEach(m=>{
-          m.addedNodes && m.addedNodes.forEach(n => { if (n.nodeType===1) processNode(n); });
-          if (m.type === "attributes" && m.target && m.target.nodeType===1) processNode(m.target);
-        });
+        for (const m of muts) {
+          if (m.type === "childList" && m.addedNodes) {
+            m.addedNodes.forEach(n => { if (n.nodeType===1) processNode(n); });
+          }
+        }
       });
-      mo.observe(buf, { childList:true, subtree:true, attributes:true, attributeFilter:["src","class"] });
+      mo.observe(buf, { childList:true, subtree:true });
       buf._btfwMediaMO = mo;
     }
 
@@ -104,18 +109,17 @@ BTFW.define("feature:chatMedia", [], async () => {
     applySize(getSize());
     applyAutoplay();
 
-    console.log("[BTFW] chatMedia ready");
+    console.log("[BTFW] chatMedia ready (stable)");
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
-  // Expose API for Theme Settings
   return {
     name:"feature:chatMedia",
     setEmoteSize: setSize,
     getEmoteSize: getSize,
     setGifAutoplayOn: setAutoplay,
-    getGifAutoplayOn: () => getAutoplay()==="1"
+    getGifAutoplayOn: ()=> getAutoplay()==="1"
   };
 });
