@@ -101,7 +101,7 @@
 }
 #btfw-chattools .btfw-ct{ border-radius:10px; }
 #btfw-ct-swatch{
-  position: absolute; margin-top:6px; right:6px;
+  position: sticky; margin-top:6px; right:6px;
   display:grid; grid-template-columns: repeat(8, 22px); gap:6px;
   padding:8px; border-radius:10px;
   background: rgba(10,14,20,.98);
