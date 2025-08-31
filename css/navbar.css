@@ -100,3 +100,8 @@
   border: 1px solid rgba(255,255,255,.25);
   box-shadow: 0 0 0 2px rgba(0,0,0,.15);
 }
+@media (min-width: 768px) {
+    .navbar-nav {
+        float: right!important;
+    }
+}

@@ -460,3 +460,98 @@
   display:flex; align-items:center; gap:10px;
 }
 .btfw-gif-pages { color: #cfd8ea; min-width: 72px; text-align:center; }
+
+/* === Bulma-style skin for CyTube Bootstrap modals === */
+
+.modal-backdrop {
+  background: rgba(10,10,10,0.86) !important;
+}
+
+.modal.btfw-bulma-skin {
+  z-index: 1050; /* above backdrop */
+  /* Bootstrap handles display/positioning; we only theme */
+}
+
+.modal.btfw-bulma-skin .modal-dialog {
+  max-width: 720px;
+  margin: 6vh auto;
+}
+
+.modal.btfw-bulma-skin .btfw-card {
+  background: #1f2a33;           /* dark card background */
+  color: #e7edf3;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  overflow: hidden;
+}
+
+.modal.btfw-bulma-skin .btfw-card-head {
+  background: rgba(255,255,255,0.035);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 12px 16px;
+  position: relative;
+}
+.modal.btfw-bulma-skin .btfw-card-head .modal-title {
+  font-weight: 600;
+  font-size: 16px;
+  margin: 0;
+}
+.modal.btfw-bulma-skin .btfw-card-head .delete {
+  position: absolute;
+  right: 10px; top: 10px;
+}
+
+.modal.btfw-bulma-skin .btfw-card-body {
+  padding: 16px;
+}
+
+.modal.btfw-bulma-skin .btfw-card-foot {
+  background: rgba(255,255,255,0.035);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 10px 12px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Buttons (Bulma look on Bootstrap buttons we remap in JS) */
+.modal.btfw-bulma-skin .button {
+  border-radius: 8px;
+}
+.modal.btfw-bulma-skin .button.is-dark {
+  background: #2a3640; color: #dfe7ed; border: 1px solid rgba(255,255,255,0.08);
+}
+.modal.btfw-bulma-skin .button.is-link {
+  background: #3a7bfd; color: #fff; border: none;
+}
+.modal.btfw-bulma-skin .button.is-danger {
+  background: #e05264; color: #fff; border: none;
+}
+.modal.btfw-bulma-skin .button.is-warning {
+  background: #e0a84f; color: #1f2328; border: none;
+}
+.modal.btfw-bulma-skin .button.is-success {
+  background: #43b581; color: #0f1519; border: none;
+}
+.modal.btfw-bulma-skin .button.is-info {
+  background: #2cb1bc; color: #0f1519; border: none;
+}
+
+/* Form elements inside skinned modals */
+.modal.btfw-bulma-skin input[type=text],
+.modal.btfw-bulma-skin input[type=password],
+.modal.btfw-bulma-skin select,
+.modal.btfw-bulma-skin textarea {
+  background: #172028;
+  color: #e7edf3;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.modal.btfw-bulma-skin label { color: #bcd1df; }
+
+/* Make Bootstrap close(X) unobtrusive (we add Bulma .delete) */
+.modal.btfw-bulma-skin .close {
+  display: none !important;
+}

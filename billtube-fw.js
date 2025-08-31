@@ -75,6 +75,7 @@ function load(src){
       "modules/feature-video-overlay.js",
       "modules/feature-pip.js",
 	  "modules/feature-footer-forms.js",
+	  "modules/feature-modal-skin.js",
       "modules/feature-sync-guard.js",
       "modules/feature-theme-settings.js"
     ];
@@ -97,6 +98,7 @@ function load(src){
 	  BTFW.init("feature:chat-timestamps"),
       BTFW.init("feature:chat-ignore"),
 	  BTFW.init("feature:navbar"),
+  	  BTFW.init("feature:modal-skin"),
       BTFW.init("feature:nowplaying"),
       BTFW.init("feature:gifs"),
       BTFW.init("feature:videoOverlay"),
