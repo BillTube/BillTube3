@@ -1,16 +1,149 @@
+/* BTFW — feature:stack (safe module stack under video)
+   Places selected leaf modules under the video in a stable, cycle-safe way.
+   Default order: channel slider → MOTD → PLAYLIST → POLL.
+   Important: we DO NOT move big ancestors like #mainpage to avoid DOM cycles.
+*/
 
-BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
-  const SKEY="btfw-stack-order";
-  const DEFAULT_SELECTORS=["#btfw-channels","#mainpage","#mainpane","#main","#motdrow","#motd","#announcements","#pollwrap","#playlistrow","#playlistwrap","#queuecontainer","#queue"];
-  function ensureStack(){ const left=document.getElementById("btfw-leftpad"); if(!left) return null; let stack=document.getElementById("btfw-stack"); if(!stack){ stack=document.createElement("div"); stack.id="btfw-stack"; stack.className="btfw-stack"; const v=document.getElementById("videowrap"); if(v&&v.nextSibling) v.parentNode.insertBefore(stack, v.nextSibling); else left.appendChild(stack); const hdr=document.createElement("div"); hdr.className="btfw-stack-header"; hdr.innerHTML='<div class="btfw-stack-title">Page Modules</div>'; stack.appendChild(hdr); const list=document.createElement("div"); list.className="btfw-stack-list"; stack.appendChild(list); const footer=document.createElement("div"); footer.id="btfw-stack-footer"; footer.className="btfw-stack-footer"; stack.appendChild(footer);} return {list:stack.querySelector(".btfw-stack-list"), footer:stack.querySelector("#btfw-stack-footer")}; }
-  function normalizeId(el){ if(!el) return null; if(!el.id) el.id="stackitem-"+Math.random().toString(36).slice(2,7); return el.id; }
-  function titleOf(el){ return el.getAttribute("data-title")||el.getAttribute("title")||el.id; }
-  function itemFor(el){ const w=document.createElement("section"); w.className="btfw-stack-item"; w.dataset.bind=normalizeId(el); w.innerHTML='<header class="btfw-stack-item__header"><span class="btfw-stack-item__title">'+titleOf(el)+'</span><span class="btfw-stack-arrows"><button class="btfw-arrow btfw-up">↑</button><button class="btfw-arrow btfw-down">↓</button></span></header><div class="btfw-stack-item__body"></div>'; w.querySelector(".btfw-stack-item__body").appendChild(el); w.querySelector(".btfw-up").onclick=function(){ const p=w.parentElement; const prev=w.previousElementSibling; if(prev) p.insertBefore(w, prev); save(p); }; w.querySelector(".btfw-down").onclick=function(){ const p=w.parentElement; const next=w.nextElementSibling; if(next) p.insertBefore(next, w); else p.appendChild(w); save(p); }; return w; }
-  function save(list){ try{ localStorage.setItem(SKEY, JSON.stringify(Array.from(list.children).map(n=>n.dataset.bind))); }catch(e){} }
-  function load(){ try{ return JSON.parse(localStorage.getItem(SKEY)||"[]"); }catch(e){ return []; } }
-  function attachFooter(footer){ const real=document.getElementById("footer")||document.querySelector("footer"); if(real && !footer.contains(real)){ real.classList.add("btfw-footer"); footer.innerHTML=""; footer.appendChild(real); } }
-  function populate(refs){ const list=refs.list, footer=refs.footer; const found=[]; DEFAULT_SELECTORS.forEach(sel=>{ const el=document.querySelector(sel); if(el && !list.contains(el)) found.push(el); }); const byId=new Map(found.map(el=>[normalizeId(el), el])); let order=load(); if(!order.length){ order=Array.from(byId.keys()); } order.forEach(id=>{ const el=byId.get(id); if(!el) return; let item=Array.from(list.children).find(n=>n.dataset.bind===id); if(!item){ item=itemFor(el); list.appendChild(item);} byId.delete(id); }); Array.from(byId.values()).forEach(el=>list.appendChild(itemFor(el))); save(list); attachFooter(footer); }
-  function boot(){ const refs=ensureStack(); if(!refs) return; populate(refs); const obs=new MutationObserver(()=>populate(refs)); obs.observe(document.body,{childList:true,subtree:true}); let n=0; const iv=setInterval(()=>{ populate(refs); if(++n>8) clearInterval(iv); },700); }
-  document.addEventListener("btfw:layoutReady", boot); setTimeout(boot, 1200);
-  return {name:"feature:stack"};
+BTFW.define("feature:stack", [], async () => {
+  const $  = (s,r=document)=>r.querySelector(s);
+  const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+
+  // Which module roots to stack (leaves only; adjust if you add more)
+  const ORDER = [
+    "#btfw-channel-slider", // your custom slider if present
+    "#motdwrap",
+    "#playlistwrap",
+    "#pollwrap"
+  ];
+
+  // Utility: safe append, avoiding parent/child cycles and no-ops
+  function safeAppend(child, parent){
+    if (!child || !parent) return false;
+    if (child === parent) return false;
+    if (child.parentElement === parent) return false;
+    if (child.contains(parent)) {
+      console.warn("[feature:stack] skip append — child contains parent:", child.id||child, "→", parent.id||parent);
+      return false;
+    }
+    parent.appendChild(child);
+    return true;
+  }
+
+  // Ensure we have a stack container INSIDE leftpad (not an ancestor of it)
+  function ensureStackContainer(){
+    const left = $("#btfw-leftpad");
+    if (!left) return null;
+
+    // Prefer to place after videowrap if present
+    let stack = $("#btfw-stack");
+    const video = $("#videowrap");
+
+    // If an existing #btfw-stack is an ancestor of leftpad, that's unsafe — recreate
+    if (stack && stack.contains(left)) {
+      console.warn("[feature:stack] existing #btfw-stack contains #btfw-leftpad — recreating a safe container");
+      stack = null;
+    }
+
+    if (!stack) {
+      stack = document.createElement("div");
+      stack.id = "btfw-stack";
+      stack.className = "btfw-stack";
+      if (video && video.parentElement === left) {
+        video.insertAdjacentElement("afterend", stack);
+      } else {
+        left.appendChild(stack);
+      }
+    } else {
+      // If it's not inside leftpad, try to move it safely
+      if (stack.parentElement !== left) {
+        if (!safeAppend(stack, left)) {
+          // If we can't move it, make a fresh safe one inside left
+          const fresh = document.createElement("div");
+          fresh.id = "btfw-stack";
+          fresh.className = "btfw-stack";
+          if (video && video.parentElement === left) {
+            video.insertAdjacentElement("afterend", fresh);
+          } else {
+            left.appendChild(fresh);
+          }
+          stack = fresh;
+        }
+      }
+    }
+    return stack;
+  }
+
+  // Arrange known modules into the stack in ORDER
+  function arrange(){
+    const stack = ensureStackContainer();
+    if (!stack) return;
+
+    // Ensure stack itself is not wrapping #btfw-leftpad by accident
+    const left = $("#btfw-leftpad");
+    if (stack.contains(left)) {
+      console.warn("[feature:stack] stack contains leftpad — clearing/recreating stack");
+      stack.remove();
+      arrange(); // retry once with a fresh stack
+      return;
+    }
+
+    ORDER.forEach(sel => {
+      const el = $(sel);
+      if (!el) return;
+
+      // If this module is an ancestor of leftpad, never move it (would cycle)
+      if (el.contains(left)) {
+        console.warn("[feature:stack] skip", sel, "because it contains #btfw-leftpad");
+        return;
+      }
+
+      // Only move leaves; common CyTube wrappers to avoid:
+      // #mainpage, #wrap, #main, or anything that contains leftpad
+      if (el.id === "mainpage" || el.id === "wrap" || el.id === "main") {
+        console.warn("[feature:stack] skip moving ancestor wrapper:", el.id);
+        return;
+      }
+
+      // Finally, append safely under the stack
+      safeAppend(el, stack);
+    });
+  }
+
+  // Debounced observer callback (avoid flapping)
+  let rafId = 0;
+  function scheduleArrange(){
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(()=> {
+      rafId = 0;
+      try { arrange(); } catch(e){ console.error("[feature:stack] arrange error:", e); }
+    });
+  }
+
+  function boot(){
+    arrange();
+
+    // Watch for relevant DOM changes (modules appearing) and re-arrange safely
+    const mo = new MutationObserver((mutList) => {
+      // Only rescan if one of our known modules or targets appeared/moved
+      const hits = mutList.some(m => {
+        return Array.from(m.addedNodes||[]).some(n => {
+          if (!(n instanceof HTMLElement)) return false;
+          if (n.matches && (n.matches("#videowrap") || n.matches("#chatwrap") || n.matches("#btfw-leftpad") || n.matches("#btfw-stack"))) {
+            return true;
+          }
+          return ORDER.some(sel => n.matches?.(sel) || n.querySelector?.(sel));
+        });
+      });
+      if (hits) scheduleArrange();
+    });
+    mo.observe(document.body, { childList:true, subtree:true });
+
+    // Also arrange after layout is ready (when leftpad exists)
+    document.addEventListener("btfw:layoutReady", scheduleArrange, { once:true });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+
+  return { name: "feature:stack", arrange };
 });
