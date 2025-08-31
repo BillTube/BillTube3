@@ -1,22 +1,21 @@
-/* BTFW — feature:layout (self-healing split + integrated resizer)
-   Guarantees:
+/* BTFW — feature:layout (safe split + integrated resizer, no ancestor cycles)
+   Ensures:
      #btfw-app (flex row)
-       #btfw-leftpad   (video + stack)
-       #btfw-resizer   (drag handle)
-       #btfw-rightpad  (chat)
-   Also:
-     - Injects fallback CSS so split works even if theme CSS is missing.
-     - Removes Bootstrap grid classes that force vertical stacking.
-     - Persists split width in localStorage.
+       #btfw-leftpad (video, stack handled by other modules)
+       #btfw-resizer
+       #btfw-rightpad (chat)
+   Notes:
+     - We DO NOT move #mainpage or other large wrappers to avoid cycles.
+     - We only place #videowrap into left and #chatwrap into right.
+     - Safe-append prevents “new child contains the parent” errors.
 */
 
 BTFW.define("feature:layout", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
-  const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
-  // ---- Fallback CSS (safe to keep even if your main CSS loads) ----
+  // ---- Fallback CSS so split works even if theme CSS is late/missing
   function injectFallbackCSS(){
-    if ($("#btfw-layout-fallback-css")) return;
+    if (document.getElementById("btfw-layout-fallback-css")) return;
     const css = `
       html, body { height:100%; }
       #btfw-app {
@@ -28,11 +27,7 @@ BTFW.define("feature:layout", [], async () => {
         min-height:480px;
         gap:0;
       }
-      #btfw-leftpad, #btfw-rightpad {
-        display:flex;
-        flex-direction:column;
-        min-height:0;
-      }
+      #btfw-leftpad, #btfw-rightpad { display:flex; flex-direction:column; min-height:0; }
       #btfw-leftpad  { flex: 0 0 62%; min-width:520px; }
       #btfw-rightpad { flex: 1 1 auto; min-width:320px; }
       #btfw-resizer  {
@@ -42,7 +37,6 @@ BTFW.define("feature:layout", [], async () => {
         border-left: 1px solid rgba(255,255,255,.06);
         border-right:1px solid rgba(0,0,0,.3);
       }
-      /* Make chat fill height properly */
       #chatwrap { display:flex; flex-direction:column; min-height:0; height:100%; }
       #messagebuffer { flex:1 1 auto; min-height:0; overflow:auto; }
       #chatlinewrap { flex: 0 0 auto; }
@@ -54,30 +48,39 @@ BTFW.define("feature:layout", [], async () => {
     document.head.appendChild(style);
   }
 
-  // ---- Bootstrap class purger (prevents reflow to vertical) ----
+  // Remove Bootstrap grid classes that can stack our panes vertically
   function purgeBootstrapGrid(el){
-    if (!el) return;
-    const classes = (el.className||"").split(/\s+/);
-    const keep = classes.filter(c => !/^col-(xs|sm|md|lg|xl)-\d+$/i.test(c) && c.toLowerCase() !== "row");
-    if (keep.length !== classes.length) el.className = keep.join(" ");
+    if (!el || !el.className) return;
+    const keep = el.className.split(/\s+/).filter(c =>
+      !/^col-(xs|sm|md|lg|xl)-\d+$/i.test(c) && c.toLowerCase() !== "row"
+    );
+    el.className = keep.join(" ");
   }
 
-  // ---- Ensure structure exists and move content into place ----
+  // Prevent parent-child cycles when moving DOM
+  function safeAppend(child, parent){
+    if (!child || !parent) return;
+    if (child === parent) return;                 // same node, ignore
+    if (child.contains(parent)) return;           // would create a cycle → skip
+    if (child.parentElement === parent) return;   // already in place
+    parent.appendChild(child);
+  }
+
   function ensureStructure(){
     injectFallbackCSS();
 
-    let app = $("#btfw-app");
+    // Create or get the core container and pads
+    let app = document.getElementById("btfw-app");
     if (!app) {
-      // Place under main content container if available
-      const main = $("#main") || $("#wrap") || document.body;
+      const main = document.getElementById("main") || document.getElementById("wrap") || document.body;
       app = document.createElement("div");
       app.id = "btfw-app";
       main.appendChild(app);
     }
 
-    let left  = $("#btfw-leftpad");
-    let right = $("#btfw-rightpad");
-    let bar   = $("#btfw-resizer");
+    let left  = document.getElementById("btfw-leftpad");
+    let right = document.getElementById("btfw-rightpad");
+    let bar   = document.getElementById("btfw-resizer");
 
     if (!left)  { left  = document.createElement("div"); left.id  = "btfw-leftpad";  app.appendChild(left); }
     if (!bar)   { bar   = document.createElement("div"); bar.id   = "btfw-resizer";  app.appendChild(bar);  }
@@ -85,29 +88,26 @@ BTFW.define("feature:layout", [], async () => {
 
     // Ensure order: left | bar | right
     if (app.firstElementChild !== left) app.insertBefore(left, app.firstChild);
-    if (bar.previousElementSibling !== left) app.insertBefore(bar, right);
+    if (bar.previousElementSibling !== left) app.insertBefore(bar, left.nextSibling);
     if (bar.nextElementSibling !== right) app.insertBefore(right, bar.nextSibling);
 
-    // Move known content to correct pads if not already
-    const videowrap  = $("#videowrap");
-    const stack      = $("#btfw-stack") || $("#mainpage") || $("#motdwrap")?.parentElement;
-    const chatwrap   = $("#chatwrap");
+    // Move ONLY the specific leaves we own to avoid cycles:
+    const videowrap = document.getElementById("videowrap");
+    if (videowrap) {
+      purgeBootstrapGrid(videowrap);
+      safeAppend(videowrap, left);
+    }
 
-    // Left side: video + stack
-    if (videowrap && videowrap.parentElement !== left) left.appendChild(videowrap);
-    if (stack && stack.parentElement !== left) left.appendChild(stack);
-
-    // Right side: chat
-    if (chatwrap && chatwrap.parentElement !== right) right.appendChild(chatwrap);
-
-    // Remove bootstrap grid classes that force stacking
-    purgeBootstrapGrid(videowrap);
-    purgeBootstrapGrid(chatwrap);
+    const chatwrap = document.getElementById("chatwrap");
+    if (chatwrap) {
+      purgeBootstrapGrid(chatwrap);
+      safeAppend(chatwrap, right);
+    }
 
     return { app, left, right, bar };
   }
 
-  // ---- Split persistence & resizer logic ----
+  // ---- Split persistence & resizer
   const LS_KEY   = "btfw:split:leftWidth"; // px
   const MIN_LEFT = 520;
   const MIN_RIGHT= 320;
@@ -153,12 +153,17 @@ BTFW.define("feature:layout", [], async () => {
     const x = ("touches" in e) ? e.touches[0].clientX : e.clientX;
     applySplit(startL + (x - startX));
   }
-  function onUp(){ if (!dragging) return; dragging=false; document.body.classList.remove("btfw-resizing"); }
+  function onUp(){
+    if (!dragging) return;
+    dragging = false;
+    document.body.classList.remove("btfw-resizing");
+  }
 
   function wireResizer(){
     const { bar } = ensureStructure();
     if (!bar || bar._btfwWired) return;
     bar._btfwWired = true;
+
     bar.addEventListener("mousedown",  onDown, { passive:false });
     bar.addEventListener("touchstart", onDown, { passive:false });
     window.addEventListener("mousemove", onMove, { passive:false });
@@ -168,18 +173,19 @@ BTFW.define("feature:layout", [], async () => {
     window.addEventListener("resize", ()=> loadSplit(false));
   }
 
-  // ---- Boot + observers ----
   function boot(){
     ensureStructure();
     wireResizer();
     loadSplit(true);
 
-    // Keep structure healthy if DOM changes massively (e.g., CyTube reflows)
+    // If CyTube reflows DOM, keep our split stable without reparenting ancestors
     const mo = new MutationObserver(()=>{
-      ensureStructure();
-      wireResizer();
-      // Re-apply split after DOM mutations
-      loadSplit(false);
+      // Only try to (re)place the two leaf nodes to avoid cycles
+      const { left, right } = ensureStructure();
+      const videowrap = document.getElementById("videowrap");
+      const chatwrap  = document.getElementById("chatwrap");
+      if (videowrap && videowrap.parentElement !== left) safeAppend(videowrap, left);
+      if (chatwrap  && chatwrap.parentElement  !== right) safeAppend(chatwrap,  right);
     });
     mo.observe(document.body, { childList:true, subtree:true });
   }
@@ -187,7 +193,6 @@ BTFW.define("feature:layout", [], async () => {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
-  // Public helpers (optional)
   return {
     name: "feature:layout",
     setSplit(px){ applySplit(px); },
