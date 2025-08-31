@@ -95,7 +95,7 @@ function load(src){
 	  BTFW.init("feature:emoji-compat"),
       BTFW.init("feature:chat-avatars"),
 	  BTFW.init("feature:chat-timestamps"),
-      BTFW.init("feature:chat-ignore");
+      BTFW.init("feature:chat-ignore"),
 	  BTFW.init("feature:navbar"),
       BTFW.init("feature:nowplaying"),
       BTFW.init("feature:gifs"),
