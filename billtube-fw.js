@@ -77,6 +77,7 @@ function load(src){
 	  "modules/feature-footer-forms.js",
 	  "modules/feature-modal-skin.js",
       "modules/feature-sync-guard.js",
+	  "modules/feature-chat-commands.js",
       "modules/feature-theme-settings.js"
     ];
     return mods.reduce((p,f)=>p.then(()=>load(BASE+"/"+f)), Promise.resolve());
@@ -104,6 +105,7 @@ function load(src){
       BTFW.init("feature:videoOverlay"),
       BTFW.init("feature:pip"),
       BTFW.init("feature:syncGuard"),
+	  BTFW.init("feature:chat-commands"),
 	  BTFW.init("feature:themeSettings")
     ]);
   }).then(function(){ console.log("[BTFW v3.4f] Ready."); })
