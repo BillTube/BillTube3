@@ -72,6 +72,10 @@ function load(src){
 	  "modules/feature-navbar.js",
       "modules/feature-nowplaying.js",
       "modules/feature-gifs.js",
+      "modules/feature-playlist-tools.js",
+      "modules/feature-local-subs.js",
+      "modules/feature-emoji-loader.js",
+      "modules/feature-motd-editor.js",
       "modules/feature-video-overlay.js",
       "modules/feature-pip.js",
 	  "modules/feature-footer-forms.js",
@@ -106,6 +110,10 @@ function load(src){
       BTFW.init("feature:pip"),
       BTFW.init("feature:syncGuard"),
 	  BTFW.init("feature:chat-commands"),
+	  BTFW.init("feature:playlist-tools"),
+	  BTFW.init("feature:local-subs"),
+      BTFW.init("feature:emoji-loader"),
+	  BTFW.init("feature:motd-editor"),
 	  BTFW.init("feature:themeSettings")
     ]);
   }).then(function(){ console.log("[BTFW v3.4f] Ready."); })
