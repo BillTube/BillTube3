@@ -1,5 +1,6 @@
 
 BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) => {
+const SPLIT_KEY = "btfw:grid:leftPx";
   function setTop(){
     const header = document.querySelector(".navbar, #nav-collapsible, #navbar, .navbar-fixed-top");
     const h = header ? header.offsetHeight : 48;
@@ -40,7 +41,8 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     }
 
     // Update the grid-template-columns style directly
-    grid.style.gridTemplateColumns = `${newLeftWidth}px 5px 1fr`;
+  grid.style.gridTemplateColumns = `${newLeftWidth}px 5px 1fr`;
+  try { localStorage.setItem(SPLIT_KEY, String(newLeftWidth)); } catch(e) {}
   }
 
   function stopResize() {
@@ -63,6 +65,12 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       const split=document.createElement("div"); split.id="btfw-vsplit";
       grid.appendChild(left); grid.appendChild(split); grid.appendChild(right);
       wrap.prepend(grid);
+      try {
+      const saved = parseInt(localStorage.getItem(SPLIT_KEY) || "", 10);
+      if (!isNaN(saved) && saved >= 400) {
+      grid.style.gridTemplateColumns = `${saved}px 5px 1fr`;
+    }
+} catch (e) {}
     } else {
       const left=document.getElementById("btfw-leftpad"); const right=document.getElementById("btfw-chatcol");
       const v=document.getElementById("videowrap"); const c=document.getElementById("chatwrap"); const q=document.getElementById("playlistrow")||document.getElementById("playlistwrap")||document.getElementById("queuecontainer");
