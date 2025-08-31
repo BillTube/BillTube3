@@ -90,3 +90,13 @@
 
 /* Optional: hide the old Bootstrap divider lines inside dropdowns when using dark bar */
 .btfw-topbar .dropdown-menu .divider { background-color: rgba(255,255,255,.08); }
+/* Navbar avatar */
+.btfw-nav-avatar-item { display:inline-block; margin-left:12px; }
+.btfw-nav-avatar-link { display:inline-flex; align-items:center; }
+.btfw-nav-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,.25);
+  box-shadow: 0 0 0 2px rgba(0,0,0,.15);
+}
