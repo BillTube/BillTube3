@@ -28,17 +28,22 @@ BTFW.define("feature:chat-commands", [], async () => {
   function clamp(n,a,b){ return Math.min(b, Math.max(a, n)); }
   function norm(s){ return String(s||"").toLowerCase().replace(/['".,;:!?()\[\]{}]/g,"").replace(/\s+/g," ").trim(); }
 
-  function getCurrentTitle(){
-    const a = $(".queue_active a");
-    if (a?.textContent) return a.textContent.trim();
-    const np = $("#currenttitle");
-    if (np?.textContent) return np.textContent.trim();
-    const og = document.querySelector('meta[property="og:title"]');
-    if (og?.content) return og.content.trim();
-    return "";
+function getCurrentTitle(){
+  // Prefer the active queue item
+  const a = document.querySelector('#queue .queue_active a');
+  let t = a?.textContent?.trim() || "";
+
+  // Fallback: #currenttitle (strip any prefix from older code or server)
+  if (!t) {
+    const ct = document.getElementById('currenttitle');
+    t = (ct?.textContent || "").trim();
   }
 
-  // ---------- Trivia (BillTube2-compatible) ----------
+  // Remove any "Currently playing:" / "Now playing:" prefix
+  t = t.replace(/^\s*(?:currently|now)\s*playing\s*[:\-]\s*/i, "").trim();
+  return t;
+}
+
   const workerUrl    = 'https://trivia-worker.billtube.workers.dev';
   const triviaAPIUrl = 'https://opentdb.com/api.php?amount=1&type=multiple';
 
@@ -182,7 +187,27 @@ BTFW.define("feature:chat-commands", [], async () => {
       return null;
     } catch(e){ return "Queue add failed."; }
   }
+function sanitizeTitleForSearch(t){
+  if (!t) return "";
+  let s = " " + t + " ";
 
+  // Strip bracketed tags like [1080p], (Official Trailer), but keep (YYYY)
+  s = s.replace(/\[[^\]]*\]/g, " ");
+  s = s.replace(/\(([^)]*)\)/g, (m, inner) => /^\s*\d{4}\s*$/.test(inner) ? m : " ");
+
+  // Common noise tokens
+  s = s.replace(/\b(?:official\s*trailer|trailer|teaser|lyrics|mv|amv|full\s*episode|episode\s*\d+|season\s*\d+)\b/gi, " ");
+  s = s.replace(/\b(?:\d{3,4}p|[48]k|hdr|dolby(?:\s+vision)?|remaster|extended|uncut|subbed|dubbed)\b/gi, " ");
+
+  // Collapse whitespace
+  s = s.replace(/\s{2,}/g, " ").trim();
+
+  // If there is a delimiter like " - " or " | ", prefer left part (often the title)
+  const split = s.split(/\s[-–|:]\s/);
+  if (split.length > 1 && split[0].length >= 3) s = split[0].trim();
+
+  return s || t;
+}
   // ---------- Command registry ----------
   const REG = new Map();
   function addCommand(name, handler, {desc="", usage="", cooldownMs=800, aliases=[]}={}){
@@ -205,13 +230,14 @@ BTFW.define("feature:chat-commands", [], async () => {
   addCommand("leaderboard", async ()=>{ await displayLeaderboard(); return ""; }, { desc:"Show trivia leaderboard", usage:"!leaderboard" });
   addCommand("trivia",      async ()=>{ const out=await startTriviaOnce(); return out||""; }, { desc:"Start one trivia question (rank ≥2)", usage:"!trivia" });
 
-  addCommand("summary",     async (ctx)=>{
-    const q = ctx.args.length ? ctx.args.join(" ") : getCurrentTitle();
-    if (!q) return "No current title, try: !summary <title>";
-    const out = await fetchTMDBSummary(q);
-    sendChat(out);
-    return "";
-  }, { desc:"TMDB summary for current or given title", usage:"!summary [title]" });
+  addCommand("summary", async (ctx)=>{
+  const raw = ctx.args.length ? ctx.args.join(" ") : getCurrentTitle();
+  if (!raw) return "No current title, try: !summary <title>";
+  const q = sanitizeTitleForSearch(raw);
+  const out = await fetchTMDBSummary(q);
+  sendChat(out);
+  return "";
+}, { desc:"TMDB summary for current or given title", usage:"!summary [title]" });
 
   addCommand("pick",  (ctx)=>{ const raw=ctx.args.join(" "); const parts=raw.split(/[,|]/).map(s=>s.trim()).filter(Boolean); if (parts.length<2) return "Usage: !pick a, b, c"; sendChat(`🎯 I choose: ${parts[Math.floor(Math.random()*parts.length)]}`); return ""; }, { desc:"Pick randomly", usage:"!pick a, b, c" });
   addCommand("ask",   ()=>{ const a=["Yes.","No.","Maybe.","Probably.","Probably not.","Absolutely.","Definitely not.","Ask again later."]; sendChat(a[Math.floor(Math.random()*a.length)]); return ""; }, { desc:"Magic-8", usage:"!ask <q>" });
