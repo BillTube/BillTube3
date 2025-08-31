@@ -65,7 +65,10 @@ function load(src){
 	  "modules/feature-emotes.js",
 	  "modules/feature-emoji-compat.js",
 	  "modules/feature-chat-media.js",
+      "modules/feature-chat-username-colors.js",
       "modules/feature-chat-avatars.js",
+      "modules/feature-chat-timestamps.js",
+      "modules/feature-chat-ignore.js",
 	  "modules/feature-navbar.js",
       "modules/feature-nowplaying.js",
       "modules/feature-gifs.js",
@@ -86,10 +89,13 @@ function load(src){
       BTFW.init("feature:stack"),
       BTFW.init("feature:chat"),
 	  BTFW.init("feature:chat-tools"),
+      BTFW.init("feature:chat-username-colors");
 	  BTFW.init("feature:emotes"),
 	  BTFW.init("feature:chatMedia"),
 	  BTFW.init("feature:emoji-compat"),
       BTFW.init("feature:chat-avatars"),
+	  BTFW.init("feature:chat-timestamps");
+      BTFW.init("feature:chat-ignore");
 	  BTFW.init("feature:navbar"),
       BTFW.init("feature:nowplaying"),
       BTFW.init("feature:gifs"),

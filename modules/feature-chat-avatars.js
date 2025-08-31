@@ -1,187 +1,136 @@
-/* BillTube Framework — feature:chat-avatars (CyTube variant)
-   Works with chat nodes like: <div class="chat-msg-<nick>"> ... </div>
-   - Sources: userlist jQuery data().profile.image -> <img> -> DROPBOX noavatar -> initials
-   - Sizes: off/small/big (Theme Settings tab)
-   - Consecutive collapse
-   - Also injects current user's avatar in navbar (old theme parity)
+/* BTFW — feature:chat-avatars
+   - Injects avatar before .username in each chat message
+   - Source order: profile image from userlist data() → CyTube avatar (if available) → colored initials SVG fallback
+   - Compacts consecutive messages from same user (no repeated avatar; reduced top margin)
+   - Respects --btfw-avatar-size (set by avatars-bridge or your avatar settings)
 */
-BTFW.define("feature:chat-avatars", ["feature:chat"], async ({}) => {
-  const $  = (s, r=document) => r.querySelector(s);
-  const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-  const jQ = window.jQuery || window.$;
+BTFW.define("feature:chat-avatars", [], async () => {
+  const $  = (s,r=document)=>r.querySelector(s);
+  const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
-  const LS_MODE = "btfw:avatars:mode";   // "off" | "small" | "big"
-  const DEFAULT_MODE = "small";
-
-  const COLORS = ["#1abc9c","#16a085","#f1c40f","#f39c12","#2ecc71","#27ae60","#e67e22",
-                  "#d35400","#3498db","#2980b9","#e74c3c","#c0392b","#9b59b6","#8e44ad",
-                  "#0080a5","#34495e","#2c3e50","#87724b","#7300a7","#ec87bf","#d870ad",
-                  "#f69785","#9ba37e","#b49255","#a94136"];
-
-  const MSG_SEL = '#messagebuffer > div.chat-msg, #messagebuffer > div[class^="chat-msg"]';
-
-  function initialsDataURL(name, size, radius=8){
-    name = (name || "?").trim();
-    const parts = name.split(/\s+/).filter(Boolean);
-    const glyph = ((parts[0]?.[0]||"") + (parts[1]?.[0]||"")).toUpperCase() || (name[0]||"?").toUpperCase();
-    const seed  = glyph.charCodeAt(0) + (glyph.charCodeAt(1)||0);
-    const color = COLORS[ seed % COLORS.length ];
-    const svg =
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
-         <rect rx="${radius}" ry="${radius}" width="${size}" height="${size}" fill="${color}"/>
-         <text x="50%" y="50%" dy=".35em" text-anchor="middle"
-               fill="#fff" font-family="Inter,Helvetica,Arial,sans-serif"
-               font-size="${Math.floor(size*0.46)}" font-weight="600">${glyph}</text>
-       </svg>`;
-    return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+  // Try BillTube2-style: jQuery data('profile').image from userlist
+  function getProfileImgFromUserlist(name){
+    try {
+      const li = findUserlistItem(name);
+      if (!li || !window.jQuery) return "";
+      const $li = window.jQuery(li);
+      const prof = $li.data && $li.data("profile");
+      const img = prof && prof.image;
+      return img || "";
+    } catch(_) { return ""; }
   }
 
-  /* ---- resolve avatar like the old theme: userlist jQuery data().profile.image ---- */
-  function findUserlistItem(nick){
-    if (!jQ) return null;
-    const $items = jQ("#userlist .userlist_item");
-    if (!$items.length) return null;
-    const $hit = $items.filter(function(){
-      const $li = jQ(this);
-      const d   = $li.data() || {};
-      const dn  = d.name || d.nick || d.username || $li.attr("data-name");
-      return dn === nick;
-    }).first();
-    return $hit.length ? $hit : null;
-  }
-
-  function resolveAvatarURL(nick){
-    const $li = findUserlistItem(nick);
-    if ($li){
-      const d = $li.data && $li.data();
-      if (d && d.profile && d.profile.image) return d.profile.image;
-      if (d && d.image) return d.image;
-      const $img = $li.find("img");
-      if ($img && $img.length && $img[0].src && !$img[0].src.startsWith("data:")) return $img[0].src;
-    }
-    if (typeof window.DROPBOX === "string" && window.DROPBOX) {
-      return window.DROPBOX.replace(/\/?$/, "/") + "xor4ykvsgrzys3d/noavatar.png";
-    }
-    return "";
-  }
-
-  /* ---- settings ---- */
-  function getMode(){ try { return localStorage.getItem(LS_MODE) || DEFAULT_MODE; } catch(e){ return DEFAULT_MODE; } }
-  function setMode(mode){
-    try { localStorage.setItem(LS_MODE, mode); } catch(e){}
-    applyModeClass(mode);
-    $$(MSG_SEL).forEach(decorateMessage);
-  }
-  function applyModeClass(mode){
-    const wrap = $("#chatwrap"); if (!wrap) return;
-    wrap.classList.remove("btfw-avatars-off","btfw-avatars-small","btfw-avatars-big");
-    wrap.classList.add("btfw-avatars-"+mode);
-  }
-
-  /* ---- message helpers ---- */
-  function usernameOf(msg){
-    const u = msg.querySelector(".username,.nick,.name");
-    if (!u) return "";
-    // Remove trailing colon if present: "bill2: " -> "bill2"
-    return (u.textContent || "").replace(/:\s*$/, "").trim();
-  }
-  function prevUserMsg(node){
-    let p = node.previousElementSibling;
-    while (p){
-      if (p.matches?.('div[class^="chat-msg"], .chat-msg')) return p;
-      p = p.previousElementSibling;
+  function findUserlistItem(name){
+    if (!name) return null;
+    const byData = document.querySelector(`#userlist li[data-name="${CSS.escape(name)}"]`);
+    if (byData) return byData;
+    const items = document.querySelectorAll("#userlist li, #userlist .userlist_item, #userlist .user");
+    for (const el of items) {
+      const t = (el.textContent || "").trim();
+      if (t && t.replace(/\s+/g,"").toLowerCase().startsWith(name.toLowerCase())) return el;
     }
     return null;
   }
 
-  function decorateMessage(msg){
-    if (!msg || msg._btfw_avatar_done) return;
-    if (!msg.matches || !msg.matches('div[class^="chat-msg"], .chat-msg')) return;
+  // Fallback: CyTube avatar on profile (if DOM exposes it)
+  function getCyTubeAvatarMaybe(name){
+    // Not always accessible; keep placeholder for future hook-ins
+    return "";
+  }
 
-    msg._btfw_avatar_done = true;
+  function initialsDataURL(name, sizePx){
+    const colors = ["#1abc9c","#16a085","#f1c40f","#f39c12","#2ecc71","#27ae60","#e67e22","#d35400","#3498db","#2980b9","#e74c3c","#c0392b","#9b59b6","#8e44ad","#0080a5","#34495e","#2c3e50","#87724b","#7300a7","#ec87bf","#d870ad","#f69785","#9ba37e","#b49255","#a94136"];
+    const c = (name||"?").trim();
+    const first = (c.codePointAt(0)||63) % colors.length;
+    const bg = colors[first];
+    const letters = c.slice(0,2).toUpperCase();
+    const sz = sizePx || 24;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}"><rect width="100%" height="100%" fill="${bg}"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#fff" font-family="Inter,Arial,sans-serif" font-size="${Math.round(sz*0.5)}" font-weight="600">${letters}</text></svg>`;
+    return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+  }
 
-    const mode = getMode(); if (mode === "off") return;
+  function ensureAvatar(msgEl){
+    // find username
+    const uEl = msgEl.querySelector(".username");
+    if (!uEl) return;
+    const raw = (uEl.textContent || "").trim();
+    const name = raw.replace(/:\s*$/,"");
+    if (!name) return;
 
-    const nick = usernameOf(msg);
-    if (!nick) return;
+    // Already has our avatar?
+    if (msgEl.querySelector(".btfw-chat-avatar")) return;
 
-    // consecutive collapse
-    const prev = prevUserMsg(msg);
-    if (prev && usernameOf(prev) === nick) msg.classList.add("btfw-consecutive");
+    const size = getComputedStyle(document.documentElement).getPropertyValue("--btfw-avatar-size").trim() || "24px";
+    const px = parseInt(size,10) || 24;
 
-    if (msg.querySelector(".btfw-chat-avatar")) return;
-
-    const size = (mode === "big") ? 40 : 28;
-    let url = resolveAvatarURL(nick);
-    if (!url) url = initialsDataURL(nick, size, Math.round(size/3));
+    // pick image
+    let src = getProfileImgFromUserlist(name) || getCyTubeAvatarMaybe(name);
+    if (!src) src = initialsDataURL(name, px);
 
     const img = document.createElement("img");
     img.className = "btfw-chat-avatar";
-    img.src = url; img.width = size; img.height = size; img.alt = nick;
+    img.src = src;
+    img.alt = name;
+    img.width = px; img.height = px;
 
-    // Insert avatar as first child so flex layout aligns avatar + existing spans
-    msg.insertBefore(img, msg.firstChild);
-    msg.classList.add("btfw-has-avatar");
+    // insert before username
+    const wrap = document.createElement("span");
+    wrap.className = "btfw-chat-avatarwrap";
+    wrap.appendChild(img);
+    // Insert avatarwrap right before username element
+    uEl.parentNode.insertBefore(wrap, uEl);
   }
 
-  function decorateExisting(){
-    $$(MSG_SEL).forEach(decorateMessage);
+  // Consecutive message compaction: if same user as previous message, hide avatar and reduce gap
+  let lastSender = null;
+  function compactIfConsecutive(msgEl){
+    const uEl = msgEl.querySelector(".username");
+    if (!uEl) return;
+    const name = (uEl.textContent || "").trim().replace(/:\s*$/,"");
+    const avatar = msgEl.querySelector(".btfw-chat-avatarwrap");
+    if (!name || !avatar) return;
+
+    const consecutive = (lastSender && lastSender === name);
+    msgEl.classList.toggle("btfw-compact", consecutive);
+    avatar.style.display = consecutive ? "none" : "";
+
+    lastSender = name;
   }
 
-  /* ---- observers ---- */
-  function observeBuffer(){
-    const buf = $("#messagebuffer");
-    if (!buf || buf._btfw_avatar_obs) return;
-    buf._btfw_avatar_obs = true;
-
-    decorateExisting();
-
-    new MutationObserver(muts => muts.forEach(m => m.addedNodes.forEach(n => {
-      if (n.nodeType === 1 && (n.matches?.('div[class^="chat-msg"], .chat-msg'))) {
-        decorateMessage(n);
-      }
-    }))).observe(buf, {childList:true});
+  function processNode(node){
+    if (!node) return;
+    // Chat messages are typically divs in #messagebuffer; be generous:
+    const msgs = (node.matches && node.matches("#messagebuffer > div")) ? [node]
+               : (node.querySelectorAll ? node.querySelectorAll("#messagebuffer > div") : []);
+    msgs.forEach(m => { ensureAvatar(m); compactIfConsecutive(m); });
   }
 
-  /* ---- navbar avatar (current user) ---- */
-function injectNavbarAvatar(){
-  if (!jQ) return;
-  const name = (window.CLIENT && CLIENT.name) || "";
-  if (!name) return;
+  function reflowAll(){
+    lastSender = null;
+    const buf = document.getElementById("messagebuffer");
+    if (!buf) return;
+    const msgs = Array.from(buf.children || []);
+    msgs.forEach(m => { ensureAvatar(m); compactIfConsecutive(m); });
+  }
 
-  const $navbarNav =
-    jQ(".navbar .nav.navbar-nav").first().length ? jQ(".navbar .nav.navbar-nav").first() :
-    jQ("#nav-collapsible ul.nav").first().length ? jQ("#nav-collapsible ul.nav").first() :
-    jQ("ul.navbar-nav").first();
-
-  if (!$navbarNav || !$navbarNav.length) return;
-  if ($navbarNav.find("#useravatar").length) return;
-
-  let img = resolveAvatarURL(name);
-  if (!img) img = initialsDataURL(name, 32, 8);
-
-  const html = `
-    <li class="centered btfw-avatar-li">
-      <a href="/account/profile" target="_blank" class="btfw-avatar-link">
-        <img id="useravatar" src="${img}" title="${name}" alt="User Avatar" />
-      </a>
-    </li>`;
-  $navbarNav.append(html);
-}
-
-  /* ---- boot ---- */
   function boot(){
-    applyModeClass(getMode());
-    observeBuffer();
-    injectNavbarAvatar();
+    reflowAll();
+    const buf = document.getElementById("messagebuffer");
+    if (buf && !buf._btfwAvMO){
+      const mo = new MutationObserver(muts=>{
+        for (const m of muts) {
+          if (m.type==="childList" && m.addedNodes) {
+            m.addedNodes.forEach(n => { if (n.nodeType===1) processNode(n); });
+          }
+        }
+      });
+      mo.observe(buf, { childList:true, subtree:false });
+      buf._btfwAvMO = mo;
+    }
   }
 
-  document.addEventListener("btfw:layoutReady", () => setTimeout(boot, 0));
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
-  return { name: "feature:chat-avatars", setMode, getMode };
+  return { name:"feature:chat-avatars", reflow: reflowAll };
 });
-
-/* Compatibility alias so init("feature:chatAvatars") still works */
-BTFW.define("feature:chatAvatars", ["feature:chat-avatars"], async () => ({ name: "feature:chatAvatars" }));
