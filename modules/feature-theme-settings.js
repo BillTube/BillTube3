@@ -177,7 +177,23 @@ BTFW.define("feature:themeSettings", [], async () => {
               </div>
             </div>
           </div>
+		<div class="btfw-ts-panel" data-tab="video" style="display:none;">
+  <div class="content">
+    <h4>Video</h4>
+
+    <label class="checkbox" style="margin-bottom:10px;">
+      <input type="checkbox" id="btfw-pip-toggle"> Picture-in-Picture (experimental)
+    </label>
+
+    <label class="checkbox">
+      <input type="checkbox" id="btfw-localsubs-toggle">
+      Show “Local Subtitles” button
+    </label>
+    <p class="help">Allows loading a local .vtt or .srt file into the HTML5 player.</p>
+  </div>
+</div>
         </section>
+		
         <footer class="modal-card-foot">
           <button class="button" id="btfw-ts-cancel">Cancel</button>
           <button class="button is-link" id="btfw-ts-apply">Apply</button>
@@ -333,6 +349,31 @@ BTFW.define("feature:themeSettings", [], async () => {
     applyChatText(getChatTextSize());
     ensureOpeners();
   }
+// near your LS constants
+const LS = { /* ...existing... */ localSubs: "btfw:video:localsubs" };
+
+// helpers
+function getLocalSubs(){ try { return localStorage.getItem(LS.localSubs) !== "0"; } catch(_) { return true; } }
+function setLocalSubs(v){
+  try { localStorage.setItem(LS.localSubs, v ? "1":"0"); } catch(_){}
+  document.dispatchEvent(new CustomEvent("btfw:video:localsubs:changed",{detail:{enabled:!!v}}));
+}
+
+// in ensureModal(), after you query the modal root "m"
+const subsBox = m.querySelector("#btfw-localsubs-toggle");
+if (subsBox){
+  subsBox.checked = getLocalSubs();
+  subsBox.addEventListener("change", ()=> setLocalSubs(subsBox.checked));
+}
+
+// also refresh values when opening the modal
+function open(){
+  const m = ensureModal();
+  // ...other refresh...
+  const subsBox = m.querySelector("#btfw-localsubs-toggle");
+  if (subsBox) subsBox.checked = getLocalSubs();
+  m.classList.add("is-active");
+}
 
   document.addEventListener("btfw:layoutReady", () => setTimeout(boot,0));
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
