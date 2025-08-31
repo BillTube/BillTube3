@@ -1,129 +1,16 @@
-/* BTFW — feature:stack (native panes)
-   Creates #btfw-stack inside #leftpane, just under the video, and moves LEAF rows into it:
-   order: controlsrow → btfw-channel-slider → motdrow → playlistrow → pollwrap
-   Footer stays outside (layout handles it).
-*/
 
-BTFW.define("feature:stack", [], async () => {
-  const $ = (s,r=document)=>r.querySelector(s);
-
-  const LS_ORDER = "btfw:stack:order";
-  const DEFAULT = [
-    "controlsrow",
-    "btfw-channel-slider",
-    "motdrow",
-    "playlistrow",
-    "pollwrap"
-  ];
-
-  function readOrder(){
-    try { const s = localStorage.getItem(LS_ORDER); if (!s) return null;
-      const arr = JSON.parse(s); return Array.isArray(arr)?arr:null;
-    } catch(_){ return null; }
-  }
-  function writeOrder(list){ try { localStorage.setItem(LS_ORDER, JSON.stringify(list)); } catch(_){} }
-  function currentOrder(){
-    const saved = readOrder();
-    const ids = new Set(DEFAULT);
-    let out = saved ? saved.filter(id => ids.has(id)) : DEFAULT.slice();
-    DEFAULT.forEach(id => { if (!out.includes(id)) out.push(id); });
-    return out;
-  }
-
-  function safeAppend(child, parent){
-    if (!child || !parent) return false;
-    if (child === parent) return false;
-    if (child.parentElement === parent) return true;
-    if (child.contains(parent)) return false; // avoid cycles
-    parent.appendChild(child);
-    return true;
-  }
-
-  function ensureStack(){
-    const left = $("#leftpane");
-    if (!left) return null;
-
-    // Prefer to anchor after the video container if present
-    const video = $("#videowrap") || left.querySelector(".embed-responsive, .videowrap");
-    let stack = $("#btfw-stack");
-    if (!stack){
-      stack = document.createElement("div");
-      stack.id = "btfw-stack";
-      stack.className = "btfw-stack";
-      if (video && video.parentElement === left) video.insertAdjacentElement("afterend", stack);
-      else left.insertBefore(stack, left.firstChild);
-    } else if (stack.parentElement !== left){
-      safeAppend(stack, left);
-    }
-
-    // Keep stack after video (if video exists)
-    if (video && video.parentElement === left && stack.previousElementSibling !== video) {
-      video.insertAdjacentElement("afterend", stack);
-    }
-    return stack;
-  }
-
-  function ensureMoveUI(el, id){
-    if (!el || el._btfwMoveUI) return;
-    el._btfwMoveUI = true;
-
-    const bar = document.createElement("div");
-    bar.className = "btfw-stack-toolbar";
-    bar.style.cssText = "display:flex; gap:6px; justify-content:flex-end; margin:4px 0;";
-    bar.innerHTML = `
-      <button class="button is-small" data-dir="up"   title="Move up">▲</button>
-      <button class="button is-small" data-dir="down" title="Move down">▼</button>
-    `;
-    const up = bar.querySelector('[data-dir="up"]');
-    const dn = bar.querySelector('[data-dir="down"]');
-    up.addEventListener("click", (e)=>{ e.preventDefault();
-      const o = currentOrder(); const i=o.indexOf(id); if (i>0){ [o[i-1],o[i]]=[o[i],o[i-1]]; writeOrder(o); arrange(); }
-    });
-    dn.addEventListener("click", (e)=>{ e.preventDefault();
-      const o = currentOrder(); const i=o.indexOf(id); if (i>=0 && i<o.length-1){ [o[i],o[i+1]]=[o[i+1],o[i]]; writeOrder(o); arrange(); }
-    });
-
-    el.insertBefore(bar, el.firstChild);
-  }
-
-  function arrange(){
-    const stack = ensureStack();
-    if (!stack) return;
-
-    // Place modules in order
-    currentOrder().forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      safeAppend(el, stack);
-      ensureMoveUI(el, id);
-    });
-  }
-
-  let raf=0;
-  function schedule(){ if (raf) cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>{ raf=0; try{ arrange(); }catch(e){ console.error("[feature:stack] arrange",e);} }); }
-
-  function boot(){
-    arrange();
-
-    const mo = new MutationObserver((ml)=>{
-      let touched=false;
-      for (const m of ml){
-        for (const n of m.addedNodes){
-          if (!(n instanceof HTMLElement)) continue;
-          if (n.id && (n.id==="leftpane" || n.id==="videowrap" || DEFAULT.includes(n.id))) { touched=true; break; }
-          if (DEFAULT.some(id => n.querySelector?.("#"+id))) { touched=true; break; }
-        }
-        if (touched) break;
-      }
-      if (touched) schedule();
-    });
-    mo.observe(document.body, { childList:true, subtree:true });
-
-    document.addEventListener("btfw:layoutReady", schedule, { once:true });
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
-
-  return { name:"feature:stack", arrange };
+BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
+  const SKEY="btfw-stack-order";
+  const DEFAULT_SELECTORS=["#btfw-channels","#mainpage","#mainpane","#main","#motdrow","#motd","#announcements","#pollwrap","#playlistrow","#playlistwrap","#queuecontainer","#queue"];
+  function ensureStack(){ const left=document.getElementById("btfw-leftpad"); if(!left) return null; let stack=document.getElementById("btfw-stack"); if(!stack){ stack=document.createElement("div"); stack.id="btfw-stack"; stack.className="btfw-stack"; const v=document.getElementById("videowrap"); if(v&&v.nextSibling) v.parentNode.insertBefore(stack, v.nextSibling); else left.appendChild(stack); const hdr=document.createElement("div"); hdr.className="btfw-stack-header"; hdr.innerHTML='<div class="btfw-stack-title">Page Modules</div>'; stack.appendChild(hdr); const list=document.createElement("div"); list.className="btfw-stack-list"; stack.appendChild(list); const footer=document.createElement("div"); footer.id="btfw-stack-footer"; footer.className="btfw-stack-footer"; stack.appendChild(footer);} return {list:stack.querySelector(".btfw-stack-list"), footer:stack.querySelector("#btfw-stack-footer")}; }
+  function normalizeId(el){ if(!el) return null; if(!el.id) el.id="stackitem-"+Math.random().toString(36).slice(2,7); return el.id; }
+  function titleOf(el){ return el.getAttribute("data-title")||el.getAttribute("title")||el.id; }
+  function itemFor(el){ const w=document.createElement("section"); w.className="btfw-stack-item"; w.dataset.bind=normalizeId(el); w.innerHTML='<header class="btfw-stack-item__header"><span class="btfw-stack-item__title">'+titleOf(el)+'</span><span class="btfw-stack-arrows"><button class="btfw-arrow btfw-up">↑</button><button class="btfw-arrow btfw-down">↓</button></span></header><div class="btfw-stack-item__body"></div>'; w.querySelector(".btfw-stack-item__body").appendChild(el); w.querySelector(".btfw-up").onclick=function(){ const p=w.parentElement; const prev=w.previousElementSibling; if(prev) p.insertBefore(w, prev); save(p); }; w.querySelector(".btfw-down").onclick=function(){ const p=w.parentElement; const next=w.nextElementSibling; if(next) p.insertBefore(next, w); else p.appendChild(w); save(p); }; return w; }
+  function save(list){ try{ localStorage.setItem(SKEY, JSON.stringify(Array.from(list.children).map(n=>n.dataset.bind))); }catch(e){} }
+  function load(){ try{ return JSON.parse(localStorage.getItem(SKEY)||"[]"); }catch(e){ return []; } }
+  function attachFooter(footer){ const real=document.getElementById("footer")||document.querySelector("footer"); if(real && !footer.contains(real)){ real.classList.add("btfw-footer"); footer.innerHTML=""; footer.appendChild(real); } }
+  function populate(refs){ const list=refs.list, footer=refs.footer; const found=[]; DEFAULT_SELECTORS.forEach(sel=>{ const el=document.querySelector(sel); if(el && !list.contains(el)) found.push(el); }); const byId=new Map(found.map(el=>[normalizeId(el), el])); let order=load(); if(!order.length){ order=Array.from(byId.keys()); } order.forEach(id=>{ const el=byId.get(id); if(!el) return; let item=Array.from(list.children).find(n=>n.dataset.bind===id); if(!item){ item=itemFor(el); list.appendChild(item);} byId.delete(id); }); Array.from(byId.values()).forEach(el=>list.appendChild(itemFor(el))); save(list); attachFooter(footer); }
+  function boot(){ const refs=ensureStack(); if(!refs) return; populate(refs); const obs=new MutationObserver(()=>populate(refs)); obs.observe(document.body,{childList:true,subtree:true}); let n=0; const iv=setInterval(()=>{ populate(refs); if(++n>8) clearInterval(iv); },700); }
+  document.addEventListener("btfw:layoutReady", boot); setTimeout(boot, 1200);
+  return {name:"feature:stack"};
 });
