@@ -1,31 +1,121 @@
+/* BTFW — feature:layout (self-healing split + integrated resizer)
+   Guarantees:
+     #btfw-app (flex row)
+       #btfw-leftpad   (video + stack)
+       #btfw-resizer   (drag handle)
+       #btfw-rightpad  (chat)
+   Also:
+     - Injects fallback CSS so split works even if theme CSS is missing.
+     - Removes Bootstrap grid classes that force vertical stacking.
+     - Persists split width in localStorage.
+*/
 
 BTFW.define("feature:layout", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
+  const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
-  // ---- Config / persistence
-  const LS_KEY   = "btfw:split:leftWidth"; // px
-  const MIN_LEFT = 520;                    // px: ensure video+stack stay usable
-  const MIN_RIGHT= 320;                    // px: keep chat usable
-
-  let dragging   = false;
-  let startX     = 0;
-  let startLeftW = 0;
-
-  function nodes(){
-    return {
-      app  : $("#btfw-app"),
-      left : $("#btfw-leftpad"),
-      right: $("#btfw-rightpad"),
-      bar  : $("#btfw-resizer")
-    };
+  // ---- Fallback CSS (safe to keep even if your main CSS loads) ----
+  function injectFallbackCSS(){
+    if ($("#btfw-layout-fallback-css")) return;
+    const css = `
+      html, body { height:100%; }
+      #btfw-app {
+        display:flex !important;
+        flex-direction:row !important;
+        align-items:stretch;
+        width:100%;
+        height:calc(100vh - var(--btfw-navbar-h, 48px));
+        min-height:480px;
+        gap:0;
+      }
+      #btfw-leftpad, #btfw-rightpad {
+        display:flex;
+        flex-direction:column;
+        min-height:0;
+      }
+      #btfw-leftpad  { flex: 0 0 62%; min-width:520px; }
+      #btfw-rightpad { flex: 1 1 auto; min-width:320px; }
+      #btfw-resizer  {
+        flex: 0 0 6px;
+        cursor: col-resize;
+        background: var(--btfw-mute-800, #1f2937);
+        border-left: 1px solid rgba(255,255,255,.06);
+        border-right:1px solid rgba(0,0,0,.3);
+      }
+      /* Make chat fill height properly */
+      #chatwrap { display:flex; flex-direction:column; min-height:0; height:100%; }
+      #messagebuffer { flex:1 1 auto; min-height:0; overflow:auto; }
+      #chatlinewrap { flex: 0 0 auto; }
+      body.btfw-resizing { user-select:none; cursor:col-resize; }
+    `.trim();
+    const style = document.createElement("style");
+    style.id = "btfw-layout-fallback-css";
+    style.textContent = css;
+    document.head.appendChild(style);
   }
 
-  function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+  // ---- Bootstrap class purger (prevents reflow to vertical) ----
+  function purgeBootstrapGrid(el){
+    if (!el) return;
+    const classes = (el.className||"").split(/\s+/);
+    const keep = classes.filter(c => !/^col-(xs|sm|md|lg|xl)-\d+$/i.test(c) && c.toLowerCase() !== "row");
+    if (keep.length !== classes.length) el.className = keep.join(" ");
+  }
 
-  // Apply split width to flex-basis
-  function apply(leftPx){
-    const { app, left, right } = nodes();
-    if (!app || !left || !right) return;
+  // ---- Ensure structure exists and move content into place ----
+  function ensureStructure(){
+    injectFallbackCSS();
+
+    let app = $("#btfw-app");
+    if (!app) {
+      // Place under main content container if available
+      const main = $("#main") || $("#wrap") || document.body;
+      app = document.createElement("div");
+      app.id = "btfw-app";
+      main.appendChild(app);
+    }
+
+    let left  = $("#btfw-leftpad");
+    let right = $("#btfw-rightpad");
+    let bar   = $("#btfw-resizer");
+
+    if (!left)  { left  = document.createElement("div"); left.id  = "btfw-leftpad";  app.appendChild(left); }
+    if (!bar)   { bar   = document.createElement("div"); bar.id   = "btfw-resizer";  app.appendChild(bar);  }
+    if (!right) { right = document.createElement("div"); right.id = "btfw-rightpad"; app.appendChild(right);}
+
+    // Ensure order: left | bar | right
+    if (app.firstElementChild !== left) app.insertBefore(left, app.firstChild);
+    if (bar.previousElementSibling !== left) app.insertBefore(bar, right);
+    if (bar.nextElementSibling !== right) app.insertBefore(right, bar.nextSibling);
+
+    // Move known content to correct pads if not already
+    const videowrap  = $("#videowrap");
+    const stack      = $("#btfw-stack") || $("#mainpage") || $("#motdwrap")?.parentElement;
+    const chatwrap   = $("#chatwrap");
+
+    // Left side: video + stack
+    if (videowrap && videowrap.parentElement !== left) left.appendChild(videowrap);
+    if (stack && stack.parentElement !== left) left.appendChild(stack);
+
+    // Right side: chat
+    if (chatwrap && chatwrap.parentElement !== right) right.appendChild(chatwrap);
+
+    // Remove bootstrap grid classes that force stacking
+    purgeBootstrapGrid(videowrap);
+    purgeBootstrapGrid(chatwrap);
+
+    return { app, left, right, bar };
+  }
+
+  // ---- Split persistence & resizer logic ----
+  const LS_KEY   = "btfw:split:leftWidth"; // px
+  const MIN_LEFT = 520;
+  const MIN_RIGHT= 320;
+
+  function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+
+  function applySplit(leftPx){
+    const { app, left, right } = ensureStructure();
     const total = app.clientWidth || window.innerWidth;
     const L = clamp(leftPx, MIN_LEFT, Math.max(MIN_LEFT, total - MIN_RIGHT));
     left.style.flexBasis  = L + "px";
@@ -33,113 +123,75 @@ BTFW.define("feature:layout", [], async () => {
     try { localStorage.setItem(LS_KEY, String(L)); } catch(_) {}
   }
 
-  function loadAndApply(initial=false){
-    const { app, left, right } = nodes();
-    if (!app || !left || !right) return;
+  function loadSplit(initial=false){
+    const { app } = ensureStructure();
     const total = app.clientWidth || window.innerWidth;
     let L = Math.floor(total * 0.62);
     try {
-      const saved = parseInt(localStorage.getItem(LS_KEY) || "", 10);
+      const saved = parseInt(localStorage.getItem(LS_KEY)||"",10);
       if (!isNaN(saved)) L = saved;
     } catch(_) {}
-    apply(L);
-    if (initial) {
-      // Fire once to let dependents wire up sizes after first layout
-      if (!window._btfwLayoutReadyDispatched) {
-        window._btfwLayoutReadyDispatched = true;
-        document.dispatchEvent(new CustomEvent("btfw:layoutReady"));
-      }
+    applySplit(L);
+
+    if (initial && !window._btfwLayoutReadyDispatched) {
+      window._btfwLayoutReadyDispatched = true;
+      document.dispatchEvent(new CustomEvent("btfw:layoutReady"));
     }
   }
 
-  function ensureResizer(){
-    const { app, left, right, bar } = nodes();
-    if (!app || !left || !right) return null;
-
-    if (bar && bar.parentElement === app) return bar;
-
-    // Create or move the bar between left and right
-    const el = bar || document.createElement("div");
-    el.id = "btfw-resizer";
-    if (!bar) {
-      // visual fallback (in case CSS didn’t ship for some reason)
-      el.style.minWidth = "6px";
-      el.style.cursor   = "col-resize";
-    }
-    if (right.previousElementSibling !== el) {
-      app.insertBefore(el, right);
-    }
-    return el;
-  }
-
+  let dragging=false, startX=0, startL=0;
   function onDown(e){
-    const { app, left } = nodes();
-    if (!app || !left) return;
+    const { left } = ensureStructure();
     dragging = true;
     startX = ("touches" in e) ? e.touches[0].clientX : e.clientX;
-    startLeftW = left.getBoundingClientRect().width;
+    startL = left.getBoundingClientRect().width;
     document.body.classList.add("btfw-resizing");
     e.preventDefault();
   }
   function onMove(e){
     if (!dragging) return;
     const x = ("touches" in e) ? e.touches[0].clientX : e.clientX;
-    const delta = x - startX;
-    apply(startLeftW + delta);
+    applySplit(startL + (x - startX));
   }
-  function onUp(){
-    if (!dragging) return;
-    dragging = false;
-    document.body.classList.remove("btfw-resizing");
-  }
+  function onUp(){ if (!dragging) return; dragging=false; document.body.classList.remove("btfw-resizing"); }
 
   function wireResizer(){
-    const bar = ensureResizer();
+    const { bar } = ensureStructure();
     if (!bar || bar._btfwWired) return;
     bar._btfwWired = true;
-
-    // Mouse
-    bar.addEventListener("mousedown", onDown, { passive:false });
-    window.addEventListener("mousemove", onMove, { passive:false });
-    window.addEventListener("mouseup",   onUp);
-
-    // Touch
+    bar.addEventListener("mousedown",  onDown, { passive:false });
     bar.addEventListener("touchstart", onDown, { passive:false });
+    window.addEventListener("mousemove", onMove, { passive:false });
     window.addEventListener("touchmove", onMove, { passive:false });
+    window.addEventListener("mouseup",   onUp);
     window.addEventListener("touchend",  onUp);
-
-    // Resize
-    window.addEventListener("resize", ()=> loadAndApply(false));
+    window.addEventListener("resize", ()=> loadSplit(false));
   }
 
-  function observeLayoutMount(){
-    // If layout mounts later or gets reparented, keep the bar present & wired
+  // ---- Boot + observers ----
+  function boot(){
+    ensureStructure();
+    wireResizer();
+    loadSplit(true);
+
+    // Keep structure healthy if DOM changes massively (e.g., CyTube reflows)
     const mo = new MutationObserver(()=>{
-      ensureResizer();
+      ensureStructure();
       wireResizer();
-      // If app width changed due to DOM mutations, reapply split
-      loadAndApply(false);
+      // Re-apply split after DOM mutations
+      loadSplit(false);
     });
     mo.observe(document.body, { childList:true, subtree:true });
-  }
-
-  function boot(){
-    ensureResizer();
-    wireResizer();
-    loadAndApply(true);
-    observeLayoutMount();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
+  // Public helpers (optional)
   return {
     name: "feature:layout",
-    // Expose helpers if other features want to control the split
-    setSplit(px){ apply(px); },
-    getSplit(){
-      try { return parseInt(localStorage.getItem(LS_KEY)||"",10); } catch(_) { return null; }
-    },
-    reflow(){ loadAndApply(false); }
+    setSplit(px){ applySplit(px); },
+    getSplit(){ try { return parseInt(localStorage.getItem(LS_KEY)||"",10); } catch(_) { return null; } },
+    reflow(){ loadSplit(false); }
   };
 });
