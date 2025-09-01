@@ -365,6 +365,11 @@ if (subsBox){
   subsBox.checked = getLocalSubs();
   subsBox.addEventListener("change", ()=> setLocalSubs(subsBox.checked));
 }
+document.addEventListener('btfw:openThemeSettings', ()=> {
+  try { /* your modal ensure + show */ BTFW.require("feature:themeSettings").open?.(); } catch(e){
+    const m = document.getElementById('btfw-theme-modal'); if (m) m.classList.add('is-active');
+  }
+});
 
 // also refresh values when opening the modal
 function open(){

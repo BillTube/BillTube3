@@ -283,6 +283,10 @@ BTFW.define("feature:gifs", [], async () => {
     $("#btfw-gif-prev").disabled = (state.page <= 1);
     $("#btfw-gif-next").disabled = (state.page >= totalPages);
   }
+// Open the GIF modal when the bridge asks
+document.addEventListener('btfw:openGifs', ()=> {
+  try { openGifModal(); } catch(e){}
+});
 
   /* ---- open / close ---- */
   function open(){
