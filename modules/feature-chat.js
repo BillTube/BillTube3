@@ -1,6 +1,42 @@
+/* BTFW — feature:chat (bars + userlist overlay + robust openers + username colors) */
 BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   const $ = (s, r=document) => r.querySelector(s);
 
+  // ---------- Userlist overlay ----------
+  function ensureUserlistOverlayClosed() {
+    const ul = $("#userlist"); if (!ul) return;
+    ul.classList.add("btfw-userlist-overlay");
+    ul.classList.remove("btfw-userlist-overlay--open");
+    ul.setAttribute("aria-hidden","true");
+  }
+  function toggleUsers(){
+    const ul = $("#userlist"); if (!ul) return;
+    ul.classList.add("btfw-userlist-overlay");
+    const open = ul.classList.toggle("btfw-userlist-overlay--open");
+    ul.setAttribute("aria-hidden", open ? "false" : "true");
+  }
+  function wireUserlistGlobalClosers(){
+    if (document._btfwUserlistClosers) return;
+    document._btfwUserlistClosers = true;
+    // Click outside -> close
+    document.addEventListener("click", (ev)=>{
+      const ul = $("#userlist"); if (!ul) return;
+      if (!ul.classList.contains("btfw-userlist-overlay--open")) return;
+      const btn = $("#btfw-users-toggle");
+      if (ul.contains(ev.target) || (btn && btn.contains(ev.target))) return;
+      ul.classList.remove("btfw-userlist-overlay--open");
+      ul.setAttribute("aria-hidden","true");
+    }, true);
+    // ESC -> close
+    document.addEventListener("keydown", (ev)=>{
+      if (ev.key !== "Escape") return;
+      const ul = $("#userlist"); if (!ul) return;
+      ul.classList.remove("btfw-userlist-overlay--open");
+      ul.setAttribute("aria-hidden","true");
+    }, true);
+  }
+
+  // ---------- Chat bars & actions ----------
   function ensureBars(){
     const cw = $("#chatwrap"); if (!cw) return;
     cw.classList.add("btfw-chatwrap");
@@ -24,14 +60,14 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     }
     const actions = bottom.querySelector("#btfw-chat-actions");
 
-    // Move native Emotes down
+    // Move native Emotes down (keep native handlers)
     const emotebtn = $("#emotelistbtn, #emotelist");
     if (emotebtn && emotebtn.parentElement !== actions) {
       emotebtn.className = "button is-dark is-small btfw-chatbtn";
       actions.appendChild(emotebtn);
     }
 
-    // Ensure our buttons exist (no inline onclick — we delegate below)
+    // Our buttons (idempotent; no inline onclick — we delegate below)
     if (!$("#btfw-gif-btn")) {
       const b = document.createElement("button");
       b.id = "btfw-gif-btn"; b.className = "button is-dark is-small btfw-chatbtn";
@@ -59,46 +95,47 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
       bottom.after(controls);
     }
 
-    // Userlist overlay: default CLOSED (like v3.3)
-    const ul = $("#userlist");
-    if (ul) {
-      ul.classList.add("btfw-userlist-overlay");
-      ul.classList.remove("btfw-userlist-overlay--open");
-      ul.setAttribute("aria-hidden","true");
-    }
+    // Userlist overlay default CLOSED (v3.3 behavior)
+    ensureUserlistOverlayClosed();
   }
 
-  function toggleUsers(){
-    const ul = document.getElementById("userlist"); if (!ul) return;
-    ul.classList.add("btfw-userlist-overlay");
-    const open = ul.classList.toggle("btfw-userlist-overlay--open");
-    ul.setAttribute("aria-hidden", open ? "false" : "true");
-  }
-
-  // Username color hashing
+  // ---------- Username colors (deterministic hash) ----------
   function colorizeUser(el){
     const n = el.matches?.(".username,.nick,.name") ? el : el.querySelector?.(".username,.nick,.name");
-    if (!n) return; const t=(n.textContent||"").replace(":","").trim(); if(!t) return;
+    if (!n) return;
+    const t = (n.textContent||"").replace(":","").trim(); if(!t) return;
     let hash=0; for(let i=0;i<t.length;i++) hash=t.charCodeAt(i)+((hash<<5)-hash);
     let c="#"; for(let i=0;i<3;i++) c+=("00"+((hash>>(i*8))&0xff).toString(16)).slice(-2);
     n.style.color=c;
   }
 
-  // Self-heal on CyTube re-renders
-  function observe(){
-    const cw=$("#chatwrap"); if(!cw || cw._btfw_chat_obs) return; cw._btfw_chat_obs=true;
+  // ---------- Observe chat DOM to self-heal ----------
+  function observeChatDom(){
+    const cw = $("#chatwrap"); if (!cw || cw._btfw_chat_obs) return;
+    cw._btfw_chat_obs = true;
+    // Rebuild bars/buttons if CyTube re-renders
     new MutationObserver(()=>ensureBars()).observe(cw,{childList:true,subtree:true});
-    const buf=document.getElementById("messagebuffer");
+    // Colorize usernames for newly added messages
+    const buf = $("#messagebuffer");
     if (buf && !buf._btfw_color_obs){
-      buf._btfw_color_obs=true;
-      new MutationObserver(m=>m.forEach(r=>r.addedNodes.forEach(n=>{ if(n.nodeType===1) colorizeUser(n); }))).observe(buf,{childList:true});
+      buf._btfw_color_obs = true;
+      new MutationObserver(muts=>{
+        muts.forEach(r=>{
+          r.addedNodes.forEach(n=>{
+            if (n.nodeType===1) colorizeUser(n);
+          });
+        });
+      }).observe(buf,{childList:true});
+      // pass 1: existing nodes
       Array.from(buf.querySelectorAll(".username,.nick,.name")).forEach(colorizeUser);
     }
   }
 
-  // Delegated click handler (survives DOM replacements)
-  if (!window.BTFW_CHAT_WIRED) {
+  // ---------- Delegated click handlers (survive re-renders) ----------
+  function wireDelegatedClicks(){
+    if (window.BTFW_CHAT_WIRED) return;
     window.BTFW_CHAT_WIRED = true;
+
     document.addEventListener("click", function(e){
       const t = e.target;
       const gif   = t.closest && t.closest("#btfw-gif-btn");
@@ -109,26 +146,19 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
       if (theme) { e.preventDefault(); (window.BTFW_openTheme || (()=>document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"))))(); return; }
       if (users) { e.preventDefault(); toggleUsers(); return; }
     }, true);
-
-    // Close userlist on outside click & Esc
-    document.addEventListener("click", (ev)=>{
-      const ul = document.getElementById("userlist"); if (!ul) return;
-      if (!ul.classList.contains("btfw-userlist-overlay--open")) return;
-      const btn = document.getElementById("btfw-users-toggle");
-      if (ul.contains(ev.target) || (btn && btn.contains(ev.target))) return;
-      ul.classList.remove("btfw-userlist-overlay--open");
-      ul.setAttribute("aria-hidden","true");
-    }, true);
-    document.addEventListener("keydown", (ev)=>{
-      if (ev.key !== "Escape") return;
-      const ul = document.getElementById("userlist"); if (!ul) return;
-      ul.classList.remove("btfw-userlist-overlay--open");
-      ul.setAttribute("aria-hidden","true");
-    }, true);
   }
 
-  function boot(){ ensureBars(); observe(); }
-  document.addEventListener("btfw:layoutReady", boot);
-  setTimeout(boot, 1200);
-  return { name:"feature:chat" };
+  // ---------- Boot ----------
+  function boot(){
+    wireUserlistGlobalClosers();
+    ensureBars();
+    observeChatDom();
+    wireDelegatedClicks();
+  }
+
+  document.addEventListener("btfw:layoutReady", ()=> setTimeout(boot, 50));
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+
+  return { name:"feature:chat", toggleUsers };
 });
