@@ -99,6 +99,56 @@ BTFW.define("feature:bulma-layer", [], async () => {
   function getTheme() {
     try { return localStorage.getItem(LS_KEY) || "dark"; } catch(e){ return "dark"; }
   }
+/* BTFW — feature:bulma-layer (dark/light switch + persistence) */
+BTFW.define("feature:bulma-layer", [], async () => {
+  const KEY = "btfw:theme:mode"; // "auto" | "dark" | "light"
+
+  function readPref() {
+    try { return localStorage.getItem(KEY) || "dark"; } catch (_) { return "dark"; }
+  }
+  function writePref(v) {
+    try { localStorage.setItem(KEY, v); } catch (_) {}
+  }
+
+  function resolveAuto() {
+    return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)
+      ? "dark" : "light";
+  }
+
+  function apply(mode) {
+    const html = document.documentElement;
+    const finalMode = (mode === "auto") ? resolveAuto() : mode;
+    html.setAttribute("data-btfw-theme", finalMode);
+    html.classList.toggle("btfw-theme-dark", finalMode === "dark");
+  }
+
+  function setTheme(mode) {
+    const m = (mode === "auto" || mode === "dark" || mode === "light") ? mode : "dark";
+    writePref(m);
+    apply(m);
+  }
+
+  function getTheme() { return readPref(); }
+
+  function boot() {
+    apply(readPref());
+    // if system scheme changes and we're in auto, reflect it
+    if (window.matchMedia) {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      mq.addEventListener?.("change", () => {
+        if (readPref() === "auto") apply("auto");
+      });
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+
+  return { name: "feature:bulma-layer", setTheme, getTheme };
+});
 
   // react to OS theme if in auto
   if (mq && mq.addEventListener) {
