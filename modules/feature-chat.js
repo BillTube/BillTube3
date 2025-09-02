@@ -1,9 +1,8 @@
-/* BTFW — feature:chat (bars + userlist overlay + robust openers + username colors + now playing) */
 BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
-  // ---------- Userlist overlay ----------
+  /* ---------------- Userlist overlay (closed by default) ---------------- */
   function ensureUserlistOverlayClosed() {
     const ul = $("#userlist"); if (!ul) return;
     ul.classList.add("btfw-userlist-overlay");
@@ -35,22 +34,28 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     }, true);
   }
 
-  // ---------- Chat bars & actions ----------
+  /* ---------------- Chat bars & actions (no now-playing logic here) ---------------- */
   function ensureBars(){
     const cw = $("#chatwrap"); if (!cw) return;
     cw.classList.add("btfw-chatwrap");
 
-    // Top bar (Now Playing slot)
-    let top = $(".btfw-chat-topbar", cw);
+    // Top bar + slot (feature:nowplaying will mount #currenttitle here)
+    let top = cw.querySelector(".btfw-chat-topbar");
     if (!top) {
       top = document.createElement("div");
       top.className = "btfw-chat-topbar";
       top.innerHTML = '<div class="btfw-chat-title" id="btfw-nowplaying-slot"></div>';
       cw.prepend(top);
     }
+    if (!top.querySelector("#btfw-nowplaying-slot")) {
+      const slot = document.createElement("div");
+      slot.id = "btfw-nowplaying-slot";
+      slot.className = "btfw-chat-title";
+      top.appendChild(slot);
+    }
 
-    // Bottom bar (Actions)
-    let bottom = $(".btfw-chat-bottombar", cw);
+    // Bottom bar + actions
+    let bottom = cw.querySelector(".btfw-chat-bottombar");
     if (!bottom) {
       bottom = document.createElement("div");
       bottom.className = "btfw-chat-bottombar";
@@ -94,11 +99,11 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
       bottom.after(controls);
     }
 
-    // Userlist overlay default CLOSED (v3.3 behavior)
+    // Userlist overlay default CLOSED
     ensureUserlistOverlayClosed();
   }
 
-  // ---------- Username colors (deterministic hash) ----------
+  /* ---------------- Deterministic username colors ---------------- */
   function colorizeUser(el){
     const n = el.matches?.(".username,.nick,.name") ? el : el.querySelector?.(".username,.nick,.name");
     if (!n) return;
@@ -108,66 +113,14 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     n.style.color=c;
   }
 
-  // ---------- Now Playing (robust: socket + DOM + fallback poll) ----------
-  function setNowPlayingText(txt){
-    const slot = $("#btfw-nowplaying-slot");
-    if (slot) slot.textContent = txt || "";
-  }
-  function readCurrentTitle(){
-    // 1) DOM
-    const el = $("#currenttitle");
-    const raw = el && el.textContent ? el.textContent.trim() : "";
-    if (raw) return raw.replace(/^now\s*playing:\s*/i, "");
-    // 2) Player
-    if (window.PLAYER && window.PLAYER.media && window.PLAYER.media.title) {
-      return String(window.PLAYER.media.title);
-    }
-    return "";
-  }
-  function syncNowPlaying(){ setNowPlayingText(readCurrentTitle()); }
-  function wireNowPlaying(){
-    // observe #currenttitle if present
-    const ct = $("#currenttitle");
-    if (ct && !ct._btfw_np_obs){
-      ct._btfw_np_obs = new MutationObserver(syncNowPlaying);
-      ct._btfw_np_obs.observe(ct, { childList:true, characterData:true, subtree:true });
-    }
-    // listen to CyTube socket events if available
-    if (window.socket && !window._btfw_np_socket){
-      window._btfw_np_socket = true;
-      try {
-        window.socket.on("changeMedia", data => setNowPlayingText((data && data.title) ? String(data.title) : readCurrentTitle()));
-        window.socket.on("setCurrent",   data => setNowPlayingText((data && data.title) ? String(data.title) : readCurrentTitle()));
-        window.socket.on("mediaUpdate",  ()=> syncNowPlaying());
-      } catch(_) {}
-    }
-    // fallback poll (cheap)
-    if (!document._btfw_np_poll){
-      document._btfw_np_poll = setInterval(syncNowPlaying, 2000);
-    }
-    // initial paint
-    syncNowPlaying();
-  }
-
-  // ---------- Theme Settings opener (always works) ----------
-  function openThemeSettings(){
-    // prefer module's open()
-    try {
-      const mod = BTFW.require("feature:themeSettings");
-      if (mod && typeof mod.open === "function") { mod.open(); return; }
-    } catch(_) {}
-    // generic bridge event + fallback to existing modal if it's already mounted
-    document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
-    const m = $("#btfw-theme-modal");
-    if (m) m.classList.add("is-active");
-  }
-
-  // ---------- Observe chat DOM to self-heal ----------
+  /* ---------------- Observe chat DOM to self-heal ---------------- */
   function observeChatDom(){
     const cw = $("#chatwrap"); if (!cw || cw._btfw_chat_obs) return;
     cw._btfw_chat_obs = true;
+
     // Rebuild bars/buttons if CyTube re-renders
     new MutationObserver(()=>ensureBars()).observe(cw,{childList:true,subtree:true});
+
     // Colorize usernames for newly added messages
     const buf = $("#messagebuffer");
     if (buf && !buf._btfw_color_obs){
@@ -179,12 +132,22 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
           });
         });
       }).observe(buf,{childList:true});
-      // first pass
       Array.from(buf.querySelectorAll(".username,.nick,.name")).forEach(colorizeUser);
     }
   }
 
-  // ---------- Delegated click handlers (survive re-renders) ----------
+  /* ---------------- Theme Settings opener (event + fallback, no require) ---------------- */
+  function openThemeSettings(){
+    // Ask the proper module to open
+    document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
+    // Fallback: if the modal already exists in DOM, just show it
+    setTimeout(()=>{
+      const m = document.getElementById("btfw-theme-modal");
+      if (m) m.classList.add("is-active");
+    }, 0);
+  }
+
+  /* ---------------- Delegated clicks (survive re-renders) ---------------- */
   function wireDelegatedClicks(){
     if (window._btfwChatClicksWired) return;
     window._btfwChatClicksWired = true;
@@ -201,13 +164,12 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     }, true);
   }
 
-  // ---------- Boot ----------
+  /* ---------------- Boot ---------------- */
   function boot(){
     wireUserlistGlobalClosers();
     ensureBars();
     observeChatDom();
     wireDelegatedClicks();
-    wireNowPlaying();     // <— keep the title synced no matter where it comes from
   }
 
   document.addEventListener("btfw:layoutReady", ()=> setTimeout(boot, 50));
