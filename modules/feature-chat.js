@@ -1,7 +1,8 @@
-/* BTFW — feature:chat (chat bars, userlist overlay, username colors, hotfix-style Theme Settings opener) */
+/* BTFW — feature:chat (chat bars, userlist overlay, username colors, robust Theme Settings opener) */
 BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+  const BASE = (window.BTFW && BTFW.BASE ? BTFW.BASE.replace(/\/+$/,'') : "");
 
   /* ---------------- Userlist overlay (closed by default) ---------------- */
   function ensureUserlistOverlayClosed() {
@@ -100,7 +101,6 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
       bottom.after(controls);
     }
 
-    // Userlist overlay default CLOSED
     ensureUserlistOverlayClosed();
   }
 
@@ -119,10 +119,8 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     const cw = $("#chatwrap"); if (!cw || cw._btfw_chat_obs) return;
     cw._btfw_chat_obs = true;
 
-    // Rebuild bars/buttons if CyTube re-renders
     new MutationObserver(()=>ensureBars()).observe(cw,{childList:true,subtree:true});
 
-    // Colorize usernames for newly added messages
     const buf = $("#messagebuffer");
     if (buf && !buf._btfw_color_obs){
       buf._btfw_color_obs = true;
@@ -137,15 +135,47 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     }
   }
 
-  /* ---------------- Theme Settings opener (event + fallback, no require) ---------------- */
-  function openThemeSettings(){
-    // Ask the proper module to open
+  /* ---------------- Theme Settings opener (event + lazy-load + fallback) ---------------- */
+  function loadScript(src){
+    return new Promise((res,rej)=>{
+      const s=document.createElement("script");
+      s.src = src; s.async=true; s.defer=true;
+      s.onload = ()=> res(true);
+      s.onerror= ()=> rej(new Error("Failed to load "+src));
+      document.head.appendChild(s);
+    });
+  }
+
+  let _tsLoading = false;
+  async function openThemeSettings(){
+    // 1) Ask the proper module to open (your TS module listens for this event)
     document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
-    // Fallback: if the modal already exists in DOM, just show it
-    setTimeout(()=>{
-      const m = document.getElementById("btfw-theme-modal");
-      if (m) m.classList.add("is-active");
-    }, 0);
+
+    // 2) If the modal is already present, just show it
+    let modal = document.getElementById("btfw-theme-modal");
+    if (modal) { modal.classList.add("is-active"); return; }
+
+    // 3) Give the listener a tick to create it
+    await new Promise(r => setTimeout(r, 40));
+    modal = document.getElementById("btfw-theme-modal");
+    if (modal) { modal.classList.add("is-active"); return; }
+
+    // 4) Lazy load the module if it's not there yet
+    if (_tsLoading) return;
+    _tsLoading = true;
+    try {
+      const url = BASE ? `${BASE}/modules/feature-theme-settings.js` : "/modules/feature-theme-settings.js";
+      await loadScript(url);
+      // Let it register, then open again
+      document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
+      await new Promise(r => setTimeout(r, 40));
+      modal = document.getElementById("btfw-theme-modal");
+      if (modal) modal.classList.add("is-active");
+    } catch(e){
+      console.warn("[chat] Theme Settings lazy-load failed:", e.message||e);
+    } finally {
+      _tsLoading = false;
+    }
   }
 
   /* ---------------- Delegated clicks (survive re-renders) ---------------- */
