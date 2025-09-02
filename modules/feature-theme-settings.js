@@ -1,4 +1,4 @@
-/* BTFW — feature:themeSettings (clean, no LS collisions) */
+/* BTFW — feature:themeSettings (clean, no LS collisions, with openers wired) */
 BTFW.define("feature:themeSettings", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -178,7 +178,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     // Apply button
     $("#btfw-ts-apply", m).addEventListener("click", applyAndPersist);
 
-    // Openers from other modules
+    // LISTENER: open when other modules fire btfw:openThemeSettings
     document.addEventListener("btfw:openThemeSettings", open);
 
     return m;
@@ -247,14 +247,29 @@ BTFW.define("feature:themeSettings", [], async () => {
   }
   function close(){ $("#btfw-theme-modal")?.classList.remove("is-active"); }
 
+  // --- wire openers in DOM (chat button, navbar button, and any .btfw-theme-open) ---
+  function wireOpeners(){
+    ["#btfw-theme-btn-chat", "#btfw-theme-btn-nav", ".btfw-theme-open"].forEach(sel=>{
+      const el = $(sel);
+      if (el && !el._btfwTS) {
+        el._btfwTS = true;
+        el.addEventListener("click", (e)=>{ e.preventDefault(); open(); }, false);
+      }
+    });
+  }
+
   // --- boot: apply persisted variables even if modal never opened ---
   function boot(){
     applyChatTextPx(parseInt(get(TS_KEYS.chatTextPx, "14"),10));
     applyEmoteSize(get(TS_KEYS.emoteSize,"medium"));
+    wireOpeners(); // make sure buttons open the modal
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 
-  return { name: "feature:themeSettings", open, close };
+  return { name: "feature:themeSettings", open, close, wireOpeners };
 });
