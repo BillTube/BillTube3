@@ -1,6 +1,7 @@
-/* BTFW — feature:chat (bars + userlist overlay + robust openers + username colors) */
+/* BTFW — feature:chat (bars + userlist overlay + robust openers + username colors + now playing) */
 BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
-  const $ = (s, r=document) => r.querySelector(s);
+  const $  = (s, r=document) => r.querySelector(s);
+  const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
   // ---------- Userlist overlay ----------
   function ensureUserlistOverlayClosed() {
@@ -18,7 +19,6 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   function wireUserlistGlobalClosers(){
     if (document._btfwUserlistClosers) return;
     document._btfwUserlistClosers = true;
-    // Click outside -> close
     document.addEventListener("click", (ev)=>{
       const ul = $("#userlist"); if (!ul) return;
       if (!ul.classList.contains("btfw-userlist-overlay--open")) return;
@@ -27,7 +27,6 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
       ul.classList.remove("btfw-userlist-overlay--open");
       ul.setAttribute("aria-hidden","true");
     }, true);
-    // ESC -> close
     document.addEventListener("keydown", (ev)=>{
       if (ev.key !== "Escape") return;
       const ul = $("#userlist"); if (!ul) return;
@@ -37,44 +36,6 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   }
 
   // ---------- Chat bars & actions ----------
-function openThemeSettings(){
-  let mod = null;
-  try { mod = BTFW.require("feature:themeSettings"); } catch(_){}
-  if (mod && typeof mod.open === "function") {
-    mod.open();                 // open directly if the module is loaded
-  } else {
-    // fire the bridge event + fallback if the modal already exists
-    document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
-    setTimeout(()=>{ const m = document.getElementById("btfw-theme-modal"); if (m) m.classList.add("is-active"); }, 0);
-  }
-}
-// ---- Now Playing into chat topbar ----
-function setNowPlayingText(txt){
-  const slot = document.getElementById("btfw-nowplaying-slot");
-  if (slot) slot.textContent = txt || "";
-}
-function readCurrentTitle(){
-  const el = document.getElementById("currenttitle");
-  const raw = el && el.textContent ? el.textContent.trim() : "";
-  if (raw) return raw.replace(/^now\s*playing:\s*/i, "");
-  if (window.PLAYER && window.PLAYER.media && window.PLAYER.media.title) return String(window.PLAYER.media.title);
-  return "";
-}
-function syncNowPlaying(){ setNowPlayingText(readCurrentTitle()); }
-function watchNowPlaying(){
-  // 1) Observe #currenttitle text changes (preferred)
-  const ct = document.getElementById("currenttitle");
-  if (ct && !ct._btfw_np_obs){
-    ct._btfw_np_obs = new MutationObserver(syncNowPlaying);
-    ct._btfw_np_obs.observe(ct, { childList:true, characterData:true, subtree:true });
-  }
-  // 2) Fallback poll (lightweight, only if needed)
-  if (!document._btfw_np_poll){
-    document._btfw_np_poll = setInterval(syncNowPlaying, 1500);
-  }
-  // initial paint
-  syncNowPlaying();
-}
   function ensureBars(){
     const cw = $("#chatwrap"); if (!cw) return;
     cw.classList.add("btfw-chatwrap");
@@ -105,7 +66,7 @@ function watchNowPlaying(){
       actions.appendChild(emotebtn);
     }
 
-    // Our buttons (idempotent; no inline onclick — we delegate below)
+    // Our buttons (idempotent)
     if (!$("#btfw-gif-btn")) {
       const b = document.createElement("button");
       b.id = "btfw-gif-btn"; b.className = "button is-dark is-small btfw-chatbtn";
@@ -147,6 +108,60 @@ function watchNowPlaying(){
     n.style.color=c;
   }
 
+  // ---------- Now Playing (robust: socket + DOM + fallback poll) ----------
+  function setNowPlayingText(txt){
+    const slot = $("#btfw-nowplaying-slot");
+    if (slot) slot.textContent = txt || "";
+  }
+  function readCurrentTitle(){
+    // 1) DOM
+    const el = $("#currenttitle");
+    const raw = el && el.textContent ? el.textContent.trim() : "";
+    if (raw) return raw.replace(/^now\s*playing:\s*/i, "");
+    // 2) Player
+    if (window.PLAYER && window.PLAYER.media && window.PLAYER.media.title) {
+      return String(window.PLAYER.media.title);
+    }
+    return "";
+  }
+  function syncNowPlaying(){ setNowPlayingText(readCurrentTitle()); }
+  function wireNowPlaying(){
+    // observe #currenttitle if present
+    const ct = $("#currenttitle");
+    if (ct && !ct._btfw_np_obs){
+      ct._btfw_np_obs = new MutationObserver(syncNowPlaying);
+      ct._btfw_np_obs.observe(ct, { childList:true, characterData:true, subtree:true });
+    }
+    // listen to CyTube socket events if available
+    if (window.socket && !window._btfw_np_socket){
+      window._btfw_np_socket = true;
+      try {
+        window.socket.on("changeMedia", data => setNowPlayingText((data && data.title) ? String(data.title) : readCurrentTitle()));
+        window.socket.on("setCurrent",   data => setNowPlayingText((data && data.title) ? String(data.title) : readCurrentTitle()));
+        window.socket.on("mediaUpdate",  ()=> syncNowPlaying());
+      } catch(_) {}
+    }
+    // fallback poll (cheap)
+    if (!document._btfw_np_poll){
+      document._btfw_np_poll = setInterval(syncNowPlaying, 2000);
+    }
+    // initial paint
+    syncNowPlaying();
+  }
+
+  // ---------- Theme Settings opener (always works) ----------
+  function openThemeSettings(){
+    // prefer module's open()
+    try {
+      const mod = BTFW.require("feature:themeSettings");
+      if (mod && typeof mod.open === "function") { mod.open(); return; }
+    } catch(_) {}
+    // generic bridge event + fallback to existing modal if it's already mounted
+    document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
+    const m = $("#btfw-theme-modal");
+    if (m) m.classList.add("is-active");
+  }
+
   // ---------- Observe chat DOM to self-heal ----------
   function observeChatDom(){
     const cw = $("#chatwrap"); if (!cw || cw._btfw_chat_obs) return;
@@ -164,15 +179,15 @@ function watchNowPlaying(){
           });
         });
       }).observe(buf,{childList:true});
-      // pass 1: existing nodes
+      // first pass
       Array.from(buf.querySelectorAll(".username,.nick,.name")).forEach(colorizeUser);
     }
   }
 
   // ---------- Delegated click handlers (survive re-renders) ----------
   function wireDelegatedClicks(){
-    if (window.BTFW_CHAT_WIRED) return;
-    window.BTFW_CHAT_WIRED = true;
+    if (window._btfwChatClicksWired) return;
+    window._btfwChatClicksWired = true;
 
     document.addEventListener("click", function(e){
       const t = e.target;
@@ -180,7 +195,7 @@ function watchNowPlaying(){
       const theme = t.closest && (t.closest("#btfw-theme-btn-chat") || t.closest("#btfw-theme-btn-nav"));
       const users = t.closest && t.closest("#btfw-users-toggle");
 
-      if (gif)   { e.preventDefault(); (window.BTFW_openGifs  || (()=>document.dispatchEvent(new Event("btfw:openGifs"))))(); return; }
+      if (gif)   { e.preventDefault(); document.dispatchEvent(new Event("btfw:openGifs")); return; }
       if (theme) { e.preventDefault(); openThemeSettings(); return; }
       if (users) { e.preventDefault(); toggleUsers(); return; }
     }, true);
@@ -192,7 +207,7 @@ function watchNowPlaying(){
     ensureBars();
     observeChatDom();
     wireDelegatedClicks();
-	watchNowPlaying();      
+    wireNowPlaying();     // <— keep the title synced no matter where it comes from
   }
 
   document.addEventListener("btfw:layoutReady", ()=> setTimeout(boot, 50));
