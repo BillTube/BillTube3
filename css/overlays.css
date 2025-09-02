@@ -567,3 +567,77 @@
 }
 @keyframes btfw-spin { to { transform: rotate(360deg); } }
 .btfw-emoji-cell.ready .btfw-emoji-img { opacity:1; }
+/* --- BTFW Bulma Dark Bridge --- */
+html[data-btfw-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* Modal */
+html[data-btfw-theme="dark"] .modal .modal-background {
+  background-color: rgba(8, 10, 14, 0.8) !important;
+}
+html[data-btfw-theme="dark"] .modal-card {
+  background-color: #141a22 !important;
+  color: #e6edf3 !important;
+  box-shadow: 0 12px 38px rgba(0,0,0,.6);
+}
+html[data-btfw-theme="dark"] .modal-card-head,
+html[data-btfw-theme="dark"] .modal-card-foot {
+  background-color: #0f1620 !important;
+  border-color: #253142 !important;
+  color: #e6edf3 !important;
+}
+html[data-btfw-theme="dark"] .modal-card-title { color: #e6edf3 !important; }
+
+/* Buttons inside modals (keeps your existing button styles) */
+html[data-btfw-theme="dark"] .button {
+  border-color: rgba(255,255,255,0.08);
+}
+html[data-btfw-theme="dark"] .button.is-link,
+html[data-btfw-theme="dark"] .button.is-primary {
+  background: #2563eb !important;
+  border-color: #2159d3 !important;
+  color: #fff !important;
+}
+
+/* Dropdowns, menus */
+html[data-btfw-theme="dark"] .dropdown-content,
+html[data-btfw-theme="dark"] .menu,
+html[data-btfw-theme="dark"] .message,
+html[data-btfw-theme="dark"] .notification {
+  background-color: #141a22 !important;
+  color: #e6edf3 !important;
+  border: 1px solid #253142 !important;
+}
+
+/* Forms */
+html[data-btfw-theme="dark"] .input,
+html[data-btfw-theme="dark"] .textarea,
+html[data-btfw-theme="dark"] .select select {
+  background-color: #0f1620 !important;
+  color: #e6edf3 !important;
+  border-color: #2b3a4a !important;
+}
+html[data-btfw-theme="dark"] .input::placeholder,
+html[data-btfw-theme="dark"] .textarea::placeholder {
+  color: #9fb0c2 !important;
+}
+
+/* Tabs */
+html[data-btfw-theme="dark"] .tabs.is-boxed li.is-active a {
+  background-color: #0f1620 !important;
+  border-color: #253142 !important;
+  color: #e6edf3 !important;
+}
+html[data-btfw-theme="dark"] .tabs a {
+  color: #c8d4e0 !important;
+}
+
+/* Generic surfaces (if used) */
+html[data-btfw-theme="dark"] .box,
+html[data-btfw-theme="dark"] .card,
+html[data-btfw-theme="dark"] .panel {
+  background-color: #141a22 !important;
+  color: #e6edf3 !important;
+  border: 1px solid #253142 !important;
+}
