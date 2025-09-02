@@ -37,6 +37,44 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   }
 
   // ---------- Chat bars & actions ----------
+function openThemeSettings(){
+  let mod = null;
+  try { mod = BTFW.require("feature:themeSettings"); } catch(_){}
+  if (mod && typeof mod.open === "function") {
+    mod.open();                 // open directly if the module is loaded
+  } else {
+    // fire the bridge event + fallback if the modal already exists
+    document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
+    setTimeout(()=>{ const m = document.getElementById("btfw-theme-modal"); if (m) m.classList.add("is-active"); }, 0);
+  }
+}
+// ---- Now Playing into chat topbar ----
+function setNowPlayingText(txt){
+  const slot = document.getElementById("btfw-nowplaying-slot");
+  if (slot) slot.textContent = txt || "";
+}
+function readCurrentTitle(){
+  const el = document.getElementById("currenttitle");
+  const raw = el && el.textContent ? el.textContent.trim() : "";
+  if (raw) return raw.replace(/^now\s*playing:\s*/i, "");
+  if (window.PLAYER && window.PLAYER.media && window.PLAYER.media.title) return String(window.PLAYER.media.title);
+  return "";
+}
+function syncNowPlaying(){ setNowPlayingText(readCurrentTitle()); }
+function watchNowPlaying(){
+  // 1) Observe #currenttitle text changes (preferred)
+  const ct = document.getElementById("currenttitle");
+  if (ct && !ct._btfw_np_obs){
+    ct._btfw_np_obs = new MutationObserver(syncNowPlaying);
+    ct._btfw_np_obs.observe(ct, { childList:true, characterData:true, subtree:true });
+  }
+  // 2) Fallback poll (lightweight, only if needed)
+  if (!document._btfw_np_poll){
+    document._btfw_np_poll = setInterval(syncNowPlaying, 1500);
+  }
+  // initial paint
+  syncNowPlaying();
+}
   function ensureBars(){
     const cw = $("#chatwrap"); if (!cw) return;
     cw.classList.add("btfw-chatwrap");
@@ -143,7 +181,7 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
       const users = t.closest && t.closest("#btfw-users-toggle");
 
       if (gif)   { e.preventDefault(); (window.BTFW_openGifs  || (()=>document.dispatchEvent(new Event("btfw:openGifs"))))(); return; }
-      if (theme) { e.preventDefault(); (window.BTFW_openTheme || (()=>document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"))))(); return; }
+      if (theme) { e.preventDefault(); openThemeSettings(); return; }
       if (users) { e.preventDefault(); toggleUsers(); return; }
     }, true);
   }
@@ -154,6 +192,7 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     ensureBars();
     observeChatDom();
     wireDelegatedClicks();
+	watchNowPlaying();      
   }
 
   document.addEventListener("btfw:layoutReady", ()=> setTimeout(boot, 50));
