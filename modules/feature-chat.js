@@ -1,3 +1,4 @@
+/* BTFW — feature:chat (chat bars, userlist overlay, username colors, hotfix-style Theme Settings opener) */
 BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
