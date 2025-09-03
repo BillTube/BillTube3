@@ -1,9 +1,9 @@
-/* BTFW — feature:themeSettings (clean, no LS collisions, with openers wired) */
+/* BTFW — feature:themeSettings (clean, no LS collisions, with openers wired + Billcast apply dispatch) */
 BTFW.define("feature:themeSettings", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
-  // single key map (avoid "LS" name to prevent merge collisions)
+  // single key map
   const TS_KEYS = {
     themeMode   : "btfw:theme:mode",          // "auto" | "dark" | "light"
     chatTextPx  : "btfw:chat:textSize",       // "12" | "14" | "16" | "18"
@@ -12,9 +12,10 @@ BTFW.define("feature:themeSettings", [], async () => {
     gifAutoplay : "btfw:chat:gifAutoplay",    // "1" | "0"
     pipEnabled  : "btfw:pip:enabled",         // "1" | "0"
     localSubs   : "btfw:video:localsubs",     // "1" | "0"
+    billcastEnabled: "btfw:billcast:enabled"  // "1" | "0"
   };
 
-  // lightweight storage helpers
+  // storage helpers
   const get = (k, d) => { try { const v = localStorage.getItem(k); return v==null? d : v; } catch(_) { return d; } };
   const set = (k, v) => { try { localStorage.setItem(k, v); } catch(_){} };
 
@@ -26,11 +27,10 @@ BTFW.define("feature:themeSettings", [], async () => {
   function applyEmoteSize(size){
     const px = size==="small"?100 : size==="big"?170 : 130; // medium default
     document.documentElement.style.setProperty("--btfw-emote-size", `${px}px`);
-    // notify media module (if present) to re-style already-rendered items
     document.dispatchEvent(new CustomEvent("btfw:chat:emoteSizeChanged", { detail:{ size, px } }));
   }
 
-  // cross-feature bridges (optional if modules present)
+  // cross-feature bridges (optional)
   const bulma   = (()=>{ try { return BTFW.require("feature:bulma-layer"); } catch(_){ return null; } })();
   const avatars = (()=>{ try { return BTFW.require("feature:chat-avatars") || BTFW.require("feature:chatAvatars"); } catch(_){ return null; } })();
   const pip     = (()=>{ try { return BTFW.require("feature:pip"); } catch(_){ return null; } })();
@@ -40,7 +40,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     let m = $("#btfw-theme-modal");
     if (m) return m;
 
-    // remove any legacy shells
+    // nuke legacy
     ["#themesettings","#themeSettingsModal",".themesettings"].forEach(sel=> $$(sel).forEach(el=>el.remove()));
 
     m = document.createElement("div");
@@ -143,10 +143,10 @@ BTFW.define("feature:themeSettings", [], async () => {
                     <input type="checkbox" id="btfw-pip-toggle"> Picture-in-Picture (experimental)
                   </label>
                 </div>
-				<label class="checkbox" style="display:block;margin-top:10px;">
-  <input type="checkbox" id="btfw-billcast-toggle" checked>
-  Enable Billcast (Chromecast sender)
-</label>
+                <label class="checkbox" style="display:block;margin-top:10px;">
+                  <input type="checkbox" id="btfw-billcast-toggle" checked>
+                  Enable Billcast (Chromecast sender)
+                </label>
                 <div class="field">
                   <label class="checkbox">
                     <input type="checkbox" id="btfw-localsubs-toggle"> Show “Local Subtitles” button
@@ -182,7 +182,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     // Apply button
     $("#btfw-ts-apply", m).addEventListener("click", applyAndPersist);
 
-    // LISTENER: open when other modules fire btfw:openThemeSettings
+    // Open via event
     document.addEventListener("btfw:openThemeSettings", open);
 
     return m;
@@ -192,48 +192,50 @@ BTFW.define("feature:themeSettings", [], async () => {
   function applyAndPersist(){
     const m = $("#btfw-theme-modal"); if (!m) return;
 
-    // Theme mode
-    const themeMode = ($$('input[name="btfw-theme-mode"]:checked', m)[0]?.value) || "dark";
-    set(TS_KEYS.themeMode, themeMode);
-    if (bulma?.setTheme) bulma.setTheme(themeMode);
-
-    // Avatars mode
+    // gather current values
+    const themeMode   = ($$('input[name="btfw-theme-mode"]:checked', m)[0]?.value) || "dark";
     const avatarsMode = ($$('input[name="btfw-avatars-mode"]:checked', m)[0]?.value) || "small";
+    const chatTextPx  = $("#btfw-chat-textsize", m)?.value || "14";
+    const emoteSize   = $("#btfw-emote-size", m)?.value   || "medium";
+    const gifAutoOn   = $("#btfw-gif-autoplay", m)?.checked;
+    const pipOn       = $("#btfw-pip-toggle", m)?.checked;
+    const localSubsOn = $("#btfw-localsubs-toggle", m)?.checked;
+    const billcastOn  = $("#btfw-billcast-toggle", m)?.checked;
+
+    // persist
+    set(TS_KEYS.themeMode, themeMode);
     set(TS_KEYS.avatarsMode, avatarsMode);
-    if (avatars?.setMode) avatars.setMode(avatarsMode);
-
-    // Chat text size
-    const chatTextPx = $("#btfw-chat-textsize", m)?.value || "14";
     set(TS_KEYS.chatTextPx, chatTextPx);
-    applyChatTextPx(parseInt(chatTextPx,10));
-
-    // Emote size
-    const emoteSize = $("#btfw-emote-size", m)?.value || "medium";
     set(TS_KEYS.emoteSize, emoteSize);
+    set(TS_KEYS.gifAutoplay, gifAutoOn ? "1":"0");
+    set(TS_KEYS.pipEnabled,  pipOn ? "1":"0");
+    set(TS_KEYS.localSubs,   localSubsOn ? "1":"0");
+    set(TS_KEYS.billcastEnabled, billcastOn ? "1":"0");
+
+    // apply live
+    if (bulma?.setTheme) bulma.setTheme(themeMode);
+    if (avatars?.setMode) avatars.setMode(avatarsMode);
+    applyChatTextPx(parseInt(chatTextPx,10));
     applyEmoteSize(emoteSize);
-
-    // GIF autoplay
-    const gifAuto = $("#btfw-gif-autoplay", m)?.checked ? "1":"0";
-    set(TS_KEYS.gifAutoplay, gifAuto);
-    document.dispatchEvent(new CustomEvent("btfw:chat:gifAutoplayChanged", { detail:{ autoplay: gifAuto==="1" } }));
-
-    // PiP
-    const pipOn = $("#btfw-pip-toggle", m)?.checked;
-    set(TS_KEYS.pipEnabled, pipOn ? "1":"0");
     if (pip?.setEnabled) pip.setEnabled(!!pipOn);
-    document.dispatchEvent(new CustomEvent("btfw:pip:toggled", { detail:{ enabled: !!pipOn }}));
 
-    // Local subs button
-    const ls = $("#btfw-localsubs-toggle", m)?.checked;
-    set(TS_KEYS.localSubs, ls ? "1":"0");
-    document.dispatchEvent(new CustomEvent("btfw:video:localsubs:changed", { detail:{ enabled: !!ls }}));
+    // notify modules
+    document.dispatchEvent(new CustomEvent("btfw:chat:gifAutoplayChanged", { detail:{ autoplay: !!gifAutoOn } }));
+    document.dispatchEvent(new CustomEvent("btfw:pip:toggled",             { detail:{ enabled : !!pipOn } }));
+    document.dispatchEvent(new CustomEvent("btfw:video:localsubs:changed", { detail:{ enabled : !!localSubsOn } }));
+    document.dispatchEvent(new CustomEvent("btfw:themeSettings:apply",     { detail:{
+      values: {
+        themeMode, avatarsMode, chatTextPx: parseInt(chatTextPx,10),
+        emoteSize, gifAutoplay: !!gifAutoOn, pipEnabled: !!pipOn,
+        localSubs: !!localSubsOn, billcastEnabled: !!billcastOn
+      }
+    }}));
   }
 
   // --- open/close & state refresh ---
   function open(){
     const m = ensureModal();
 
-    // Refresh current values every time it opens
     const modeNow = bulma?.getTheme ? bulma.getTheme() : (get(TS_KEYS.themeMode, "dark"));
     $$('input[name="btfw-theme-mode"]').forEach(i => i.checked = (i.value === modeNow));
 
@@ -241,17 +243,18 @@ BTFW.define("feature:themeSettings", [], async () => {
     $$('input[name="btfw-avatars-mode"]').forEach(i => i.checked = (i.value === avNow));
 
     $("#btfw-chat-textsize").value = get(TS_KEYS.chatTextPx, "14");
-    $("#btfw-emote-size").value   = get(TS_KEYS.emoteSize, "medium");
+    $("#btfw-emote-size").value   = get(TS_KEYS.emoteSize,   "medium");
     $("#btfw-gif-autoplay").checked = get(TS_KEYS.gifAutoplay, "1") === "1";
     $("#btfw-pip-toggle").checked   = get(TS_KEYS.pipEnabled,  "0") === "1";
     $("#btfw-localsubs-toggle").checked = get(TS_KEYS.localSubs, "1") === "1";
+    const bc = $("#btfw-billcast-toggle"); if (bc) bc.checked = get(TS_KEYS.billcastEnabled, "1") === "1";
 
     m.classList.add("is-active");
     document.dispatchEvent(new CustomEvent("btfw:themeSettings:open"));
   }
   function close(){ $("#btfw-theme-modal")?.classList.remove("is-active"); }
 
-  // --- wire openers in DOM (chat button, navbar button, and any .btfw-theme-open) ---
+  // --- wire openers in DOM (chat/nav buttons) ---
   function wireOpeners(){
     ["#btfw-theme-btn-chat", "#btfw-theme-btn-nav", ".btfw-theme-open"].forEach(sel=>{
       const el = $(sel);
@@ -261,35 +264,16 @@ BTFW.define("feature:themeSettings", [], async () => {
       }
     });
   }
-const TS_KEYS = Object.assign({}, (window.BTFW_TS_KEYS||{}), {
-  billcastEnabled: "btfw:billcast:enabled"
-});
 
-// When building/refreshing the modal UI:
-const billcastBox = m.querySelector("#btfw-billcast-toggle");
-if (billcastBox) {
-  try { billcastBox.checked = (localStorage.getItem(TS_KEYS.billcastEnabled) ?? "1") === "1"; } catch(_) {}
-}
-
-// In your "Apply"/"Save" handler (where you gather values and dispatch):
-const values = { /* ...existing... */ };
-if (billcastBox) {
-  values.billcastEnabled = !!billcastBox.checked;
-  try { localStorage.setItem(TS_KEYS.billcastEnabled, billcastBox.checked ? "1" : "0"); } catch(_){}
-}
-document.dispatchEvent(new CustomEvent("btfw:themeSettings:apply", { detail: { values } }));
   // --- boot: apply persisted variables even if modal never opened ---
   function boot(){
     applyChatTextPx(parseInt(get(TS_KEYS.chatTextPx, "14"),10));
     applyEmoteSize(get(TS_KEYS.emoteSize,"medium"));
-    wireOpeners(); // make sure buttons open the modal
+    wireOpeners();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
-  } else {
-    boot();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 
   return { name: "feature:themeSettings", open, close, wireOpeners };
 });
