@@ -1,164 +1,183 @@
-/* BillTube Framework — feature:bulma-layer
-   Loads/bridges Bulma and applies a theme layer (light | dark | auto).
-   Dark mode is implemented here so Bulma renders dark surfaces everywhere.
-*/
+/* BTFW — feature:bulma-layer (dark/light/auto + Bulma dark overrides + Bootstrap modal bridge) */
 BTFW.define("feature:bulma-layer", [], async () => {
-  const LS_KEY = "btfw:bulma:theme"; // "dark" | "light" | "auto"
-  const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+  // Persisted preference (kept for Theme Settings compatibility)
+  const KEY = "btfw:theme:mode";                     // "auto" | "dark" | "light"
+  const KEY_OLD = "btfw:bulma:theme";                // legacy key support
+  const mq = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
+
+  // Single style injector for all dark-scope rules
   let styleEl;
-
-  // Bulma dark overrides (scoped; injected only when dark is active)
-  const DARK_CSS = `
-  html.btfw-dark, body.btfw-dark { background:#0f131a; color:#e8ecf6; }
-  html.btfw-dark, html.btfw-dark body { color-scheme:dark; }
-
-  html.btfw-dark .content, html.btfw-dark .title, html.btfw-dark .subtitle,
-  html.btfw-dark p, html.btfw-dark small { color:#e8ecf6; }
-
-  html.btfw-dark .box, html.btfw-dark .card, html.btfw-dark .modal-card,
-  html.btfw-dark .dropdown-content, html.btfw-dark .menu, html.btfw-dark .panel,
-  html.btfw-dark .notification {
-    background:#121821; color:#e8ecf6; border:1px solid rgba(255,255,255,.08);
-  }
-
-  html.btfw-dark .tabs.is-boxed li a { background:transparent; border-color:transparent; color:#cfd7e6; }
-  html.btfw-dark .tabs.is-boxed li.is-active a { background:#171d26; color:#fff; border-color:rgba(255,255,255,.15); }
-
-  html.btfw-dark .input, html.btfw-dark .textarea, html.btfw-dark .select select {
-    background:#0f141c; color:#e8ecf6; border-color:rgba(255,255,255,.14);
-  }
-  html.btfw-dark .input:focus, html.btfw-dark .textarea:focus, html.btfw-dark .select select:focus {
-    border-color:#6d4df6; box-shadow:0 0 0 .125em rgba(109,77,246,.25);
-  }
-
-  html.btfw-dark .dropdown-item { color:#e8ecf6; }
-  html.btfw-dark .dropdown-item:hover, html.btfw-dark .dropdown-item.is-active {
-    background:rgba(255,255,255,.06); color:#fff;
-  }
-
-  html.btfw-dark .modal-background { background:rgba(0,0,0,.6); }
-  html.btfw-dark .modal-card-head, html.btfw-dark .modal-card-foot {
-    background:#121821; border-color:rgba(255,255,255,.08);
-  }
-  html.btfw-dark .modal-card-title { color:#fff; }
-
-  html.btfw-dark .button { background:#1a2230; color:#e8ecf6; border:1px solid rgba(255,255,255,.10); }
-  html.btfw-dark .button:hover { filter:brightness(1.08); }
-  html.btfw-dark .button.is-link, html.btfw-dark .button.is-primary {
-    background:linear-gradient(90deg,#6d4df6 0%,#9a63ff 100%); border:0; color:#fff;
-  }
-
-  /* Our surfaces */
-  html.btfw-dark #main, html.btfw-dark .container-fluid,
-  html.btfw-dark .well, html.btfw-dark .btfw-stack, html.btfw-dark .btfw-topbar {
-    background:#0f131a; color:#e8ecf6;
-  }
-
-  html.btfw-dark .label{color:#cfd7e6;} html.btfw-dark .help{color:#a6b0c2;}
-  html.btfw-dark #chatwrap, html.btfw-dark #messagebuffer { background:transparent; }
-  `;
-
   function ensureStyle() {
     if (styleEl) return styleEl;
     styleEl = document.createElement("style");
-    styleEl.id = "btfw-bulma-theme";
+    styleEl.id = "btfw-bulma-dark-bridge";
     document.head.appendChild(styleEl);
     return styleEl;
   }
 
-  function setColorSchemeMeta(mode) {
+  // Dark theme CSS (Bulma surfaces + Bootstrap/CyTube modal bridge), scoped to data-btfw-theme="dark"
+  const DARK_CSS = `
+/* --- Global dark scope --- */
+html[data-btfw-theme="dark"] { color-scheme: dark; }
+html[data-btfw-theme="dark"], html[data-btfw-theme="dark"] body { background:#0f131a; color:#e6edf3; }
+
+/* Text/surfaces (Bulma) */
+html[data-btfw-theme="dark"] .content,
+html[data-btfw-theme="dark"] .title,
+html[data-btfw-theme="dark"] .subtitle,
+html[data-btfw-theme="dark"] p,
+html[data-btfw-theme="dark"] small { color:#e6edf3; }
+
+html[data-btfw-theme="dark"] .box,
+html[data-btfw-theme="dark"] .card,
+html[data-btfw-theme="dark"] .panel,
+html[data-btfw-theme="dark"] .menu,
+html[data-btfw-theme="dark"] .notification,
+html[data-btfw-theme="dark"] .dropdown-content,
+html[data-btfw-theme="dark"] .modal-card {
+  background:#141a22 !important;
+  color:#e6edf3 !important;
+  border:1px solid #253142 !important;
+  box-shadow: 0 12px 38px rgba(0,0,0,.6);
+}
+
+html[data-btfw-theme="dark"] .tabs.is-boxed li a { background:transparent; border-color:transparent; color:#c8d4e0; }
+html[data-btfw-theme="dark"] .tabs.is-boxed li.is-active a { background:#0f1620; color:#fff; border-color:#253142; }
+
+/* Inputs */
+html[data-btfw-theme="dark"] .input,
+html[data-btfw-theme="dark"] .textarea,
+html[data-btfw-theme="dark"] .select select {
+  background:#0f1620 !important;
+  color:#e6edf3 !important;
+  border-color:#2b3a4a !important;
+}
+html[data-btfw-theme="dark"] .input::placeholder,
+html[data-btfw-theme="dark"] .textarea::placeholder { color:#9fb0c2 !important; }
+
+/* Buttons */
+html[data-btfw-theme="dark"] .button {
+  background:#1a2230; color:#e6edf3; border:1px solid rgba(255,255,255,.10);
+}
+html[data-btfw-theme="dark"] .button:hover { filter:brightness(1.08); }
+html[data-btfw-theme="dark"] .button.is-link,
+html[data-btfw-theme="dark"] .button.is-primary {
+  background:#2563eb !important; border-color:#2159d3 !important; color:#fff !important;
+}
+
+/* Chat/stack surfaces you themed */
+html[data-btfw-theme="dark"] #main,
+html[data-btfw-theme="dark"] .container-fluid,
+html[data-btfw-theme="dark"] .well,
+html[data-btfw-theme="dark"] .btfw-stack,
+html[data-btfw-theme="dark"] .btfw-topbar { background:#0f131a; color:#e6edf3; }
+html[data-btfw-theme="dark"] #chatwrap,
+html[data-btfw-theme="dark"] #messagebuffer { background:transparent; }
+
+/* --- Bulma modal dark --- */
+html[data-btfw-theme="dark"] .modal { z-index: 6000 !important; }
+html[data-btfw-theme="dark"] .modal .modal-background { background-color: rgba(8,10,14,.8) !important; }
+html[data-btfw-theme="dark"] .modal-card-head,
+html[data-btfw-theme="dark"] .modal-card-foot {
+  background-color:#0f1620 !important; border-color:#253142 !important; color:#e6edf3 !important;
+}
+html[data-btfw-theme="dark"] .modal-card { background-color:#141a22 !important; color:#e6edf3 !important; }
+html[data-btfw-theme="dark"] .modal-card-title { color:#e6edf3 !important; }
+
+/* --- Bootstrap/CyTube modal bridge (skin Bootstrap modals to match Bulma dark) --- */
+html[data-btfw-theme="dark"] .modal.fade,
+html[data-btfw-theme="dark"] .modal.in,
+html[data-btfw-theme="dark"] .modal { z-index: 6000 !important; }
+html[data-btfw-theme="dark"] .modal-backdrop {
+  background-color: rgba(8,10,14,.8) !important; z-index: 5999 !important;
+}
+html[data-btfw-theme="dark"] .modal-dialog { max-width: 880px; }
+html[data-btfw-theme="dark"] .modal-content {
+  background-color:#141a22 !important; color:#e6edf3 !important; border:1px solid #253142 !important;
+}
+html[data-btfw-theme="dark"] .modal-header,
+html[data-btfw-theme="dark"] .modal-footer {
+  background-color:#0f1620 !important; border-color:#253142 !important; color:#e6edf3 !important;
+}
+html[data-btfw-theme="dark"] .modal-title { color:#e6edf3 !important; }
+html[data-btfw-theme="dark"] .modal .btn-primary {
+  background:#2563eb !important; border-color:#2159d3 !important; color:#fff !important;
+}
+html[data-btfw-theme="dark"] .modal .btn-default {
+  background:#1c2530 !important; border-color:#2b3a4a !important; color:#e6edf3 !important;
+}
+/* Scroll lock (Bootstrap) */
+body.modal-open { overflow: hidden; }
+`;
+
+  // Color-scheme meta for proper form controls on some browsers
+  function ensureColorSchemeMeta(mode) {
+    const desired = (mode === "dark") ? "dark" : "light";
     let meta = document.querySelector('meta[name="color-scheme"]');
     if (!meta) {
       meta = document.createElement("meta");
       meta.setAttribute("name", "color-scheme");
       document.head.appendChild(meta);
     }
-    meta.setAttribute("content", mode === "dark" ? "dark" : "light");
+    meta.setAttribute("content", desired);
   }
 
-  function compute(mode) {
-    if (mode === "auto") {
-      return (mq && mq.matches) ? "dark" : "light";
-    }
-    return mode || "dark";
-  }
-
-  function apply(mode) {
-    const eff = compute(mode);
-    const root = document.documentElement;
-    root.classList.toggle("btfw-dark", eff === "dark");
-    document.body && document.body.classList.toggle("btfw-dark", eff === "dark");
-    setColorSchemeMeta(eff);
-    ensureStyle().textContent = (eff === "dark") ? DARK_CSS : "";
-  }
-
-  function setTheme(mode) {
-    try { localStorage.setItem(LS_KEY, mode); } catch(e){}
-    apply(mode);
-  }
-  function getTheme() {
-    try { return localStorage.getItem(LS_KEY) || "dark"; } catch(e){ return "dark"; }
-  }
-/* BTFW — feature:bulma-layer (dark/light switch + persistence) */
-BTFW.define("feature:bulma-layer", [], async () => {
-  const KEY = "btfw:theme:mode"; // "auto" | "dark" | "light"
-
+  // Pref read/write (with backward compatibility)
   function readPref() {
-    try { return localStorage.getItem(KEY) || "dark"; } catch (_) { return "dark"; }
+    try {
+      const v = localStorage.getItem(KEY);
+      if (v) return v;
+      const legacy = localStorage.getItem(KEY_OLD);
+      return legacy || "dark";
+    } catch (_) { return "dark"; }
   }
-  function writePref(v) {
-    try { localStorage.setItem(KEY, v); } catch (_) {}
-  }
+  function writePref(v) { try { localStorage.setItem(KEY, v); } catch(_){} }
 
+  // Compute effective mode if "auto"
   function resolveAuto() {
-    return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)
-      ? "dark" : "light";
+    return (mq && mq.matches) ? "dark" : "light";
   }
 
+  // Apply theme & CSS bridge
   function apply(mode) {
+    const effective = (mode === "auto") ? resolveAuto() : (mode || "dark");
     const html = document.documentElement;
-    const finalMode = (mode === "auto") ? resolveAuto() : mode;
-    html.setAttribute("data-btfw-theme", finalMode);
-    html.classList.toggle("btfw-theme-dark", finalMode === "dark");
+    html.setAttribute("data-btfw-theme", effective);
+    html.classList.toggle("btfw-theme-dark", effective === "dark"); // keep compatibility with your CSS
+    ensureColorSchemeMeta(effective);
+
+    // Inject or clear dark CSS
+    const st = ensureStyle();
+    st.textContent = (effective === "dark") ? DARK_CSS : "";
   }
 
+  // Public API
   function setTheme(mode) {
     const m = (mode === "auto" || mode === "dark" || mode === "light") ? mode : "dark";
     writePref(m);
     apply(m);
   }
-
   function getTheme() { return readPref(); }
 
-  function boot() {
-    apply(readPref());
-    // if system scheme changes and we're in auto, reflect it
-    if (window.matchMedia) {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      mq.addEventListener?.("change", () => {
-        if (readPref() === "auto") apply("auto");
-      });
-    }
+  // React to OS scheme while in Auto
+  function wireAutoWatcher() {
+    if (!mq || !mq.addEventListener) return;
+    mq.addEventListener("change", () => {
+      if (getTheme() === "auto") apply("auto");
+    });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
-  } else {
-    boot();
+  // Boot
+  function boot() {
+    apply(readPref());     // default dark if unset
+    wireAutoWatcher();     // live-update if system scheme changes
   }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 
   return { name: "feature:bulma-layer", setTheme, getTheme };
 });
 
-  // react to OS theme if in auto
-  if (mq && mq.addEventListener) {
-    mq.addEventListener("change", () => { if (getTheme()==="auto") apply("auto"); });
-  }
-
-  // boot (default to dark if unset)
-  apply(getTheme());
-
-  return { name: "feature:bulma-layer", setTheme, getTheme, isDark: () => document.documentElement.classList.contains("btfw-dark") };
-});
-/* Compatibility alias so code that calls init("feature:bulma") keeps working */
+/* Compatibility alias so init("feature:bulma") still works in your loader */
 BTFW.define("feature:bulma", ["feature:bulma-layer"], async ({}) => ({ name: "feature:bulma" }));
