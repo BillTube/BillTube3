@@ -81,7 +81,7 @@ function load(src){
 	  "modules/feature-footer-forms.js",
 	  "modules/feature-modal-skin.js",
       "modules/feature-sync-guard.js",
-	  "modules/feature-billcast.js"
+	  "modules/feature-billcast.js",
 	  "modules/feature-chat-commands.js",
       "modules/feature-theme-settings.js"
     ];
