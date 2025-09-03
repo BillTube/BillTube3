@@ -81,6 +81,7 @@ function load(src){
 	  "modules/feature-footer-forms.js",
 	  "modules/feature-modal-skin.js",
       "modules/feature-sync-guard.js",
+	  "modules/feature-billcast.js"
 	  "modules/feature-chat-commands.js",
       "modules/feature-theme-settings.js"
     ];
@@ -113,6 +114,7 @@ function load(src){
 	  BTFW.init("feature:playlist-tools"),
 	  BTFW.init("feature:local-subs"),
       BTFW.init("feature:emoji-loader"),
+	  BTFW.init("feature:billcast"),
 	  BTFW.init("feature:motd-editor"),
 	  BTFW.init("feature:themeSettings")
     ]);

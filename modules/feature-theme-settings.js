@@ -143,6 +143,10 @@ BTFW.define("feature:themeSettings", [], async () => {
                     <input type="checkbox" id="btfw-pip-toggle"> Picture-in-Picture (experimental)
                   </label>
                 </div>
+				<label class="checkbox" style="display:block;margin-top:10px;">
+  <input type="checkbox" id="btfw-billcast-toggle" checked>
+  Enable Billcast (Chromecast sender)
+</label>
                 <div class="field">
                   <label class="checkbox">
                     <input type="checkbox" id="btfw-localsubs-toggle"> Show “Local Subtitles” button
@@ -257,7 +261,23 @@ BTFW.define("feature:themeSettings", [], async () => {
       }
     });
   }
+const TS_KEYS = Object.assign({}, (window.BTFW_TS_KEYS||{}), {
+  billcastEnabled: "btfw:billcast:enabled"
+});
 
+// When building/refreshing the modal UI:
+const billcastBox = m.querySelector("#btfw-billcast-toggle");
+if (billcastBox) {
+  try { billcastBox.checked = (localStorage.getItem(TS_KEYS.billcastEnabled) ?? "1") === "1"; } catch(_) {}
+}
+
+// In your "Apply"/"Save" handler (where you gather values and dispatch):
+const values = { /* ...existing... */ };
+if (billcastBox) {
+  values.billcastEnabled = !!billcastBox.checked;
+  try { localStorage.setItem(TS_KEYS.billcastEnabled, billcastBox.checked ? "1" : "0"); } catch(_){}
+}
+document.dispatchEvent(new CustomEvent("btfw:themeSettings:apply", { detail: { values } }));
   // --- boot: apply persisted variables even if modal never opened ---
   function boot(){
     applyChatTextPx(parseInt(get(TS_KEYS.chatTextPx, "14"),10));
