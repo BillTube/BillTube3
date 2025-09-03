@@ -89,11 +89,16 @@ html[data-btfw-theme="dark"] .modal.fade,
 html[data-btfw-theme="dark"] .modal.in,
 html[data-btfw-theme="dark"] .modal { z-index: 6000 !important; }
 html[data-btfw-theme="dark"] .modal-backdrop {
-  background-color: rgba(8,10,14,.8) !important; z-index: 5999 !important;
+  background-color: rgba(8,10,14,.8) !important; z-index: 0 !important;
 }
 html[data-btfw-theme="dark"] .modal-dialog { max-width: 880px; }
 html[data-btfw-theme="dark"] .modal-content {
   background-color:#141a22 !important; color:#e6edf3 !important; border:1px solid #253142 !important;
+}
+@media screen and (min-width: 769px) {
+    .modal-card, .modal-content {
+        width: 100%;
+    }
 }
 html[data-btfw-theme="dark"] .modal-header,
 html[data-btfw-theme="dark"] .modal-footer {
