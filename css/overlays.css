@@ -328,8 +328,8 @@
 
 /* Body */
 .modal-card-body {
-  background: var(--btfw-surface-1);
-  color: var(--btfw-text-1);
+  background: var(--btfw-surface-1)!important;
+  color: var(--btfw-text-1)!important;
 }
 
 /* Tabs (boxy) */
