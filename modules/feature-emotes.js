@@ -226,37 +226,6 @@ function positionPopover(){
 }
 
 
-  // --- Fallback (your original logic) ---
-  const wrap   = document.getElementById("chatwrap") || document.body;
-  const anchor = (document.getElementById("btfw-chat-bottombar")
-               || document.getElementById("chatcontrols")
-               || document.getElementById("chatline")
-               || wrap);
-
-  if (wrap.id === "chatwrap" && getComputedStyle(wrap).position === "static") {
-    wrap.style.position = "relative";
-  }
-
-  const margin     = 8;
-  const wrapRect   = wrap.getBoundingClientRect();
-  const anchorRect = anchor.getBoundingClientRect();
-
-  let bottomPx = Math.round((wrapRect.bottom - anchorRect.top) + margin);
-  if (anchor === wrap || !isFinite(bottomPx) || bottomPx <= 0) bottomPx = 56;
-  bottomPx = Math.max(8, Math.min(bottomPx, (wrap.clientHeight || 480) - 48));
-
-  const maxWidth = Math.min(560, Math.max(320, (wrap.clientWidth || window.innerWidth) - 24));
-  pop.style.position = "fixed";
-  pop.style.right  = "8px";
-  pop.style.bottom = bottomPx + "px";
-  pop.style.width  = maxWidth + "px";
-
-  const fixedH = Math.max(260, Math.min(480, (wrap.clientHeight || (window.innerHeight - 120)) - (bottomPx + 40)));
-  if (setFixedHeight || !pop._btfwFixedH) {
-    pop.style.height = fixedH + "px";
-    pop._btfwFixedH = fixedH;
-  }
-}
 
 
   function watchPosition(){
