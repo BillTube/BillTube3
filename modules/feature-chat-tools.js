@@ -174,12 +174,34 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     $("#btfw-ct-modal")?.classList.remove("is-active");
   }
   function positionMiniModal(){
-    const m = $("#btfw-ct-modal"); if (!m) return;
-    const c = controlsRow(); if (!c) return;
-    const card = m.querySelector(".btfw-ct-card");
-    const bottom = c.offsetHeight + 12; // sit above controls
-    card.style.bottom = bottom + "px";
+  const m = document.getElementById("btfw-ct-modal"); if (!m) return;
+  const card = m.querySelector(".btfw-ct-card"); if (!card) return;
+
+  // Prefer the global helper (aligns above .btfw-chat-bottombar)
+  if (window.BTFW_positionPopoverAboveChatBar) {
+    window.BTFW_positionPopoverAboveChatBar(card, {
+      widthPx: 420,  // a bit narrower than emotes
+      widthVw: 92,
+      maxHpx: 360,
+      maxHvh: 60
+    });
+    return;
   }
+
+  // --- Fallback (previous approach) ---
+  const c = (document.getElementById("chatcontrols")
+        || document.getElementById("chat-controls")
+        || (document.getElementById("chatline") && document.getElementById("chatline").parentElement));
+  if (!c) return;
+
+  const bottom = (c.offsetHeight || 48) + 12;
+  card.style.position = "fixed";
+  card.style.right    = "8px";
+  card.style.bottom   = bottom + "px";
+  card.style.maxHeight = "60vh";
+  card.style.width     = "min(420px,92vw)";
+}
+
 
   /* ---------- History ---------- */
   function getHist(){ try{ return JSON.parse(localStorage.getItem(LS.hist)||"[]"); }catch(e){ return []; } }
@@ -279,6 +301,7 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
 
     // Maintain position on resize/scroll
     window.addEventListener("resize", positionMiniModal);
+	window.addEventListener("resize", positionMiniModal);
     $("#chatwrap")?.addEventListener("scroll", positionMiniModal, { passive:true });
   }
 
