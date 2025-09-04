@@ -371,3 +371,15 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
   background: rgba(255,255,255,.10); color: #ddd;
 }
 #userlist .btfw-mute-chip:hover { background: rgba(255,255,255,.18); }
+/* Chat bottom bar split: actions (left) + usercount (right) */
+.btfw-chat-bottombar{
+  display:flex; align-items:center; gap:8px;
+}
+.btfw-chat-actions{ display:flex; align-items:center; gap:6px; }
+.btfw-chat-right{ margin-left:auto; display:flex; align-items:center; gap:10px; }
+
+#usercount.btfw-usercount{
+  display:flex; align-items:center; gap:6px;
+  font-size: 12px; opacity:.9;
+}
+#usercount .fa-users{ font-size:14px; opacity:.75; }
