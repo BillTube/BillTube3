@@ -262,6 +262,14 @@ if (e.target.closest) {
   const hit = e.target.closest("#btfw-chattools-btn") || e.target.closest("#btfw-ct-open");
   if (hit) { e.preventDefault(); openMiniModal(); return; }
 }      if (e.target.closest && e.target.closest(".btfw-ct-close")) { e.preventDefault(); closeMiniModal(); return; }
+// Outside click closes the tools panel
+const cardEl = $("#btfw-ct-modal .btfw-ct-card");
+if (cardEl && !e.target.closest("#btfw-ct-modal .btfw-ct-card")
+    && !e.target.closest("#btfw-chattools-btn")
+    && !e.target.closest("#btfw-ct-open")) {
+  closeMiniModal();
+  return;
+}
 
       // BBCode buttons (one-shot)
       const bb = e.target.closest && e.target.closest(".btfw-ct-item[data-tag]");

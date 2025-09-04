@@ -37,14 +37,14 @@
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
+  min-height:300px;
 }
 #btfw-userlist-pop{
   position: fixed !important;
   right: 12px !important;
-  bottom: calc(var(--btfw-bottombar-height, 56px) + 12px) !important;
   z-index: 6002 !important;
   width: min(300px, calc(100vw - 24px)) !important;
-  max-height: 70vh !important;
+  max-height: 55vh !important;
   background: rgba(20, 24, 34, 0.97);
   color: #e9e9ee;
   border-radius: 12px;
