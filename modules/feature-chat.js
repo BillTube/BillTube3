@@ -35,6 +35,96 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
       ul.setAttribute("aria-hidden","true");
     }, true);
   }
+// --- Move #usercount into chat bottom bar (right-aligned) and delete #chatheader ---
+function ensureUsercountInBar(){
+  const cw  = document.getElementById("chatwrap");
+  if (!cw) return;
+  const bar = cw.querySelector(".btfw-chat-bottombar");
+  if (!bar) return;
+
+  // right slot
+  let right = bar.querySelector(".btfw-chat-right");
+  if (!right) {
+    right = document.createElement("div");
+    right.className = "btfw-chat-right";
+    bar.appendChild(right);
+  }
+
+  // adopt or create #usercount
+  let uc = document.getElementById("usercount");
+  if (!uc) {
+    uc = document.createElement("div");
+    uc.id = "usercount";
+  }
+  uc.classList.add("btfw-usercount");
+  // normalize its content to icon + number only
+  if (!uc.querySelector(".btfw-usercount-num")) {
+    uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
+                    <span class="btfw-usercount-num">0</span>`;
+  } else {
+    // if it already had other text, strip it down to number
+    const num = uc.textContent.match(/\d+/);
+    uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
+                    <span class="btfw-usercount-num">${num ? num[0] : "0"}</span>`;
+  }
+  right.appendChild(uc);
+
+  // remove the old chatheader (per request)
+  const ch = document.getElementById("chatheader");
+  if (ch) ch.remove();
+
+  // keep it updated
+  updateUsercount();
+  wireUsercountUpdatesOnce();
+}
+
+function updateUsercount(explicit){
+  // explicit value supplied by socket? (if your server emits one)
+  let count = (typeof explicit === "number") ? explicit : 0;
+
+  if (!count) {
+    // fallback: count the userlist items
+    const ul = document.getElementById("userlist");
+    if (ul) {
+      // Try several selectors; CyTube themes can vary
+      let els = ul.querySelectorAll("li");
+      if (!els.length) els = ul.querySelectorAll(".userlist_item, .nick, .user");
+      count = els.length || 0;
+    }
+    // last-resort: parse any digits already inside usercount
+    if (!count) {
+      const uc = document.getElementById("usercount");
+      const m  = uc && uc.textContent && uc.textContent.match(/\d+/);
+      if (m) count = parseInt(m[0], 10) || 0;
+    }
+  }
+
+  const numEl = document.querySelector("#usercount .btfw-usercount-num");
+  if (numEl) numEl.textContent = String(count);
+}
+
+function wireUsercountUpdatesOnce(){
+  if (document._btfw_uc_wired) return;
+  document._btfw_uc_wired = true;
+
+  // Mutation watch on userlist (covers joins/leaves/UI refreshes)
+  const ul = document.getElementById("userlist");
+  if (ul) new MutationObserver(()=>updateUsercount()).observe(ul, {childList:true, subtree:true});
+
+  // Socket hooks if available (names vary by deployment, wire broadly & harmlessly)
+  if (window.socket && typeof window.socket.on === "function") {
+    try {
+      socket.on("addUser",      ()=>updateUsercount());
+      socket.on("userLeave",    ()=>updateUsercount());
+      socket.on("rank",         ()=>updateUsercount());
+      socket.on("setUserCount", (n)=>updateUsercount(n)); // if your server emits this
+      socket.on("userlist",     ()=>updateUsercount());
+    } catch(_) {}
+  }
+
+  // Also recalibrate on resize (mobile panes collapse/expand)
+  window.addEventListener("resize", ()=>updateUsercount());
+}
 
   /* ---------------- Chat bars & actions (no now-playing logic here) ---------------- */
   function ensureBars(){
@@ -199,6 +289,7 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   function boot(){
     wireUserlistGlobalClosers();
     ensureBars();
+	ensureUsercountInBar(); 
     observeChatDom();
     wireDelegatedClicks();
   }
