@@ -135,8 +135,13 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
       const b = document.createElement("button");
       b.id = "btfw-users-toggle"; b.className = "button is-dark is-small btfw-chatbtn";
       b.innerHTML = '<i class="fa fa-users"></i>';
+	  b.addEventListener("click", (e) => {
+        e.preventDefault();
+        openUserlistSafe();
+      });
       actions.appendChild(b);
     }
+	
     if (!$("#btfw-theme-btn-chat")) {
       const b = document.createElement("button");
       b.id = "btfw-theme-btn-chat"; b.className = "button is-dark is-small btfw-chatbtn";
