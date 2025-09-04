@@ -34,15 +34,32 @@ function positionAboveChatBar(el, opts){
 window.BTFW_positionPopoverAboveChatBar = positionAboveChatBar;
 
 /* Reposition any open pop-ins on resize/scroll/layout changes */
+/* Reposition any open pop-ins on resize/scroll/layout changes */
 function repositionOpenPopins(){
-  ["#btfw-userlist-pop", "#btfw-emote-pop", "#btfw-chattools-pop"].forEach(sel=>{
-    const el = document.querySelector(sel);
-    if (el && el.style.display !== "none") positionAboveChatBar(el);
-  });
+  const helper = (el, opts) => window.BTFW_positionPopoverAboveChatBar && window.BTFW_positionPopoverAboveChatBar(el, opts);
+
+  // Emotes (visible when NOT .hidden)
+  const em = document.getElementById("btfw-emotes-pop");
+  if (em && !em.classList.contains("hidden")) {
+    helper(em, { widthPx: 560, widthVw: 92, maxHpx: 480, maxHvh: 70 });
+  }
+
+  // Chat Tools (modal active -> position its card)
+  const ctCard = document.querySelector("#btfw-ct-modal.is-active .btfw-ct-card");
+  if (ctCard) {
+    helper(ctCard, { widthPx: 420, widthVw: 92, maxHpx: 360, maxHvh: 60 });
+  }
+
+  // Userlist (uses display toggling)
+  const ul = document.getElementById("btfw-userlist-pop");
+  if (ul && ul.style.display !== "none") {
+    helper(ul);
+  }
 }
 window.addEventListener("resize", repositionOpenPopins);
 window.addEventListener("scroll", repositionOpenPopins, true);
 document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopins, 0));
+
 
   /* ---------------- Userlist popover (same pattern as Emote popover) ---------------- */
   function adoptUserlistIntoPopover(){
