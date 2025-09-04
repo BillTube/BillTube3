@@ -242,46 +242,52 @@ function ensureActionsButton(){
   }
 
   /* ---------- Wiring ---------- */
-  function wire(){
-    ensureActionsButton();
-    ensureMiniModal();
-	
-const toolsBtn = $("#btfw-chattools-btn") || $("#btfw-ct-open");
-if (toolsBtn) {
-  toolsBtn.addEventListener("click", (e)=>{
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    const m = $("#btfw-ct-modal");
-    const isOpen = m && !m.classList.contains("hidden");
-    if (isOpen) {
-      closeMiniModal();
-    } else {
-      openMiniModal();
+function wire(){
+  ensureActionsButton();
+  ensureMiniModal();
+
+  const toolsBtn = $("#btfw-chattools-btn") || $("#btfw-ct-open");
+  if (toolsBtn) {
+    toolsBtn.addEventListener("click", (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      const m = $("#btfw-ct-modal");
+      const isOpen = m && !m.classList.contains("hidden");
+      if (isOpen) closeMiniModal(); else openMiniModal();
+    }, { capture: true });
+  }
+
+  document.addEventListener("click", (e) => {
+    // TOGGLE on doc-level hit (if you really want both)
+    if (e.target.closest) {
+      const hit = e.target.closest("#btfw-chattools-btn") || e.target.closest("#btfw-ct-open");
+      if (hit) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        const m = $("#btfw-ct-modal");
+        const isOpen = m && !m.classList.contains("hidden");
+        if (isOpen) closeMiniModal(); else openMiniModal();
+        return;
+      }
     }
-  }, { capture: true });
+
+    // close via X
+    if (e.target.closest && e.target.closest(".btfw-ct-close")) { e.preventDefault(); closeMiniModal(); return; }
+
+    // outside click closes
+    const cardEl = $("#btfw-ct-modal .btfw-ct-card");
+    if (cardEl &&
+        !e.target.closest("#btfw-ct-modal .btfw-ct-card") &&
+        !e.target.closest("#btfw-chattools-btn") &&
+        !e.target.closest("#btfw-ct-open")) {
+      closeMiniModal();
+      return;
+    }
+  }, true);
 }
 
-if (e.target.closest) {
-  const hit = e.target.closest("#btfw-chattools-btn") || e.target.closest("#btfw-ct-open");
-  if (hit) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    const m = $("#btfw-ct-modal");
-    const isOpen = m && !m.classList.contains("hidden");
-    if (isOpen) closeMiniModal(); else openMiniModal();
-    return;
-  }
-}
-     if (e.target.closest && e.target.closest(".btfw-ct-close")) { e.preventDefault(); closeMiniModal(); return; }
-const cardEl = $("#btfw-ct-modal .btfw-ct-card");
-if (cardEl && !e.target.closest("#btfw-ct-modal .btfw-ct-card")
-    && !e.target.closest("#btfw-chattools-btn")
-    && !e.target.closest("#btfw-ct-open")) {
-  closeMiniModal();
-  return;
-}
 
       // BBCode buttons (one-shot)
       const bb = e.target.closest && e.target.closest(".btfw-ct-item[data-tag]");
