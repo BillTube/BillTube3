@@ -202,6 +202,20 @@ function positionMiniModal(){
   card.style.width     = "min(420px,92vw)";
 }
 
+function ensureActionsButton(){
+  const actions = $("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
+  if (!actions) return;
+
+  // Prefer canonical trigger; keep legacy (#btfw-ct-open) only if it already exists
+  const already = $("#btfw-chatcmds-btn") || $("#btfw-ct-open");
+  if (already) return;
+
+  const b = document.createElement("button");
+  b.id = "btfw-chatcmds-btn";
+  b.className = "button is-dark is-small btfw-chatbtn";
+  b.innerHTML = '<span style="font-weight:700;letter-spacing:.5px;">Aa</span>';
+  actions.prepend(b);
+}
 
   /* ---------- History ---------- */
   function getHist(){ try{ return JSON.parse(localStorage.getItem(LS.hist)||"[]"); }catch(e){ return []; } }
