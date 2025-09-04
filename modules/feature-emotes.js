@@ -213,35 +213,52 @@ BTFW.define("feature:emotes", [], async () => {
   }
 
   function positionPopover(setFixedHeight){
-    const pop    = document.getElementById("btfw-emotes-pop"); if (!pop) return;
-    const wrap   = document.getElementById("chatwrap") || document.body;
-    const anchor = findBottomBar() || wrap;
+  const pop = document.getElementById("btfw-emotes-pop");
+  if (!pop) return;
 
-    if (wrap.id === "chatwrap" && getComputedStyle(wrap).position === "static") {
-      wrap.style.position = "relative";
-    }
-
-    const margin     = 8;
-    const wrapRect   = wrap.getBoundingClientRect();
-    const anchorRect = anchor.getBoundingClientRect();
-
-    // Distance from anchor top to wrap bottom, plus gap
-    let bottomPx = Math.round((wrapRect.bottom - anchorRect.top) + margin);
-    if (anchor === wrap || !isFinite(bottomPx) || bottomPx <= 0) bottomPx = 56;
-    bottomPx = Math.max(8, Math.min(bottomPx, (wrap.clientHeight || 480) - 48));
-
-    const maxWidth = Math.min(560, Math.max(320, (wrap.clientWidth || window.innerWidth) - 24));
-    pop.style.right  = "8px";
-    pop.style.bottom = bottomPx + "px";
-    pop.style.width  = maxWidth + "px";
-
-    // Fixed height based on chat column height (NOT content)
-    const fixedH = Math.max(260, Math.min(480, (wrap.clientHeight || (window.innerHeight - 120)) - (bottomPx + 40)));
-    if (setFixedHeight || !pop._btfwFixedH) {
-      pop.style.height = fixedH + "px";
-      pop._btfwFixedH = fixedH;
-    }
+  // Prefer the global helper (aligns above .btfw-chat-bottombar)
+  if (window.BTFW_positionPopoverAboveChatBar) {
+    window.BTFW_positionPopoverAboveChatBar(pop, {
+      widthPx: 560,  // cap width in px
+      widthVw: 92,   // cap width in vw
+      maxHpx: 480,   // cap height in px
+      maxHvh: 70     // cap height in vh
+    });
+    return;
   }
+
+  // --- Fallback (your original logic) ---
+  const wrap   = document.getElementById("chatwrap") || document.body;
+  const anchor = (document.getElementById("btfw-chat-bottombar")
+               || document.getElementById("chatcontrols")
+               || document.getElementById("chatline")
+               || wrap);
+
+  if (wrap.id === "chatwrap" && getComputedStyle(wrap).position === "static") {
+    wrap.style.position = "relative";
+  }
+
+  const margin     = 8;
+  const wrapRect   = wrap.getBoundingClientRect();
+  const anchorRect = anchor.getBoundingClientRect();
+
+  let bottomPx = Math.round((wrapRect.bottom - anchorRect.top) + margin);
+  if (anchor === wrap || !isFinite(bottomPx) || bottomPx <= 0) bottomPx = 56;
+  bottomPx = Math.max(8, Math.min(bottomPx, (wrap.clientHeight || 480) - 48));
+
+  const maxWidth = Math.min(560, Math.max(320, (wrap.clientWidth || window.innerWidth) - 24));
+  pop.style.position = "fixed";
+  pop.style.right  = "8px";
+  pop.style.bottom = bottomPx + "px";
+  pop.style.width  = maxWidth + "px";
+
+  const fixedH = Math.max(260, Math.min(480, (wrap.clientHeight || (window.innerHeight - 120)) - (bottomPx + 40)));
+  if (setFixedHeight || !pop._btfwFixedH) {
+    pop.style.height = fixedH + "px";
+    pop._btfwFixedH = fixedH;
+  }
+}
+
 
   function watchPosition(){
     const wrap   = document.getElementById("chatwrap") || document.body;
@@ -252,6 +269,7 @@ BTFW.define("feature:emotes", [], async () => {
     const onReflow = () => positionPopover(false);
     window.addEventListener("resize", onReflow);
     window.addEventListener("scroll", onReflow, true);
+
 
     if (window.ResizeObserver) {
       const ro = new ResizeObserver(onReflow);

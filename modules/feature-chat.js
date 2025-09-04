@@ -3,6 +3,46 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const BASE = (window.BTFW && BTFW.BASE ? BTFW.BASE.replace(/\/+$/,'') : "");
+  
+/* --- Shared pop-in positioning helper (exports a global for other modules) --- */
+function positionAboveChatBar(el, opts){
+  if (!el) return;
+  const cw  = document.querySelector("#chatwrap");
+  const bar = cw && cw.querySelector(".btfw-chat-bottombar");
+  if (!cw || !bar) return;
+
+  const {
+    margin = 8,
+    widthPx = 560,  // desired width cap
+    widthVw = 92,   // fallback cap in vw
+    maxHpx = 480,   // desired max height cap
+    maxHvh = 70     // fallback cap in vh
+  } = (opts || {});
+
+  const cwRect  = cw.getBoundingClientRect();
+  const barRect = bar.getBoundingClientRect();
+
+  // Make it a fixed overlay and tuck it into the chat’s right edge
+  el.style.position  = "fixed";
+  el.style.right     = Math.max(margin, window.innerWidth  - cwRect.right + margin) + "px";
+  el.style.bottom    = Math.max(margin, window.innerHeight - barRect.top   + margin) + "px";
+  el.style.width     = `min(${widthPx}px, ${widthVw}vw)`;
+  el.style.maxHeight = `min(${maxHpx}px, ${maxHvh}vh)`;
+  el.style.zIndex    = el.style.zIndex || "6002"; // keep above chat, below navbar modals
+}
+/* expose so other modules can use it */
+window.BTFW_positionPopoverAboveChatBar = positionAboveChatBar;
+
+/* Reposition any open pop-ins on resize/scroll/layout changes */
+function repositionOpenPopins(){
+  ["#btfw-userlist-pop", "#btfw-emote-pop", "#btfw-chattools-pop"].forEach(sel=>{
+    const el = document.querySelector(sel);
+    if (el && el.style.display !== "none") positionAboveChatBar(el);
+  });
+}
+window.addEventListener("resize", repositionOpenPopins);
+window.addEventListener("scroll", repositionOpenPopins, true);
+document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopins, 0));
 
   /* ---------------- Userlist popover (same pattern as Emote popover) ---------------- */
   function adoptUserlistIntoPopover(){
@@ -103,20 +143,7 @@ function watchForStrayButtons(){
     document.addEventListener("keydown", (ev)=>{ if (ev.key === "Escape") close(); }, true);
 
     function position(){
-      const cw  = $("#chatwrap");
-      const bar = cw && cw.querySelector(".btfw-chat-bottombar");
-      if (!cw || !bar) return;
-
-      const cwRect  = cw.getBoundingClientRect();
-      const barRect = bar.getBoundingClientRect();
-
-      const right  = Math.max(8, window.innerWidth  - cwRect.right + 8);
-      const bottom = Math.max(8, window.innerHeight - barRect.top + 8);
-
-      pop.style.right  = right + "px";
-      pop.style.bottom = bottom + "px";
-      pop.style.width      = "min(560px, 92vw)";
-      pop.style.maxHeight  = "min(480px, 70vh)";
+    positionAboveChatBar(pop);
     }
     window.addEventListener("resize", position);
     window.addEventListener("scroll", position, true);
@@ -128,7 +155,7 @@ function watchForStrayButtons(){
       if (ul) ul.classList.add("btfw-userlist-overlay--open");
       back.style.display = "block";
       pop.style.display  = "block";
-      position();
+      positionAboveChatBar(pop);
     };
     document._btfw_userlist_close  = close;
     document._btfw_userlist_position = position;
