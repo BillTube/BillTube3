@@ -118,7 +118,7 @@ BTFW.define("feature:emotes", [], async () => {
 
     pop = document.createElement("div");
     pop.id = "btfw-emotes-pop";
-    pop.className = "btfw-emotes-pop hidden";
+    pop.className = "btfw-popover btfw-emotes-pop hidden";
     pop.innerHTML = `
       <div class="btfw-emotes-head">
         <div class="btfw-emotes-tabs">
@@ -212,20 +212,19 @@ BTFW.define("feature:emotes", [], async () => {
         || document.getElementById("chatline");
   }
 
-  function positionPopover(setFixedHeight){
+function positionPopover(){
   const pop = document.getElementById("btfw-emotes-pop");
   if (!pop) return;
-
-  // Prefer the global helper (aligns above .btfw-chat-bottombar)
   if (window.BTFW_positionPopoverAboveChatBar) {
     window.BTFW_positionPopoverAboveChatBar(pop, {
-      widthPx: 560,  // cap width in px
-      widthVw: 92,   // cap width in vw
-      maxHpx: 480,   // cap height in px
-      maxHvh: 70     // cap height in vh
+      widthPx: 560,
+      widthVw: 92,
+      maxHpx: 480,
+      maxHvh: 70
     });
-    return;
   }
+}
+
 
   // --- Fallback (your original logic) ---
   const wrap   = document.getElementById("chatwrap") || document.body;

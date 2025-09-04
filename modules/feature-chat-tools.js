@@ -147,6 +147,9 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
       </div>
     `;
     cw.appendChild(modal);
+	
+const card = modal.querySelector(".btfw-ct-card");
+if (card) card.classList.add("btfw-popover");
 
     // Build swatches
     const sw = $("#btfw-ct-swatch", modal);
@@ -173,20 +176,19 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
   function closeMiniModal(){
     $("#btfw-ct-modal")?.classList.remove("is-active");
   }
-  function positionMiniModal(){
+function positionMiniModal(){
   const m = document.getElementById("btfw-ct-modal"); if (!m) return;
   const card = m.querySelector(".btfw-ct-card"); if (!card) return;
-
-  // Prefer the global helper (aligns above .btfw-chat-bottombar)
   if (window.BTFW_positionPopoverAboveChatBar) {
     window.BTFW_positionPopoverAboveChatBar(card, {
-      widthPx: 420,  // a bit narrower than emotes
+      widthPx: 420,
       widthVw: 92,
       maxHpx: 360,
       maxHvh: 60
     });
-    return;
   }
+}
+
 
   // --- Fallback (previous approach) ---
   const c = (document.getElementById("chatcontrols")
@@ -301,7 +303,6 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
 
     // Maintain position on resize/scroll
     window.addEventListener("resize", positionMiniModal);
-	window.addEventListener("resize", positionMiniModal);
     $("#chatwrap")?.addEventListener("scroll", positionMiniModal, { passive:true });
   }
 

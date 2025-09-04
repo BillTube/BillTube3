@@ -687,3 +687,16 @@ html[data-btfw-theme="dark"] .panel {
 #btfw-notify-stack .np-title{ font-weight:600; opacity:.95; }
 #btfw-notify-stack .poll-title{ font-weight:600; margin-bottom:4px; }
 #btfw-notify-stack .poll-opts{ margin:0; padding-left: 18px; opacity:.9; }
+/* BTFW pop‑in base */
+.btfw-pop{
+  position: fixed; /* positioned by JS when opened */
+  bottom: calc(var(--btfw-bottombar-height, 56px) + 8px);
+  left: 0;
+  display: none;
+  z-index: 4000;
+  max-width: min(90vw, 420px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.3);
+  border-radius: 1rem; /* 2xl-ish */
+  overflow: hidden;
+}
+.btfw-pop.btfw-pop--open{ display: block; }
