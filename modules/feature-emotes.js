@@ -217,7 +217,7 @@ function positionPopover(){
   if (!pop) return;
   if (window.BTFW_positionPopoverAboveChatBar) {
     window.BTFW_positionPopoverAboveChatBar(pop, {
-      widthPx: 560,
+      widthPx: 530,
       widthVw: 92,
       maxHpx: 480,
       maxHvh: 70
