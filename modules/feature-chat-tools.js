@@ -92,63 +92,52 @@ function wrapWithTag(tag){
   }
 
   /* ---------- UI: actions button + mini modal ---------- */
-  function ensureActionsButton(){
-    const actions = $("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
-    if (!actions || $("#btfw-ct-open")) return;
+function ensureActionsButton(){
+  const actions = $("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
+  if (!actions) return;
+
+  // Prefer the canonical id; keep old one only if it already exists
+  if (!$("#btfw-chatcmds-btn") && !$("#btfw-ct-open")) {
     const b = document.createElement("button");
-    b.id = "btfw-ct-open";
+    b.id = "btfw-chatcmds-btn";
     b.className = "button is-dark is-small btfw-chatbtn";
     b.innerHTML = '<span style="font-weight:700;letter-spacing:.5px;">Aa</span>';
     actions.prepend(b);
   }
+}
 
-  function ensureMiniModal(){
-    const cw = $("#chatwrap"); if (!cw) return null;
-    if ($("#btfw-ct-modal")) return $("#btfw-ct-modal");
 
-    cw.style.position = cw.style.position || "relative"; // anchor
-
-    const modal = document.createElement("div");
-    modal.id = "btfw-ct-modal";
-    modal.className = "btfw-ct-modal"; // hidden by default via CSS
-    modal.innerHTML = `
-      <div class="btfw-ct-backdrop"></div>
-      <div class="btfw-ct-card">
-        <div class="btfw-ct-cardhead">
-          <span>Chat Tools</span>
-          <button class="btfw-ct-close" aria-label="Close">&times;</button>
-        </div>
-        <div class="btfw-ct-body">
-          <div class="btfw-ct-grid">
-            <button class="btfw-ct-item" data-tag="b"><strong>B</strong><span>Bold</span></button>
-            <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
-            <button class="btfw-ct-item" data-tag="sp"><span>SP</span><span>Spoiler</span></button>
-            <button class="btfw-ct-item" data-tag="code"><code>&lt;/&gt;</code><span>Code</span></button>
-            <button class="btfw-ct-item" data-tag="s"><span style="text-decoration:line-through">S</span><span>Strike</span></button>
-            <button class="btfw-ct-item" data-act="afk">🤖<span>AFK</span></button>
-            <button class="btfw-ct-item" data-act="clear">🧹<span>Clear</span></button>
-          </div>
-
-          <div class="btfw-ct-section">
-            <div class="btfw-ct-row">
-              <div class="btfw-ct-title">Text Color (col:#RRGGBB:)</div>
-              <label class="btfw-ct-keep">
-                <input type="checkbox" id="btfw-ct-keepcolor">
-                Keep color for messages
-              </label>
-            </div>
-            <div id="btfw-ct-swatch" class="btfw-ct-swatch"></div>
-            <div class="btfw-ct-actions">
-              <input id="btfw-ct-hex" class="btfw-ct-hex" placeholder="#RRGGBB">
-              <button id="btfw-ct-insertcolor" class="button is-small">Insert Color</button>
-              <button id="btfw-ct-clearcolor" class="button is-small is-dark">Clear Keep</button>
-            </div>
-          </div>
-        </div>
+  function modal.innerHTML = `
+  <div class="btfw-ct-card">
+    <div class="btfw-ct-cardhead">
+      <span>Chat Tools</span>
+      <button class="btfw-ct-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="btfw-ct-body">
+      <div class="btfw-ct-grid">
+        <button class="btfw-ct-item" data-tag="b"><strong>B</strong><span>Bold</span></button>
+        <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
+        <button class="btfw-ct-item" data-tag="u"><u>U</u><span>Underline</span></button>
+        <button class="btfw-ct-item" data-tag="s"><span style="text-decoration:line-through">S</span><span>Strike</span></button>
+        <!-- …rest of your buttons… -->
       </div>
-    `;
+
+      <div class="btfw-ct-color">
+        <label><input type="checkbox" id="btfw-ct-keepcolor"> Keep color</label>
+        <div class="btfw-ct-swatch" id="btfw-ct-swatch"></div>
+      </div>
+
+      <div class="btfw-ct-actions">
+        <button id="btfw-ct-clear" class="button is-small">Clear</button>
+        <button id="btfw-ct-afk"   class="button is-small">AFK</button>
+      </div>
+    </div>
+  </div>
+`;
     cw.appendChild(modal);
-	
+modal.style.background = "transparent";
+modal.style.pointerEvents = "none"; // let only the card capture clicks
+
 const card = modal.querySelector(".btfw-ct-card");
 if (card) card.classList.add("btfw-popover");
 
@@ -235,7 +224,7 @@ function positionMiniModal(){
 
     // Open/close
     document.addEventListener("click", (e)=>{
-      if (e.target.closest && e.target.closest("#btfw-ct-open")) { e.preventDefault(); openMiniModal(); return; }
+      if (e.target.closest) {const hit = e.target.closest("#btfw-chatcmds-btn") || e.target.closest("#btfw-ct-open");if (hit) { e.preventDefault(); openMiniModal(); return; }}
       if (e.target.closest && e.target.closest(".btfw-ct-close")) { e.preventDefault(); closeMiniModal(); return; }
       if (e.target.closest && e.target.closest(".btfw-ct-backdrop")) { e.preventDefault(); closeMiniModal(); return; }
 

@@ -25,29 +25,40 @@
    - Toggled by #btfw-users-toggle.
    ====================================================================== */
 
-#userlist.btfw-userlist-overlay {
-  position: absolute;
-  right: 12px;
-  /* Sit under the navbar; --btfw-top is set by layout module */
-  top: calc(var(--btfw-top, 48px) + 16px);
-  /* Leave room above chat input / bottom bar */
-  bottom: 140px;
-
-  width: 300px;
-  max-width: calc(100vw - 24px);
+#userlist.btfw-userlist-overlay{
+  position: static !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  padding: 6px; /* keep your inner padding */
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+#btfw-userlist-pop{
+  position: fixed !important;
+  right: 12px !important;
+  bottom: calc(var(--btfw-bottombar-height, 56px) + 12px) !important;
+  z-index: 6002 !important;
+  width: min(300px, calc(100vw - 24px)) !important;
+  max-height: 70vh !important;
   background: rgba(20, 24, 34, 0.97);
   color: #e9e9ee;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
-
   overflow: auto;
-  padding: 6px;
-
-  z-index: 4500;
-  pointer-events: auto;
 }
 
+/* The close “X” inside the pop head uses .btfw-popclose */
+#btfw-userlist-pop .btfw-popclose{
+  position: absolute;
+  top: 6px;
+  right: 8px;
+}
 /* CLOSED by default (like v3.3). JS toggles the --open class. */
 #userlist.btfw-userlist-overlay:not(.btfw-userlist-overlay--open) {
   display: none !important;
