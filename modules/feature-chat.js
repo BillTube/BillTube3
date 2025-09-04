@@ -4,11 +4,20 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const BASE = (window.BTFW && BTFW.BASE ? BTFW.BASE.replace(/\/+$/,'') : "");
 
-  /* ---------------- Userlist POPUP (replaces old overlay/hover-close behavior) ---------------- */
+  /* ---------------- Userlist POPUP (mini modal like emote popover) ---------------- */
+  function adoptUserlistIntoPopover(){
+    const popBody = $("#btfw-userlist-pop .btfw-popbody");
+    const ul = $("#userlist");
+    if (popBody && ul && ul.parentElement !== popBody) {
+      ul.classList.add("btfw-userlist-overlay");
+      popBody.appendChild(ul);
+    }
+  }
+
   function buildUserlistPopover(){
     if ($("#btfw-userlist-pop")) return;
 
-    // Backdrop (same class family used by your emote popover CSS)
+    // Backdrop
     const back = document.createElement("div");
     back.id = "btfw-userlist-backdrop";
     back.className = "btfw-popbackdrop";
@@ -29,61 +38,61 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     `;
     document.body.appendChild(pop);
 
-    // Move the real #userlist into the popover body (we reuse CyTube's list UI)
-    const ul = document.getElementById("userlist");
-    if (ul) {
-      ul.classList.add("btfw-userlist-overlay"); // keep existing skinning hooks
-      const body = pop.querySelector(".btfw-popbody");
-      body.appendChild(ul);
-    }
+    // Move #userlist in if present now
+    adoptUserlistIntoPopover();
 
-    // Close only on explicit actions (no hover/mouseleave auto-close)
+    // Close only via explicit actions (no hover-close)
     const close = () => { back.style.display = "none"; pop.style.display = "none"; };
     back.addEventListener("click", close);
     pop.querySelector(".btfw-popclose").addEventListener("click", close);
     document.addEventListener("keydown", (ev)=>{ if (ev.key === "Escape") close(); }, true);
 
-    // Reposition helper – anchor to chat bottom-right so it behaves like the emote popover
+    // Position near chat bottom bar (same anchor as emote popover)
     function position(){
       const cw  = $("#chatwrap");
       const bar = cw && cw.querySelector(".btfw-chat-bottombar");
-      const pop = $("#btfw-userlist-pop");
-      if (!cw || !bar || !pop) return;
+      if (!cw || !bar) return;
 
       const cwRect  = cw.getBoundingClientRect();
       const barRect = bar.getBoundingClientRect();
 
-      // Align to chat’s right edge, sit just above the bottom bar
       const right  = Math.max(8, window.innerWidth  - cwRect.right + 8);
       const bottom = Math.max(8, window.innerHeight - barRect.top + 8);
 
       pop.style.right  = right + "px";
       pop.style.bottom = bottom + "px";
-      // Width/height are governed by your .btfw-popover CSS; don’t let content push it around
       pop.style.maxHeight = "min(480px, 70vh)";
       pop.style.width     = "min(560px, 92vw)";
     }
-    // Keep it in the correct place
     window.addEventListener("resize", position);
     window.addEventListener("scroll", position, true);
-    // Expose for opener
-    document._btfw_userlist_position = position;
 
-    // Opener toggler used by the chat buttons
-    document._btfw_userlist_open = function openUserlist(){
+    // Safe open/close available to other code
+    document._btfw_userlist_open  = function(){
+      // Make sure the real #userlist sits inside the pop each time we open (covers DOM reflows)
+      adoptUserlistIntoPopover();
       back.style.display = "block";
       pop.style.display  = "block";
       position();
     };
     document._btfw_userlist_close = close;
+    document._btfw_userlist_position = position;
   }
 
-  /* ---------------- Chat bars & actions (unchanged layout) ---------------- */
+  // Safe opener used by the Users button
+  function openUserlistSafe(){
+    if (!$("#btfw-userlist-pop")) buildUserlistPopover();
+    if (typeof document._btfw_userlist_open === "function") {
+      document._btfw_userlist_open();
+    }
+  }
+
+  /* ---------------- Chat bars & actions ---------------- */
   function ensureBars(){
     const cw = $("#chatwrap"); if (!cw) return;
     cw.classList.add("btfw-chatwrap");
 
-    // Top bar + slot (feature:nowplaying will mount #currenttitle here)
+    // Top bar + slot (feature:nowplaying will move #currenttitle here)
     let top = cw.querySelector(".btfw-chat-topbar");
     if (!top) {
       top = document.createElement("div");
@@ -144,12 +153,10 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     }
   }
 
-  /* ---------------- Move #usercount into bottom bar right, remove #chatheader ---------------- */
+  /* ---------------- Move #usercount to bottom bar right; remove #chatheader ---------------- */
   function ensureUsercountInBar(){
-    const cw  = $("#chatwrap");
-    if (!cw) return;
-    const bar = cw.querySelector(".btfw-chat-bottombar");
-    if (!bar) return;
+    const cw  = $("#chatwrap"); if (!cw) return;
+    const bar = cw.querySelector(".btfw-chat-bottombar"); if (!bar) return;
 
     let right = bar.querySelector(".btfw-chat-right");
     if (!right) {
@@ -228,7 +235,11 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     const cw = $("#chatwrap"); if (!cw || cw._btfw_chat_obs) return;
     cw._btfw_chat_obs = true;
 
-    new MutationObserver(()=>ensureBars()).observe(cw,{childList:true,subtree:true});
+    new MutationObserver(()=>{
+      ensureBars();
+      // If CyTube replaces userlist, adopt it back into the popover
+      adoptUserlistIntoPopover();
+    }).observe(cw,{childList:true,subtree:true});
 
     const buf = $("#messagebuffer");
     if (buf && !buf._btfw_color_obs){
@@ -292,7 +303,7 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
 
       if (gif)   { e.preventDefault(); document.dispatchEvent(new Event("btfw:openGifs")); return; }
       if (theme) { e.preventDefault(); openThemeSettings(); return; }
-      if (users) { e.preventDefault(); if (document._btfw_userlist_open) document._btfw_userlist_open(); return; }
+      if (users) { e.preventDefault(); openUserlistSafe(); return; }   // <-- safe opener
     }, true);
   }
 
@@ -300,7 +311,7 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   function boot(){
     ensureBars();
     ensureUsercountInBar();
-    buildUserlistPopover();
+    buildUserlistPopover();   // define popover and opener
     observeChatDom();
     wireDelegatedClicks();
   }
