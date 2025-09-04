@@ -14,7 +14,55 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
       body.appendChild(ul);
     }
   }
+function actionsNode(){
+  const bar = document.querySelector("#chatwrap .btfw-chat-bottombar");
+  return bar && bar.querySelector("#btfw-chat-actions");
+}
 
+/* Move our action buttons into the correct spot, remove legacy duplicates */
+function normalizeChatActionButtons() {
+  const actions = actionsNode(); if (!actions) return;
+
+  // remove legacy/duplicate
+  const legacyGif = document.getElementById("btfw-gif-btn");
+  if (legacyGif) legacyGif.remove();
+
+  // native emotelist stays hidden; we drive it programmatically as fallback
+  const nativeEmoteBtn = document.querySelector("#emotelistbtn, #emotelist");
+  if (nativeEmoteBtn) nativeEmoteBtn.style.display = "none";
+
+  // ensure our buttons exist (create if missing)
+  if (!document.getElementById("btfw-btn-emotes")) {
+    const b = document.createElement("button");
+    b.id = "btfw-btn-emotes";
+    b.className = "button is-dark is-small btfw-chatbtn";
+    b.title = "Emotes / Emoji";
+    b.innerHTML = '<i class="fa fa-smile"></i>';
+    actions.appendChild(b);
+  }
+  if (!document.getElementById("btfw-btn-gif")) {
+    const b = document.createElement("button");
+    b.id = "btfw-btn-gif";
+    b.className = "button is-dark is-small btfw-chatbtn";
+    b.title = "GIFs";
+    b.innerHTML = '<span class="gif-badge">GIF</span>';
+    actions.appendChild(b);
+  }
+
+  // if some other module created them elsewhere, adopt them
+  ["btfw-btn-emotes", "btfw-btn-gif", "btfw-chatcmds-btn", "btfw-users-toggle"].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el && el.parentElement !== actions) actions.appendChild(el);
+  });
+}
+
+/* Watch the whole document for late/stray button injections and normalize */
+function watchForStrayButtons(){
+  if (document._btfw_btn_watch) return;
+  document._btfw_btn_watch = true;
+  const obs = new MutationObserver(() => normalizeChatActionButtons());
+  obs.observe(document.documentElement, { childList:true, subtree:true });
+}
   function ensureUserlistPopover(){
     if ($("#btfw-userlist-pop")) return;
 
@@ -177,6 +225,7 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
       controls.classList.add("btfw-controls-row");
       bottom.after(controls);
     }
+	normalizeChatActionButtons();
   }
 
   /* ---------------- Usercount to bottom-right & remove #chatheader ---------------- */
@@ -368,6 +417,8 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     ensureUserlistPopover();
     observeChatDom();
     wireDelegatedClicks();
+	watchForStrayButtons();
+
   }
 
   document.addEventListener("btfw:layoutReady", ()=> setTimeout(boot, 50));
