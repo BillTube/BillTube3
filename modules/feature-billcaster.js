@@ -1,5 +1,5 @@
 $(document).ready(function() {
-    // Initialize cast variables
+
     var session = null;
     var castPlayer = null;
     var CHECK_INTERVAL = 120000; // Sync every 120 seconds
@@ -8,7 +8,7 @@ $(document).ready(function() {
     var castAvailable = false; // Flag to check if Cast API is available
     var syncInterval = null; // To store the synchronization interval ID
 
-    // Function to check if casting is available
+
     function checkCastingAvailability() {
         return new Promise((resolve) => {
             if (!chrome || !chrome.cast || !chrome.cast.isAvailable) {
@@ -26,8 +26,22 @@ $(document).ready(function() {
             }
         });
     }
+	
+function $overlay() {
+  var $o = $('#btfw-video-overlay');
+  if ($o.length) return $o;
 
-    // Function to initialize the Video.js player
+  $o = $('#VideoOverlay');
+  if ($o.length) return $o;
+
+  var $vw = $('#videowrap');
+  if ($vw.length) {
+    $o = $('<div id="btfw-video-overlay" class="btfw-video-overlay"></div>').appendTo($vw);
+    return $o;
+  }
+  return $(); 
+}
+
     function initializePlayer() {
         if ($('#ytapiplayer').length) {
             player = videojs('ytapiplayer');
@@ -37,32 +51,61 @@ $(document).ready(function() {
             setTimeout(initializePlayer, 500);
         }
     }
+function $overlay() {
+  var $o = $('#btfw-video-overlay');        // new BTFW overlay
+  if ($o.length) return $o;
 
-    // Function to initialize the cast button
-    function initializeCastButton() {
-        if ($('#VideoOverlay').length && castAvailable) {
-            createCastButton();
-            updateCastButtonVisibility();
-        } else if (!castAvailable) {
-            createFallbackButton();
-        } else {
-            setTimeout(initializeCastButton, 500);
-        }
-    }
+  $o = $('#VideoOverlay');                  // legacy overlay
+  if ($o.length) return $o;
 
-    // Function to create a fallback button for users without cast support
+  // last resort: create an overlay container so buttons have a home
+  var $vw = $('#videowrap');
+  if ($vw.length) {
+    $o = $('<div id="btfw-video-overlay" class="btfw-video-overlay"></div>')
+      .css({ position:'absolute', inset:0, 'pointer-events':'none' })
+      .appendTo($vw);
+    return $o;
+  }
+  return $(); // none yet
+}
+
+function whenOverlayReady(fn) {
+  if ($overlay().length) return fn();
+  var mo = new MutationObserver(function(){
+    if ($overlay().length) { mo.disconnect(); fn(); }
+  });
+  mo.observe(document.body, { childList: true, subtree: true });
+}
+
+function initializeCastButton() {
+  var $o = $overlay();
+  if (!$o.length) {               
+    whenOverlayReady(initializeCastButton);
+    return;
+  }
+
+  if (!castAvailable) {           
+    createFallbackButton();       
+    return;
+  }
+
+  createCastButton();             
+  if (typeof updateCastButtonVisibility === "function") {
+    updateCastButtonVisibility();
+  }
+}
+
     function createFallbackButton() {
         if ($('#fallbackButton').length) return;
 
         var fallbackButton = $('<button id="fallbackButton" class="fal fa-regular fa-info-circle OLB" style="z-index: 1000; float: right;" data-tooltip-pos="down" data-tooltip="Casting Not Available"></button>');
-        $('#VideoOverlay').append(fallbackButton);
+        $overlay().append(fallbackButton);
 
         fallbackButton.on('click', function() {
             alert('Casting is not available on your browser. Please use Google Chrome for casting functionality.');
         });
     }
 
-    // Function to attach event listeners to the player
     function attachPlayerEventListeners() {
         if (!player) return;
 
@@ -117,9 +160,6 @@ $(document).ready(function() {
         });
     }
 
-// ... [continued from Part 1]
-
-    // Function to create the cast button and append it to the VideoOverlay div
     function createCastButton() {
         if ($('#castButton').length) {
             console.log('Cast button already exists.');
@@ -128,8 +168,7 @@ $(document).ready(function() {
 
         var castButton = $('<button id="castButton" class="fal fa-regular fa-screencast OLB" style="z-index: 1000; float: left; display: none;" data-tooltip-pos="down" data-tooltip="Google Cast"></button>');
 
-        $('#VideoOverlay').append(castButton);
-        console.log('Cast button created and appended.');
+        $overlay().append(castButton);
 
         castButton.on('click', function() {
             console.log('Cast button clicked.');
@@ -137,7 +176,6 @@ $(document).ready(function() {
         });
     }
 
-    // Function to update the visibility of the cast button based on video src
     function updateCastButtonVisibility() {
         var videoSrc = getCurrentVideoSrc();
 
@@ -160,7 +198,6 @@ $(document).ready(function() {
         }
     }
 
-    // Function to initialize the cast framework
     function initializeCastApi() {
         castAvailable = true;
         var context = cast.framework.CastContext.getInstance();
@@ -179,7 +216,6 @@ $(document).ready(function() {
         initializeCastButton();
     }
 
-    // Function to handle session state changes
     function sessionStateChanged(event) {
         switch (event.sessionState) {
             case cast.framework.SessionState.SESSION_STARTED:
