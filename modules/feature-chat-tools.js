@@ -37,21 +37,22 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     fn(l, {a,b,before,mid,after});
   }
 
-  function wrapWithTag(tag){
-    withSelection((l, s)=>{
-      const open = `[${tag}]`, close = `[/${tag}]`;
-      l.value = s.before + open + s.mid + close + s.after;
+function wrapWithTag(tag){
+  withSelection((l, s)=>{
+    const open = `[${tag}]`, close = `[/${tag}]`;
+    l.value = s.before + open + s.mid + close + s.after;
 
-      if (s.mid.length === 0) {
-        const pos = s.before.length + open.length;
-        l.focus(); l.setSelectionRange(pos, pos);  // caret between tags
-      } else {
-        const start = s.before.length + open.length;
-        const end   = start + s.mid.length;
-        l.focus(); l.setSelectionRange(start, end); // keep selection inside tags
-      }
-    });
-  }
+    if (s.mid.length === 0) {
+      const pos = s.before.length + open.length;
+      l.focus(); l.setSelectionRange(pos, pos);  // caret between tags
+    } else {
+      const start = s.before.length + open.length;
+      const end   = start + s.mid.length;
+      l.focus(); l.setSelectionRange(start, end); // keep selection inside tags
+    }
+  });
+}
+
 
   function normalizeHex(x){
     if (!x) return "";
@@ -176,9 +177,12 @@ if (card) card.classList.add("btfw-popover");
   function closeMiniModal(){
     $("#btfw-ct-modal")?.classList.remove("is-active");
   }
+
 function positionMiniModal(){
   const m = document.getElementById("btfw-ct-modal"); if (!m) return;
   const card = m.querySelector(".btfw-ct-card"); if (!card) return;
+
+  // Prefer the global helper (aligns above .btfw-chat-bottombar)
   if (window.BTFW_positionPopoverAboveChatBar) {
     window.BTFW_positionPopoverAboveChatBar(card, {
       widthPx: 420,
@@ -186,9 +190,8 @@ function positionMiniModal(){
       maxHpx: 360,
       maxHvh: 60
     });
+    return;
   }
-}
-
 
   // --- Fallback (previous approach) ---
   const c = (document.getElementById("chatcontrols")
