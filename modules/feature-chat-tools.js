@@ -73,12 +73,10 @@ function wrapWithTag(tag){
     // Add a space after prefix only if there is content
     const glue = without && !/^\s/.test(without) ? " " : "";
     l.value = prefix + glue + without;
-    // Move caret to end so user can keep typing
     const pos = l.value.length;
     l.focus(); l.setSelectionRange(pos, pos);
   }
 
-  // On send, auto-prefix with sticky color if enabled and line lacks a prefix
   function getStickColor(){ try { return localStorage.getItem(LS.stickColor)||""; } catch(e){ return ""; } }
   function setStickColor(hex){ try { localStorage.setItem(LS.stickColor, normalizeHex(hex)||""); } catch(e){} }
 
@@ -87,53 +85,58 @@ function wrapWithTag(tag){
     const l = chatline(); if (!l) return;
     const v = (l.value||"").trimStart();
     if (/^col:\s*#?[0-9a-fA-F]{6}:/i.test(v)) return; // already has color prefix
-    // Prepend prefix, keep rest of message as-is
     l.value = `col:${normalizeHex(hex)}:` + (v ? " " : "") + v;
   }
 
   /* ---------- UI: actions button + mini modal ---------- */
 function ensureMiniModal(){
-  // container
   const cw = document.getElementById("chatwrap") || document.body;
 
-  // re-use if already present
   let modal = document.getElementById("btfw-ct-modal");
   if (!modal) {
     modal = document.createElement("div");
     modal.id = "btfw-ct-modal";
-    // no full-screen backdrop; just a lightweight container
     cw.appendChild(modal);
   }
 
-  // inline template (no backdrop)
-  modal.innerHTML = `
-    <div class="btfw-ct-card">
-      <div class="btfw-ct-cardhead">
-        <span>Chat Tools</span>
-        <button class="btfw-ct-close" aria-label="Close">&times;</button>
+ modal.innerHTML = `
+  <div class="btfw-ct-card">
+    <div class="btfw-ct-cardhead">
+      <span>Chat Tools</span>
+      <button class="btfw-ct-close" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="btfw-ct-body">
+      <!-- BBCode grid -->
+      <div class="btfw-ct-grid">
+        <button class="btfw-ct-item" data-tag="b"><strong>B</strong><span>Bold</span></button>
+        <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
+        <button class="btfw-ct-item" data-tag="u"><u>U</u><span>Underline</span></button>
+        <button class="btfw-ct-item" data-tag="s"><span style="text-decoration:line-through">S</span><span>Strike</span></button>
       </div>
 
-      <div class="btfw-ct-body">
-        <div class="btfw-ct-grid">
-          <button class="btfw-ct-item" data-tag="b"><strong>B</strong><span>Bold</span></button>
-          <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
-          <button class="btfw-ct-item" data-tag="u"><u>U</u><span>Underline</span></button>
-          <button class="btfw-ct-item" data-tag="s"><span style="text-decoration:line-through">S</span><span>Strike</span></button>
-          <!-- …rest of your buttons… -->
-        </div>
+      <!-- Color tools -->
+      <div class="btfw-ct-color">
+        <label class="btfw-ct-keep">
+          <input type="checkbox" id="btfw-ct-keepcolor"> Keep color
+        </label>
+        <div class="btfw-ct-swatch" id="btfw-ct-swatch"></div>
 
-        <div class="btfw-ct-color">
-          <label><input type="checkbox" id="btfw-ct-keepcolor"> Keep color</label>
-          <div class="btfw-ct-swatch" id="btfw-ct-swatch"></div>
+        <div class="btfw-ct-hexrow" style="display:flex; gap:6px; align-items:center; margin-top:6px;">
+          <input id="btfw-ct-hex" type="text" placeholder="#rrggbb" maxlength="7" class="input is-small" style="max-width:120px;" />
+          <button id="btfw-ct-insertcolor" class="button is-small">Insert</button>
+          <button id="btfw-ct-clearcolor" class="button is-small">Clear Keep</button>
         </div>
+      </div>
 
-        <div class="btfw-ct-actions">
-          <button id="btfw-ct-clear" class="button is-small">Clear</button>
-          <button id="btfw-ct-afk"   class="button is-small">AFK</button>
-        </div>
+      <!-- Actions -->
+      <div class="btfw-ct-actions" style="display:flex; gap:6px; margin-top:8px;">
+        <button class="btfw-ct-item button is-small" data-act="clear">Clear</button>
+        <button class="btfw-ct-item button is-small" data-act="afk">AFK</button>
       </div>
     </div>
-  `;
+  </div>
+`;
 
 
   // make container inert; only the card is interactive
@@ -159,7 +162,6 @@ function ensureMiniModal(){
     });
   }
 
-  // Init keep toggle state
   const keep = document.getElementById("btfw-ct-keepcolor");
   if (keep) keep.checked = !!getStickColor();
 
@@ -182,7 +184,6 @@ function positionMiniModal(){
   const m = document.getElementById("btfw-ct-modal"); if (!m) return;
   const card = m.querySelector(".btfw-ct-card"); if (!card) return;
 
-  // Prefer the global helper (aligns above .btfw-chat-bottombar)
   if (window.BTFW_positionPopoverAboveChatBar) {
     window.BTFW_positionPopoverAboveChatBar(card, {
       widthPx: 420,
@@ -193,7 +194,6 @@ function positionMiniModal(){
     return;
   }
 
-  // --- Fallback (previous approach) ---
   const c = (document.getElementById("chatcontrols")
         || document.getElementById("chat-controls")
         || (document.getElementById("chatline") && document.getElementById("chatline").parentElement));
@@ -211,7 +211,6 @@ function ensureActionsButton(){
   const actions = $("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
   if (!actions) return;
 
-  // Use a distinct id for Chat Tools. Do not reuse the Commands id.
   if ($("#btfw-chattools-btn") || $("#btfw-ct-open")) return;
 
   const b = document.createElement("button");
@@ -246,23 +245,36 @@ function ensureActionsButton(){
   function wire(){
     ensureActionsButton();
     ensureMiniModal();
+	
 const toolsBtn = $("#btfw-chattools-btn") || $("#btfw-ct-open");
 if (toolsBtn) {
   toolsBtn.addEventListener("click", (e)=>{
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
-    openMiniModal();
+    const m = $("#btfw-ct-modal");
+    const isOpen = m && !m.classList.contains("hidden");
+    if (isOpen) {
+      closeMiniModal();
+    } else {
+      openMiniModal();
+    }
   }, { capture: true });
 }
 
-    // Open/close
-    document.addEventListener("click", (e)=>{
 if (e.target.closest) {
   const hit = e.target.closest("#btfw-chattools-btn") || e.target.closest("#btfw-ct-open");
-  if (hit) { e.preventDefault(); openMiniModal(); return; }
-}      if (e.target.closest && e.target.closest(".btfw-ct-close")) { e.preventDefault(); closeMiniModal(); return; }
-// Outside click closes the tools panel
+  if (hit) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    const m = $("#btfw-ct-modal");
+    const isOpen = m && !m.classList.contains("hidden");
+    if (isOpen) closeMiniModal(); else openMiniModal();
+    return;
+  }
+}
+     if (e.target.closest && e.target.closest(".btfw-ct-close")) { e.preventDefault(); closeMiniModal(); return; }
 const cardEl = $("#btfw-ct-modal .btfw-ct-card");
 if (cardEl && !e.target.closest("#btfw-ct-modal .btfw-ct-card")
     && !e.target.closest("#btfw-chattools-btn")
@@ -277,7 +289,7 @@ if (cardEl && !e.target.closest("#btfw-ct-modal .btfw-ct-card")
 
       // AFK / Clear
       const afk = e.target.closest && e.target.closest('.btfw-ct-item[data-act="afk"]');
-      if (afk) { e.preventDefault(); if(window.socket?.emit) window.socket.emit("chatMsg",{msg:"/afk"}); closeMiniModal(); return; }
+      if (afk) { e.preventDefault(); if (window.socket?.emit) window.socket.emit("chatMsg", { msg: "/afk" }); closeMiniModal(); return; }
       const clr = e.target.closest && e.target.closest('.btfw-ct-item[data-act="clear"]');
       if (clr) { e.preventDefault(); const mb=$("#messagebuffer"); if(mb) mb.innerHTML=""; closeMiniModal(); return; }
 
@@ -301,7 +313,6 @@ if (cardEl && !e.target.closest("#btfw-ct-modal .btfw-ct-card")
         return;
       }
 
-      // Clear Keep -> disable sticky color
       if (e.target.id === "btfw-ct-clearcolor") {
         e.preventDefault();
         setStickColor("");
@@ -320,7 +331,6 @@ if (cardEl && !e.target.closest("#btfw-ct-modal .btfw-ct-card")
       }
     }, true);
 
-    // Chatline keys (no GIF hotkey)
     const l = chatline(); if (l) {
       l.addEventListener("keydown", (ev)=>{
         if (ev.key === "Enter" && !ev.shiftKey) {
@@ -336,7 +346,6 @@ if (cardEl && !e.target.closest("#btfw-ct-modal .btfw-ct-card")
       });
     }
 
-    // Maintain position on resize/scroll
     window.addEventListener("resize", positionMiniModal);
     $("#chatwrap")?.addEventListener("scroll", positionMiniModal, { passive:true });
   }
