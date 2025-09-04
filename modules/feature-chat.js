@@ -61,6 +61,8 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     const close = () => {
       log("Close userlist popover");
       back.style.display = "none"; pop.style.display = "none";
+	  const ul = $("#userlist");
+	  if (ul) ul.classList.remove("btfw-userlist-overlay--open");
     };
     back.addEventListener("click", close);
     pop.querySelector(".btfw-popclose").addEventListener("click", close);
@@ -90,6 +92,8 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
     document._btfw_userlist_open  = function(){
       log("Open userlist popover (safe)");
       adoptUserlistIntoPopover();
+	  const ul = $("#userlist");
+	  if (ul) ul.classList.add("btfw-userlist-overlay--open");
       back.style.display = "block";
       pop.style.display  = "block";
       position();
