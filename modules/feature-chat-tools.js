@@ -92,57 +92,62 @@ function wrapWithTag(tag){
   }
 
   /* ---------- UI: actions button + mini modal ---------- */
-function ensureActionsButton(){
-  const actions = $("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
-  if (!actions) return;
+function ensureMiniModal(){
+  // container
+  const cw = document.getElementById("chatwrap") || document.body;
 
-  // Prefer the canonical id; keep old one only if it already exists
-  if (!$("#btfw-chatcmds-btn") && !$("#btfw-ct-open")) {
-    const b = document.createElement("button");
-    b.id = "btfw-chatcmds-btn";
-    b.className = "button is-dark is-small btfw-chatbtn";
-    b.innerHTML = '<span style="font-weight:700;letter-spacing:.5px;">Aa</span>';
-    actions.prepend(b);
-  }
-}
-
-
-  function modal.innerHTML = `
-  <div class="btfw-ct-card">
-    <div class="btfw-ct-cardhead">
-      <span>Chat Tools</span>
-      <button class="btfw-ct-close" aria-label="Close">&times;</button>
-    </div>
-    <div class="btfw-ct-body">
-      <div class="btfw-ct-grid">
-        <button class="btfw-ct-item" data-tag="b"><strong>B</strong><span>Bold</span></button>
-        <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
-        <button class="btfw-ct-item" data-tag="u"><u>U</u><span>Underline</span></button>
-        <button class="btfw-ct-item" data-tag="s"><span style="text-decoration:line-through">S</span><span>Strike</span></button>
-        <!-- …rest of your buttons… -->
-      </div>
-
-      <div class="btfw-ct-color">
-        <label><input type="checkbox" id="btfw-ct-keepcolor"> Keep color</label>
-        <div class="btfw-ct-swatch" id="btfw-ct-swatch"></div>
-      </div>
-
-      <div class="btfw-ct-actions">
-        <button id="btfw-ct-clear" class="button is-small">Clear</button>
-        <button id="btfw-ct-afk"   class="button is-small">AFK</button>
-      </div>
-    </div>
-  </div>
-`;
+  // re-use if already present
+  let modal = document.getElementById("btfw-ct-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "btfw-ct-modal";
+    // no full-screen backdrop; just a lightweight container
     cw.appendChild(modal);
-modal.style.background = "transparent";
-modal.style.pointerEvents = "none"; // let only the card capture clicks
+  }
 
-const card = modal.querySelector(".btfw-ct-card");
-if (card) card.classList.add("btfw-popover");
+  // inline template (no backdrop)
+  modal.innerHTML = `
+    <div class="btfw-ct-card">
+      <div class="btfw-ct-cardhead">
+        <span>Chat Tools</span>
+        <button class="btfw-ct-close" aria-label="Close">&times;</button>
+      </div>
 
-    // Build swatches
-    const sw = $("#btfw-ct-swatch", modal);
+      <div class="btfw-ct-body">
+        <div class="btfw-ct-grid">
+          <button class="btfw-ct-item" data-tag="b"><strong>B</strong><span>Bold</span></button>
+          <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
+          <button class="btfw-ct-item" data-tag="u"><u>U</u><span>Underline</span></button>
+          <button class="btfw-ct-item" data-tag="s"><span style="text-decoration:line-through">S</span><span>Strike</span></button>
+          <!-- …rest of your buttons… -->
+        </div>
+
+        <div class="btfw-ct-color">
+          <label><input type="checkbox" id="btfw-ct-keepcolor"> Keep color</label>
+          <div class="btfw-ct-swatch" id="btfw-ct-swatch"></div>
+        </div>
+
+        <div class="btfw-ct-actions">
+          <button id="btfw-ct-clear" class="button is-small">Clear</button>
+          <button id="btfw-ct-afk"   class="button is-small">AFK</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // make container inert; only the card is interactive
+  modal.style.background = "transparent";
+  modal.style.pointerEvents = "none";
+
+ const card = modal.querySelector(".btfw-ct-card");
+  if (card) {
+    card.classList.add("btfw-popover");
+    card.style.pointerEvents = "auto"; // ensure clicks work on the panel
+  }
+
+  // Build color swatches
+  const sw = document.querySelector("#btfw-ct-swatch");
+  if (sw && !sw.hasChildNodes()) {
     COLORS.forEach(c => {
       const b = document.createElement("button");
       b.className = "btfw-ct-swatchbtn";
@@ -150,13 +155,14 @@ if (card) card.classList.add("btfw-popover");
       b.dataset.color = c;
       sw.appendChild(b);
     });
-
-    // init keep toggle
-    const keep = $("#btfw-ct-keepcolor", modal);
-    keep.checked = !!getStickColor();
-
-    return modal;
   }
+
+  // Init keep toggle state
+  const keep = document.getElementById("btfw-ct-keepcolor");
+  if (keep) keep.checked = !!getStickColor();
+
+  return modal;
+}
 
   function openMiniModal(){
     const m = ensureMiniModal(); if (!m) return;
