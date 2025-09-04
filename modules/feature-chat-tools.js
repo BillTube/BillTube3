@@ -135,9 +135,11 @@ function ensureMiniModal(){
     </div>
   `;
 
+
   // make container inert; only the card is interactive
   modal.style.background = "transparent";
   modal.style.pointerEvents = "none";
+  modal.classList.add("hidden");
 
  const card = modal.querySelector(".btfw-ct-card");
   if (card) {
@@ -164,14 +166,17 @@ function ensureMiniModal(){
   return modal;
 }
 
-  function openMiniModal(){
-    const m = ensureMiniModal(); if (!m) return;
-    positionMiniModal();
-    m.classList.add("is-active");
-  }
-  function closeMiniModal(){
-    $("#btfw-ct-modal")?.classList.remove("is-active");
-  }
+function openMiniModal(){
+  const m = ensureMiniModal(); if (!m) return;
+  positionMiniModal();
+  m.classList.remove("hidden");
+  m.classList.add("is-active");
+}
+  
+function closeMiniModal(){
+  const m = $("#btfw-ct-modal");
+  if (m) { m.classList.add("hidden"); m.classList.remove("is-active"); }
+}
 
 function positionMiniModal(){
   const m = document.getElementById("btfw-ct-modal"); if (!m) return;
@@ -206,16 +211,16 @@ function ensureActionsButton(){
   const actions = $("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
   if (!actions) return;
 
-  // Prefer canonical trigger; keep legacy (#btfw-ct-open) only if it already exists
-  const already = $("#btfw-chatcmds-btn") || $("#btfw-ct-open");
-  if (already) return;
+  // Use a distinct id for Chat Tools. Do not reuse the Commands id.
+  if ($("#btfw-chattools-btn") || $("#btfw-ct-open")) return;
 
   const b = document.createElement("button");
-  b.id = "btfw-chatcmds-btn";
+  b.id = "btfw-chattools-btn";
   b.className = "button is-dark is-small btfw-chatbtn";
   b.innerHTML = '<span style="font-weight:700;letter-spacing:.5px;">Aa</span>';
   actions.prepend(b);
 }
+
 
   /* ---------- History ---------- */
   function getHist(){ try{ return JSON.parse(localStorage.getItem(LS.hist)||"[]"); }catch(e){ return []; } }
@@ -241,12 +246,22 @@ function ensureActionsButton(){
   function wire(){
     ensureActionsButton();
     ensureMiniModal();
+const toolsBtn = $("#btfw-chattools-btn") || $("#btfw-ct-open");
+if (toolsBtn) {
+  toolsBtn.addEventListener("click", (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    openMiniModal();
+  }, { capture: true });
+}
 
     // Open/close
     document.addEventListener("click", (e)=>{
-      if (e.target.closest) {const hit = e.target.closest("#btfw-chatcmds-btn") || e.target.closest("#btfw-ct-open");if (hit) { e.preventDefault(); openMiniModal(); return; }}
-      if (e.target.closest && e.target.closest(".btfw-ct-close")) { e.preventDefault(); closeMiniModal(); return; }
-      if (e.target.closest && e.target.closest(".btfw-ct-backdrop")) { e.preventDefault(); closeMiniModal(); return; }
+if (e.target.closest) {
+  const hit = e.target.closest("#btfw-chattools-btn") || e.target.closest("#btfw-ct-open");
+  if (hit) { e.preventDefault(); openMiniModal(); return; }
+}      if (e.target.closest && e.target.closest(".btfw-ct-close")) { e.preventDefault(); closeMiniModal(); return; }
 
       // BBCode buttons (one-shot)
       const bb = e.target.closest && e.target.closest(".btfw-ct-item[data-tag]");
