@@ -402,7 +402,12 @@ function positionPopover(){
     if (gifBtn && gifBtn.parentNode) gifBtn.parentNode.insertBefore(btn, gifBtn);
     else bar.appendChild(btn);
 
-    btn.addEventListener("click", ev=>{ ev.preventDefault(); ev.stopPropagation(); open(); }, {capture:true});
+    btn.addEventListener("click", ev=>{
+  ev.preventDefault(); ev.stopPropagation();
+  const pop = document.getElementById("btfw-emotes-pop");
+  (pop && !pop.classList.contains("hidden")) ? close() : open();
+}, {capture:true});
+
   }
 
   function bindAnyExistingOpeners(){
@@ -411,8 +416,12 @@ function positionPopover(){
         el.removeAttribute("onclick");
         if (window.jQuery) { try { jQuery(el).off("click"); } catch(_){} }
         const c = el.cloneNode(true);
-        el.parentNode.replaceChild(c, el);
-        c.addEventListener("click", ev=>{ ev.preventDefault(); ev.stopPropagation(); open(); }, {capture:true});
+el.parentNode.replaceChild(c, el);
+c.addEventListener("click", ev=>{
+  ev.preventDefault(); ev.stopPropagation();
+  const pop = document.getElementById("btfw-emotes-pop");
+  (pop && !pop.classList.contains("hidden")) ? close() : open();
+}, {capture:true});
       });
     });
   }
