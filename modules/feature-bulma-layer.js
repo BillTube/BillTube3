@@ -97,7 +97,7 @@ html[data-btfw-theme="dark"] .modal-content {
 }
 @media screen and (min-width: 769px) {
     .modal-card, .modal-content {
-        width: 100%;
+        width: 60rem;
     }
 }
 html[data-btfw-theme="dark"] .modal-header,
