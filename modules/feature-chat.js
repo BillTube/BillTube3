@@ -1,132 +1,84 @@
-/* BTFW — feature:chat (chat bars, userlist overlay, username colors, robust Theme Settings opener) */
+/* BTFW — feature:chat (chat bars, userlist popover, username colors, robust Theme Settings opener) */
 BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const BASE = (window.BTFW && BTFW.BASE ? BTFW.BASE.replace(/\/+$/,'') : "");
 
-  /* ---------------- Userlist overlay (closed by default) ---------------- */
-  function ensureUserlistOverlayClosed() {
-    const ul = $("#userlist"); if (!ul) return;
-    ul.classList.add("btfw-userlist-overlay");
-    ul.classList.remove("btfw-userlist-overlay--open");
-    ul.setAttribute("aria-hidden","true");
-  }
-  function toggleUsers(){
-    const ul = $("#userlist"); if (!ul) return;
-    ul.classList.add("btfw-userlist-overlay");
-    const open = ul.classList.toggle("btfw-userlist-overlay--open");
-    ul.setAttribute("aria-hidden", open ? "false" : "true");
-  }
-  function wireUserlistGlobalClosers(){
-    if (document._btfwUserlistClosers) return;
-    document._btfwUserlistClosers = true;
-    document.addEventListener("click", (ev)=>{
-      const ul = $("#userlist"); if (!ul) return;
-      if (!ul.classList.contains("btfw-userlist-overlay--open")) return;
-      const btn = $("#btfw-users-toggle");
-      if (ul.contains(ev.target) || (btn && btn.contains(ev.target))) return;
-      ul.classList.remove("btfw-userlist-overlay--open");
-      ul.setAttribute("aria-hidden","true");
-    }, true);
-    document.addEventListener("keydown", (ev)=>{
-      if (ev.key !== "Escape") return;
-      const ul = $("#userlist"); if (!ul) return;
-      ul.classList.remove("btfw-userlist-overlay--open");
-      ul.setAttribute("aria-hidden","true");
-    }, true);
-  }
-// --- Move #usercount into chat bottom bar (right-aligned) and delete #chatheader ---
-function ensureUsercountInBar(){
-  const cw  = document.getElementById("chatwrap");
-  if (!cw) return;
-  const bar = cw.querySelector(".btfw-chat-bottombar");
-  if (!bar) return;
+  /* ---------------- Userlist POPUP (replaces old overlay/hover-close behavior) ---------------- */
+  function buildUserlistPopover(){
+    if ($("#btfw-userlist-pop")) return;
 
-  // right slot
-  let right = bar.querySelector(".btfw-chat-right");
-  if (!right) {
-    right = document.createElement("div");
-    right.className = "btfw-chat-right";
-    bar.appendChild(right);
-  }
+    // Backdrop (same class family used by your emote popover CSS)
+    const back = document.createElement("div");
+    back.id = "btfw-userlist-backdrop";
+    back.className = "btfw-popbackdrop";
+    back.style.display = "none";
+    document.body.appendChild(back);
 
-  // adopt or create #usercount
-  let uc = document.getElementById("usercount");
-  if (!uc) {
-    uc = document.createElement("div");
-    uc.id = "usercount";
-  }
-  uc.classList.add("btfw-usercount");
-  // normalize its content to icon + number only
-  if (!uc.querySelector(".btfw-usercount-num")) {
-    uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
-                    <span class="btfw-usercount-num">0</span>`;
-  } else {
-    // if it already had other text, strip it down to number
-    const num = uc.textContent.match(/\d+/);
-    uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
-                    <span class="btfw-usercount-num">${num ? num[0] : "0"}</span>`;
-  }
-  right.appendChild(uc);
+    // Panel
+    const pop = document.createElement("div");
+    pop.id = "btfw-userlist-pop";
+    pop.className = "btfw-popover btfw-userlist-pop";
+    pop.style.display = "none";
+    pop.innerHTML = `
+      <div class="btfw-pophead">
+        <span>Users</span>
+        <button class="btfw-popclose" aria-label="Close">&times;</button>
+      </div>
+      <div class="btfw-popbody"></div>
+    `;
+    document.body.appendChild(pop);
 
-  // remove the old chatheader (per request)
-  const ch = document.getElementById("chatheader");
-  if (ch) ch.remove();
-
-  // keep it updated
-  updateUsercount();
-  wireUsercountUpdatesOnce();
-}
-
-function updateUsercount(explicit){
-  // explicit value supplied by socket? (if your server emits one)
-  let count = (typeof explicit === "number") ? explicit : 0;
-
-  if (!count) {
-    // fallback: count the userlist items
+    // Move the real #userlist into the popover body (we reuse CyTube's list UI)
     const ul = document.getElementById("userlist");
     if (ul) {
-      // Try several selectors; CyTube themes can vary
-      let els = ul.querySelectorAll("li");
-      if (!els.length) els = ul.querySelectorAll(".userlist_item, .nick, .user");
-      count = els.length || 0;
+      ul.classList.add("btfw-userlist-overlay"); // keep existing skinning hooks
+      const body = pop.querySelector(".btfw-popbody");
+      body.appendChild(ul);
     }
-    // last-resort: parse any digits already inside usercount
-    if (!count) {
-      const uc = document.getElementById("usercount");
-      const m  = uc && uc.textContent && uc.textContent.match(/\d+/);
-      if (m) count = parseInt(m[0], 10) || 0;
+
+    // Close only on explicit actions (no hover/mouseleave auto-close)
+    const close = () => { back.style.display = "none"; pop.style.display = "none"; };
+    back.addEventListener("click", close);
+    pop.querySelector(".btfw-popclose").addEventListener("click", close);
+    document.addEventListener("keydown", (ev)=>{ if (ev.key === "Escape") close(); }, true);
+
+    // Reposition helper – anchor to chat bottom-right so it behaves like the emote popover
+    function position(){
+      const cw  = $("#chatwrap");
+      const bar = cw && cw.querySelector(".btfw-chat-bottombar");
+      const pop = $("#btfw-userlist-pop");
+      if (!cw || !bar || !pop) return;
+
+      const cwRect  = cw.getBoundingClientRect();
+      const barRect = bar.getBoundingClientRect();
+
+      // Align to chat’s right edge, sit just above the bottom bar
+      const right  = Math.max(8, window.innerWidth  - cwRect.right + 8);
+      const bottom = Math.max(8, window.innerHeight - barRect.top + 8);
+
+      pop.style.right  = right + "px";
+      pop.style.bottom = bottom + "px";
+      // Width/height are governed by your .btfw-popover CSS; don’t let content push it around
+      pop.style.maxHeight = "min(480px, 70vh)";
+      pop.style.width     = "min(560px, 92vw)";
     }
+    // Keep it in the correct place
+    window.addEventListener("resize", position);
+    window.addEventListener("scroll", position, true);
+    // Expose for opener
+    document._btfw_userlist_position = position;
+
+    // Opener toggler used by the chat buttons
+    document._btfw_userlist_open = function openUserlist(){
+      back.style.display = "block";
+      pop.style.display  = "block";
+      position();
+    };
+    document._btfw_userlist_close = close;
   }
 
-  const numEl = document.querySelector("#usercount .btfw-usercount-num");
-  if (numEl) numEl.textContent = String(count);
-}
-
-function wireUsercountUpdatesOnce(){
-  if (document._btfw_uc_wired) return;
-  document._btfw_uc_wired = true;
-
-  // Mutation watch on userlist (covers joins/leaves/UI refreshes)
-  const ul = document.getElementById("userlist");
-  if (ul) new MutationObserver(()=>updateUsercount()).observe(ul, {childList:true, subtree:true});
-
-  // Socket hooks if available (names vary by deployment, wire broadly & harmlessly)
-  if (window.socket && typeof window.socket.on === "function") {
-    try {
-      socket.on("addUser",      ()=>updateUsercount());
-      socket.on("userLeave",    ()=>updateUsercount());
-      socket.on("rank",         ()=>updateUsercount());
-      socket.on("setUserCount", (n)=>updateUsercount(n)); // if your server emits this
-      socket.on("userlist",     ()=>updateUsercount());
-    } catch(_) {}
-  }
-
-  // Also recalibrate on resize (mobile panes collapse/expand)
-  window.addEventListener("resize", ()=>updateUsercount());
-}
-
-  /* ---------------- Chat bars & actions (no now-playing logic here) ---------------- */
+  /* ---------------- Chat bars & actions (unchanged layout) ---------------- */
   function ensureBars(){
     const cw = $("#chatwrap"); if (!cw) return;
     cw.classList.add("btfw-chatwrap");
@@ -190,8 +142,75 @@ function wireUsercountUpdatesOnce(){
       controls.classList.add("btfw-controls-row");
       bottom.after(controls);
     }
+  }
 
-    ensureUserlistOverlayClosed();
+  /* ---------------- Move #usercount into bottom bar right, remove #chatheader ---------------- */
+  function ensureUsercountInBar(){
+    const cw  = $("#chatwrap");
+    if (!cw) return;
+    const bar = cw.querySelector(".btfw-chat-bottombar");
+    if (!bar) return;
+
+    let right = bar.querySelector(".btfw-chat-right");
+    if (!right) {
+      right = document.createElement("div");
+      right.className = "btfw-chat-right";
+      bar.appendChild(right);
+    }
+
+    let uc = $("#usercount");
+    if (!uc) uc = Object.assign(document.createElement("div"), { id:"usercount" });
+    uc.classList.add("btfw-usercount");
+
+    if (!uc.querySelector(".btfw-usercount-num")) {
+      uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
+                      <span class="btfw-usercount-num">0</span>`;
+    } else {
+      const num = uc.textContent.match(/\d+/);
+      uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
+                      <span class="btfw-usercount-num">${num ? num[0] : "0"}</span>`;
+    }
+    right.appendChild(uc);
+
+    const ch = $("#chatheader");
+    if (ch) ch.remove();
+
+    updateUsercount();
+    wireUsercountUpdatesOnce();
+  }
+  function updateUsercount(explicit){
+    let count = (typeof explicit === "number") ? explicit : 0;
+    if (!count) {
+      const ul = $("#userlist");
+      if (ul) {
+        let els = ul.querySelectorAll("li");
+        if (!els.length) els = ul.querySelectorAll(".userlist_item, .nick, .user");
+        count = els.length || 0;
+      }
+      if (!count) {
+        const uc = $("#usercount");
+        const m  = uc && uc.textContent && uc.textContent.match(/\d+/);
+        if (m) count = parseInt(m[0], 10) || 0;
+      }
+    }
+    const numEl = $("#usercount .btfw-usercount-num");
+    if (numEl) numEl.textContent = String(count);
+  }
+  function wireUsercountUpdatesOnce(){
+    if (document._btfw_uc_wired) return;
+    document._btfw_uc_wired = true;
+    const ul = $("#userlist");
+    if (ul) new MutationObserver(()=>updateUsercount()).observe(ul, {childList:true, subtree:true});
+    if (window.socket && typeof window.socket.on === "function") {
+      try {
+        socket.on("addUser",      ()=>updateUsercount());
+        socket.on("userLeave",    ()=>updateUsercount());
+        socket.on("rank",         ()=>updateUsercount());
+        socket.on("setUserCount", (n)=>updateUsercount(n));
+        socket.on("userlist",     ()=>updateUsercount());
+      } catch(_) {}
+    }
+    window.addEventListener("resize", ()=>updateUsercount());
   }
 
   /* ---------------- Deterministic username colors ---------------- */
@@ -225,7 +244,7 @@ function wireUsercountUpdatesOnce(){
     }
   }
 
-  /* ---------------- Theme Settings opener (event + lazy-load + fallback) ---------------- */
+  /* ---------------- Theme Settings opener (unchanged) ---------------- */
   function loadScript(src){
     return new Promise((res,rej)=>{
       const s=document.createElement("script");
@@ -235,31 +254,23 @@ function wireUsercountUpdatesOnce(){
       document.head.appendChild(s);
     });
   }
-
   let _tsLoading = false;
   async function openThemeSettings(){
-    // 1) Ask the proper module to open (your TS module listens for this event)
     document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
-
-    // 2) If the modal is already present, just show it
-    let modal = document.getElementById("btfw-theme-modal");
+    let modal = $("#btfw-theme-modal");
     if (modal) { modal.classList.add("is-active"); return; }
-
-    // 3) Give the listener a tick to create it
     await new Promise(r => setTimeout(r, 40));
-    modal = document.getElementById("btfw-theme-modal");
+    modal = $("#btfw-theme-modal");
     if (modal) { modal.classList.add("is-active"); return; }
 
-    // 4) Lazy load the module if it's not there yet
     if (_tsLoading) return;
     _tsLoading = true;
     try {
       const url = BASE ? `${BASE}/modules/feature-theme-settings.js` : "/modules/feature-theme-settings.js";
       await loadScript(url);
-      // Let it register, then open again
       document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
       await new Promise(r => setTimeout(r, 40));
-      modal = document.getElementById("btfw-theme-modal");
+      modal = $("#btfw-theme-modal");
       if (modal) modal.classList.add("is-active");
     } catch(e){
       console.warn("[chat] Theme Settings lazy-load failed:", e.message||e);
@@ -268,7 +279,7 @@ function wireUsercountUpdatesOnce(){
     }
   }
 
-  /* ---------------- Delegated clicks (survive re-renders) ---------------- */
+  /* ---------------- Delegated clicks ---------------- */
   function wireDelegatedClicks(){
     if (window._btfwChatClicksWired) return;
     window._btfwChatClicksWired = true;
@@ -281,15 +292,15 @@ function wireUsercountUpdatesOnce(){
 
       if (gif)   { e.preventDefault(); document.dispatchEvent(new Event("btfw:openGifs")); return; }
       if (theme) { e.preventDefault(); openThemeSettings(); return; }
-      if (users) { e.preventDefault(); toggleUsers(); return; }
+      if (users) { e.preventDefault(); if (document._btfw_userlist_open) document._btfw_userlist_open(); return; }
     }, true);
   }
 
   /* ---------------- Boot ---------------- */
   function boot(){
-    wireUserlistGlobalClosers();
     ensureBars();
-	ensureUsercountInBar(); 
+    ensureUsercountInBar();
+    buildUserlistPopover();
     observeChatDom();
     wireDelegatedClicks();
   }
@@ -298,5 +309,5 @@ function wireUsercountUpdatesOnce(){
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
-  return { name:"feature:chat", toggleUsers };
+  return { name:"feature:chat" };
 });
