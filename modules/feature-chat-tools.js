@@ -1,5 +1,5 @@
 /* BillTube Framework — feature:chat-tools
-   Mini modal above chat input: BBCode buttons, AFK/Clear, and Color tools.
+   Mini panel above chat input: BBCode buttons, AFK/Clear, and Color tools.
    Color uses BillTube2 format: prefix 'col:#RRGGBB:' at the start of the message.
 */
 BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
@@ -16,19 +16,20 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
                   "#0080a5","#34495e","#2c3e50","#87724b","#7300a7","#ec87bf","#d870ad",
                   "#f69785","#9ba37e","#b49255","#a94136"];
 
+  /* ---------- one-time cleanup: never color usernames ---------- */
   try { localStorage.removeItem("btfw:chat:nameColor"); } catch(e){}
   (function clearUsernameTint(){
     $$("#messagebuffer .username, #messagebuffer .nick, #messagebuffer .name")
       .forEach(n => { try { n.style.color = ""; } catch(e){} });
   })();
 
+  /* ---------- helpers ---------- */
   const chatline = () => $("#chatline");
-  const controlsRow = () => $("#chatcontrols,#chat-controls") || ($("#chatline") && $("#chatline").parentElement);
 
   function withSelection(fn){
     const l = chatline(); if (!l) return;
     const a = l.selectionStart ?? l.value.length;
-    const b = l.selectionEnd   ?? l.value.length;
+    const b = l.selectionEnd ?? l.value.length;
     const before = l.value.slice(0, a);
     const mid    = l.value.slice(a, b);
     const after  = l.value.slice(b);
@@ -42,11 +43,11 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
 
       if (s.mid.length === 0) {
         const pos = s.before.length + open.length;
-        l.focus(); l.setSelectionRange(pos, pos);
+        l.focus(); l.setSelectionRange(pos, pos);  // caret between tags
       } else {
         const start = s.before.length + open.length;
         const end   = start + s.mid.length;
-        l.focus(); l.setSelectionRange(start, end);
+        l.focus(); l.setSelectionRange(start, end); // keep selection inside tags
       }
     });
   }
@@ -59,13 +60,15 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     return x.toLowerCase();
   }
 
+  // Insert/replace prefix col:#hex: at the very start of the line
   function applyColPrefix(hex){
     hex = normalizeHex(hex); if (!hex) return;
     const l = chatline(); if (!l) return;
     const prefixRe = /^col:\s*#?[0-9a-fA-F]{6}:\s*/;
     const current = l.value || "";
-    const without = current.replace(prefixRe, "");
+    const without = current.replace(prefixRe, "");          // remove existing color prefix if any
     const prefix  = `col:${hex}:`;
+    // Add a space after prefix only if there is content
     const glue = without && !/^\s/.test(without) ? " " : "";
     l.value = prefix + glue + without;
     const pos = l.value.length;
@@ -79,38 +82,30 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     const hex = getStickColor(); if (!hex) return;
     const l = chatline(); if (!l) return;
     const v = (l.value||"").trimStart();
-    if (/^col:\s*#?[0-9a-fA-F]{6}:/i.test(v)) return;
+    if (/^col:\s*#?[0-9a-fA-F]{6}:/i.test(v)) return; // already has color prefix
     l.value = `col:${normalizeHex(hex)}:` + (v ? " " : "") + v;
   }
 
-  function ensureActionsButton(){
-    const actions = $("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
-    if (!actions) return;
-    if ($("#btfw-chattools-btn") || $("#btfw-ct-open")) return;
-    const b = document.createElement("button");
-    b.id = "btfw-chattools-btn";
-    b.className = "button is-dark is-small btfw-chatbtn";
-    b.innerHTML = '<span style="font-weight:700;letter-spacing:.5px;">Aa</span>';
-    actions.prepend(b);
-  }
-
+  /* ---------- UI: actions button + mini panel ---------- */
   function ensureMiniModal(){
-    const cw = $("#chatwrap"); if (!cw) return null;
-    if ($("#btfw-ct-modal")) return $("#btfw-ct-modal");
+    const cw = document.getElementById("chatwrap") || document.body;
 
-    cw.style.position = cw.style.position || "relative";
+    let modal = document.getElementById("btfw-ct-modal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "btfw-ct-modal";
+      cw.appendChild(modal);
+    }
 
-    const modal = document.createElement("div");
-    modal.id = "btfw-ct-modal";
-    modal.className = "btfw-ct-modal"; // hidden by default via CSS
     modal.innerHTML = `
-      <div class="btfw-ct-backdrop"></div>
       <div class="btfw-ct-card">
         <div class="btfw-ct-cardhead">
           <span>Chat Tools</span>
           <button class="btfw-ct-close" aria-label="Close">&times;</button>
         </div>
+
         <div class="btfw-ct-body">
+          <!-- BBCode grid -->
           <div class="btfw-ct-grid">
             <button class="btfw-ct-item" data-tag="b"><strong>B</strong><span>Bold</span></button>
             <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
@@ -119,6 +114,7 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
             <button class="btfw-ct-item" data-tag="spoiler"><span>🙈</span><span>Spoiler</span></button>
           </div>
 
+          <!-- Color tools -->
           <div class="btfw-ct-color">
             <label class="btfw-ct-keep">
               <input type="checkbox" id="btfw-ct-keepcolor"> Keep color
@@ -132,6 +128,7 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
             </div>
           </div>
 
+          <!-- Actions -->
           <div class="btfw-ct-actions" style="display:flex; gap:6px; margin-top:8px;">
             <button class="btfw-ct-item button is-small" data-act="clear">Clear</button>
             <button class="btfw-ct-item button is-small" data-act="afk">AFK</button>
@@ -140,29 +137,45 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
       </div>
     `;
 
-    // auto-flow button grid + swatches (width-responsive)
-    try {
-      const grid = modal.querySelector(".btfw-ct-grid");
-      if (grid) {
-        grid.style.display = "grid";
-        grid.style.gridTemplateColumns = "repeat(auto-fit, minmax(92px, 1fr))";
-        grid.style.gap = "8px";
-      }
-      const sw = modal.querySelector("#btfw-ct-swatch");
-      if (sw) {
-        sw.style.display = "grid";
-        sw.style.gridTemplateColumns = "repeat(auto-fit, minmax(28px, 1fr))";
-        sw.style.gap = "6px";
-      }
-    } catch(e){}
+    // container inert; only the card is interactive
+    modal.style.background = "transparent";
+    modal.style.pointerEvents = "none";
+    modal.classList.add("hidden");
 
-    cw.appendChild(modal);
+    // sync UI to stored stick color now
+    (function syncKeepColorUI(){
+      const keep = $("#btfw-ct-keepcolor");
+      const hexEl = $("#btfw-ct-hex");
+      const stored = (getStickColor && getStickColor()) || "";
+      if (keep) keep.checked = !!stored;
+      if (hexEl && stored) hexEl.value = stored;
+    })();
+
+    const card = modal.querySelector(".btfw-ct-card");
+    if (card) {
+      card.classList.add("btfw-popover");
+      card.style.pointerEvents = "auto";
+    }
+
+    // Build color swatches
+    const sw = document.querySelector("#btfw-ct-swatch");
+    if (sw && !sw.hasChildNodes()) {
+      COLORS.forEach(c => {
+        const b = document.createElement("button");
+        b.className = "btfw-ct-swatchbtn";
+        b.style.background = c;
+        b.dataset.color = c;
+        sw.appendChild(b);
+      });
+    }
+
     return modal;
   }
 
   function openMiniModal(){
     const m = ensureMiniModal(); if (!m) return;
 
+    // Sync Keep + Hex with stored value so UI matches the current state
     (function syncKeepColorUI(){
       const keep  = document.getElementById("btfw-ct-keepcolor");
       const hexEl = document.getElementById("btfw-ct-hex");
@@ -172,30 +185,31 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
       if (keep && keep.checked && !stored) keep.checked = false;
     })();
 
+    positionMiniModal();             // position first
+    m.classList.remove("hidden");    // then show
     m.classList.add("is-active");
-    positionMiniModal();
   }
+
   function closeMiniModal(){
     const m = $("#btfw-ct-modal");
-    if (m) m.classList.remove("is-active");
+    if (m) { m.classList.add("hidden"); m.classList.remove("is-active"); }
   }
 
   function positionMiniModal(){
     const m = document.getElementById("btfw-ct-modal"); if (!m) return;
     const card = m.querySelector(".btfw-ct-card"); if (!card) return;
 
-    // Prefer the global helper (aligns above .btfw-chat-bottombar)
     if (window.BTFW_positionPopoverAboveChatBar) {
       window.BTFW_positionPopoverAboveChatBar(card, {
-        widthFromChatwrap: true,
-        minWidthPx: 360,
-        maxWidthPx: 640,
+        widthPx: 420,
+        widthVw: 92,
         maxHpx: 360,
         maxHvh: 60
       });
       return;
     }
 
+    // Fallback (should rarely run)
     const c = (document.getElementById("chatcontrols")
           || document.getElementById("chat-controls")
           || (document.getElementById("chatline") && document.getElementById("chatline").parentElement));
@@ -209,6 +223,21 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     card.style.width     = "min(420px,92vw)";
   }
 
+  function ensureActionsButton(){
+    const actions = $("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
+    if (!actions) return;
+
+    // Use distinct id for Chat Tools; do not reuse Chat Commands id
+    if ($("#btfw-chattools-btn") || $("#btfw-ct-open")) return;
+
+    const b = document.createElement("button");
+    b.id = "btfw-chattools-btn";
+    b.className = "button is-dark is-small btfw-chatbtn";
+    b.innerHTML = '<span style="font-weight:700;letter-spacing:.5px;">Aa</span>';
+    actions.prepend(b);
+  }
+
+  /* ---------- History ---------- */
   function getHist(){ try{ return JSON.parse(localStorage.getItem(LS.hist)||"[]"); }catch(e){ return []; } }
   function setHist(a){ try{ localStorage.setItem(LS.hist, JSON.stringify(a.slice(-50))); }catch(e){} }
   let histIndex = -1;
@@ -228,10 +257,12 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     l.focus(); l.setSelectionRange(l.value.length, l.value.length);
   }
 
+  /* ---------- Wiring ---------- */
   function wire(){
     ensureActionsButton();
     ensureMiniModal();
 
+    // Toggle Chat Tools (open/close) on its own button
     const toolsBtn = $("#btfw-chattools-btn") || $("#btfw-ct-open");
     if (toolsBtn) {
       toolsBtn.addEventListener("click", (e)=>{
@@ -239,78 +270,114 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
         e.stopPropagation();
         e.stopImmediatePropagation();
         const m = $("#btfw-ct-modal");
-        const isActive = m && m.classList.contains("is-active");
-        if (isActive) { closeMiniModal(); } else { openMiniModal(); }
+        const isOpen = m && !m.classList.contains("hidden");
+        if (isOpen) closeMiniModal(); else openMiniModal();
       }, { capture: true });
     }
 
+    // Doc-level: close + handle actions inside the Tools panel
     document.addEventListener("click", (e) => {
+      // close via X
       if (e.target.closest && e.target.closest(".btfw-ct-close")) {
-        e.preventDefault(); closeMiniModal(); return;
-      }
-
-      const cardRoot = $("#btfw-ct-modal .btfw-ct-card");
-
-      const bb = e.target.closest && e.target.closest(".btfw-ct-item[data-tag]");
-      if (bb && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
-        e.preventDefault(); wrapWithTag(bb.dataset.tag); closeMiniModal(); return;
-      }
-
-      const afk = e.target.closest && e.target.closest('.btfw-ct-item[data-act="afk"]');
-      if (afk && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
-        e.preventDefault(); if (window.socket?.emit) window.socket.emit("chatMsg", { msg: "/afk" }); closeMiniModal(); return;
-      }
-      const clr = e.target.closest && e.target.closest('.btfw-ct-item[data-act="clear"]');
-      if (clr && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
-        e.preventDefault(); const mb = $("#messagebuffer"); if (mb) mb.innerHTML = ""; closeMiniModal(); return;
-      }
-
-      const swb = e.target.closest && e.target.closest(".btfw-ct-swatchbtn");
-      if (swb && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
         e.preventDefault();
-        const swHex = normalizeHex(swb.dataset.color || "");
-        const hexEl = $("#btfw-ct-hex"); if (hexEl) hexEl.value = swHex;
-        const keep = $("#btfw-ct-keepcolor"); if (keep && keep.checked) setStickColor(swHex);
+        closeMiniModal();
         return;
       }
 
-      if (e.target && e.target.id === "btfw-ct-insertcolor" && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
+      // --- In-panel actions (run only if click happened inside the card) ---
+      const inCard = e.target.closest && e.target.closest("#btfw-ct-modal .btfw-ct-card");
+
+      // BBCode buttons (one-shot)
+      const bb = e.target.closest && e.target.closest(".btfw-ct-item[data-tag]");
+      if (bb && inCard) {
+        e.preventDefault();
+        wrapWithTag(bb.dataset.tag);
+        closeMiniModal();
+        return;
+      }
+
+      // AFK / Clear
+      const afk = e.target.closest && e.target.closest('.btfw-ct-item[data-act="afk"]');
+      if (afk && inCard) {
+        e.preventDefault();
+        if (window.socket?.emit) window.socket.emit("chatMsg", { msg: "/afk" });
+        closeMiniModal();
+        return;
+      }
+      const clr = e.target.closest && e.target.closest('.btfw-ct-item[data-act="clear"]');
+      if (clr && inCard) {
+        e.preventDefault();
+        const mb = $("#messagebuffer"); if (mb) mb.innerHTML = "";
+        closeMiniModal();
+        return;
+      }
+
+      // Color swatch -> fill hex box (if Keep is on, persist immediately)
+      const swb = e.target.closest && e.target.closest(".btfw-ct-swatchbtn");
+      if (swb && inCard) {
+        e.preventDefault();
+        const swHex = normalizeHex(swb.dataset.color || "");
+        const hexEl = $("#btfw-ct-hex");
+        if (hexEl) hexEl.value = swHex;
+        const keep = $("#btfw-ct-keepcolor");
+        if (keep && keep.checked) setStickColor(swHex);
+        return;
+      }
+
+      // Insert Color button -> apply prefix in input now
+      if (e.target && e.target.id === "btfw-ct-insertcolor" && inCard) {
         e.preventDefault();
         const hexEl = $("#btfw-ct-hex");
         const hex = normalizeHex((hexEl?.value || "").trim());
         if (hex) {
           applyColPrefix(hex);
-          const keep = $("#btfw-ct-keepcolor"); if (keep && keep.checked) setStickColor(hex);
+          const keep = $("#btfw-ct-keepcolor");
+          if (keep && keep.checked) setStickColor(hex);
           closeMiniModal();
         }
         return;
       }
 
-      if (e.target && e.target.id === "btfw-ct-clearcolor" && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
-        e.preventDefault(); setStickColor(""); const keep = $("#btfw-ct-keepcolor"); if (keep) keep.checked = false; return;
+      // Clear Keep
+      if (e.target && e.target.id === "btfw-ct-clearcolor" && inCard) {
+        e.preventDefault();
+        setStickColor("");
+        const keep = $("#btfw-ct-keepcolor"); if (keep) keep.checked = false;
+        return;
       }
 
-      if (cardRoot &&
-          !e.target.closest("#btfw-ct-modal .btfw-ct-card") &&
+      // Outside click closes (don’t close if the click was on the Tools button)
+      if (!inCard &&
           !e.target.closest("#btfw-chattools-btn") &&
           !e.target.closest("#btfw-ct-open")) {
-        closeMiniModal(); return;
+        closeMiniModal();
+        return;
       }
     }, true);
 
+    // Keep color toggle
     document.addEventListener("change", (e)=>{
       if (e.target && e.target.id === "btfw-ct-keepcolor") {
         const hexEl = $("#btfw-ct-hex");
         const hex = normalizeHex((hexEl?.value || "").trim());
+
         if (e.target.checked) {
-          if (hex) { setStickColor(hex); } else { setStickColor(""); e.target.checked = false; }
+          if (hex) {
+            setStickColor(hex);   // persist the chosen color
+          } else {
+            // no valid hex → don’t allow Keep to stay on
+            setStickColor("");
+            e.target.checked = false;
+          }
         } else {
+          // turned off → clear stored color
           setStickColor("");
         }
         return;
       }
     }, true);
 
+    // Update stored color live while typing (only if Keep is checked)
     document.addEventListener("input", (e)=>{
       if (e.target && e.target.id === "btfw-ct-hex") {
         const keep = $("#btfw-ct-keepcolor");
@@ -321,14 +388,17 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
       }
     }, true);
 
+    // Close on Escape
     document.addEventListener("keydown", (e)=>{
       if (e.key === "Escape") closeMiniModal();
     }, true);
 
+    // Chatline helpers: history + sticky color before send
     const l = chatline(); if (l) {
       l.addEventListener("keydown", (ev)=>{
         if (ev.key === "Enter" && !ev.shiftKey) {
-          applyStickyColorBeforeSend();  commitToHist(l.value.trim());
+          applyStickyColorBeforeSend();  // prefix if needed
+          commitToHist(l.value.trim());
         }
         if (ev.key === "ArrowUp" && !ev.shiftKey && l.selectionStart===l.selectionEnd && l.selectionStart===0) {
           ev.preventDefault(); histUpDown(-1);
@@ -340,7 +410,6 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     }
 
     window.addEventListener("resize", positionMiniModal);
-    window.addEventListener("resize", positionMiniModal); // (kept as-is; existing code)
     $("#chatwrap")?.addEventListener("scroll", positionMiniModal, { passive:true });
   }
 

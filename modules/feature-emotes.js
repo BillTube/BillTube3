@@ -1,3 +1,4 @@
+
 BTFW.define("feature:emotes", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -15,15 +16,12 @@ BTFW.define("feature:emotes", [], async () => {
     input.dispatchEvent(new Event("input", {bubbles:true}));
   }
 
-  function icon(svg, w=20, h=20){
-    const span = document.createElement("span");
-    span.className = "btfw-ico";
-    span.innerHTML = svg;
-    span.style.display = "inline-flex";
-    span.style.verticalAlign = "middle";
-    span.style.width  = w+"px";
-    span.style.height = h+"px";
-    return span;
+  // Ensure single-codepoint emoji render as emoji (VS16)
+  function normalizeEmojiForInsert(s){
+    if (/\uFE0F/.test(s)) return s;
+    const cps = Array.from(s);
+    if (cps.length === 1) return s + "\uFE0F";
+    return s;
   }
 
   function ensureChatwrapRelative(){
@@ -33,273 +31,424 @@ BTFW.define("feature:emotes", [], async () => {
     }
   }
 
-  const ICONS = {
-    emotes: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-3.5 8a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm7 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM7 14a5 5 0 0010 0H7z"/></svg>`,
-    emoji:  `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22C6.5 22 2 17.5 2 12S6.5 2 12 2s10 4.5 10 10-4.5 10-10 10zm0-18C7.6 4 4 7.6 4 12s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm-3 6c.8 0 1.5-.7 1.5-1.5S9.8 9 9 9s-1.5.7-1.5 1.5S8.2 12 9 12zm6 0c.8 0 1.5-.7 1.5-1.5S15.8 9 15 9s-1.5.7-1.5 1.5S14.2 12 15 12zm-9 3c1.3 2 3.5 3 6 3s4.7-1 6-3H6z"/></svg>`,
-    recent: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 109 9 9 9 0 00-9-9zm0 16a7 7 0 117-7 7 7 0 01-7 7zM2 13h2a9 9 0 019-9V2A11 11 0 002 13zM14 8h-2v6l5 3 .9-1.5-3.9-2.3z"/></svg>`
-  };
-
   /* ------------------------ state ------------------------- */
   const CHANNEL_NAME = (window.CHANNEL && window.CHANNEL.name) || "default";
   const RECENT_KEY   = `btfw:recent:emotes:${CHANNEL_NAME}`;
 
   let state = {
-    tab: "emotes", // "emotes" | "emoji" | "recent"
-    query: "",
-    loadingEmoji: false,
-    packs: [],
-    emoji: [],
-    recent: []
+    tab: "emotes",                // "emotes" | "emoji" | "recent"
+    list: { emotes: [], emoji: [], recent: [] },
+    filtered: [],
+    highlight: 0,
+    emojiReady: false,
+    search: "",
+    renderEpoch: 0               // cancels in-flight chunked renders
   };
 
-  function readRecents(){ try { return JSON.parse(localStorage.getItem(RECENT_KEY)||"[]"); } catch(e) { return []; } }
-  function writeRecents(a){ try { localStorage.setItem(RECENT_KEY, JSON.stringify(a.slice(0,120))); } catch(e){} }
+  // Grid sizing logic (purely for keyboard nav calculations)
+  const TILE_APPROX = 72;        // px per tile including gaps for estimating columns
 
-  /* ------------------------ render ------------------------ */
-  function el(tag, cls, html){
-    const n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (html != null) n.innerHTML = html;
-    return n;
+  function gridCols(grid){
+    const w = grid.clientWidth || 520;
+    return Math.max(3, Math.floor(w / TILE_APPROX));
   }
 
-  function buildHeader(){
-    const head = el("div", "btfw-emotes-head");
-    const tabs = el("div", "btfw-emotes-tabs");
-
-    [["emotes", ICONS.emotes, "Emotes"], ["emoji", ICONS.emoji, "Emoji"], ["recent", ICONS.recent, "Recent"]].forEach(([id,svg,label])=>{
-      const b = el("button", "btfw-emotes-tab", `${svg}<span>${label}</span>`);
-      b.dataset.tab = id;
-      tabs.appendChild(b);
-    });
-
-    const close = el("button", "btfw-emotes-close", "×");
-    head.appendChild(tabs);
-    head.appendChild(close);
-    return head;
+  /* ------------------------ data -------------------------- */
+  function loadChannelEmotes(){
+    const src = Array.isArray(window.CHANNEL?.emotes) ? window.CHANNEL.emotes : [];
+    state.list.emotes = src
+      .filter(x => x && x.name)
+      .map(x => ({ name: x.name, image: x.image || "" }));
   }
 
-  function buildGrid(){
-    const grid = el("div", "btfw-emotes-grid");
-    grid.style.display = "grid";
-    grid.style.gridTemplateColumns = "repeat(auto-fill, minmax(36px, 1fr))";
-    grid.style.gap = "6px";
-    grid.style.alignContent = "start";
-    grid.style.padding = "8px";
-    return grid;
+  async function loadEmoji(){
+    try {
+      const raw = localStorage.getItem("btfw:emoji:cache");
+      if (raw) {
+        state.list.emoji = JSON.parse(raw);
+        state.emojiReady = true;
+        render(true);
+        return;
+      }
+    } catch(_){}
+
+    const url = "https://cdn.jsdelivr.net/npm/emoji.json@13.1.0/emoji.json";
+    try {
+      const res = await fetch(url, { cache: "force-cache" });
+      const arr = await res.json();
+      state.list.emoji = arr.map(e => ({
+        char: e.char,
+        name: (e.name || "").toLowerCase(),
+        keywords: (e.keywords || "").toLowerCase()
+      }));
+      localStorage.setItem("btfw:emoji:cache", JSON.stringify(state.list.emoji));
+    } catch(_) {
+      state.list.emoji = [
+        {char:"😀", name:"grinning face",                keywords:"smile happy"},
+        {char:"😂", name:"face with tears of joy",       keywords:"laugh cry"},
+        {char:"😍", name:"smiling face with heart-eyes", keywords:"love"},
+        {char:"👍", name:"thumbs up",                    keywords:"like ok yes"},
+        {char:"🔥", name:"fire",                         keywords:"lit hot"},
+        {char:"🎉", name:"party popper",                 keywords:"celebrate confetti"},
+      ];
+    }
+    state.emojiReady = true;
+    render(true);
   }
 
-  function renderEmoteTile(code, url){
-    const btn = el("button", "btfw-emote-tile");
-    const img = el("img", "btfw-emote-img");
-    img.src = url;
-    img.alt = code;
-    img.width = 36;
-    img.height = 36;
-    btn.appendChild(img);
-    btn.title = code;
-    btn.dataset.code = code;
-    return btn;
+  function loadRecent(){
+    try { state.list.recent = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); }
+    catch(_){ state.list.recent = []; }
   }
 
-  function open(){
+  function pushRecent(item){
+    const key = item.kind === "emoji" ? item.char : item.name;
+    state.list.recent = state.list.recent.filter(x => (x.kind==="emoji" ? x.char : x.name) !== key);
+    state.list.recent.unshift(item);
+    state.list.recent = state.list.recent.slice(0, 24);
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(state.list.recent)); } catch(_){}
+  }
+
+  /* ------------------------ popover UI ------------------------ */
+  function ensurePopover(){
+    let pop = $("#btfw-emotes-pop");
+    if (pop) return pop;
+
     ensureChatwrapRelative();
-    let pop = document.getElementById("btfw-emotes-pop");
-    if (!pop){
-      pop = document.createElement("div");
-      pop.id = "btfw-emotes-pop";
-      pop.className = "btfw-popover btfw-emotes-pop hidden";
-      pop.innerHTML = `
-        <div class="btfw-emotes-head">
-          <div class="btfw-emotes-tabs"></div>
-          <button id="btfw-emotes-close" class="btfw-emotes-close" aria-label="Close">×</button>
+
+    pop = document.createElement("div");
+    pop.id = "btfw-emotes-pop";
+    pop.className = "btfw-popover btfw-emotes-pop hidden";
+    pop.innerHTML = `
+      <div class="btfw-emotes-head">
+        <div class="btfw-emotes-tabs">
+          <button class="btfw-tab is-active" data-tab="emotes">Channel</button>
+          <button class="btfw-tab" data-tab="emoji">Emoji</button>
+          <button class="btfw-tab" data-tab="recent">Recent</button>
         </div>
         <div class="btfw-emotes-search">
-          <input id="btfw-emotes-search" class="input is-small" placeholder="Search" />
-          <button id="btfw-emotes-clear" class="button is-small">Clear</button>
+          <input id="btfw-emotes-search" type="text" placeholder="Search…">
+          <button id="btfw-emotes-clear" title="Clear">Clear</button>
         </div>
-        <div class="btfw-emotes-grid"></div>
-      `;
-      const wrap = document.getElementById("chatwrap") || document.body;
-      wrap.appendChild(pop);
-      render(); // first render
-    }
-    pop.classList.remove("hidden");
-    positionPopover(true);
-  }
+        <button class="btfw-emotes-close" title="Close">×</button>
+      </div>
+      <div id="btfw-emotes-grid" class="btfw-emotes-grid" tabindex="0" aria-label="Emote grid"></div>
+    `;
+    const wrap = $("#chatwrap") || document.body;
+    wrap.appendChild(pop);
 
-  function close(){
-    const pop = document.getElementById("btfw-emotes-pop");
-    if (pop) pop.classList.add("hidden");
-  }
-
-  function toggle(){ const pop = document.getElementById("btfw-emotes-pop"); (!pop || pop.classList.contains("hidden")) ? open() : close(); }
-
-  function render(){
-    const pop  = document.getElementById("btfw-emotes-pop");
-    if (!pop) return;
-
-    const head = pop.querySelector(".btfw-emotes-head .btfw-emotes-tabs");
-    const grid = pop.querySelector(".btfw-emotes-grid");
-    const q    = (state.query||"").toLowerCase();
-
-    head.innerHTML = "";
-    [["emotes", ICONS.emotes, "Emotes"], ["emoji", ICONS.emoji, "Emoji"], ["recent", ICONS.recent, "Recent"]].forEach(([id,svg,label])=>{
-      const b = document.createElement("button");
-      b.className = "btfw-emotes-tab" + (state.tab===id ? " is-active" : "");
-      b.dataset.tab = id;
-      b.innerHTML = `${svg}<span>${label}</span>`;
-      head.appendChild(b);
+    // Tabs
+    pop.querySelector(".btfw-emotes-tabs").addEventListener("click", ev=>{
+      const btn = ev.target.closest(".btfw-tab");
+      if (!btn) return;
+      pop.querySelectorAll(".btfw-tab").forEach(x=>x.classList.toggle("is-active", x===btn));
+      state.tab = btn.getAttribute("data-tab");
+      state.search = ""; $("#btfw-emotes-search").value = "";
+      if (state.tab === "emoji" && !state.emojiReady) loadEmoji();
+      render(true);
+      $("#btfw-emotes-grid").focus();
     });
 
-    grid.innerHTML = "";
-
-    if (state.tab === "emotes"){
-      state.packs.forEach(pk=>{
-        pk.items.filter(x=> !q || (x.code||"").toLowerCase().includes(q))
-                .forEach(x => grid.appendChild(renderEmoteTile(x.code, x.url)));
+    // Debounced search
+    (function(){
+      let t = 0;
+      $("#btfw-emotes-search", pop).addEventListener("input", e=>{
+        state.search = e.target.value.trim();
+        clearTimeout(t);
+        t = setTimeout(()=> render(true), 120);
       });
-    } else if (state.tab === "emoji"){
-      (state.emoji||[]).filter(x=> !q || (x.code||"").toLowerCase().includes(q))
-                       .forEach(x => grid.appendChild(renderEmoteTile(x.code, x.url)));
-    } else {
-      (readRecents()||[]).filter(x=> !q || (x.code||"").toLowerCase().includes(q))
-                         .forEach(x => grid.appendChild(renderEmoteTile(x.code, x.url)));
-    }
-  }
+    })();
+    $("#btfw-emotes-clear", pop).addEventListener("click", ()=>{
+      state.search = ""; $("#btfw-emotes-search").value = "";
+      render(true); $("#btfw-emotes-grid").focus();
+    });
 
-  function positionPopover(setFixedHeight){
-    const pop = document.getElementById("btfw-emotes-pop");
-    if (!pop) return;
+    // Close button
+    $(".btfw-emotes-close", pop).addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); close(); });
 
-    const wrap = (document.getElementById("chatwrap") || document.body);
-    const anchor = (document.getElementById("btfw-chat-bottombar")
-                 || document.getElementById("chatcontrols")
-                 || document.getElementById("chatline")
-                 || wrap);
+    // Keyboard navigation (full list)
+    $("#btfw-emotes-grid", pop).addEventListener("keydown", ev=>{
+      const grid = $("#btfw-emotes-grid");
+      const total = grid.querySelectorAll(".btfw-emote-tile").length;
+      if (!total) return;
 
-    if (wrap.id === "chatwrap" && getComputedStyle(wrap).position === "static") {
-      wrap.style.position = "relative";
-    }
-
-    const margin     = 8;
-    const wrapRect   = wrap.getBoundingClientRect();
-    const anchorRect = anchor.getBoundingClientRect();
-
-    let bottomPx = Math.round((wrapRect.bottom - anchorRect.top) + margin);
-    if (anchor === wrap || !isFinite(bottomPx) || bottomPx <= 0) bottomPx = 56;
-    bottomPx = Math.max(8, Math.min(bottomPx, (wrap.clientHeight || 480) - 48));
-
-    const maxWidth = Math.min(560, Math.max(320, (wrap.clientWidth || window.innerWidth) - 24));
-    pop.style.position = "fixed";
-    pop.style.right  = "8px";
-    pop.style.bottom = bottomPx + "px";
-    pop.style.width  = maxWidth + "px";
-
-    const fixedH = Math.max(260, Math.min(480, (wrap.clientHeight || (window.innerHeight - 120)) - (bottomPx + 40)));
-    if (setFixedHeight || !pop._btfwFixedH) {
-      pop.style.height = fixedH + "px";
-      pop._btfwFixedH = fixedH;
-    }
-  }
-
-  // ---------- MISSING HELPERS (restored) ----------
-  function ensureOurButton(){
-    const actions = document.querySelector("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
-    if (!actions) return;
-
-    // Create if missing
-    let btn = document.getElementById("btfw-btn-emotes");
-    if (!btn) {
-      btn = document.createElement("button");
-      btn.id = "btfw-btn-emotes";
-      btn.className = "button is-dark is-small btfw-chatbtn";
-      btn.title = "Emotes";
-      btn.textContent = "😊";
-      actions.prepend(btn);
-    }
-
-    // Replace node to drop any stale listeners, then bind toggle
-    const clone = btn.cloneNode(true);
-    btn.parentNode.replaceChild(clone, btn);
-    clone.addEventListener("click", (ev)=>{
+      const cols = gridCols(grid);
+      switch(ev.key){
+        case "ArrowRight": state.highlight = Math.min(total-1, state.highlight+1); break;
+        case "ArrowLeft":  state.highlight = Math.max(0, state.highlight-1);       break;
+        case "ArrowDown":  state.highlight = Math.min(total-1, state.highlight + cols); break;
+        case "ArrowUp":    state.highlight = Math.max(0, state.highlight - cols);       break;
+        case "Enter": {
+          const tile = grid.querySelector(`.btfw-emote-tile[data-index="${state.highlight}"]`);
+          if (tile) tile.click();
+          ev.preventDefault(); return;
+        }
+        case "Escape": close(); return;
+        default: return;
+      }
       ev.preventDefault();
-      ev.stopPropagation();
-      const pop = document.getElementById("btfw-emotes-pop");
-      (pop && !pop.classList.contains("hidden")) ? close() : open();
-    }, { capture: true });
+      highlightActive();
+      ensureVisible();
+    });
+
+    // Click-outside to close
+    document.addEventListener("click", (e)=>{
+      if (pop.classList.contains("hidden")) return;
+      const within = e.target.closest("#btfw-emotes-pop") || e.target.closest("#btfw-btn-emotes");
+      if (!within) close();
+    }, true);
+
+    // First position & fixed height
+    positionPopover(true);
+
+    return pop;
+  }
+
+  /* ------------------- anchoring & watchers ------------------- */
+  function findBottomBar(){
+    // Prefer custom bottom bar → fallback to CyTube controls → final fallback: input itself
+    return document.getElementById("btfw-chat-bottombar")
+        || document.getElementById("chatcontrols")
+        || document.getElementById("chatline");
+  }
+
+function positionPopover(){
+  const pop = document.getElementById("btfw-emotes-pop");
+  if (!pop) return;
+  if (window.BTFW_positionPopoverAboveChatBar) {
+    window.BTFW_positionPopoverAboveChatBar(pop, {
+      widthPx: 530,
+      widthVw: 92,
+      maxHpx: 480,
+      maxHvh: 70
+    });
+  }
+}
+
+
+
+
+  function watchPosition(){
+    const wrap   = document.getElementById("chatwrap") || document.body;
+    const anchor = findBottomBar() || wrap;
+    if (wrap._btfwEmoteWatch) return;
+    wrap._btfwEmoteWatch = true;
+
+    const onReflow = () => positionPopover(false);
+    window.addEventListener("resize", onReflow);
+    window.addEventListener("scroll", onReflow, true);
+
+
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(onReflow);
+      ro.observe(wrap);
+      if (anchor && anchor !== wrap) ro.observe(anchor);
+      wrap._btfwEmoteRO = ro;
+    } else {
+      const mo = new MutationObserver(onReflow);
+      mo.observe(wrap, { attributes:true, childList:true, subtree:true });
+      if (anchor && anchor !== wrap) mo.observe(anchor, { attributes:true, childList:true, subtree:true });
+      wrap._btfwEmoteMO = mo;
+    }
+  }
+
+  /* ------------------- render (chunked) ------------------- */
+  function render(fromSearch){
+    const grid = $("#btfw-emotes-grid"); if (!grid) return;
+
+    // Filter entire list
+    const q = (state.search || "").toLowerCase();
+    if (state.tab === "emotes") {
+      state.filtered = q ? state.list.emotes.filter(x => x.name.toLowerCase().includes(q)) : state.list.emotes;
+    } else if (state.tab === "emoji") {
+      state.filtered = q ? state.list.emoji.filter(x => x.name.includes(q) || x.keywords.includes(q)) : state.list.emoji;
+    } else {
+      state.filtered = q
+        ? state.list.recent.filter(x => x.kind==="emoji"
+            ? (x.char+(x.name||"")+(x.keywords||"")).toLowerCase().includes(q)
+            : (x.name||"").toLowerCase().includes(q))
+        : state.list.recent;
+    }
+
+    // Reset scroll & highlight on new search/tab
+    if (fromSearch) {
+      grid.scrollTop = 0;
+      state.highlight = 0;
+    }
+
+    // Start a new render epoch (cancel any in-flight chunk)
+    const epoch = ++state.renderEpoch;
+
+    // Hard clear and start chunked build
+    grid.innerHTML = "";
+    const total = state.filtered.length;
+    let i = 0;
+    const CHUNK = 200;
+
+    function makeTile(item, idxAbs){
+      const tile = document.createElement("div");
+      tile.className = "btfw-emote-tile";
+      tile.setAttribute("data-index", String(idxAbs));
+
+      if (state.tab==="emoji" || item.kind==="emoji") {
+        const span = document.createElement("span");
+        span.className = "btfw-emoji";
+        span.textContent = item.char;
+        tile.title = item.name || "";
+        tile.appendChild(span);
+      } else {
+        const img = document.createElement("img");
+        img.className = "btfw-emote-img";
+        img.src = item.image || "";
+        img.alt = item.name;
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.onerror = ()=>{ img.style.display="none"; tile.textContent = item.name; };
+        tile.title = item.name;
+        tile.appendChild(img);
+      }
+
+      tile.addEventListener("click", ()=>{
+        const input = $("#chatline"); if (!input) return;
+        if (state.tab==="emoji" || item.kind==="emoji") {
+          insertAtCursor(input, normalizeEmojiForInsert(item.char) + " ");
+          pushRecent({kind:"emoji", char:item.char, name:item.name, keywords:item.keywords});
+        } else {
+          insertAtCursor(input, " " + item.name + " ");
+          pushRecent({kind:"emote", name:item.name, image:item.image});
+        }
+        close();
+      });
+
+      return tile;
+    }
+
+    function step(){
+      if (epoch !== state.renderEpoch) return; // canceled
+      const frag = document.createDocumentFragment();
+      const end = Math.min(total, i + CHUNK);
+      for (; i < end; i++) {
+        frag.appendChild(makeTile(state.filtered[i], i));
+      }
+      grid.appendChild(frag);
+
+      // Let emoji-compat (Twemoji) parse the appended chunk
+      document.dispatchEvent(new CustomEvent("btfw:emotes:rendered", { detail:{ container: grid } }));
+
+      if (i < total) {
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(step, { timeout: 50 });
+        } else {
+          setTimeout(step, 0);
+        }
+      } else {
+        // Finalize selection styling
+        highlightActive();
+      }
+    }
+
+    step();
+  }
+
+  function highlightActive(){
+    const grid = $("#btfw-emotes-grid");
+    if (!grid) return;
+    grid.querySelectorAll(".btfw-emote-tile.is-active").forEach(el => el.classList.remove("is-active"));
+    const active = grid.querySelector(`.btfw-emote-tile[data-index="${state.highlight}"]`);
+    if (active) active.classList.add("is-active");
+  }
+
+  function ensureVisible(){
+    const grid = $("#btfw-emotes-grid");
+    const active = grid && grid.querySelector(`.btfw-emote-tile[data-index="${state.highlight}"]`);
+    if (!grid || !active) return;
+    const r  = active.getBoundingClientRect();
+    const gr = grid.getBoundingClientRect();
+    if (r.top < gr.top)      grid.scrollTop -= (gr.top - r.top) + 8;
+    else if (r.bottom > gr.bottom) grid.scrollTop += (r.bottom - gr.bottom) + 8;
+  }
+
+  /* --------------------- buttons ---------------------- */
+  function removeLegacyButtons(){
+    const sels = [
+      "#emotelistbtn", "#emotelist", "#emote-list", "#emote-btn",
+      'button[title*="Emote"]', 'button[onclick*="emote"]'
+    ];
+    sels.forEach(sel => $$(sel).forEach(el => el.remove()));
+  }
+
+  function findBottomBarContainer(){
+    return document.getElementById("btfw-chat-bottombar")
+        || document.querySelector("#chatcontrols .input-group-btn")
+        || document.getElementById("chatcontrols")
+        || document.getElementById("chatwrap");
+  }
+
+  function ensureOurButton(){
+    if ($("#btfw-btn-emotes")) return;
+    const bar = findBottomBarContainer(); if (!bar) return;
+
+    const btn = document.createElement("button");
+    btn.id = "btfw-btn-emotes";
+    btn.type = "button";
+    btn.className = "button is-dark is-small btfw-chatbtn btfw-btn-emotes";
+    btn.innerHTML = (window.FontAwesome || document.querySelector('.fa'))
+      ? '<i class="fa fa-smile" aria-hidden="true"></i>'
+      : '<span aria-hidden="true">🙂</span>';
+    btn.title = "Emotes / Emoji";
+
+    // place before GIF button if present
+    const gifBtn = bar.querySelector("#btfw-btn-gif, .btfw-btn-gif");
+    if (gifBtn && gifBtn.parentNode) gifBtn.parentNode.insertBefore(btn, gifBtn);
+    else bar.appendChild(btn);
+
+    btn.addEventListener("click", ev=>{
+  ev.preventDefault(); ev.stopPropagation();
+  const pop = document.getElementById("btfw-emotes-pop");
+  (pop && !pop.classList.contains("hidden")) ? close() : open();
+}, {capture:true});
+
   }
 
   function bindAnyExistingOpeners(){
-    // Back-compat: bind any legacy buttons that used to open emotes
-    const candidates = [
-      "#btfw-emotes-open","#btfw-emote-open","#btfw-btn-emote",
-      '[data-open-emotes="true"]', '.js-open-emotes'
-    ];
-    candidates.forEach(sel=>{
-      $$(sel).forEach(el=>{
+    ["#btfw-btn-emotes", ".btfw-btn-emotes"].forEach(sel=>{
+      document.querySelectorAll(sel).forEach(el=>{
+        el.removeAttribute("onclick");
+        if (window.jQuery) { try { jQuery(el).off("click"); } catch(_){} }
         const c = el.cloneNode(true);
-        el.parentNode.replaceChild(c, el);
-        c.addEventListener("click", (ev)=>{
-          ev.preventDefault(); ev.stopPropagation();
-          const pop = document.getElementById("btfw-emotes-pop");
-          (pop && !pop.classList.contains("hidden")) ? close() : open();
-        }, { capture:true });
+el.parentNode.replaceChild(c, el);
+c.addEventListener("click", ev=>{
+  ev.preventDefault(); ev.stopPropagation();
+  const pop = document.getElementById("btfw-emotes-pop");
+  (pop && !pop.classList.contains("hidden")) ? close() : open();
+}, {capture:true});
       });
     });
   }
 
-  function watchPosition(){
-    // Legacy no-op: resize/scroll watchers are already bound below.
-  }
-  // ---------- /helpers restored ----------
-
-  document.addEventListener("click", (e)=>{
-    if (e.target.closest && e.target.closest("#btfw-emotes-close")) { e.preventDefault(); close(); return; }
-    if (e.target.closest && e.target.closest(".btfw-emotes-tab")) {
-      e.preventDefault();
-      state.tab = e.target.closest(".btfw-emotes-tab").dataset.tab;
-      render(); positionPopover();
-      return;
-    }
-    if (e.target.closest && e.target.closest("#btfw-emotes-clear")) {
-      e.preventDefault(); const inp = $("#btfw-emotes-search"); if (inp) { inp.value=""; state.query = ""; } render(); return;
-    }
-    const tile = e.target.closest && e.target.closest(".btfw-emote-tile");
-    if (tile){
-      e.preventDefault();
-      const code = tile.dataset.code;
-      const input = $("#chatline"); if (input) insertAtCursor(input, code+" ");
-      const list = readRecents(); if (!list.find(x=>x.code===code)) { list.unshift({code}); writeRecents(list); }
-      close();
-      return;
-    }
-  }, true);
-
-  document.addEventListener("input", (e)=>{
-    if (e.target && e.target.id==="btfw-emotes-search") {
-      state.query = (e.target.value||"");
-      render();
-    }
-  }, true);
-
-  // This binds only if the button already exists at load time.
-  const btn = document.getElementById("btfw-btn-emotes");
-  if (btn){
-    btn.addEventListener("click", (ev)=>{
-      ev.preventDefault(); ev.stopPropagation();
-      const pop = document.getElementById("btfw-emotes-pop");
-      (pop && !pop.classList.contains("hidden")) ? close() : open();
-    }, {capture:true});
+  /* ------------------- open / close / boot ------------------- */
+  function open(){
+    const pop = ensurePopover();
+    loadChannelEmotes();
+    loadRecent();
+    state.tab="emotes"; state.search=""; state.highlight=0;
+    $("#btfw-emotes-search").value = "";
+    // activate correct tab styling
+    pop.querySelectorAll(".btfw-tab").forEach(b=>b.classList.toggle("is-active", b.getAttribute("data-tab")==="emotes"));
+    positionPopover(true);            // compute fixed height once per open
+    pop.classList.remove("hidden");
+    render(true);
+    $("#btfw-emotes-grid").focus();
   }
 
-  window.addEventListener("resize", positionPopover);
-  (document.getElementById("chatwrap")||document).addEventListener("scroll", positionPopover, {passive:true});
+  function close(){ $("#btfw-emotes-pop")?.classList.add("hidden"); }
 
   function boot(){
+    removeLegacyButtons();
     ensureOurButton();
     bindAnyExistingOpeners();
     watchPosition();
+    // NO warm-up emoji fetch; loads on first Emoji tab open
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

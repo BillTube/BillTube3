@@ -26,19 +26,7 @@ function positionAboveChatBar(el, opts){
   el.style.position  = "fixed";
   el.style.right     = Math.max(margin, window.innerWidth  - cwRect.right + margin) + "px";
   el.style.bottom    = Math.max(margin, window.innerHeight - barRect.top   + margin) + "px";
-
-  /* width tweak: chatwrap-aware when requested */
-  let targetWidth;
-  if (opts && opts.widthFromChatwrap && cwRect && cwRect.width) {
-    const minW = (opts.minWidthPx ?? 320);
-    const maxW = (opts.maxWidthPx ?? Math.min(720, cwRect.width));
-    targetWidth = Math.max(minW, Math.min(cwRect.width - (margin * 2), maxW)); // keep small side margins
-  } else {
-    // previous behavior (non-destructive default)
-    targetWidth = Math.min(widthPx, Math.round(window.innerWidth * (widthVw / 100)));
-  }
-  el.style.width = targetWidth + "px";
-
+  el.style.width     = `min(${widthPx}px, ${widthVw}vw)`;
   el.style.maxHeight = `min(${maxHpx}px, ${maxHvh}vh)`;
   el.style.zIndex    = el.style.zIndex || "6002"; // keep above chat, below navbar modals
 }
@@ -46,32 +34,43 @@ function positionAboveChatBar(el, opts){
 window.BTFW_positionPopoverAboveChatBar = positionAboveChatBar;
 
 /* Reposition any open pop-ins on resize/scroll/layout changes */
+/* Reposition any open pop-ins on resize/scroll/layout changes */
 function repositionOpenPopins(){
-  const map = new Map([
-    ['#btfw-userlist-pop', {}],
-    ['#btfw-emote-pop',   { widthFromChatwrap: true, minWidthPx: 360, maxWidthPx: 720, maxHpx: 480, maxHvh: 70 }],
-    ['#btfw-emotes-pop',  { widthFromChatwrap: true, minWidthPx: 360, maxWidthPx: 720, maxHpx: 480, maxHvh: 70 }],
-    ['#btfw-chattools-pop', { widthFromChatwrap: true, minWidthPx: 360, maxWidthPx: 640, maxHpx: 360, maxHvh: 60 }],
-  ]);
-  for (const [sel, opts] of map){
-    const el = document.querySelector(sel);
-    if (el && el.style.display !== 'none') positionAboveChatBar(el, opts);
+  const helper = (el, opts) => window.BTFW_positionPopoverAboveChatBar && window.BTFW_positionPopoverAboveChatBar(el, opts);
+
+  // Emotes (visible when NOT .hidden)
+  const em = document.getElementById("btfw-emotes-pop");
+  if (em && !em.classList.contains("hidden")) {
+    helper(em, { widthPx: 560, widthVw: 92, maxHpx: 480, maxHvh: 70 });
+  }
+
+  // Chat Tools (modal active -> position its card)
+  const ctCard = document.querySelector("#btfw-ct-modal.is-active .btfw-ct-card");
+  if (ctCard) {
+    helper(ctCard, { widthPx: 420, widthVw: 92, maxHpx: 360, maxHvh: 60 });
+  }
+
+  // Userlist (uses display toggling)
+  const ul = document.getElementById("btfw-userlist-pop");
+  if (ul && ul.style.display !== "none") {
+    helper(ul);
   }
 }
 window.addEventListener("resize", repositionOpenPopins);
 window.addEventListener("scroll", repositionOpenPopins, true);
 document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopins, 0));
 
-/* ---------------- Userlist popover (same pattern as Emote popover) ---------------- */
-function adoptUserlistIntoPopover(){
-  const body = $("#btfw-userlist-pop .btfw-popbody");
-  const ul   = $("#userlist");
-  if (!body || !ul) return;
-  if (ul.parentElement !== body) {
-    ul.classList.add("btfw-userlist-overlay");
-    body.appendChild(ul);
+
+  /* ---------------- Userlist popover (same pattern as Emote popover) ---------------- */
+  function adoptUserlistIntoPopover(){
+    const body = $("#btfw-userlist-pop .btfw-popbody");
+    const ul   = $("#userlist");
+    if (!body || !ul) return;
+    if (ul.parentElement !== body) {
+      ul.classList.add("btfw-userlist-overlay");
+      body.appendChild(ul);
+    }
   }
-}
 function actionsNode(){
   const bar = document.querySelector("#chatwrap .btfw-chat-bottombar");
   return bar && bar.querySelector("#btfw-chat-actions");
@@ -82,132 +81,388 @@ function normalizeChatActionButtons() {
   const actions = actionsNode(); if (!actions) return;
 
   // remove legacy/duplicate
-  const legacyGif = document.getElementById("btfw-gif-open");
-  if (legacyGif && legacyGif.parentElement === actions) legacyGif.remove();
-  const legacyTools = document.getElementById("btfw-ct-open");
-  if (legacyTools && legacyTools.parentElement === actions) legacyTools.remove();
+  const legacyGif = document.getElementById("btfw-gif-btn");
+  if (legacyGif) legacyGif.remove();
 
-  // ensure consistent ordering etc...
+  // native emotelist stays hidden; we drive it programmatically as fallback
+  const nativeEmoteBtn = document.querySelector("#emotelistbtn, #emotelist");
+  if (nativeEmoteBtn) nativeEmoteBtn.style.display = "none";
+
+  // ensure our buttons exist (create if missing)
+  if (!document.getElementById("btfw-btn-emotes")) {
+    const b = document.createElement("button");
+    b.id = "btfw-btn-emotes";
+    b.className = "button is-dark is-small btfw-chatbtn";
+    b.title = "Emotes / Emoji";
+    b.innerHTML = '<i class="fa fa-smile"></i>';
+    actions.appendChild(b);
+  }
+  if (!document.getElementById("btfw-btn-gif")) {
+    const b = document.createElement("button");
+    b.id = "btfw-btn-gif";
+    b.className = "button is-dark is-small btfw-chatbtn";
+    b.title = "GIFs";
+    b.innerHTML = '<span class="gif-badge">GIF</span>';
+    actions.appendChild(b);
+  }
+
+  // if some other module created them elsewhere, adopt them
+  ["btfw-btn-emotes", "btfw-btn-gif", "btfw-chatcmds-btn", "btfw-users-toggle"].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el && el.parentElement !== actions) actions.appendChild(el);
+  });
 }
 
-/* -------------- THE REST OF THIS FILE IS YOUR ORIGINAL CONTENT -------------- */
-/* (No other logic was changed below this point.) */
-
-  /* ---------------- Usercount in bar ---------------- */
-  function ensureUsercountInBar(){
-    const bar = document.querySelector("#chatwrap .btfw-chat-bottombar");
-    if (!bar) return;
-    const meta = bar.querySelector(".btfw-chat-meta");
-    if (!meta) return;
-
-    let badge = document.getElementById("btfw-usercount");
-    if (!badge){
-      badge = document.createElement("span");
-      badge.id = "btfw-usercount";
-      badge.className = "tag is-dark";
-      meta.appendChild(badge);
-    }
-
-    const ul = document.getElementById("userlist");
-    const n  = ul ? ul.querySelectorAll("li").length : 0;
-    badge.textContent = n ? `${n}` : "";
-  }
-
+/* Watch the whole document for late/stray button injections and normalize */
+function watchForStrayButtons(){
+  if (document._btfw_btn_watch) return;
+  document._btfw_btn_watch = true;
+  const obs = new MutationObserver(() => normalizeChatActionButtons());
+  obs.observe(document.documentElement, { childList:true, subtree:true });
+}
   function ensureUserlistPopover(){
-    const cw = document.querySelector("#chatwrap");
-    if (!cw) return;
+    if ($("#btfw-userlist-pop")) return;
 
-    let pop = document.getElementById("btfw-userlist-pop");
-    if (!pop){
-      pop = document.createElement("div");
-      pop.id = "btfw-userlist-pop";
-      pop.className = "btfw-popover";
-      pop.style.display = "none";
-      pop.innerHTML = `
-        <div class="btfw-pophead">
-          <span>Users</span>
-          <button class="btfw-popclose" title="Close">×</button>
-        </div>
-        <div class="btfw-popbody"></div>
-      `;
-      cw.appendChild(pop);
+    // Backdrop — same family as emote popover
+    const back = document.createElement("div");
+    back.id = "btfw-userlist-backdrop";
+    back.className = "btfw-popover-backdrop";
+    back.style.display = "none";
+    back.style.zIndex = "6001";
+    document.body.appendChild(back);
+
+    // Panel
+    const pop = document.createElement("div");
+    pop.id = "btfw-userlist-pop";
+    pop.className = "btfw-popover btfw-userlist-pop";
+    pop.style.display = "none";
+    pop.style.zIndex = "6002";
+    pop.innerHTML = `
+      <div class="btfw-pophead">
+        <span>Users</span>
+        <button class="btfw-popclose" aria-label="Close">&times;</button>
+      </div>
+      <div class="btfw-popbody"></div>
+    `;
+    document.body.appendChild(pop);
+
+    adoptUserlistIntoPopover();
+
+    const close = () => {
+      back.style.display = "none";
+      pop.style.display  = "none";
+      const ul = $("#userlist");
+      if (ul) ul.classList.remove("btfw-userlist-overlay--open");
+    };
+
+    back.addEventListener("click", close);
+    pop.querySelector(".btfw-popclose").addEventListener("click", close);
+    document.addEventListener("keydown", (ev)=>{ if (ev.key === "Escape") close(); }, true);
+
+    function position(){
+    positionAboveChatBar(pop);
+    }
+    window.addEventListener("resize", position);
+    window.addEventListener("scroll", position, true);
+
+    document._btfw_userlist_isOpen = () => pop.style.display !== "none";
+    document._btfw_userlist_open   = () => {
       adoptUserlistIntoPopover();
+      const ul = $("#userlist");
+      if (ul) ul.classList.add("btfw-userlist-overlay--open");
+      back.style.display = "block";
+      pop.style.display  = "block";
+      positionAboveChatBar(pop);
+    };
+    document._btfw_userlist_close  = close;
+    document._btfw_userlist_position = position;
+  }
+
+  function toggleUserlist(){
+    ensureUserlistPopover();
+    if (document._btfw_userlist_isOpen && document._btfw_userlist_isOpen()){
+      document._btfw_userlist_close && document._btfw_userlist_close();
+    } else {
+      document._btfw_userlist_open && document._btfw_userlist_open();
     }
   }
 
-  function ensureUserlistToggle(){
-    const actions = actionsNode(); if (!actions) return;
-    let btn = document.getElementById("btfw-users-toggle");
-    if (!btn){
-      btn = document.createElement("button");
-      btn.id = "btfw-users-toggle";
-      btn.className = "button is-dark is-small btfw-chatbtn";
-      btn.innerHTML = '<span class="mdi mdi-account-multiple"></span>';
-      actions.prepend(btn);
+  /* ---------------- Chat bars & actions ---------------- */
+  function ensureBars(){
+    const cw = $("#chatwrap"); if (!cw) return;
+    cw.classList.add("btfw-chatwrap");
+
+    // Top bar (Now Playing slot — feature:nowplaying moves #currenttitle here)
+    let top = cw.querySelector(".btfw-chat-topbar");
+    if (!top) {
+      top = document.createElement("div");
+      top.className = "btfw-chat-topbar";
+      top.innerHTML = '<div class="btfw-chat-title" id="btfw-nowplaying-slot"></div>';
+      cw.prepend(top);
+    }
+    if (!top.querySelector("#btfw-nowplaying-slot")) {
+      const slot = document.createElement("div");
+      slot.id = "btfw-nowplaying-slot";
+      slot.className = "btfw-chat-title";
+      top.appendChild(slot);
     }
 
-    btn.addEventListener("click", (e)=>{
-      e.preventDefault();
-      e.stopPropagation();
+    // Bottom bar + actions
+    let bottom = cw.querySelector(".btfw-chat-bottombar");
+    if (!bottom) {
+      bottom = document.createElement("div");
+      bottom.className = "btfw-chat-bottombar";
+      bottom.innerHTML = '<div class="btfw-chat-actions" id="btfw-chat-actions"></div>';
+      cw.appendChild(bottom);
+    }
+    const actions = bottom.querySelector("#btfw-chat-actions");
 
-      const pop = document.getElementById("btfw-userlist-pop");
-      if (!pop) return;
+    // 🔹 Remove deprecated/duplicate buttons from previous versions
+    const oldGif = $("#btfw-gif-btn");            if (oldGif) oldGif.remove();
+    const chatTheme = $("#btfw-theme-btn-chat");  if (chatTheme) chatTheme.remove();
 
-      const isOpen = pop.style.display !== "none";
-      if (isOpen){
-        pop.style.display = "none";
-      } else {
-        pop.style.display = "block";
-        positionAboveChatBar(pop, {});
+    // 🔹 Emotes button (ours) — lives in actions
+    if (!$("#btfw-btn-emotes")) {
+      const b = document.createElement("button");
+      b.id = "btfw-btn-emotes";
+      b.className = "button is-dark is-small btfw-chatbtn";
+      b.title = "Emotes / Emoji";
+      b.innerHTML = '<i class="fa fa-smile"></i>';
+      actions.appendChild(b);
+    }
+
+    // Hide the native emotelist button if it exists (we’ll trigger it programmatically)
+    const nativeEmoteBtn = $("#emotelistbtn, #emotelist");
+    if (nativeEmoteBtn) nativeEmoteBtn.style.display = "none";
+
+    // 🔹 GIF button (ours) — lives in actions
+    if (!$("#btfw-btn-gif")) {
+      const b = document.createElement("button");
+      b.id = "btfw-btn-gif";
+      b.className = "button is-dark is-small btfw-chatbtn";
+      b.title = "GIFs";
+      b.innerHTML = '<span class="gif-badge">GIF</span>';
+      actions.appendChild(b);
+    }
+
+    // 🔹 Chat commands button — move into actions if it exists elsewhere
+    const cmds = $("#btfw-chatcmds-btn");
+    if (cmds && cmds.parentElement !== actions) {
+      cmds.classList.add("button","is-dark","is-small","btfw-chatbtn");
+      actions.appendChild(cmds);
+    }
+
+    // Users button (keep)
+    if (!$("#btfw-users-toggle")) {
+      const b = document.createElement("button");
+      b.id = "btfw-users-toggle";
+      b.className = "button is-dark is-small btfw-chatbtn";
+      b.title = "Users";
+      b.innerHTML = '<i class="fa fa-users"></i>';
+      actions.appendChild(b);
+    }
+
+    // Buffer & controls layout
+    const msg = $("#messagebuffer"); if (msg) msg.classList.add("btfw-messagebuffer");
+    const controls = $("#chatcontrols,#chat-controls") || ($("#chatline") && $("#chatline").parentElement);
+    if (controls && controls.previousElementSibling !== bottom) {
+      controls.classList.add("btfw-controls-row");
+      bottom.after(controls);
+    }
+	normalizeChatActionButtons();
+  }
+
+  /* ---------------- Usercount to bottom-right & remove #chatheader ---------------- */
+  function ensureUsercountInBar(){
+    const cw  = $("#chatwrap"); if (!cw) return;
+    const bar = cw.querySelector(".btfw-chat-bottombar"); if (!bar) return;
+
+    let right = bar.querySelector(".btfw-chat-right");
+    if (!right) {
+      right = document.createElement("div");
+      right.className = "btfw-chat-right";
+      bar.appendChild(right);
+    }
+
+    let uc = $("#usercount");
+    if (!uc) uc = Object.assign(document.createElement("div"), { id:"usercount" });
+    uc.classList.add("btfw-usercount");
+
+    if (!uc.querySelector(".btfw-usercount-num")) {
+      uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
+                      <span class="btfw-usercount-num">0</span>`;
+    } else {
+      const num = uc.textContent.match(/\d+/);
+      uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
+                      <span class="btfw-usercount-num">${num ? num[0] : "0"}</span>`;
+    }
+    right.appendChild(uc);
+
+    const ch = $("#chatheader");
+    if (ch) ch.remove();
+
+    updateUsercount();
+    wireUsercountUpdatesOnce();
+  }
+  function updateUsercount(explicit){
+    let count = (typeof explicit === "number") ? explicit : 0;
+    if (!count) {
+      const ul = $("#userlist");
+      if (ul) {
+        let els = ul.querySelectorAll("li");
+        if (!els.length) els = ul.querySelectorAll(".userlist_item, .nick, .user");
+        count = els.length || 0;
       }
-    }, {capture:true});
+      if (!count) {
+        const uc = $("#usercount");
+        const m  = uc && uc.textContent && uc.textContent.match(/\d+/);
+        if (m) count = parseInt(m[0], 10) || 0;
+      }
+    }
+    const numEl = $("#usercount .btfw-usercount-num");
+    if (numEl) numEl.textContent = String(count);
+  }
+  function wireUsercountUpdatesOnce(){
+    if (document._btfw_uc_wired) return;
+    document._btfw_uc_wired = true;
+
+    const ul = $("#userlist");
+    if (ul) new MutationObserver(()=>updateUsercount()).observe(ul, {childList:true, subtree:true});
+
+    if (window.socket && typeof window.socket.on === "function") {
+      try {
+        socket.on("addUser",      ()=>updateUsercount());
+        socket.on("userLeave",    ()=>updateUsercount());
+        socket.on("rank",         ()=>updateUsercount());
+        socket.on("setUserCount", (n)=>updateUsercount(n));
+        socket.on("userlist",     ()=>updateUsercount());
+      } catch(_) {}
+    }
+    window.addEventListener("resize", ()=>updateUsercount());
   }
 
-  function ensureUserlistClose(){
-    document.addEventListener("click", (e)=>{
-      const pop = document.getElementById("btfw-userlist-pop");
-      if (!pop || pop.style.display === "none") return;
+  /* ---------------- Deterministic username colors ---------------- */
+  function colorizeUser(el){
+    const n = el.matches?.(".username,.nick,.name") ? el : el.querySelector?.(".username,.nick,.name");
+    if (!n) return;
+    const t = (n.textContent||"").replace(":","").trim(); if(!t) return;
+    let hash=0; for(let i=0;i<t.length;i++) hash=t.charCodeAt(i)+((hash<<5)-hash);
+    let c="#"; for(let i=0;i<3;i++) c+=("00"+((hash>>(i*8))&0xff).toString(16)).slice(-2);
+    n.style.color=c;
+  }
 
-      if (e.target.closest(".btfw-popclose")){
+  /* ---------------- Observe chat DOM (re-adopt userlist if re-rendered) ---------------- */
+  function observeChatDom(){
+    const cw = $("#chatwrap"); if (!cw || cw._btfw_chat_obs) return;
+    cw._btfw_chat_obs = true;
+
+    new MutationObserver(()=>{
+      ensureBars();
+      adoptUserlistIntoPopover();
+    }).observe(cw,{childList:true,subtree:true});
+
+    const buf = $("#messagebuffer");
+    if (buf && !buf._btfw_color_obs){
+      buf._btfw_color_obs = true;
+      new MutationObserver(muts=>{
+        muts.forEach(r=>{
+          r.addedNodes.forEach(n=>{
+            if (n.nodeType===1) colorizeUser(n);
+          });
+        });
+      }).observe(buf,{childList:true});
+      Array.from(buf.querySelectorAll(".username,.nick,.name")).forEach(colorizeUser);
+    }
+  }
+
+  /* ---------------- Theme Settings opener (unchanged) ---------------- */
+  function loadScript(src){
+    return new Promise((res,rej)=>{
+      const s=document.createElement("script");
+      s.src = src; s.async=true; s.defer=true;
+      s.onload = ()=> res(true);
+      s.onerror= ()=> rej(new Error("Failed to load "+src));
+      document.head.appendChild(s);
+    });
+  }
+  let _tsLoading = false;
+  async function openThemeSettings(){
+    document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
+    let modal = $("#btfw-theme-modal");
+    if (modal) { modal.classList.add("is-active"); return; }
+    await new Promise(r => setTimeout(r, 40));
+    modal = $("#btfw-theme-modal");
+    if (modal) { modal.classList.add("is-active"); return; }
+
+    if (_tsLoading) return;
+    _tsLoading = true;
+    try {
+      const url = BASE ? `${BASE}/modules/feature-theme-settings.js` : "/modules/feature-theme-settings.js";
+      await loadScript(url);
+      document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
+      await new Promise(r => setTimeout(r, 40));
+      modal = $("#btfw-theme-modal");
+      if (modal) modal.classList.add("is-active");
+    } catch(e){
+      console.warn("[chat] Theme Settings lazy-load failed:", e.message||e);
+    } finally {
+      _tsLoading = false;
+    }
+  }
+
+  /* ---------------- Delegated clicks ---------------- */
+  function wireDelegatedClicks(){
+    if (window._btfwChatClicksWired) return;
+    window._btfwChatClicksWired = true;
+
+    document.addEventListener("click", function(e){
+      const t = e.target;
+      const gifBtn   = t.closest && t.closest("#btfw-btn-gif");
+      const emoBtn   = t.closest && t.closest("#btfw-btn-emotes");
+      const themeBtn = t.closest && (t.closest("#btfw-theme-btn-nav")); // chat theme button removed
+      const usersBtn = t.closest && t.closest("#btfw-users-toggle");
+      const cmdsBtn  = t.closest && t.closest("#btfw-chatcmds-btn");
+
+      if (gifBtn) { e.preventDefault(); document.dispatchEvent(new Event("btfw:openGifs")); return; }
+
+      if (emoBtn) {
         e.preventDefault();
-        pop.style.display = "none";
+        // Prefer our emote popover if present
+        const ev = new Event("btfw:openEmotes");
+        document.dispatchEvent(ev);
+        // Fallback to native emotelist button if no handler created the popover
+        setTimeout(()=>{
+          const existing = document.querySelector(".btfw-emote-pop,.btfw-popover.btfw-emote-pop");
+          if (!existing) {
+            const nativeBtn = document.querySelector("#emotelistbtn, #emotelist");
+            if (nativeBtn) nativeBtn.click();
+          }
+        }, 10);
         return;
       }
-      if (!e.target.closest("#btfw-userlist-pop") &&
-          !e.target.closest("#btfw-users-toggle")){
-        pop.style.display = "none";
-      }
-    }, true);
-  }
 
-  function observeChatDom(){
-    const ul = document.getElementById("userlist");
-    if (!ul) return;
-    const obs = new MutationObserver(()=> ensureUsercountInBar());
-    obs.observe(ul, {childList:true, subtree:true});
-  }
+      if (themeBtn) { e.preventDefault(); openThemeSettings(); return; }
 
-  function wireDelegatedClicks(){
-    document.addEventListener("click", (e)=>{
-      if (e.target.closest && e.target.closest("#btfw-open-theme")){
+      if (usersBtn) { e.preventDefault(); toggleUserlist(); return; }
+
+      if (cmdsBtn) {
         e.preventDefault();
-        const pane = document.getElementById("btfw-theme-pane");
-        if (pane) pane.classList.add("is-active");
+        // Let chat-commands module handle it
+        document.dispatchEvent(new Event("btfw:openChatCmds"));
+        return;
       }
     }, true);
   }
 
-  function watchForStrayButtons(){
-    normalizeChatActionButtons();
-    adoptUserlistIntoPopover();
-  }
-
+  /* ---------------- Boot ---------------- */
   function boot(){
+    ensureBars();
     ensureUsercountInBar();
     ensureUserlistPopover();
     observeChatDom();
     wireDelegatedClicks();
-    watchForStrayButtons();
+	watchForStrayButtons();
+
   }
 
   document.addEventListener("btfw:layoutReady", ()=> setTimeout(boot, 50));
