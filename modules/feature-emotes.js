@@ -245,7 +245,6 @@ BTFW.define("feature:emotes", [], async () => {
   (document.getElementById("chatwrap")||document).addEventListener("scroll", positionPopover, {passive:true});
 
   function boot(){
-    removeLegacyButtons();
     ensureOurButton();
     bindAnyExistingOpeners();
     watchPosition();
