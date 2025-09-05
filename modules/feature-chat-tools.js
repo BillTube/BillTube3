@@ -246,6 +246,7 @@ function wire(){
   ensureActionsButton();
   ensureMiniModal();
 
+  // Toggle Chat Tools (open/close) on its own button
   const toolsBtn = $("#btfw-chattools-btn") || $("#btfw-ct-open");
   if (toolsBtn) {
     toolsBtn.addEventListener("click", (e)=>{
@@ -258,27 +259,75 @@ function wire(){
     }, { capture: true });
   }
 
+  // Doc-level: close + handle actions inside the Tools panel
   document.addEventListener("click", (e) => {
-    // TOGGLE on doc-level hit (if you really want both)
-    if (e.target.closest) {
-      const hit = e.target.closest("#btfw-chattools-btn") || e.target.closest("#btfw-ct-open");
-      if (hit) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        const m = $("#btfw-ct-modal");
-        const isOpen = m && !m.classList.contains("hidden");
-        if (isOpen) closeMiniModal(); else openMiniModal();
-        return;
-      }
+    // close via X
+    if (e.target.closest && e.target.closest(".btfw-ct-close")) {
+      e.preventDefault();
+      closeMiniModal();
+      return;
     }
 
-    // close via X
-    if (e.target.closest && e.target.closest(".btfw-ct-close")) { e.preventDefault(); closeMiniModal(); return; }
+    // --- In-panel actions (run only if click happened inside the card) ---
+    const cardRoot = $("#btfw-ct-modal .btfw-ct-card");
 
-    // outside click closes
-    const cardEl = $("#btfw-ct-modal .btfw-ct-card");
-    if (cardEl &&
+    // BBCode buttons (one-shot)
+    const bb = e.target.closest && e.target.closest(".btfw-ct-item[data-tag]");
+    if (bb && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
+      e.preventDefault();
+      wrapWithTag(bb.dataset.tag);
+      closeMiniModal();
+      return;
+    }
+
+    // AFK / Clear
+    const afk = e.target.closest && e.target.closest('.btfw-ct-item[data-act="afk"]');
+    if (afk && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
+      e.preventDefault();
+      if (window.socket?.emit) window.socket.emit("chatMsg", { msg: "/afk" });
+      closeMiniModal();
+      return;
+    }
+    const clr = e.target.closest && e.target.closest('.btfw-ct-item[data-act="clear"]');
+    if (clr && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
+      e.preventDefault();
+      const mb = $("#messagebuffer"); if (mb) mb.innerHTML = "";
+      closeMiniModal();
+      return;
+    }
+
+    // Color swatch -> fill hex box (no auto insert)
+    const swb = e.target.closest && e.target.closest(".btfw-ct-swatchbtn");
+    if (swb && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
+      e.preventDefault();
+      const hexEl = $("#btfw-ct-hex");
+      if (hexEl) hexEl.value = swb.dataset.color;
+      // If keep is checked, update persistent color immediately
+      const keep = $("#btfw-ct-keepcolor");
+      if (keep && keep.checked) setStickColor(swb.dataset.color);
+      return;
+    }
+
+    // Insert Color button -> apply prefix in input now
+    if (e.target.id === "btfw-ct-insertcolor" && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
+      e.preventDefault();
+      const hexEl = $("#btfw-ct-hex");
+      const hex = (hexEl?.value || "").trim();
+      applyColPrefix(hex);
+      closeMiniModal();
+      return;
+    }
+
+    // Clear Keep
+    if (e.target.id === "btfw-ct-clearcolor" && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
+      e.preventDefault();
+      setStickColor("");
+      const keep = $("#btfw-ct-keepcolor"); if (keep) keep.checked = false;
+      return;
+    }
+
+    // Outside click closes (don’t close if the click was on the Tools button)
+    if (cardRoot &&
         !e.target.closest("#btfw-ct-modal .btfw-ct-card") &&
         !e.target.closest("#btfw-chattools-btn") &&
         !e.target.closest("#btfw-ct-open")) {
@@ -286,75 +335,37 @@ function wire(){
       return;
     }
   }, true);
-}
 
-
-      // BBCode buttons (one-shot)
-      const bb = e.target.closest && e.target.closest(".btfw-ct-item[data-tag]");
-      if (bb) { e.preventDefault(); wrapWithTag(bb.dataset.tag); closeMiniModal(); return; }
-
-      // AFK / Clear
-      const afk = e.target.closest && e.target.closest('.btfw-ct-item[data-act="afk"]');
-      if (afk) { e.preventDefault(); if (window.socket?.emit) window.socket.emit("chatMsg", { msg: "/afk" }); closeMiniModal(); return; }
-      const clr = e.target.closest && e.target.closest('.btfw-ct-item[data-act="clear"]');
-      if (clr) { e.preventDefault(); const mb=$("#messagebuffer"); if(mb) mb.innerHTML=""; closeMiniModal(); return; }
-
-      // Color swatch -> fill hex box (no auto insert)
-      const swb = e.target.closest && e.target.closest(".btfw-ct-swatchbtn");
-      if (swb) {
-        e.preventDefault();
-        $("#btfw-ct-hex").value = swb.dataset.color;
-        // If keep is checked, update persistent color immediately
-        const keep = $("#btfw-ct-keepcolor");
-        if (keep && keep.checked) setStickColor(swb.dataset.color);
-        return;
-      }
-
-      // Insert Color button -> apply prefix in input now
-      if (e.target.id === "btfw-ct-insertcolor") {
-        e.preventDefault();
-        const hex = ($("#btfw-ct-hex").value||"").trim();
-        applyColPrefix(hex);
-        closeMiniModal();
-        return;
-      }
-
-      if (e.target.id === "btfw-ct-clearcolor") {
-        e.preventDefault();
-        setStickColor("");
-        const keep = $("#btfw-ct-keepcolor"); if (keep) keep.checked = false;
-        return;
-      }
-    }, true);
-
-    // Keep color toggle
-    document.addEventListener("change", (e)=>{
-      if (e.target && e.target.id === "btfw-ct-keepcolor") {
-        const hex = normalizeHex(($("#btfw-ct-hex").value||"").trim());
-        setStickColor(e.target.checked ? hex : "");
-        // If turned on with empty/invalid hex, immediately turn off
-        if (e.target.checked && !hex) { setStickColor(""); e.target.checked = false; }
-      }
-    }, true);
-
-    const l = chatline(); if (l) {
-      l.addEventListener("keydown", (ev)=>{
-        if (ev.key === "Enter" && !ev.shiftKey) {
-          applyStickyColorBeforeSend();  // prefix if needed
-          commitToHist(l.value.trim());
-        }
-        if (ev.key === "ArrowUp" && !ev.shiftKey && l.selectionStart===l.selectionEnd && l.selectionStart===0) {
-          ev.preventDefault(); histUpDown(-1);
-        }
-        if (ev.key === "ArrowDown" && !ev.shiftKey && l.selectionStart===l.selectionEnd && l.selectionStart===l.value.length) {
-          ev.preventDefault(); histUpDown(+1);
-        }
-      });
+  // Keep color toggle
+  document.addEventListener("change", (e)=>{
+    if (e.target && e.target.id === "btfw-ct-keepcolor") {
+      const hexEl = $("#btfw-ct-hex");
+      const hex = normalizeHex((hexEl?.value || "").trim());
+      setStickColor(e.target.checked ? hex : "");
+      // If turned on with empty/invalid hex, immediately turn off
+      if (e.target.checked && !hex) { setStickColor(""); e.target.checked = false; }
     }
+  }, true);
 
-    window.addEventListener("resize", positionMiniModal);
-    $("#chatwrap")?.addEventListener("scroll", positionMiniModal, { passive:true });
+  // Chatline helpers: history + sticky color before send
+  const l = chatline(); if (l) {
+    l.addEventListener("keydown", (ev)=>{
+      if (ev.key === "Enter" && !ev.shiftKey) {
+        applyStickyColorBeforeSend();  // prefix if needed
+        commitToHist(l.value.trim());
+      }
+      if (ev.key === "ArrowUp" && !ev.shiftKey && l.selectionStart===l.selectionEnd && l.selectionStart===0) {
+        ev.preventDefault(); histUpDown(-1);
+      }
+      if (ev.key === "ArrowDown" && !ev.shiftKey && l.selectionStart===l.selectionEnd && l.selectionStart===l.value.length) {
+        ev.preventDefault(); histUpDown(+1);
+      }
+    });
   }
+
+  window.addEventListener("resize", positionMiniModal);
+  $("#chatwrap")?.addEventListener("scroll", positionMiniModal, { passive:true });
+}
 
   function boot(){ wire(); positionMiniModal(); }
   document.addEventListener("btfw:layoutReady", ()=>setTimeout(boot,0));
