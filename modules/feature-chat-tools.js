@@ -1,5 +1,5 @@
 /* BillTube Framework — feature:chat-tools
-   Mini modal above chat input: BBCode buttons, AFK/Clear, and Color tools.
+   Mini panel above chat input: BBCode buttons, AFK/Clear, and Color tools.
    Color uses BillTube2 format: prefix 'col:#RRGGBB:' at the start of the message.
 */
 BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
@@ -25,7 +25,6 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
 
   /* ---------- helpers ---------- */
   const chatline = () => $("#chatline");
-  const controlsRow = () => $("#chatcontrols,#chat-controls") || ($("#chatline") && $("#chatline").parentElement);
 
   function withSelection(fn){
     const l = chatline(); if (!l) return;
@@ -37,22 +36,21 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     fn(l, {a,b,before,mid,after});
   }
 
-function wrapWithTag(tag){
-  withSelection((l, s)=>{
-    const open = `[${tag}]`, close = `[/${tag}]`;
-    l.value = s.before + open + s.mid + close + s.after;
+  function wrapWithTag(tag){
+    withSelection((l, s)=>{
+      const open = `[${tag}]`, close = `[/${tag}]`;
+      l.value = s.before + open + s.mid + close + s.after;
 
-    if (s.mid.length === 0) {
-      const pos = s.before.length + open.length;
-      l.focus(); l.setSelectionRange(pos, pos);  // caret between tags
-    } else {
-      const start = s.before.length + open.length;
-      const end   = start + s.mid.length;
-      l.focus(); l.setSelectionRange(start, end); // keep selection inside tags
-    }
-  });
-}
-
+      if (s.mid.length === 0) {
+        const pos = s.before.length + open.length;
+        l.focus(); l.setSelectionRange(pos, pos);  // caret between tags
+      } else {
+        const start = s.before.length + open.length;
+        const end   = start + s.mid.length;
+        l.focus(); l.setSelectionRange(start, end); // keep selection inside tags
+      }
+    });
+  }
 
   function normalizeHex(x){
     if (!x) return "";
@@ -88,138 +86,156 @@ function wrapWithTag(tag){
     l.value = `col:${normalizeHex(hex)}:` + (v ? " " : "") + v;
   }
 
-  /* ---------- UI: actions button + mini modal ---------- */
-function ensureMiniModal(){
-  const cw = document.getElementById("chatwrap") || document.body;
+  /* ---------- UI: actions button + mini panel ---------- */
+  function ensureMiniModal(){
+    const cw = document.getElementById("chatwrap") || document.body;
 
-  let modal = document.getElementById("btfw-ct-modal");
-  if (!modal) {
-    modal = document.createElement("div");
-    modal.id = "btfw-ct-modal";
-    cw.appendChild(modal);
-  }
+    let modal = document.getElementById("btfw-ct-modal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "btfw-ct-modal";
+      cw.appendChild(modal);
+    }
 
- modal.innerHTML = `
-  <div class="btfw-ct-card">
-    <div class="btfw-ct-cardhead">
-      <span>Chat Tools</span>
-      <button class="btfw-ct-close" aria-label="Close">&times;</button>
-    </div>
+    modal.innerHTML = `
+      <div class="btfw-ct-card">
+        <div class="btfw-ct-cardhead">
+          <span>Chat Tools</span>
+          <button class="btfw-ct-close" aria-label="Close">&times;</button>
+        </div>
 
-    <div class="btfw-ct-body">
-      <!-- BBCode grid -->
-      <div class="btfw-ct-grid">
-        <button class="btfw-ct-item" data-tag="b"><strong>B</strong><span>Bold</span></button>
-        <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
-        <button class="btfw-ct-item" data-tag="u"><u>U</u><span>Underline</span></button>
-        <button class="btfw-ct-item" data-tag="s"><span style="text-decoration:line-through">S</span><span>Strike</span></button>
-      </div>
+        <div class="btfw-ct-body">
+          <!-- BBCode grid -->
+          <div class="btfw-ct-grid">
+            <button class="btfw-ct-item" data-tag="b"><strong>B</strong><span>Bold</span></button>
+            <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
+            <button class="btfw-ct-item" data-tag="u"><u>U</u><span>Underline</span></button>
+            <button class="btfw-ct-item" data-tag="s"><span style="text-decoration:line-through">S</span><span>Strike</span></button>
+            <button class="btfw-ct-item" data-tag="spoiler"><span>🙈</span><span>Spoiler</span></button>
+          </div>
 
-      <!-- Color tools -->
-      <div class="btfw-ct-color">
-        <label class="btfw-ct-keep">
-          <input type="checkbox" id="btfw-ct-keepcolor"> Keep color
-        </label>
-        <div class="btfw-ct-swatch" id="btfw-ct-swatch"></div>
+          <!-- Color tools -->
+          <div class="btfw-ct-color">
+            <label class="btfw-ct-keep">
+              <input type="checkbox" id="btfw-ct-keepcolor"> Keep color
+            </label>
+            <div class="btfw-ct-swatch" id="btfw-ct-swatch"></div>
 
-        <div class="btfw-ct-hexrow" style="display:flex; gap:6px; align-items:center; margin-top:6px;">
-          <input id="btfw-ct-hex" type="text" placeholder="#rrggbb" maxlength="7" class="input is-small" style="max-width:120px;" />
-          <button id="btfw-ct-insertcolor" class="button is-small">Insert</button>
-          <button id="btfw-ct-clearcolor" class="button is-small">Clear Keep</button>
+            <div class="btfw-ct-hexrow" style="display:flex; gap:6px; align-items:center; margin-top:6px;">
+              <input id="btfw-ct-hex" type="text" placeholder="#rrggbb" maxlength="7" class="input is-small" style="max-width:120px;" />
+              <button id="btfw-ct-insertcolor" class="button is-small">Insert</button>
+              <button id="btfw-ct-clearcolor" class="button is-small">Clear Keep</button>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="btfw-ct-actions" style="display:flex; gap:6px; margin-top:8px;">
+            <button class="btfw-ct-item button is-small" data-act="clear">Clear</button>
+            <button class="btfw-ct-item button is-small" data-act="afk">AFK</button>
+          </div>
         </div>
       </div>
+    `;
 
-      <!-- Actions -->
-      <div class="btfw-ct-actions" style="display:flex; gap:6px; margin-top:8px;">
-        <button class="btfw-ct-item button is-small" data-act="clear">Clear</button>
-        <button class="btfw-ct-item button is-small" data-act="afk">AFK</button>
-      </div>
-    </div>
-  </div>
-`;
+    // container inert; only the card is interactive
+    modal.style.background = "transparent";
+    modal.style.pointerEvents = "none";
+    modal.classList.add("hidden");
 
+    // sync UI to stored stick color now
+    (function syncKeepColorUI(){
+      const keep = $("#btfw-ct-keepcolor");
+      const hexEl = $("#btfw-ct-hex");
+      const stored = (getStickColor && getStickColor()) || "";
+      if (keep) keep.checked = !!stored;
+      if (hexEl && stored) hexEl.value = stored;
+    })();
 
-  // make container inert; only the card is interactive
-  modal.style.background = "transparent";
-  modal.style.pointerEvents = "none";
-  modal.classList.add("hidden");
+    const card = modal.querySelector(".btfw-ct-card");
+    if (card) {
+      card.classList.add("btfw-popover");
+      card.style.pointerEvents = "auto";
+    }
 
- const card = modal.querySelector(".btfw-ct-card");
-  if (card) {
-    card.classList.add("btfw-popover");
-    card.style.pointerEvents = "auto"; // ensure clicks work on the panel
+    // Build color swatches
+    const sw = document.querySelector("#btfw-ct-swatch");
+    if (sw && !sw.hasChildNodes()) {
+      COLORS.forEach(c => {
+        const b = document.createElement("button");
+        b.className = "btfw-ct-swatchbtn";
+        b.style.background = c;
+        b.dataset.color = c;
+        sw.appendChild(b);
+      });
+    }
+
+    return modal;
   }
 
-  // Build color swatches
-  const sw = document.querySelector("#btfw-ct-swatch");
-  if (sw && !sw.hasChildNodes()) {
-    COLORS.forEach(c => {
-      const b = document.createElement("button");
-      b.className = "btfw-ct-swatchbtn";
-      b.style.background = c;
-      b.dataset.color = c;
-      sw.appendChild(b);
-    });
+  function openMiniModal(){
+    const m = ensureMiniModal(); if (!m) return;
+
+    // Sync Keep + Hex with stored value so UI matches the current state
+    (function syncKeepColorUI(){
+      const keep  = document.getElementById("btfw-ct-keepcolor");
+      const hexEl = document.getElementById("btfw-ct-hex");
+      const stored = (typeof getStickColor === "function" && getStickColor()) || "";
+      if (keep) keep.checked = !!stored;
+      if (hexEl && stored) hexEl.value = stored;
+      if (keep && keep.checked && !stored) keep.checked = false;
+    })();
+
+    positionMiniModal();             // position first
+    m.classList.remove("hidden");    // then show
+    m.classList.add("is-active");
   }
 
-  const keep = document.getElementById("btfw-ct-keepcolor");
-  if (keep) keep.checked = !!getStickColor();
-
-  return modal;
-}
-
-function openMiniModal(){
-  const m = ensureMiniModal(); if (!m) return;
-  positionMiniModal();
-  m.classList.remove("hidden");
-  m.classList.add("is-active");
-}
-  
-function closeMiniModal(){
-  const m = $("#btfw-ct-modal");
-  if (m) { m.classList.add("hidden"); m.classList.remove("is-active"); }
-}
-
-function positionMiniModal(){
-  const m = document.getElementById("btfw-ct-modal"); if (!m) return;
-  const card = m.querySelector(".btfw-ct-card"); if (!card) return;
-
-  if (window.BTFW_positionPopoverAboveChatBar) {
-    window.BTFW_positionPopoverAboveChatBar(card, {
-      widthPx: 420,
-      widthVw: 92,
-      maxHpx: 360,
-      maxHvh: 60
-    });
-    return;
+  function closeMiniModal(){
+    const m = $("#btfw-ct-modal");
+    if (m) { m.classList.add("hidden"); m.classList.remove("is-active"); }
   }
 
-  const c = (document.getElementById("chatcontrols")
-        || document.getElementById("chat-controls")
-        || (document.getElementById("chatline") && document.getElementById("chatline").parentElement));
-  if (!c) return;
+  function positionMiniModal(){
+    const m = document.getElementById("btfw-ct-modal"); if (!m) return;
+    const card = m.querySelector(".btfw-ct-card"); if (!card) return;
 
-  const bottom = (c.offsetHeight || 48) + 12;
-  card.style.position = "fixed";
-  card.style.right    = "8px";
-  card.style.bottom   = bottom + "px";
-  card.style.maxHeight = "60vh";
-  card.style.width     = "min(420px,92vw)";
-}
+    if (window.BTFW_positionPopoverAboveChatBar) {
+      window.BTFW_positionPopoverAboveChatBar(card, {
+        widthPx: 420,
+        widthVw: 92,
+        maxHpx: 360,
+        maxHvh: 60
+      });
+      return;
+    }
 
-function ensureActionsButton(){
-  const actions = $("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
-  if (!actions) return;
+    // Fallback (should rarely run)
+    const c = (document.getElementById("chatcontrols")
+          || document.getElementById("chat-controls")
+          || (document.getElementById("chatline") && document.getElementById("chatline").parentElement));
+    if (!c) return;
 
-  if ($("#btfw-chattools-btn") || $("#btfw-ct-open")) return;
+    const bottom = (c.offsetHeight || 48) + 12;
+    card.style.position = "fixed";
+    card.style.right    = "8px";
+    card.style.bottom   = bottom + "px";
+    card.style.maxHeight = "60vh";
+    card.style.width     = "min(420px,92vw)";
+  }
 
-  const b = document.createElement("button");
-  b.id = "btfw-chattools-btn";
-  b.className = "button is-dark is-small btfw-chatbtn";
-  b.innerHTML = '<span style="font-weight:700;letter-spacing:.5px;">Aa</span>';
-  actions.prepend(b);
-}
+  function ensureActionsButton(){
+    const actions = $("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
+    if (!actions) return;
 
+    // Use distinct id for Chat Tools; do not reuse Chat Commands id
+    if ($("#btfw-chattools-btn") || $("#btfw-ct-open")) return;
+
+    const b = document.createElement("button");
+    b.id = "btfw-chattools-btn";
+    b.className = "button is-dark is-small btfw-chatbtn";
+    b.innerHTML = '<span style="font-weight:700;letter-spacing:.5px;">Aa</span>';
+    actions.prepend(b);
+  }
 
   /* ---------- History ---------- */
   function getHist(){ try{ return JSON.parse(localStorage.getItem(LS.hist)||"[]"); }catch(e){ return []; } }
@@ -242,130 +258,160 @@ function ensureActionsButton(){
   }
 
   /* ---------- Wiring ---------- */
-function wire(){
-  ensureActionsButton();
-  ensureMiniModal();
+  function wire(){
+    ensureActionsButton();
+    ensureMiniModal();
 
-  // Toggle Chat Tools (open/close) on its own button
-  const toolsBtn = $("#btfw-chattools-btn") || $("#btfw-ct-open");
-  if (toolsBtn) {
-    toolsBtn.addEventListener("click", (e)=>{
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      const m = $("#btfw-ct-modal");
-      const isOpen = m && !m.classList.contains("hidden");
-      if (isOpen) closeMiniModal(); else openMiniModal();
-    }, { capture: true });
+    // Toggle Chat Tools (open/close) on its own button
+    const toolsBtn = $("#btfw-chattools-btn") || $("#btfw-ct-open");
+    if (toolsBtn) {
+      toolsBtn.addEventListener("click", (e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        const m = $("#btfw-ct-modal");
+        const isOpen = m && !m.classList.contains("hidden");
+        if (isOpen) closeMiniModal(); else openMiniModal();
+      }, { capture: true });
+    }
+
+    // Doc-level: close + handle actions inside the Tools panel
+    document.addEventListener("click", (e) => {
+      // close via X
+      if (e.target.closest && e.target.closest(".btfw-ct-close")) {
+        e.preventDefault();
+        closeMiniModal();
+        return;
+      }
+
+      // --- In-panel actions (run only if click happened inside the card) ---
+      const inCard = e.target.closest && e.target.closest("#btfw-ct-modal .btfw-ct-card");
+
+      // BBCode buttons (one-shot)
+      const bb = e.target.closest && e.target.closest(".btfw-ct-item[data-tag]");
+      if (bb && inCard) {
+        e.preventDefault();
+        wrapWithTag(bb.dataset.tag);
+        closeMiniModal();
+        return;
+      }
+
+      // AFK / Clear
+      const afk = e.target.closest && e.target.closest('.btfw-ct-item[data-act="afk"]');
+      if (afk && inCard) {
+        e.preventDefault();
+        if (window.socket?.emit) window.socket.emit("chatMsg", { msg: "/afk" });
+        closeMiniModal();
+        return;
+      }
+      const clr = e.target.closest && e.target.closest('.btfw-ct-item[data-act="clear"]');
+      if (clr && inCard) {
+        e.preventDefault();
+        const mb = $("#messagebuffer"); if (mb) mb.innerHTML = "";
+        closeMiniModal();
+        return;
+      }
+
+      // Color swatch -> fill hex box (if Keep is on, persist immediately)
+      const swb = e.target.closest && e.target.closest(".btfw-ct-swatchbtn");
+      if (swb && inCard) {
+        e.preventDefault();
+        const swHex = normalizeHex(swb.dataset.color || "");
+        const hexEl = $("#btfw-ct-hex");
+        if (hexEl) hexEl.value = swHex;
+        const keep = $("#btfw-ct-keepcolor");
+        if (keep && keep.checked) setStickColor(swHex);
+        return;
+      }
+
+      // Insert Color button -> apply prefix in input now
+      if (e.target && e.target.id === "btfw-ct-insertcolor" && inCard) {
+        e.preventDefault();
+        const hexEl = $("#btfw-ct-hex");
+        const hex = normalizeHex((hexEl?.value || "").trim());
+        if (hex) {
+          applyColPrefix(hex);
+          const keep = $("#btfw-ct-keepcolor");
+          if (keep && keep.checked) setStickColor(hex);
+          closeMiniModal();
+        }
+        return;
+      }
+
+      // Clear Keep
+      if (e.target && e.target.id === "btfw-ct-clearcolor" && inCard) {
+        e.preventDefault();
+        setStickColor("");
+        const keep = $("#btfw-ct-keepcolor"); if (keep) keep.checked = false;
+        return;
+      }
+
+      // Outside click closes (don’t close if the click was on the Tools button)
+      if (!inCard &&
+          !e.target.closest("#btfw-chattools-btn") &&
+          !e.target.closest("#btfw-ct-open")) {
+        closeMiniModal();
+        return;
+      }
+    }, true);
+
+    // Keep color toggle
+    document.addEventListener("change", (e)=>{
+      if (e.target && e.target.id === "btfw-ct-keepcolor") {
+        const hexEl = $("#btfw-ct-hex");
+        const hex = normalizeHex((hexEl?.value || "").trim());
+
+        if (e.target.checked) {
+          if (hex) {
+            setStickColor(hex);   // persist the chosen color
+          } else {
+            // no valid hex → don’t allow Keep to stay on
+            setStickColor("");
+            e.target.checked = false;
+          }
+        } else {
+          // turned off → clear stored color
+          setStickColor("");
+        }
+        return;
+      }
+    }, true);
+
+    // Update stored color live while typing (only if Keep is checked)
+    document.addEventListener("input", (e)=>{
+      if (e.target && e.target.id === "btfw-ct-hex") {
+        const keep = $("#btfw-ct-keepcolor");
+        if (keep && keep.checked) {
+          const val = normalizeHex((e.target.value || "").trim());
+          setStickColor(val);
+        }
+      }
+    }, true);
+
+    // Close on Escape
+    document.addEventListener("keydown", (e)=>{
+      if (e.key === "Escape") closeMiniModal();
+    }, true);
+
+    // Chatline helpers: history + sticky color before send
+    const l = chatline(); if (l) {
+      l.addEventListener("keydown", (ev)=>{
+        if (ev.key === "Enter" && !ev.shiftKey) {
+          applyStickyColorBeforeSend();  // prefix if needed
+          commitToHist(l.value.trim());
+        }
+        if (ev.key === "ArrowUp" && !ev.shiftKey && l.selectionStart===l.selectionEnd && l.selectionStart===0) {
+          ev.preventDefault(); histUpDown(-1);
+        }
+        if (ev.key === "ArrowDown" && !ev.shiftKey && l.selectionStart===l.selectionEnd && l.selectionStart===l.value.length) {
+          ev.preventDefault(); histUpDown(+1);
+        }
+      });
+    }
+
+    window.addEventListener("resize", positionMiniModal);
+    $("#chatwrap")?.addEventListener("scroll", positionMiniModal, { passive:true });
   }
-
-  // Doc-level: close + handle actions inside the Tools panel
-  document.addEventListener("click", (e) => {
-    // close via X
-    if (e.target.closest && e.target.closest(".btfw-ct-close")) {
-      e.preventDefault();
-      closeMiniModal();
-      return;
-    }
-
-    // --- In-panel actions (run only if click happened inside the card) ---
-    const cardRoot = $("#btfw-ct-modal .btfw-ct-card");
-
-    // BBCode buttons (one-shot)
-    const bb = e.target.closest && e.target.closest(".btfw-ct-item[data-tag]");
-    if (bb && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
-      e.preventDefault();
-      wrapWithTag(bb.dataset.tag);
-      closeMiniModal();
-      return;
-    }
-
-    // AFK / Clear
-    const afk = e.target.closest && e.target.closest('.btfw-ct-item[data-act="afk"]');
-    if (afk && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
-      e.preventDefault();
-      if (window.socket?.emit) window.socket.emit("chatMsg", { msg: "/afk" });
-      closeMiniModal();
-      return;
-    }
-    const clr = e.target.closest && e.target.closest('.btfw-ct-item[data-act="clear"]');
-    if (clr && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
-      e.preventDefault();
-      const mb = $("#messagebuffer"); if (mb) mb.innerHTML = "";
-      closeMiniModal();
-      return;
-    }
-
-    // Color swatch -> fill hex box (no auto insert)
-    const swb = e.target.closest && e.target.closest(".btfw-ct-swatchbtn");
-    if (swb && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
-      e.preventDefault();
-      const hexEl = $("#btfw-ct-hex");
-      if (hexEl) hexEl.value = swb.dataset.color;
-      // If keep is checked, update persistent color immediately
-      const keep = $("#btfw-ct-keepcolor");
-      if (keep && keep.checked) setStickColor(swb.dataset.color);
-      return;
-    }
-
-    // Insert Color button -> apply prefix in input now
-    if (e.target.id === "btfw-ct-insertcolor" && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
-      e.preventDefault();
-      const hexEl = $("#btfw-ct-hex");
-      const hex = (hexEl?.value || "").trim();
-      applyColPrefix(hex);
-      closeMiniModal();
-      return;
-    }
-
-    // Clear Keep
-    if (e.target.id === "btfw-ct-clearcolor" && cardRoot && e.target.closest("#btfw-ct-modal .btfw-ct-card")) {
-      e.preventDefault();
-      setStickColor("");
-      const keep = $("#btfw-ct-keepcolor"); if (keep) keep.checked = false;
-      return;
-    }
-
-    // Outside click closes (don’t close if the click was on the Tools button)
-    if (cardRoot &&
-        !e.target.closest("#btfw-ct-modal .btfw-ct-card") &&
-        !e.target.closest("#btfw-chattools-btn") &&
-        !e.target.closest("#btfw-ct-open")) {
-      closeMiniModal();
-      return;
-    }
-  }, true);
-
-  // Keep color toggle
-  document.addEventListener("change", (e)=>{
-    if (e.target && e.target.id === "btfw-ct-keepcolor") {
-      const hexEl = $("#btfw-ct-hex");
-      const hex = normalizeHex((hexEl?.value || "").trim());
-      setStickColor(e.target.checked ? hex : "");
-      // If turned on with empty/invalid hex, immediately turn off
-      if (e.target.checked && !hex) { setStickColor(""); e.target.checked = false; }
-    }
-  }, true);
-
-  // Chatline helpers: history + sticky color before send
-  const l = chatline(); if (l) {
-    l.addEventListener("keydown", (ev)=>{
-      if (ev.key === "Enter" && !ev.shiftKey) {
-        applyStickyColorBeforeSend();  // prefix if needed
-        commitToHist(l.value.trim());
-      }
-      if (ev.key === "ArrowUp" && !ev.shiftKey && l.selectionStart===l.selectionEnd && l.selectionStart===0) {
-        ev.preventDefault(); histUpDown(-1);
-      }
-      if (ev.key === "ArrowDown" && !ev.shiftKey && l.selectionStart===l.selectionEnd && l.selectionStart===l.value.length) {
-        ev.preventDefault(); histUpDown(+1);
-      }
-    });
-  }
-
-  window.addEventListener("resize", positionMiniModal);
-  $("#chatwrap")?.addEventListener("scroll", positionMiniModal, { passive:true });
-}
 
   function boot(){ wire(); positionMiniModal(); }
   document.addEventListener("btfw:layoutReady", ()=>setTimeout(boot,0));
