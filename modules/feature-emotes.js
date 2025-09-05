@@ -203,6 +203,57 @@ BTFW.define("feature:emotes", [], async () => {
     }
   }
 
+  // ---------- MISSING HELPERS (restored) ----------
+  function ensureOurButton(){
+    const actions = document.querySelector("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
+    if (!actions) return;
+
+    // Create if missing
+    let btn = document.getElementById("btfw-btn-emotes");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.id = "btfw-btn-emotes";
+      btn.className = "button is-dark is-small btfw-chatbtn";
+      btn.title = "Emotes";
+      btn.textContent = "😊";
+      actions.prepend(btn);
+    }
+
+    // Replace node to drop any stale listeners, then bind toggle
+    const clone = btn.cloneNode(true);
+    btn.parentNode.replaceChild(clone, btn);
+    clone.addEventListener("click", (ev)=>{
+      ev.preventDefault();
+      ev.stopPropagation();
+      const pop = document.getElementById("btfw-emotes-pop");
+      (pop && !pop.classList.contains("hidden")) ? close() : open();
+    }, { capture: true });
+  }
+
+  function bindAnyExistingOpeners(){
+    // Back-compat: bind any legacy buttons that used to open emotes
+    const candidates = [
+      "#btfw-emotes-open","#btfw-emote-open","#btfw-btn-emote",
+      '[data-open-emotes="true"]', '.js-open-emotes'
+    ];
+    candidates.forEach(sel=>{
+      $$(sel).forEach(el=>{
+        const c = el.cloneNode(true);
+        el.parentNode.replaceChild(c, el);
+        c.addEventListener("click", (ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          const pop = document.getElementById("btfw-emotes-pop");
+          (pop && !pop.classList.contains("hidden")) ? close() : open();
+        }, { capture:true });
+      });
+    });
+  }
+
+  function watchPosition(){
+    // Legacy no-op: resize/scroll watchers are already bound below.
+  }
+  // ---------- /helpers restored ----------
+
   document.addEventListener("click", (e)=>{
     if (e.target.closest && e.target.closest("#btfw-emotes-close")) { e.preventDefault(); close(); return; }
     if (e.target.closest && e.target.closest(".btfw-emotes-tab")) {
@@ -232,6 +283,7 @@ BTFW.define("feature:emotes", [], async () => {
     }
   }, true);
 
+  // This binds only if the button already exists at load time.
   const btn = document.getElementById("btfw-btn-emotes");
   if (btn){
     btn.addEventListener("click", (ev)=>{
