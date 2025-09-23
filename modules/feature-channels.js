@@ -23,27 +23,61 @@ BTFW.define("feature:channels", [], async () => {
     slider.id = 'btfw-channels';
     slider.setAttribute('data-title', 'Channels');
 
-    slider.innerHTML = `
-      <i id="btfw-left" class="arrow arrleft">‹</i>
-      <div id="btfw-carousel" class="carousel-inner">
-      </div>
-      <i id="btfw-right" class="arrow arrright">›</i>
-    `;
+    console.log('[channels] Creating slider with', channels.length, 'channels');
 
-    const carousel = slider.querySelector('#btfw-carousel');
-    
     if (channels.length === 0) {
-      carousel.innerHTML = '<div class="no-channels">No channels available</div>';
+      slider.innerHTML = `
+        <div class="carousel-inner">
+          <div class="no-channels">No channels available</div>
+        </div>
+      `;
       return slider;
     }
 
-    channels.forEach(channel => {
+    const arrowsHTML = `
+      <i id="btfw-left" class="arrow arrleft">‹</i>
+      <i id="btfw-right" class="arrow arrright">›</i>
+    `;
+
+    const carousel = document.createElement('div');
+    carousel.id = 'btfw-carousel';
+    carousel.className = 'carousel-inner';
+
+    channels.forEach((channel, index) => {
       const item = document.createElement('div');
       item.className = 'item';
-      item.onclick = () => window.open(channel.channel_url);
-      item.innerHTML = `<img src="${channel.image_url}" class="kek" alt="${channel.title}" onerror="this.style.display='none'">`;
+      item.setAttribute('data-index', index);
+      
+      const img = document.createElement('img');
+      img.src = channel.image_url;
+      img.className = 'kek';
+      img.alt = channel.title;
+      img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; display: block;';
+      
+      img.onerror = function() {
+        console.warn('[channels] Image failed to load:', channel.image_url);
+        this.style.display = 'none';
+      };
+      
+      img.onload = function() {
+        console.log('[channels] Image loaded:', channel.image_url);
+      };
+      
+      item.appendChild(img);
+      
+      item.onclick = function(e) {
+        e.preventDefault();
+        console.log('[channels] Clicked channel:', channel.channel_url);
+        window.open(channel.channel_url, '_blank');
+      };
+      
       carousel.appendChild(item);
     });
+
+    slider.innerHTML = arrowsHTML;
+    slider.appendChild(carousel);
+
+    console.log('[channels] Slider created, DOM structure:', slider.outerHTML.substring(0, 200) + '...');
 
     return slider;
   }
@@ -54,7 +88,7 @@ BTFW.define("feature:channels", [], async () => {
     const style = document.createElement('style');
     style.id = 'btfw-channels-css';
     style.textContent = `
-      .slider {
+      .slider.btfw-channels {
         position: relative;
         margin: 10px 0;
         background: rgba(20, 24, 34, 0.92);
@@ -62,16 +96,20 @@ BTFW.define("feature:channels", [], async () => {
         border-radius: 12px;
         overflow: hidden;
         height: 120px;
+        z-index: 1;
+        width: 100%;
+        display: block !important;
       }
       
       .carousel-inner {
-        display: flex;
+        display: flex !important;
         transition: transform 0.3s ease;
         height: 100%;
         align-items: center;
         padding: 10px;
         gap: 12px;
         overflow: hidden;
+        width: 100%;
       }
       
       .no-channels {
@@ -83,82 +121,91 @@ BTFW.define("feature:channels", [], async () => {
       }
       
       .item {
-        flex: 0 0 140px;
-        height: 80px;
-        cursor: pointer;
+        flex: 0 0 140px !important;
+        height: 80px !important;
+        cursor: pointer !important;
         border-radius: 8px;
         overflow: hidden;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.02);
+        display: block !important;
+        position: relative;
       }
       
       .item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(109, 77, 246, 0.15);
-        border-color: rgba(109, 77, 246, 0.4);
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 12px rgba(109, 77, 246, 0.15) !important;
+        border-color: rgba(109, 77, 246, 0.4) !important;
       }
       
       .item img.kek {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        display: block !important;
         transition: transform 0.2s ease;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
       
       .item:hover img.kek {
-        transform: scale(1.05);
+        transform: scale(1.05) !important;
       }
       
       .arrow {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 24px;
-        color: #fff;
-        background: rgba(109, 77, 246, 0.8);
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 10;
+        position: absolute !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        font-size: 24px !important;
+        color: #fff !important;
+        background: rgba(109, 77, 246, 0.8) !important;
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        z-index: 10 !important;
         transition: all 0.2s ease;
         user-select: none;
+        border: none !important;
+        line-height: 1 !important;
       }
       
       .arrow:hover {
-        background: rgba(109, 77, 246, 1);
-        transform: translateY(-50%) scale(1.1);
+        background: rgba(109, 77, 246, 1) !important;
+        transform: translateY(-50%) scale(1.1) !important;
       }
       
       .arrleft {
-        left: 10px;
+        left: 10px !important;
       }
       
       .arrright {
-        right: 10px;
+        right: 10px !important;
       }
       
       @media (max-width: 768px) {
         .item {
-          flex: 0 0 120px;
-          height: 70px;
+          flex: 0 0 120px !important;
+          height: 70px !important;
         }
-        .slider {
+        .slider.btfw-channels {
           height: 100px;
         }
         .arrow {
-          width: 35px;
-          height: 35px;
-          font-size: 20px;
+          width: 35px !important;
+          height: 35px !important;
+          font-size: 20px !important;
         }
       }
     `;
 
     document.head.appendChild(style);
+    console.log('[channels] CSS injected');
   }
 
   async function fetchChannelData(jsonUrl) {
@@ -262,23 +309,39 @@ BTFW.define("feature:channels", [], async () => {
 
     const slider = createChannelSlider(channels);
 
-    const motdrow = document.getElementById('motdrow');
-    const motdwrap = document.getElementById('motdwrap');
     const videowrap = document.getElementById('videowrap');
     const leftpad = document.getElementById('btfw-leftpad');
     const stack = document.getElementById('btfw-stack');
 
-    if (motdrow) {
-      motdrow.parentNode.insertBefore(slider, motdrow);
-    } else if (motdwrap) {
-      motdwrap.parentNode.insertBefore(slider, motdwrap);
-    } else if (stack) {
-      stack.parentNode.insertBefore(slider, stack);
-    } else if (videowrap && videowrap.nextSibling) {
-      videowrap.parentNode.insertBefore(slider, videowrap.nextSibling);
+    let inserted = false;
+
+    if (videowrap && leftpad && leftpad.contains(videowrap)) {
+      if (videowrap.nextElementSibling) {
+        leftpad.insertBefore(slider, videowrap.nextElementSibling);
+      } else {
+        leftpad.appendChild(slider);
+      }
+      inserted = true;
     } else if (leftpad) {
-      leftpad.insertBefore(slider, leftpad.firstChild);
+      if (leftpad.firstElementChild) {
+        leftpad.insertBefore(slider, leftpad.firstElementChild);
+      } else {
+        leftpad.appendChild(slider);
+      }
+      inserted = true;
     }
+
+    if (!inserted) {
+      console.warn('[channels] Could not find proper insertion point');
+      document.body.appendChild(slider);
+    }
+
+    console.log('[channels] Slider inserted, DOM structure:', {
+      hasVideowrap: !!videowrap,
+      hasLeftpad: !!leftpad,
+      hasStack: !!stack,
+      insertedWhere: inserted ? 'leftpad' : 'body'
+    });
 
     setTimeout(() => setupCarouselControls(slider, channels), 200);
   }
