@@ -77,8 +77,8 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       container.id = "motdwrap";
     }
     
-    // Merge motd content into container
-    if (motd && container && !container.contains(motd)) {
+    // Merge motd content into container (avoid circular reference)
+    if (motd && container && !container.contains(motd) && !motd.contains(container)) {
       // Move motd's content directly into container
       while (motd.firstChild) {
         container.appendChild(motd.firstChild);
@@ -86,8 +86,8 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       motd.remove();
     }
     
-    // Remove duplicate motdrow if we're using motdwrap
-    if (motdwrap && motdrow && motdrow !== motdwrap) {
+    // Remove duplicate motdrow if we're using motdwrap (avoid circular reference)
+    if (motdwrap && motdrow && motdrow !== motdwrap && !motdwrap.contains(motdrow) && !motdrow.contains(motdwrap)) {
       while (motdrow.firstChild) {
         motdwrap.appendChild(motdrow.firstChild);
       }
@@ -160,6 +160,14 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     
     if (elements.length === 0) return null;
     
+    // Filter out any elements that are already in the stack to avoid circular references
+    const stackList = document.querySelector("#btfw-stack .btfw-stack-list");
+    if (stackList) {
+      elements = elements.filter(el => el && !stackList.contains(el) && !el.contains(stackList));
+    }
+    
+    if (elements.length === 0) return null;
+    
     const wrapper = document.createElement("section");
     wrapper.className = "btfw-stack-item btfw-group-item";
     wrapper.dataset.bind = group.id;
@@ -178,10 +186,14 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     const body = document.createElement("div");
     body.className = "btfw-stack-item__body btfw-group-body";
     
-    // Add all elements to this group
+    // Add all elements to this group with safety checks
     elements.forEach(el => {
-      if (el && el.parentElement !== body) {
-        body.appendChild(el);
+      if (el && el.parentElement !== body && !body.contains(el) && !el.contains(body)) {
+        try {
+          body.appendChild(el);
+        } catch (error) {
+          console.warn('[stack] Failed to move element:', el.id || el.className, error);
+        }
       }
     });
     
@@ -274,12 +286,15 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     // Group elements
     const groupedElements = new Map();
     
-    // Process groups
+    // Process groups with better safety checks
     GROUPS.forEach(group => {
       const elements = [];
       group.selectors.forEach(sel => {
         const el = document.querySelector(sel);
-        if (el && !list.contains(el) && !SKIP_SELECTORS.includes(sel)) {
+        if (el && 
+            !list.contains(el) && 
+            !el.contains(list) &&
+            !SKIP_SELECTORS.includes(sel)) {
           elements.push(el);
         }
       });
@@ -296,9 +311,13 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     groupedElements.forEach(({ group, elements }, groupId) => {
       const existingItem = Array.from(list.children).find(n => n.dataset.bind === groupId);
       if (!existingItem) {
-        const groupItem = createGroupItem(group, elements);
-        if (groupItem) {
-          itemsToAdd.push({ item: groupItem, id: groupId, priority: group.priority, isGroup: true });
+        try {
+          const groupItem = createGroupItem(group, elements);
+          if (groupItem) {
+            itemsToAdd.push({ item: groupItem, id: groupId, priority: group.priority, isGroup: true });
+          }
+        } catch (error) {
+          console.warn('[stack] Failed to create group item:', groupId, error);
         }
       }
     });
@@ -317,9 +336,15 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       itemsToAdd.sort((a, b) => a.priority - b.priority);
     }
     
-    // Add items to list
+    // Add items to list with safety checks
     itemsToAdd.forEach(({ item }) => {
-      list.appendChild(item);
+      try {
+        if (item && !list.contains(item) && !item.contains(list)) {
+          list.appendChild(item);
+        }
+      } catch (error) {
+        console.warn('[stack] Failed to add item to list:', error);
+      }
     });
     
     save(list);
