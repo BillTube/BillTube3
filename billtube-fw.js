@@ -58,12 +58,12 @@ function load(src){
     var mods=[
       "modules/feature-style-core.js",
       "modules/feature-bulma-layer.js",
-      "modules/feature-layout.js",  // Layout must be early
-      "modules/feature-channels.js", // Channels early for top placement
+      "modules/feature-layout.js",
+      "modules/feature-channels.js",
       "modules/feature-footer-forms.js",
       "modules/feature-player.js",
       "modules/feature-stack.js",
-      "modules/feature-chat.js",    // Chat depends on layout
+      "modules/feature-chat.js",
       "modules/feature-chat-tools.js",
       "modules/feature-navbar.js",
       "modules/feature-modal-skin.js",
