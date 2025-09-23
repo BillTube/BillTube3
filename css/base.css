@@ -87,6 +87,38 @@
 .btfw-arrow:hover{ background:rgba(255,255,255,.12); }
 .btfw-stack-item__body{ padding:8px; }
 
+/* Grouped items styling */
+.btfw-stack-item.btfw-group-item .btfw-stack-item__header {
+  background: rgba(109, 77, 246, 0.15);
+  border-bottom: 1px solid rgba(109, 77, 246, 0.25);
+}
+.btfw-stack-item.btfw-group-item .btfw-stack-item__title {
+  font-weight: 700;
+  color: #e6edf3;
+}
+.btfw-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.btfw-group-body > * {
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 8px;
+  background: rgba(255,255,255,.02);
+  padding: 6px;
+}
+
+/* Poll controls styling */
+.poll-controls {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.poll-controls .button {
+  border-radius: 8px;
+}
+
 /* Footer pinned to bottom of stack area */
 #btfw-stack-footer{ margin-top: auto; padding-top: var(--btfw-gap); }
 #btfw-stack-footer .btfw-footer{ margin:0; }
