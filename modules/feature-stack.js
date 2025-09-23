@@ -100,6 +100,7 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     const plBar = document.getElementById("btfw-plbar");
     const playlistWrap = document.getElementById("playlistwrap");
     const queueContainer = document.getElementById("queuecontainer");
+    const controlsRow = document.querySelector(".btfw-controls-row");
     
     // Find the main playlist container
     const mainContainer = playlistWrap || queueContainer;
@@ -135,6 +136,19 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
         controlsBar.appendChild(btn);
       });
       rightControls.remove();
+    }
+    
+    // Also move any floating controls row into the playlist container
+    if (controlsRow && !mainContainer.contains(controlsRow)) {
+      // Remove it from wherever it is and place it at the bottom of playlist container
+      controlsRow.style.cssText += `
+        margin-top: 8px;
+        position: relative;
+        bottom: auto;
+        left: auto;
+        right: auto;
+      `;
+      mainContainer.appendChild(controlsRow);
     }
     
     // Ensure the bar is at the top of the playlist container
