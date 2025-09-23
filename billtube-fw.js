@@ -59,6 +59,7 @@ function load(src){
       "modules/feature-style-core.js",
       "modules/feature-bulma-layer.js",
       "modules/feature-layout.js",  // Layout must be early
+      "modules/feature-channels.js", // Channels early for top placement
       "modules/feature-footer-forms.js",
       "modules/feature-player.js",
       "modules/feature-stack.js",
@@ -103,6 +104,7 @@ function load(src){
   }).then(function(){
     // Initialize all remaining modules
     return Promise.all([
+      BTFW.init("feature:channels"),  // Initialize channels early
       BTFW.init("feature:footerForms"),
       BTFW.init("feature:player"),
       BTFW.init("feature:stack"),

@@ -119,6 +119,41 @@
   border-radius: 8px;
 }
 
+/* Enhanced playlist bar styling */
+.btfw-plbar {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+  padding: 8px 12px !important;
+  margin: 8px 0 6px 0 !important;
+  background: linear-gradient(135deg, rgba(109, 77, 246, 0.08), rgba(139, 92, 246, 0.05)) !important;
+  border: 1px solid rgba(109, 77, 246, 0.15) !important;
+  border-radius: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+.btfw-plbar .button,
+.btfw-plbar .btn {
+  border-radius: 8px !important;
+  margin: 0 2px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #e6edf3 !important;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+}
+
+.btfw-plbar .button:hover,
+.btfw-plbar .btn:hover {
+  background: rgba(109, 77, 246, 0.15) !important;
+  border-color: rgba(109, 77, 246, 0.3) !important;
+}
+
+/* Remove the old stack header completely */
+.btfw-stack-header {
+  display: none !important;
+}
+
 /* Footer pinned to bottom of stack area */
 #btfw-stack-footer{ margin-top: auto; padding-top: var(--btfw-gap); }
 #btfw-stack-footer .btfw-footer{ margin:0; }

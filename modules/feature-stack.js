@@ -6,13 +6,13 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     {
       id: "motd-group",
       title: "Message of the Day",
-      selectors: ["#motdrow", "#motd", "#announcements"],
+      selectors: ["#motdwrap", "#motdrow", "#motd", "#announcements"],
       priority: 1
     },
     {
       id: "playlist-group", 
       title: "Playlist",
-      selectors: ["#playlistrow", "#playlistwrap", "#queuecontainer", "#queue", "#rightcontrols"],
+      selectors: ["#playlistrow", "#playlistwrap", "#queuecontainer", "#queue"],
       priority: 2
     },
     {
@@ -23,7 +23,8 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     }
   ];
   
-  const STANDALONE_SELECTORS = ["#btfw-channels", "#mainpage", "#mainpane", "#main"];
+  // Skip these - they're either empty or handled elsewhere
+  const SKIP_SELECTORS = ["#main", "#mainpage", "#mainpane"];
   
   function ensureStack(){ 
     const left=document.getElementById("btfw-leftpad"); 
@@ -36,10 +37,8 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       const v=document.getElementById("videowrap"); 
       if(v&&v.nextSibling) v.parentNode.insertBefore(stack, v.nextSibling); 
       else left.appendChild(stack); 
-      const hdr=document.createElement("div"); 
-      hdr.className="btfw-stack-header"; 
-      hdr.innerHTML='<div class="btfw-stack-title">Page Modules</div>'; 
-      stack.appendChild(hdr); 
+      
+      // Just create the list - no header with "Page Modules"
       const list=document.createElement("div"); 
       list.className="btfw-stack-list"; 
       stack.appendChild(list); 
@@ -64,7 +63,103 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     return el.getAttribute("data-title")||el.getAttribute("title")||el.id; 
   }
   
+  function mergeMotdElements() {
+    const motdwrap = document.getElementById("motdwrap");
+    const motdrow = document.getElementById("motdrow");
+    const motd = document.getElementById("motd");
+    
+    if (!motdwrap && !motdrow) return;
+    
+    // Use motdwrap as the main container, or create it
+    let container = motdwrap;
+    if (!container && motdrow) {
+      container = motdrow;
+      container.id = "motdwrap";
+    }
+    
+    // Merge motd content into container
+    if (motd && container && !container.contains(motd)) {
+      // Move motd's content directly into container
+      while (motd.firstChild) {
+        container.appendChild(motd.firstChild);
+      }
+      motd.remove();
+    }
+    
+    // Remove duplicate motdrow if we're using motdwrap
+    if (motdwrap && motdrow && motdrow !== motdwrap) {
+      while (motdrow.firstChild) {
+        motdwrap.appendChild(motdrow.firstChild);
+      }
+      motdrow.remove();
+    }
+  }
+  
+  function mergePlaylistControls() {
+    const rightControls = document.getElementById("rightcontrols");
+    const plBar = document.getElementById("btfw-plbar");
+    const playlistWrap = document.getElementById("playlistwrap");
+    const queueContainer = document.getElementById("queuecontainer");
+    
+    // Find the main playlist container
+    const mainContainer = playlistWrap || queueContainer;
+    if (!mainContainer) return;
+    
+    // Create or enhance the playlist bar
+    let controlsBar = plBar;
+    if (!controlsBar) {
+      controlsBar = document.createElement("div");
+      controlsBar.id = "btfw-plbar";
+      controlsBar.className = "btfw-plbar";
+    }
+    
+    // Style the controls bar nicely
+    controlsBar.style.cssText = `
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 12px;
+      margin: 8px 0 6px 0;
+      background: linear-gradient(135deg, rgba(109, 77, 246, 0.08), rgba(139, 92, 246, 0.05));
+      border: 1px solid rgba(109, 77, 246, 0.15);
+      border-radius: 12px;
+      flex-wrap: wrap;
+    `;
+    
+    // Move rightcontrols buttons into the enhanced bar
+    if (rightControls) {
+      const buttons = rightControls.querySelectorAll("button, .btn, input");
+      buttons.forEach(btn => {
+        btn.classList.add("button", "is-small", "is-dark");
+        btn.style.cssText += "border-radius: 8px; margin: 0 2px;";
+        controlsBar.appendChild(btn);
+      });
+      rightControls.remove();
+    }
+    
+    // Ensure the bar is at the top of the playlist container
+    if (!mainContainer.contains(controlsBar)) {
+      mainContainer.insertBefore(controlsBar, mainContainer.firstChild);
+    }
+  }
+  
   function createGroupItem(group, elements) {
+    // Special handling for MOTD group
+    if (group.id === "motd-group") {
+      mergeMotdElements();
+      // Re-get the element after merging
+      elements = [document.getElementById("motdwrap")].filter(Boolean);
+    }
+    
+    // Special handling for playlist group
+    if (group.id === "playlist-group") {
+      mergePlaylistControls();
+      // Re-get elements after merging
+      elements = elements.filter(el => el && el.id !== "rightcontrols"); // rightcontrols is now merged
+    }
+    
+    if (elements.length === 0) return null;
+    
     const wrapper = document.createElement("section");
     wrapper.className = "btfw-stack-item btfw-group-item";
     wrapper.dataset.bind = group.id;
@@ -111,28 +206,6 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     return wrapper;
   }
   
-  function itemFor(el){ 
-    const w=document.createElement("section"); 
-    w.className="btfw-stack-item"; 
-    w.dataset.bind=normalizeId(el); 
-    w.innerHTML='<header class="btfw-stack-item__header"><span class="btfw-stack-item__title">'+titleOf(el)+'</span><span class="btfw-stack-arrows"><button class="btfw-arrow btfw-up">↑</button><button class="btfw-arrow btfw-down">↓</button></span></header><div class="btfw-stack-item__body"></div>'; 
-    w.querySelector(".btfw-stack-item__body").appendChild(el); 
-    w.querySelector(".btfw-up").onclick=function(){ 
-      const p=w.parentElement; 
-      const prev=w.previousElementSibling; 
-      if(prev) p.insertBefore(w, prev); 
-      save(p); 
-    }; 
-    w.querySelector(".btfw-down").onclick=function(){ 
-      const p=w.parentElement; 
-      const next=w.nextElementSibling; 
-      if(next) p.insertBefore(next, w); 
-      else p.appendChild(w); 
-      save(p); 
-    }; 
-    return w; 
-  }
-  
   function save(list){ 
     try{ 
       const items = Array.from(list.children).map(n => ({
@@ -175,7 +248,7 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
         if (!btnContainer) {
           btnContainer = document.createElement('div');
           btnContainer.className = 'poll-controls';
-          btnContainer.style.cssText = 'margin-bottom: 8px; padding: 4px;';
+          btnContainer.style.cssText = 'margin-bottom: 8px; padding: 4px; display: flex; gap: 6px;';
           pollWrap.insertBefore(btnContainer, pollWrap.firstChild);
         }
         
@@ -200,27 +273,18 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     
     // Group elements
     const groupedElements = new Map();
-    const standaloneElements = [];
     
     // Process groups
     GROUPS.forEach(group => {
       const elements = [];
       group.selectors.forEach(sel => {
         const el = document.querySelector(sel);
-        if (el && !list.contains(el)) {
+        if (el && !list.contains(el) && !SKIP_SELECTORS.includes(sel)) {
           elements.push(el);
         }
       });
       if (elements.length > 0) {
         groupedElements.set(group.id, { group, elements });
-      }
-    });
-    
-    // Process standalone elements  
-    STANDALONE_SELECTORS.forEach(sel => {
-      const el = document.querySelector(sel);
-      if (el && !list.contains(el)) {
-        standaloneElements.push(el);
       }
     });
     
@@ -233,17 +297,9 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       const existingItem = Array.from(list.children).find(n => n.dataset.bind === groupId);
       if (!existingItem) {
         const groupItem = createGroupItem(group, elements);
-        itemsToAdd.push({ item: groupItem, id: groupId, priority: group.priority, isGroup: true });
-      }
-    });
-    
-    // Add standalone elements
-    standaloneElements.forEach(el => {
-      const id = normalizeId(el);
-      const existingItem = Array.from(list.children).find(n => n.dataset.bind === id);
-      if (!existingItem) {
-        const item = itemFor(el);
-        itemsToAdd.push({ item, id, priority: 999, isGroup: false });
+        if (groupItem) {
+          itemsToAdd.push({ item: groupItem, id: groupId, priority: group.priority, isGroup: true });
+        }
       }
     });
     
