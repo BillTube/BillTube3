@@ -69,7 +69,7 @@ function load(src){
       "modules/feature-nowplaying.js",
       "modules/feature-chat-username-colors.js",
       "modules/feature-emotes.js",
-      "modules/feature-chatMedia.js",
+      "modules/feature-chat-media.js",
       "modules/feature-emoji-compat.js",
       "modules/feature-chat-avatars.js",
       "modules/feature-chat-timestamps.js",
