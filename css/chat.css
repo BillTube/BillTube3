@@ -1,5 +1,5 @@
 /* ======================================================================
-   BillTube Framework — chat.css
+   BillTube Framework – chat.css
    Chat column structure, message area, avatars, and controls row
    ====================================================================== */
 
@@ -12,8 +12,10 @@
 #chatwrap{
   display:flex;
   flex-direction: column;
+  height: 100%; /* Fill the chatcol container */
   min-height: 0;
   width: 100%;
+  overflow: hidden; /* Prevent overflow issues */
 }
 
 /* Bars are visually styled further in overlays.css */
@@ -26,6 +28,7 @@
   margin:0 0 8px 0;
   border:1px solid var(--btfw-border);
   border-radius: var(--btfw-radius);
+  flex-shrink: 0; /* Don't shrink these bars */
 }
 
 #btfw-nowplaying-slot{
@@ -35,12 +38,15 @@
   text-overflow: ellipsis;
 }
 
-/* Scrollable messages */
+/* Scrollable messages - this should take all remaining space */
 #messagebuffer{
   flex: 1 1 auto;
   overflow: auto;
-  min-height: 0;
+  min-height: 0; /* Allow shrinking */
   padding: 6px;
+  /* Ensure smooth scrolling */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 #messagebuffer .chat-msg{ display:block; padding:3px 2px; }
@@ -63,11 +69,17 @@
   background: rgba(20,24,34,.92);
   border-radius: 10px;
   margin-top:6px;
+  flex-shrink: 0; /* Don't shrink the controls */
 }
 
 /* Bottom action buttons container */
 .btfw-chat-actions{ display:flex; gap:6px; flex-wrap:wrap; }
 .button.btfw-chatbtn{ display:inline-flex; align-items:center; gap:6px; }
+
+/* Bottom bar should not have margin-bottom to avoid extra space */
+#chatwrap .btfw-chat-bottombar:last-child {
+  margin-bottom: 0;
+}
 
 /* Avatars next to names */
 .btfw-chat-avatar{
@@ -91,7 +103,15 @@
 @media (max-width: 768px){
   .btfw-controls-row{ flex-wrap:wrap; }
   #chatline{ flex: 1 1 100%; }
+  
+  /* On mobile, chat should fill available space but not overflow */
+  #chatwrap {
+    max-height: 100%;
+    overflow: hidden;
+  }
 }
+
+/* Rest of existing chat.css styles... */
 /* chat-tools toolbar */
 #btfw-chattools{
   display:flex; align-items:center; justify-content:space-between;
@@ -113,6 +133,7 @@
 .btfw-ct-swatchbtn{
   width:22px; height:22px; border-radius:6px; border:0; cursor:pointer;
 }
+
 /* === Chat Tools Panel (opens above input, inside chat column) === */
 #chatwrap { position: relative; } /* ensure absolute anchoring */
 
@@ -162,6 +183,7 @@
 @media (max-width: 768px){
   .btfw-ct-grid{ grid-template-columns: repeat(3, minmax(90px,1fr)); }
 }
+
 /* === Chat Tools Mini Modal (inside chat column) === */
 #chatwrap { position: relative; }
 
@@ -304,6 +326,7 @@
   height: 0 !important;
   margin: 0 !important;
 }
+
 /* Inline emoji images sized like text */
 img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 #messagebuffer img.twemoji { width: 1.1em; height: 1.1em; }
@@ -330,7 +353,6 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
   border-radius: 8px;
 }
 
-
 /* Make chat emojis bigger (Twemoji images) */
 #messagebuffer img.twemoji {
   width: var(--btfw-chat-emoji-size, 26px);
@@ -340,6 +362,7 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
   transition: opacity .12s ease-in;
 }
 #messagebuffer img.twemoji.is-ready { opacity: 1; }
+
 /* Username color */
 #messagebuffer .username.btfw-username-colored {
   color: var(--btfw-name-color) !important;
@@ -361,7 +384,6 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 /* hide timestamps when off */
 body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
 
-
 /* Muted user indicator in userlist */
 #userlist li.btfw-muted { opacity: .55; }
 #userlist .btfw-mute-chip {
@@ -370,6 +392,7 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
   background: rgba(255,255,255,.10); color: #ddd;
 }
 #userlist .btfw-mute-chip:hover { background: rgba(255,255,255,.18); }
+
 /* Chat bottom bar split: actions (left) + usercount (right) */
 .btfw-chat-bottombar{
   display:flex; align-items:center; gap:8px;
