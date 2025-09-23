@@ -100,7 +100,9 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     const plBar = document.getElementById("btfw-plbar");
     const playlistWrap = document.getElementById("playlistwrap");
     const queueContainer = document.getElementById("queuecontainer");
-    const controlsRow = document.querySelector(".btfw-controls-row");
+    
+    // Find any floating controls row
+    const controlsRows = document.querySelectorAll(".btfw-controls-row");
     
     // Find the main playlist container
     const mainContainer = playlistWrap || queueContainer;
@@ -138,18 +140,23 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       rightControls.remove();
     }
     
-    // Also move any floating controls row into the playlist container
-    if (controlsRow && !mainContainer.contains(controlsRow)) {
-      // Remove it from wherever it is and place it at the bottom of playlist container
-      controlsRow.style.cssText += `
-        margin-top: 8px;
-        position: relative;
-        bottom: auto;
-        left: auto;
-        right: auto;
-      `;
-      mainContainer.appendChild(controlsRow);
-    }
+    // Move any floating controls rows into the playlist container
+    controlsRows.forEach(controlsRow => {
+      if (controlsRow && !mainContainer.contains(controlsRow)) {
+        // Remove from wherever it is and place it at the bottom of playlist container
+        controlsRow.style.cssText += `
+          margin-top: 8px;
+          position: relative !important;
+          bottom: auto !important;
+          left: auto !important;
+          right: auto !important;
+          width: auto !important;
+        `;
+        controlsRow.remove();
+        mainContainer.appendChild(controlsRow);
+        console.log('[stack] Moved floating controls row into playlist container');
+      }
+    });
     
     // Ensure the bar is at the top of the playlist container
     if (!mainContainer.contains(controlsBar)) {
