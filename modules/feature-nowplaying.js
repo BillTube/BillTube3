@@ -28,10 +28,28 @@ BTFW.define("feature:nowplaying", [], async () => {
 
   function findCurrentTitle() {
     // Try multiple selectors to find the current title
-    return $("#currenttitle") || 
-           document.querySelector(".currenttitle") ||
-           document.querySelector("[id*='current'][id*='title']") ||
-           document.querySelector(".queue_active .qe_title");
+    const selectors = [
+      "#currenttitle",
+      ".currenttitle", 
+      "[id*='current'][id*='title']",
+      "#videowrap-header #currenttitle",
+      ".queue_active .qe_title a",
+      ".queue_active .qe_title"
+    ];
+    
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) return el;
+    }
+    
+    return null;
+  }
+
+  function createCurrentTitleElement() {
+    const ct = document.createElement("span");
+    ct.id = "currenttitle";
+    ct.className = "btfw-nowplaying";
+    return ct;
   }
 
   function mountTitleIntoSlot(){
@@ -42,9 +60,8 @@ BTFW.define("feature:nowplaying", [], async () => {
     
     // If we can't find #currenttitle, create it
     if (!ct) {
-      ct = document.createElement("span");
-      ct.id = "currenttitle";
-      ct.className = "btfw-nowplaying";
+      ct = createCurrentTitleElement();
+      console.log('[nowplaying] Created new currenttitle element');
     }
     
     // Move it to slot if it's not already there
@@ -52,6 +69,18 @@ BTFW.define("feature:nowplaying", [], async () => {
       slot.innerHTML = ""; // Clear slot first
       slot.appendChild(ct);
       ct.classList.add("btfw-nowplaying");
+      console.log('[nowplaying] Moved currenttitle to slot');
+    }
+    
+    // Ensure it has some content
+    if (!ct.textContent) {
+      const queueTitle = getQueueActiveTitle();
+      if (queueTitle) {
+        ct.textContent = stripPrefix(queueTitle);
+        console.log('[nowplaying] Set title from queue:', queueTitle);
+      } else {
+        ct.textContent = "No media playing";
+      }
     }
   }
 
@@ -85,14 +114,22 @@ BTFW.define("feature:nowplaying", [], async () => {
   }
 
   function setTitle(raw){
-    const ct = findCurrentTitle();
-    if (!ct) return;
+    let ct = findCurrentTitle();
+    if (!ct) {
+      ct = createCurrentTitleElement();
+      const slot = ensureSlot();
+      if (slot) {
+        slot.appendChild(ct);
+      }
+    }
     
     const title = raw || getQueueActiveTitle() || getCurrentTitleFromDOM();
     const cleanTitle = stripPrefix(title);
     
-    ct.textContent = cleanTitle || "";
+    ct.textContent = cleanTitle || "No media playing";
     ct.title = cleanTitle || "";
+    
+    console.log('[nowplaying] Set title:', cleanTitle);
     
     // Also update the slot directly if title is there
     const slot = $("#btfw-nowplaying-slot");
