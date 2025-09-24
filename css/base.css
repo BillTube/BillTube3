@@ -369,6 +369,23 @@
 }
 #videowrap, #chatwrap{ float:none !important; }
 
+#btfw-theme-modal .btfw-range-control{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#btfw-theme-modal .btfw-range-control input[type="range"]{
+  flex: 1 1 auto;
+}
+
+#btfw-theme-modal .btfw-range-value{
+  min-width: 48px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: rgba(240, 244, 255, 0.85);
+}
+
 /* Ensure videowrap doesn't collapse during load */
 #videowrap {
   min-height: 300px; /* Prevent collapse during load */
