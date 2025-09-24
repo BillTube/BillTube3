@@ -137,6 +137,12 @@ BTFW.define("feature:emotes", [], async () => {
     const wrap = $("#chatwrap") || document.body;
     wrap.appendChild(pop);
 
+    const gridEl = pop.querySelector("#btfw-emotes-grid");
+    if (gridEl) {
+      gridEl.setAttribute("data-twemoji-skip", "true");
+      gridEl.classList.add("btfw-emoji-grid--native");
+    }
+
     // Tabs
     pop.querySelector(".btfw-emotes-tabs").addEventListener("click", ev=>{
       const btn = ev.target.closest(".btfw-tab");
@@ -291,12 +297,19 @@ function positionPopover(){
       tile.setAttribute("data-index", String(idxAbs));
 
       if (state.tab==="emoji" || item.kind==="emoji") {
+        tile.classList.add("btfw-emote-tile--emoji");
+        tile.dataset.kind = "emoji";
+        tile.setAttribute("aria-label", item.name || item.char || "Emoji");
+        tile.dataset.emoji = item.char;
         const span = document.createElement("span");
         span.className = "btfw-emoji";
         span.textContent = item.char;
+        span.setAttribute("aria-hidden", "true");
         tile.title = item.name || "";
         tile.appendChild(span);
       } else {
+        tile.classList.add("btfw-emote-tile--emote");
+        tile.dataset.kind = "emote";
         const img = document.createElement("img");
         img.className = "btfw-emote-img";
         img.src = item.image || "";
@@ -305,6 +318,7 @@ function positionPopover(){
         img.decoding = "async";
         img.onerror = ()=>{ img.style.display="none"; tile.textContent = item.name; };
         tile.title = item.name;
+        tile.setAttribute("aria-label", item.name || "Emote");
         tile.appendChild(img);
       }
 

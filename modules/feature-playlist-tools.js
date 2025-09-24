@@ -36,7 +36,6 @@ BTFW.define("feature:playlist-tools", [], async () => {
     const bar = document.createElement("div");
     bar.id = "btfw-plbar";
     bar.className = "btfw-plbar";
-    bar.style.cssText = "display:flex;gap:8px;align-items:center;margin:8px 8px 6px;flex-wrap:wrap;";
 
     bar.innerHTML = `
       <div class="field has-addons" style="margin:0;">
