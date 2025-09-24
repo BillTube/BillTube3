@@ -24,6 +24,7 @@
   display:flex;
   align-items:center;
   justify-content:space-between;
+  gap: 10px;
   padding:8px 10px;
   margin:0 0 8px 0;
   border:1px solid var(--btfw-border);
@@ -31,11 +32,37 @@
   flex-shrink: 0; /* Don't shrink these bars */
 }
 
+.btfw-chat-topbar-left{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.btfw-chat-topbar-actions{
+  display:flex;
+  align-items:center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
 #btfw-nowplaying-slot{
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+#btfw-mobile-modules-toggle{
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+}
+
+#btfw-grid.btfw-grid--vertical #btfw-mobile-modules-toggle{
+  display: inline-flex;
 }
 
 /* Scrollable messages - this should take all remaining space */

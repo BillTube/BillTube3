@@ -12,7 +12,8 @@ BTFW.define("feature:themeSettings", [], async () => {
     gifAutoplay : "btfw:chat:gifAutoplay",    // "1" | "0"
     pipEnabled  : "btfw:pip:enabled",         // "1" | "0"
     localSubs   : "btfw:video:localsubs",     // "1" | "0"
-    billcastEnabled: "btfw:billcast:enabled"  // "1" | "0"
+    billcastEnabled: "btfw:billcast:enabled", // "1" | "0"
+    layoutSide  : "btfw:layout:chatSide"      // "left" | "right"
   };
 
   // storage helpers
@@ -139,6 +140,18 @@ BTFW.define("feature:themeSettings", [], async () => {
               <div class="content">
                 <h4>Video</h4>
                 <div class="field">
+                  <label class="label">Desktop layout</label>
+                  <div class="control">
+                    <label class="radio" style="margin-right:12px;">
+                      <input type="radio" name="btfw-chat-side" value="right"> Video left, chat right
+                    </label>
+                    <label class="radio">
+                      <input type="radio" name="btfw-chat-side" value="left"> Chat left, video right
+                    </label>
+                  </div>
+                  <p class="help">Mobile screens switch to a stacked view automatically.</p>
+                </div>
+                <div class="field">
                   <label class="checkbox">
                     <input type="checkbox" id="btfw-pip-toggle"> Picture-in-Picture (experimental)
                   </label>
@@ -201,6 +214,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     const pipOn       = $("#btfw-pip-toggle", m)?.checked;
     const localSubsOn = $("#btfw-localsubs-toggle", m)?.checked;
     const billcastOn  = $("#btfw-billcast-toggle", m)?.checked;
+    const chatSide    = ($$('input[name="btfw-chat-side"]:checked', m)[0]?.value) || "right";
 
     // persist
     set(TS_KEYS.themeMode, themeMode);
@@ -211,6 +225,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     set(TS_KEYS.pipEnabled,  pipOn ? "1":"0");
     set(TS_KEYS.localSubs,   localSubsOn ? "1":"0");
     set(TS_KEYS.billcastEnabled, billcastOn ? "1":"0");
+    set(TS_KEYS.layoutSide, chatSide);
 
     // apply live
     if (bulma?.setTheme) bulma.setTheme(themeMode);
@@ -223,11 +238,13 @@ BTFW.define("feature:themeSettings", [], async () => {
     document.dispatchEvent(new CustomEvent("btfw:chat:gifAutoplayChanged", { detail:{ autoplay: !!gifAutoOn } }));
     document.dispatchEvent(new CustomEvent("btfw:pip:toggled",             { detail:{ enabled : !!pipOn } }));
     document.dispatchEvent(new CustomEvent("btfw:video:localsubs:changed", { detail:{ enabled : !!localSubsOn } }));
+    document.dispatchEvent(new CustomEvent("btfw:layout:chatSideChanged",   { detail:{ side    : chatSide } }));
     document.dispatchEvent(new CustomEvent("btfw:themeSettings:apply",     { detail:{
       values: {
         themeMode, avatarsMode, chatTextPx: parseInt(chatTextPx,10),
         emoteSize, gifAutoplay: !!gifAutoOn, pipEnabled: !!pipOn,
-        localSubs: !!localSubsOn, billcastEnabled: !!billcastOn
+        localSubs: !!localSubsOn, billcastEnabled: !!billcastOn,
+        chatSide
       }
     }}));
   }
@@ -248,6 +265,8 @@ BTFW.define("feature:themeSettings", [], async () => {
     $("#btfw-pip-toggle").checked   = get(TS_KEYS.pipEnabled,  "0") === "1";
     $("#btfw-localsubs-toggle").checked = get(TS_KEYS.localSubs, "1") === "1";
     const bc = $("#btfw-billcast-toggle"); if (bc) bc.checked = get(TS_KEYS.billcastEnabled, "1") === "1";
+    const sideNow = get(TS_KEYS.layoutSide, "right");
+    $$('input[name="btfw-chat-side"]').forEach(i => i.checked = (i.value === sideNow));
 
     m.classList.add("is-active");
     document.dispatchEvent(new CustomEvent("btfw:themeSettings:open"));
