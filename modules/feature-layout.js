@@ -5,7 +5,9 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   const VIDEO_MIN_PX = 520;
   const DEFAULT_VIDEO_TARGET = 680;
   const CHAT_MIN_PX = 360;
-  const WIDTH_BUFFER = 120;
+  const WIDTH_BUFFER = 20;
+  const MOBILE_THRESHOLD_MIN = 900;
+  const MOBILE_THRESHOLD_MAX = 940;
 
   let videoColumnPx = null;
   let chatSidePref = "right";
@@ -42,8 +44,9 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       return;
     }
 
-    const videoSegment = videoColumnPx
-      ? `${Math.max(videoColumnPx, VIDEO_MIN_PX)}px`
+    const stored = videoColumnPx ? Math.max(videoColumnPx, VIDEO_MIN_PX) : null;
+    const videoSegment = stored
+      ? `minmax(${VIDEO_MIN_PX}px, ${stored}px)`
       : `minmax(${VIDEO_MIN_PX}px, 1fr)`;
     const chatSegment = "minmax(var(--btfw-chat-min, 320px), 1fr)";
     const template = chatSidePref === "left"
@@ -64,8 +67,12 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   }
 
   function computeThreshold(){
-    const target = Math.max(videoColumnPx || DEFAULT_VIDEO_TARGET, VIDEO_MIN_PX);
-    return target + CHAT_MIN_PX + WIDTH_BUFFER;
+    const stored = Math.max(videoColumnPx || DEFAULT_VIDEO_TARGET, VIDEO_MIN_PX);
+    const comfortable = stored + CHAT_MIN_PX + WIDTH_BUFFER;
+    return Math.min(
+      Math.max(comfortable, MOBILE_THRESHOLD_MIN),
+      MOBILE_THRESHOLD_MAX
+    );
   }
 
   function ensureMobileStackShell(){
@@ -101,9 +108,49 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     return shell;
   }
 
+  function isMobileStackOpen(){
+    const shell = document.getElementById(MOBILE_STACK_ID);
+    return !!(shell && shell.classList.contains("btfw-mobile-stack--open"));
+  }
+
+  function placeStackInLayout(){
+    const stack = document.getElementById("btfw-stack");
+    if (!stack) return;
+
+    if (isVertical) {
+      stack.classList.add("btfw-stack--in-chat");
+      const chatcol = document.getElementById("btfw-chatcol");
+      if (!chatcol) return;
+      const chatwrap = document.getElementById("chatwrap");
+      if (chatwrap && chatwrap.parentElement === chatcol) {
+        if (chatwrap.nextSibling !== stack) {
+          chatcol.insertBefore(stack, chatwrap.nextSibling);
+        }
+      } else if (stack.parentElement !== chatcol) {
+        chatcol.appendChild(stack);
+      }
+    } else {
+      stack.classList.remove("btfw-stack--in-chat");
+      const left = document.getElementById("btfw-leftpad");
+      if (!left) return;
+      const video = document.getElementById("videowrap");
+      if (video && video.parentElement === left) {
+        if (video.nextSibling !== stack) {
+          if (video.nextSibling) left.insertBefore(stack, video.nextSibling);
+          else left.appendChild(stack);
+        }
+      } else if (stack.parentElement !== left) {
+        left.appendChild(stack);
+      }
+    }
+  }
+
   function setMobileStackOpen(open){
     const shell = ensureMobileStackShell();
     const allow = !!open && isVertical;
+    if (allow) moveStackToOverlay();
+    else restoreStackFromOverlay();
+
     shell.classList.toggle("btfw-mobile-stack--open", allow);
     if (document.body) {
       document.body.classList.toggle("btfw-mobile-stack-open", allow);
@@ -119,26 +166,13 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     const shell = ensureMobileStackShell();
     const body = shell.querySelector(".btfw-mobile-stack__body");
     if (body && stack.parentElement !== body) {
+      stack.classList.remove("btfw-stack--in-chat");
       body.appendChild(stack);
     }
   }
 
   function restoreStackFromOverlay(){
-    const stack = document.getElementById("btfw-stack");
-    if (!stack) return;
-    const left = document.getElementById("btfw-leftpad");
-    if (!left) return;
-    if (stack.parentElement === left) return;
-    const video = document.getElementById("videowrap");
-    if (video && video.parentElement === left) {
-      if (video.nextSibling) {
-        left.insertBefore(stack, video.nextSibling);
-      } else {
-        left.appendChild(stack);
-      }
-    } else {
-      left.appendChild(stack);
-    }
+    placeStackInLayout();
   }
 
   function wireMobileToggle(){
@@ -149,11 +183,11 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     toggle.setAttribute("aria-haspopup", "dialog");
     toggle.addEventListener("click", (ev) => {
       ev.preventDefault();
-      if (!isVertical) return;
-      const shell = ensureMobileStackShell();
-      const open = !shell.classList.contains("btfw-mobile-stack--open");
-      if (open) moveStackToOverlay();
-      setMobileStackOpen(open);
+      if (!isVertical) {
+        toggle.blur();
+        return;
+      }
+      setMobileStackOpen(!isMobileStackOpen());
     });
   }
 
@@ -172,18 +206,23 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       }
 
       if (shouldVertical) {
-        moveStackToOverlay();
+        if (isMobileStackOpen()) moveStackToOverlay();
+        else restoreStackFromOverlay();
       } else {
         setMobileStackOpen(false);
         restoreStackFromOverlay();
       }
-    } else if (!shouldVertical) {
-      restoreStackFromOverlay();
     } else {
-      moveStackToOverlay();
+      if (shouldVertical) {
+        if (isMobileStackOpen()) moveStackToOverlay();
+        else restoreStackFromOverlay();
+      } else {
+        restoreStackFromOverlay();
+      }
     }
 
     applyColumnTemplate();
+    setTop();
   }
   
   function setTop(){
@@ -197,8 +236,13 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     // Force layout recalculation for sticky elements
     const chatcol = document.getElementById("btfw-chatcol");
     if (chatcol) {
-      chatcol.style.top = `calc(${newTop} + var(--btfw-gap))`;
-      chatcol.style.height = `calc(100vh - ${newTop} - var(--btfw-gap) * 2)`;
+      if (isVertical) {
+        chatcol.style.top = "0px";
+        chatcol.style.height = "";
+      } else {
+        chatcol.style.top = `calc(${newTop} + var(--btfw-gap))`;
+        chatcol.style.height = `calc(100vh - ${newTop} - var(--btfw-gap) * 2)`;
+      }
     }
   }
 
@@ -332,14 +376,27 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     const leftpadWatch = document.getElementById("btfw-leftpad");
     if (leftpadWatch && !leftpadWatch._btfwStackWatch) {
       const obs = new MutationObserver(() => {
-        if (isVertical) moveStackToOverlay();
+        if (isVertical) {
+          if (isMobileStackOpen()) moveStackToOverlay();
+          else placeStackInLayout();
+        }
       });
       obs.observe(leftpadWatch, { childList: true });
       leftpadWatch._btfwStackWatch = obs;
     }
 
-    ["videowrap","playlistrow","playlistwrap","queuecontainer","queue","plmeta","chatwrap"].forEach(id=>stripDeep(document.getElementById(id)));
+    const chatWatch = document.getElementById("btfw-chatcol");
+    if (chatWatch && !chatWatch._btfwStackWatch) {
+      const obs = new MutationObserver(() => {
+        if (isVertical && !isMobileStackOpen()) placeStackInLayout();
+      });
+      obs.observe(chatWatch, { childList: true });
+      chatWatch._btfwStackWatch = obs;
+    }
+
+    ["videowrap","playlistrow","playlistwrap","queuecontainer","queue","plmeta","chatwrap","controlsrow","rightcontrols"].forEach(id=>stripDeep(document.getElementById(id)));
     moveCurrent();
+    placeStackInLayout();
   }
   
   function finishLayout() {
@@ -408,7 +465,10 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
 
   document.addEventListener("btfw:chat:barsReady", () => {
     wireMobileToggle();
-    if (isVertical) moveStackToOverlay();
+    if (isVertical) {
+      if (isMobileStackOpen()) moveStackToOverlay();
+      else restoreStackFromOverlay();
+    }
   });
 
   if (document.readyState === "loading") {
