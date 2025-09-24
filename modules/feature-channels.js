@@ -23,8 +23,6 @@ BTFW.define("feature:channels", [], async () => {
     slider.id = 'btfw-channels';
     slider.setAttribute('data-title', 'Channels');
 
-    console.log('[channels] Creating slider with', channels.length, 'channels');
-
     if (channels.length === 0) {
       slider.innerHTML = `
         <div class="carousel-inner">
@@ -53,21 +51,11 @@ BTFW.define("feature:channels", [], async () => {
       img.className = 'kek';
       img.alt = channel.title;
       img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; display: block;';
-      
-      img.onerror = function() {
-        console.warn('[channels] Image failed to load:', channel.image_url);
-        this.style.display = 'none';
-      };
-      
-      img.onload = function() {
-        console.log('[channels] Image loaded:', channel.image_url);
-      };
+      img.onerror = function() { this.style.display = 'none'; };
       
       item.appendChild(img);
-      
       item.onclick = function(e) {
         e.preventDefault();
-        console.log('[channels] Clicked channel:', channel.channel_url);
         window.open(channel.channel_url, '_blank');
       };
       
@@ -76,8 +64,6 @@ BTFW.define("feature:channels", [], async () => {
 
     slider.innerHTML = arrowsHTML;
     slider.appendChild(carousel);
-
-    console.log('[channels] Slider created, DOM structure:', slider.outerHTML.substring(0, 200) + '...');
 
     return slider;
   }
@@ -205,32 +191,24 @@ BTFW.define("feature:channels", [], async () => {
     `;
 
     document.head.appendChild(style);
-    console.log('[channels] CSS injected');
   }
 
   async function fetchChannelData(jsonUrl) {
     try {
-      console.log('[channels] Attempting to fetch from:', jsonUrl);
       const response = await fetch(jsonUrl);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      console.log('[channels] Raw JSON data:', data);
 
       if (data.list && data.list.channels && Array.isArray(data.list.channels)) {
-        console.log('[channels] Found channels:', data.list.channels.length);
         return data.list.channels;
       } else if (data.channels && Array.isArray(data.channels)) {
-        console.log('[channels] Found channels (alt format):', data.channels.length);
         return data.channels;
       } else if (Array.isArray(data)) {
-        console.log('[channels] Found channels (array format):', data.length);
         return data;
       }
 
-      console.warn('[channels] Unexpected JSON structure:', data);
       return [];
     } catch (error) {
-      console.warn('[channels] Failed to fetch channel data:', error);
       return [];
     }
   }
@@ -311,7 +289,6 @@ BTFW.define("feature:channels", [], async () => {
 
     const videowrap = document.getElementById('videowrap');
     const leftpad = document.getElementById('btfw-leftpad');
-    const stack = document.getElementById('btfw-stack');
 
     let inserted = false;
 
@@ -332,45 +309,28 @@ BTFW.define("feature:channels", [], async () => {
     }
 
     if (!inserted) {
-      console.warn('[channels] Could not find proper insertion point');
       document.body.appendChild(slider);
     }
-
-    console.log('[channels] Slider inserted, DOM structure:', {
-      hasVideowrap: !!videowrap,
-      hasLeftpad: !!leftpad,
-      hasStack: !!stack,
-      insertedWhere: inserted ? 'leftpad' : 'body'
-    });
 
     setTimeout(() => setupCarouselControls(slider, channels), 200);
   }
 
   async function initializeChannels() {
-    console.log('[channels] Initializing...');
-    console.log('[channels] UI_ChannelList:', window.UI_ChannelList);
-    console.log('[channels] Channel_JSON:', window.Channel_JSON);
-    
     if (!isChannelListEnabled()) {
-      console.log('[channels] UI_ChannelList not enabled (must be "1")');
       return;
     }
 
     const jsonUrl = getChannelJSON();
     if (!jsonUrl) {
-      console.warn('[channels] Channel_JSON not provided');
       return;
     }
 
     const channels = await fetchChannelData(jsonUrl);
     if (channels.length === 0) {
-      console.warn('[channels] No channels found or failed to fetch');
       injectChannelCSS();
       injectChannelSlider([]);
       return;
     }
-
-    console.log(`[channels] Successfully loaded ${channels.length} channels`);
 
     injectChannelCSS();
     injectChannelSlider(channels);
