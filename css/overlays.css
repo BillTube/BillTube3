@@ -265,6 +265,26 @@
 .btfw-emote-img { max-width: 42px; max-height: 42px; }
 .btfw-emoji { font-size: 26px; line-height: 1; }
 
+#btfw-emotes-grid.btfw-emoji-grid--native {
+  font-variant-emoji: emoji;
+}
+
+#btfw-emotes-grid .btfw-emote-tile--emoji {
+  background: rgba(255,255,255,0.035);
+}
+
+#btfw-emotes-grid .btfw-emote-tile--emoji .btfw-emoji {
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", "Noto Emoji", sans-serif;
+  font-size: 30px;
+  transition: transform 0.14s ease;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));
+}
+
+#btfw-emotes-grid .btfw-emote-tile--emoji:hover .btfw-emoji,
+#btfw-emotes-grid .btfw-emote-tile--emoji.is-active .btfw-emoji {
+  transform: translateY(-1px) scale(1.04);
+}
+
 /* Compact on narrow chat columns */
 @media (max-width: 800px){ #btfw-emotes-grid { grid-template-columns: repeat(6, 1fr); } }
 @media (max-width: 560px){ #btfw-emotes-grid { grid-template-columns: repeat(5, 1fr); } }

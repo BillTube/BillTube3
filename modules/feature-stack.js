@@ -96,55 +96,105 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
   }
   
   function mergePlaylistControls() {
+    const controlsRow = document.getElementById("controlsrow");
     const rightControls = document.getElementById("rightcontrols");
     const plBar = document.getElementById("btfw-plbar");
     const playlistWrap = document.getElementById("playlistwrap");
     const queueContainer = document.getElementById("queuecontainer");
-    
-    // Find any floating controls row
+
+    // Find any floating controls row (legacy CyTube layout)
     const controlsRows = document.querySelectorAll(".btfw-controls-row");
-    
+
     // Find the main playlist container
     const mainContainer = playlistWrap || queueContainer;
     if (!mainContainer) return;
-    
+
     // Create or enhance the playlist bar
     let controlsBar = plBar;
     if (!controlsBar) {
       controlsBar = document.createElement("div");
       controlsBar.id = "btfw-plbar";
       controlsBar.className = "btfw-plbar";
+    } else {
+      controlsBar.classList.add("btfw-plbar");
     }
-    
-    // Style the controls bar nicely
-    controlsBar.style.cssText = `
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      padding: 8px 12px;
-      margin: 8px 0 6px 0;
-      background: linear-gradient(135deg, rgba(109, 77, 246, 0.08), rgba(139, 92, 246, 0.05));
-      border: 1px solid rgba(109, 77, 246, 0.15);
-      border-radius: 12px;
-      flex-wrap: wrap;
-    `;
-    
+
+    // Build a modern layout scaffold once
+    let layout = controlsBar.querySelector(".btfw-plbar__layout");
+    let primary; // search + playlist tools
+    let aside;   // playlist actions from rightcontrols
+    if (!layout) {
+      layout = document.createElement("div");
+      layout.className = "btfw-plbar__layout";
+
+      primary = document.createElement("div");
+      primary.className = "btfw-plbar__primary";
+
+      aside = document.createElement("div");
+      aside.className = "btfw-plbar__aside";
+
+      layout.append(primary, aside);
+
+      while (controlsBar.firstChild) {
+        primary.appendChild(controlsBar.firstChild);
+      }
+      controlsBar.appendChild(layout);
+
+      const searchBlock = primary.querySelector(".field.has-addons");
+      if (searchBlock) searchBlock.classList.add("btfw-plbar__search");
+
+      const countBadge = primary.querySelector("#btfw-pl-count");
+      if (countBadge) {
+        countBadge.classList.add("btfw-plbar__count");
+        aside.appendChild(countBadge);
+      }
+    } else {
+      primary = layout.querySelector(".btfw-plbar__primary") || layout;
+      aside = layout.querySelector(".btfw-plbar__aside") || layout;
+    }
+
+    // Ensure we have an actions cluster for playlist controls
+    let actionsCluster = controlsBar.querySelector(".btfw-plbar__actions");
+    if (!actionsCluster) {
+      actionsCluster = document.createElement("div");
+      actionsCluster.className = "btfw-plbar__actions";
+      (aside || controlsBar).appendChild(actionsCluster);
+    }
+
+    const styleActionButton = (btn) => {
+      if (!btn) return;
+      btn.classList.add("btfw-plbar__action-btn");
+      if (btn.tagName === "BUTTON" || btn.tagName === "A") {
+        btn.classList.add("button", "is-dark", "is-small");
+      } else if (btn.tagName === "INPUT") {
+        const type = (btn.type || "").toLowerCase();
+        if (type === "button" || type === "submit" || type === "reset") {
+          btn.classList.add("button", "is-dark", "is-small");
+        } else {
+          btn.classList.remove("button", "is-dark", "is-small");
+        }
+      }
+    };
+
     // Move rightcontrols buttons into the enhanced bar
     if (rightControls) {
-      const buttons = rightControls.querySelectorAll("button, .btn, input");
-      buttons.forEach(btn => {
-        btn.classList.add("button", "is-small", "is-dark");
-        btn.style.cssText += "border-radius: 8px; margin: 0 2px;";
-        controlsBar.appendChild(btn);
+      Array.from(rightControls.childNodes).forEach(node => {
+        if (!node || node.nodeType !== 1) return;
+        const el = node;
+        // Normalise Bootstrap control groups inside the modern cluster
+        el.classList.add("btfw-plbar__control");
+        actionsCluster.appendChild(el);
       });
+
+      actionsCluster.querySelectorAll("button, a.btn, input[type=button], input[type=submit], input[type=reset], select").forEach(styleActionButton);
+
       rightControls.remove();
     }
-    
+
     // Move any floating controls rows into the playlist container
-    controlsRows.forEach(controlsRow => {
-      if (controlsRow && !mainContainer.contains(controlsRow)) {
-        // Remove from wherever it is and place it at the bottom of playlist container
-        controlsRow.style.cssText += `
+    controlsRows.forEach(row => {
+      if (row && !mainContainer.contains(row)) {
+        row.style.cssText += `
           margin-top: 8px;
           position: relative !important;
           bottom: auto !important;
@@ -152,12 +202,17 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
           right: auto !important;
           width: auto !important;
         `;
-        controlsRow.remove();
-        mainContainer.appendChild(controlsRow);
+        row.remove();
+        mainContainer.appendChild(row);
         console.log('[stack] Moved floating controls row into playlist container');
       }
     });
-    
+
+    // Hide the legacy controls row if it no longer contains useful content
+    if (controlsRow && !controlsRow.querySelector("button, input, select, .btn, .dropdown")) {
+      controlsRow.style.display = "none";
+    }
+
     // Ensure the bar is at the top of the playlist container
     if (!mainContainer.contains(controlsBar)) {
       mainContainer.insertBefore(controlsBar, mainContainer.firstChild);

@@ -4,6 +4,7 @@ BTFW.define("feature:emoji-compat", [], async () => {
   const TW_VER = "14.0.2";
   const TW_JS  = `https://cdn.jsdelivr.net/npm/twemoji@${TW_VER}/dist/twemoji.min.js`;
   const TW_ASSETS_BASE = `https://cdn.jsdelivr.net/npm/twemoji@${TW_VER}/assets/`;
+  const SKIP_SELECTOR = "[data-twemoji-skip='true']";
 
   let enabled = false;
   let mo = null;
@@ -53,8 +54,21 @@ BTFW.define("feature:emoji-compat", [], async () => {
     });
   }
 
+  function shouldSkip(node){
+    if (!node) return false;
+    if (node.nodeType === 1) {
+      if (node.matches?.(SKIP_SELECTOR)) return true;
+      if (node.closest?.(SKIP_SELECTOR)) return true;
+    }
+    if (node.nodeType === 11) { // DocumentFragment
+      return Array.from(node.childNodes || []).every(child => shouldSkip(child));
+    }
+    return false;
+  }
+
   function parseNode(node){
     if (!window.twemoji || !enabled || !node) return;
+    if (shouldSkip(node)) return;
     window.twemoji.parse(node, {
       base: TW_ASSETS_BASE,
       folder: "svg",
@@ -92,7 +106,10 @@ BTFW.define("feature:emoji-compat", [], async () => {
 
   // Re-parse just the picker window when it renders/updates
   document.addEventListener("btfw:emotes:rendered", (e)=> {
-    if (enabled) parseNode(e.detail?.container || null);
+    const container = e.detail?.container || null;
+    if (enabled && container && !shouldSkip(container)) {
+      parseNode(container);
+    }
   });
 
   function boot(){ setEnabled(getEnabled()); }
