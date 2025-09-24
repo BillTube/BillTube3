@@ -7,6 +7,21 @@
 BTFW.define("feature:chat-avatars", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+  const AVATAR_KEY = "btfw:chat:avatars";
+
+  function loadMode(){
+    try {
+      const stored = localStorage.getItem(AVATAR_KEY);
+      if (stored === "off" || stored === "big" || stored === "small") return stored;
+    } catch(_) {}
+    return "small";
+  }
+
+  function saveMode(mode){
+    try { localStorage.setItem(AVATAR_KEY, mode); } catch(_){}
+  }
+
+  let currentMode = loadMode();
 
   // Try BillTube2-style: jQuery data('profile').image from userlist
   function getProfileImgFromUserlist(name){
@@ -50,6 +65,7 @@ BTFW.define("feature:chat-avatars", [], async () => {
   }
 
   function ensureAvatar(msgEl){
+    if (currentMode === "off") return;
     // find username
     const uEl = msgEl.querySelector(".username");
     if (!uEl) return;
@@ -79,6 +95,7 @@ BTFW.define("feature:chat-avatars", [], async () => {
     wrap.appendChild(img);
     // Insert avatarwrap right before username element
     uEl.parentNode.insertBefore(wrap, uEl);
+    msgEl.classList.add("btfw-has-avatar");
   }
 
   // Consecutive message compaction: if same user as previous message, hide avatar and reduce gap
@@ -90,7 +107,7 @@ BTFW.define("feature:chat-avatars", [], async () => {
     const avatar = msgEl.querySelector(".btfw-chat-avatarwrap");
     if (!name || !avatar) return;
 
-    const consecutive = (lastSender && lastSender === name);
+    const consecutive = currentMode !== "off" && lastSender && lastSender === name;
     msgEl.classList.toggle("btfw-compact", consecutive);
     avatar.style.display = consecutive ? "none" : "";
 
@@ -106,6 +123,10 @@ BTFW.define("feature:chat-avatars", [], async () => {
   }
 
   function reflowAll(){
+    if (currentMode === "off") {
+      removeAllAvatars();
+      return;
+    }
     lastSender = null;
     const buf = document.getElementById("messagebuffer");
     if (!buf) return;
@@ -113,7 +134,50 @@ BTFW.define("feature:chat-avatars", [], async () => {
     msgs.forEach(m => { ensureAvatar(m); compactIfConsecutive(m); });
   }
 
+  function removeAllAvatars(){
+    lastSender = null;
+    const buf = document.getElementById("messagebuffer");
+    if (!buf) return;
+    buf.querySelectorAll(".btfw-chat-avatarwrap").forEach(el => el.remove());
+    buf.querySelectorAll(".btfw-has-avatar").forEach(el => el.classList.remove("btfw-has-avatar", "btfw-compact"));
+  }
+
+  function applyMode(mode){
+    const chatwrap = document.getElementById("chatwrap");
+    if (chatwrap) {
+      chatwrap.classList.remove("btfw-avatars-off", "btfw-avatars-small", "btfw-avatars-big");
+      chatwrap.classList.add(`btfw-avatars-${mode}`);
+    }
+
+    const size = mode === "big" ? 40 : mode === "off" ? 0 : 28;
+    document.documentElement.style.setProperty("--btfw-avatar-size", `${size}px`);
+
+    if (size > 0) {
+      document.querySelectorAll("#messagebuffer .btfw-chat-avatar").forEach(img => {
+        img.width = size;
+        img.height = size;
+      });
+    }
+  }
+
+  function setMode(mode){
+    const normalized = (mode === "off" || mode === "big") ? mode : "small";
+    currentMode = normalized;
+    applyMode(normalized);
+    if (normalized === "off") {
+      removeAllAvatars();
+    } else {
+      reflowAll();
+    }
+    saveMode(normalized);
+  }
+
+  function getMode(){
+    return currentMode;
+  }
+
   function boot(){
+    applyMode(currentMode);
     reflowAll();
     const buf = document.getElementById("messagebuffer");
     if (buf && !buf._btfwAvMO){
@@ -132,5 +196,5 @@ BTFW.define("feature:chat-avatars", [], async () => {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
-  return { name:"feature:chat-avatars", reflow: reflowAll };
+  return { name:"feature:chat-avatars", reflow: reflowAll, setMode, getMode };
 });

@@ -120,6 +120,79 @@ function watchForStrayButtons(){
   const obs = new MutationObserver(() => normalizeChatActionButtons());
   obs.observe(document.documentElement, { childList:true, subtree:true });
 }
+
+  function locateUserlistItem(name){
+    if (!name) return null;
+    const direct = document.querySelector(`#userlist li[data-name="${CSS.escape(name)}"]`);
+    if (direct) return direct;
+    const candidates = document.querySelectorAll('#userlist li, #userlist .userlist_item, #userlist .user');
+    for (const el of candidates) {
+      const attr = (el.getAttribute && el.getAttribute('data-name')) || '';
+      const text = attr || (el.textContent || '');
+      if (!text) continue;
+      if (text.trim().replace(/:\s*$/, '').toLowerCase() === name.toLowerCase()) return el;
+    }
+    return null;
+  }
+
+  function wireChatUsernameContextMenu(){
+    const buf = document.getElementById('messagebuffer');
+    if (!buf || buf._btfwNameContext) return;
+    buf._btfwNameContext = true;
+
+    buf.addEventListener('click', (ev) => {
+      if (ev.button !== 0) return;
+      const target = ev.target.closest('.username');
+      if (!target) return;
+      const raw = (target.textContent || '').trim();
+      if (!raw) return;
+      const name = raw.replace(/:\s*$/, '');
+      if (!name) return;
+
+      const item = locateUserlistItem(name);
+      if (!item) return;
+
+      const rect = target.getBoundingClientRect();
+      const clientX = ev.clientX || rect.left + rect.width / 2;
+      const clientY = ev.clientY || rect.bottom + 6;
+
+      const menuEvent = new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX,
+        clientY
+      });
+
+      item.dispatchEvent(menuEvent);
+      ev.preventDefault();
+      ev.stopPropagation();
+    }, true);
+  }
+
+  function adoptNewMessageIndicator(){
+    const indicator = document.getElementById('newmessages-indicator');
+    const controls = document.querySelector('#chatwrap .btfw-controls-row');
+    if (!indicator || !controls) return;
+
+    indicator.classList.add('btfw-newmessages');
+    indicator.style.position = '';
+    indicator.style.left = '';
+    indicator.style.right = '';
+    indicator.style.bottom = '';
+    indicator.style.top = '';
+
+    let slot = document.querySelector('#chatwrap .btfw-newmessages-slot');
+    if (!slot) {
+      slot = document.createElement('div');
+      slot.className = 'btfw-newmessages-slot';
+      controls.parentNode?.insertBefore(slot, controls);
+    }
+
+    if (indicator.parentElement !== slot) {
+      slot.appendChild(indicator);
+    }
+  }
   function ensureUserlistPopover(){
     if ($("#btfw-userlist-pop")) return;
 
@@ -301,6 +374,8 @@ function watchForStrayButtons(){
       bottom.after(controls);
     }
     normalizeChatActionButtons();
+    wireChatUsernameContextMenu();
+    adoptNewMessageIndicator();
 
     document.dispatchEvent(new CustomEvent("btfw:chat:barsReady", {
       detail: {
@@ -398,6 +473,7 @@ function watchForStrayButtons(){
     new MutationObserver(()=>{
       ensureBars();
       adoptUserlistIntoPopover();
+      adoptNewMessageIndicator();
     }).observe(cw,{childList:true,subtree:true});
 
     const buf = $("#messagebuffer");
