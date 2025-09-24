@@ -369,6 +369,16 @@
 }
 #videowrap, #chatwrap{ float:none !important; }
 
+.btfw-motd-editrow {
+  margin: 8px 0 0;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+#motdwrap + .btfw-motd-editrow {
+  margin-top: 10px;
+}
+
 #btfw-theme-modal .btfw-range-control{
   display: flex;
   align-items: center;
