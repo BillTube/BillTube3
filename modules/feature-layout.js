@@ -14,6 +14,29 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   let isVertical = false;
   let mobileToggleEl = null;
 
+  function refreshVideoSizing(){
+    const wrap = document.getElementById("videowrap");
+    if (!wrap) return;
+
+    wrap.querySelectorAll("iframe, video").forEach(el => {
+      el.style.removeProperty("height");
+      el.style.removeProperty("width");
+      el.style.removeProperty("maxHeight");
+    });
+
+    const vjs = wrap.querySelector(".video-js");
+    if (vjs) {
+      const player = vjs.player || vjs.player_ || (window.videojs && (window.videojs.players?.[vjs.id] || window.videojs(vjs.id)));
+      if (player) {
+        try {
+          if (typeof player.trigger === "function") player.trigger("componentresize");
+          if (player.tech_ && typeof player.tech_.trigger === "function") player.tech_.trigger("resize");
+          if (typeof player.resize === "function") player.resize();
+        } catch (_) {}
+      }
+    }
+  }
+
   function getStoredChatSide(){
     try {
       const stored = localStorage.getItem(CHAT_SIDE_KEY);
@@ -212,6 +235,14 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
         setMobileStackOpen(false);
         restoreStackFromOverlay();
       }
+      refreshVideoSizing();
+      setTimeout(() => {
+        refreshVideoSizing();
+        try {
+          window.dispatchEvent(new Event("resize"));
+        } catch (_) {}
+      }, 60);
+      document.dispatchEvent(new CustomEvent("btfw:layout:orientation", { detail: { vertical: shouldVertical } }));
     } else {
       if (shouldVertical) {
         if (isMobileStackOpen()) moveStackToOverlay();
@@ -223,6 +254,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
 
     applyColumnTemplate();
     setTop();
+    if (!shouldVertical) refreshVideoSizing();
   }
   
   function setTop(){

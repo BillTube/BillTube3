@@ -18,52 +18,73 @@ BTFW.define("feature:channels", [], async () => {
   }
 
   function createChannelSlider(channels) {
-    const slider = document.createElement('div');
-    slider.className = 'slider btfw-channels';
+    const slider = document.createElement('section');
+    slider.className = 'btfw-channels';
     slider.id = 'btfw-channels';
-    slider.setAttribute('data-title', 'Channels');
+    slider.dataset.title = 'Featured Channels';
+
+    const prev = document.createElement('button');
+    prev.type = 'button';
+    prev.className = 'btfw-channels__arrow btfw-channels__arrow--prev';
+    prev.setAttribute('aria-label', 'Scroll featured channels left');
+    prev.innerHTML = '<span aria-hidden="true">‹</span>';
+
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.className = 'btfw-channels__arrow btfw-channels__arrow--next';
+    next.setAttribute('aria-label', 'Scroll featured channels right');
+    next.innerHTML = '<span aria-hidden="true">›</span>';
+
+    const viewport = document.createElement('div');
+    viewport.className = 'btfw-channels__viewport';
+    viewport.id = 'btfw-carousel';
+
+    const track = document.createElement('div');
+    track.className = 'btfw-channels__track';
+    viewport.appendChild(track);
 
     if (channels.length === 0) {
-      slider.innerHTML = `
-        <div class="carousel-inner">
-          <div class="no-channels">No channels available</div>
-        </div>
-      `;
-      return slider;
+      const empty = document.createElement('div');
+      empty.className = 'btfw-channels__empty';
+      empty.textContent = 'No channels available';
+      track.appendChild(empty);
+    } else {
+      channels.forEach((channel, index) => {
+        const item = document.createElement('article');
+        item.className = 'btfw-channels__item';
+        item.dataset.index = String(index);
+
+        const link = document.createElement('a');
+        link.href = channel.channel_url || '#';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'btfw-channels__link';
+        link.title = channel.title || channel.channel_url;
+
+        const media = document.createElement('div');
+        media.className = 'btfw-channels__media';
+        const img = document.createElement('img');
+        img.className = 'btfw-channels__thumb';
+        img.src = channel.image_url;
+        img.alt = channel.title || 'Channel thumbnail';
+        img.loading = 'lazy';
+        img.onerror = function(){ this.classList.add('is-missing'); };
+        media.appendChild(img);
+
+        const label = document.createElement('span');
+        label.className = 'btfw-channels__label';
+        label.textContent = channel.title || channel.channel_url || 'Channel';
+
+        link.appendChild(media);
+        link.appendChild(label);
+        item.appendChild(link);
+        track.appendChild(item);
+      });
     }
 
-    const arrowsHTML = `
-      <i id="btfw-left" class="arrow arrleft">‹</i>
-      <i id="btfw-right" class="arrow arrright">›</i>
-    `;
-
-    const carousel = document.createElement('div');
-    carousel.id = 'btfw-carousel';
-    carousel.className = 'carousel-inner';
-
-    channels.forEach((channel, index) => {
-      const item = document.createElement('div');
-      item.className = 'item';
-      item.setAttribute('data-index', index);
-      
-      const img = document.createElement('img');
-      img.src = channel.image_url;
-      img.className = 'kek';
-      img.alt = channel.title;
-      img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; display: block;';
-      img.onerror = function() { this.style.display = 'none'; };
-      
-      item.appendChild(img);
-      item.onclick = function(e) {
-        e.preventDefault();
-        window.open(channel.channel_url, '_blank');
-      };
-      
-      carousel.appendChild(item);
-    });
-
-    slider.innerHTML = arrowsHTML;
-    slider.appendChild(carousel);
+    slider.appendChild(prev);
+    slider.appendChild(viewport);
+    slider.appendChild(next);
 
     return slider;
   }
@@ -74,118 +95,170 @@ BTFW.define("feature:channels", [], async () => {
     const style = document.createElement('style');
     style.id = 'btfw-channels-css';
     style.textContent = `
-      .slider.btfw-channels {
+      .btfw-channels {
         position: relative;
-        margin: 10px 0;
-        background: rgba(20, 24, 34, 0.92);
+        margin-top: 10px;
+        border-radius: 14px;
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        overflow: hidden;
-        height: 120px;
-        z-index: 1;
-        width: 100%;
-        display: block !important;
-      }
-      
-      .carousel-inner {
-        display: flex !important;
-        transition: transform 0.3s ease;
-        height: 100%;
+        background: linear-gradient(135deg, rgba(16, 20, 30, 0.92), rgba(20, 28, 42, 0.92));
+        padding: 18px 52px;
+        display: flex;
         align-items: center;
-        padding: 10px;
-        gap: 12px;
-        overflow: hidden;
+        gap: 14px;
         width: 100%;
+        box-shadow: 0 20px 36px rgba(4, 8, 16, 0.45);
       }
-      
-      .no-channels {
-        color: rgba(255, 255, 255, 0.6);
-        text-align: center;
-        width: 100%;
-        padding: 20px;
-        font-size: 14px;
-      }
-      
-      .item {
-        flex: 0 0 140px !important;
-        height: 80px !important;
-        cursor: pointer !important;
-        border-radius: 8px;
+
+      .btfw-channels__viewport {
+        flex: 1 1 auto;
         overflow: hidden;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.02);
-        display: block !important;
-        position: relative;
+        touch-action: pan-y;
       }
-      
-      .item:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 4px 12px rgba(109, 77, 246, 0.15) !important;
-        border-color: rgba(109, 77, 246, 0.4) !important;
+
+      .btfw-channels__track {
+        display: flex;
+        gap: 16px;
+        transition: transform 0.3s ease;
+        will-change: transform;
       }
-      
-      .item img.kek {
-        width: 100% !important;
-        height: 100% !important;
-        object-fit: cover !important;
-        display: block !important;
-        transition: transform 0.2s ease;
-        border: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
+
+      .btfw-channels__item {
+        flex: 0 0 210px;
       }
-      
-      .item:hover img.kek {
-        transform: scale(1.05) !important;
-      }
-      
-      .arrow {
-        position: absolute !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
-        font-size: 24px !important;
-        color: #fff !important;
-        background: rgba(109, 77, 246, 0.8) !important;
-        width: 40px !important;
-        height: 40px !important;
-        border-radius: 50% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        cursor: pointer !important;
-        z-index: 10 !important;
-        transition: all 0.2s ease;
+
+      .btfw-channels__link {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        text-decoration: none;
+        color: inherit;
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        overflow: hidden;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        cursor: grab;
         user-select: none;
-        border: none !important;
-        line-height: 1 !important;
       }
-      
-      .arrow:hover {
-        background: rgba(109, 77, 246, 1) !important;
-        transform: translateY(-50%) scale(1.1) !important;
+
+      .btfw-channels__link:hover,
+      .btfw-channels__link:focus {
+        transform: translateY(-4px);
+        border-color: rgba(109, 77, 246, 0.6);
+        box-shadow: 0 16px 30px rgba(109, 77, 246, 0.32);
       }
-      
-      .arrleft {
-        left: 10px !important;
+
+      .btfw-channels__media {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        background: rgba(12,16,24,0.9);
       }
-      
-      .arrright {
-        right: 10px !important;
+
+      .btfw-channels__thumb {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transition: transform 0.2s ease;
       }
-      
+
+      .btfw-channels__thumb.is-missing {
+        opacity: 0.4;
+        object-fit: contain;
+      }
+
+      .btfw-channels__link:hover .btfw-channels__thumb {
+        transform: scale(1.05);
+      }
+
+      .btfw-channels__label {
+        padding: 10px 12px 14px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        font-size: 14px;
+        color: rgba(232, 236, 248, 0.92);
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+
+      .btfw-channels__arrow {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        border: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.12);
+        color: #fff;
+        font-size: 20px;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+
+      .btfw-channels__arrow:hover:not([disabled]) {
+        background: rgba(109, 77, 246, 0.9);
+        transform: translateY(-2px);
+      }
+
+      .btfw-channels__arrow[disabled] {
+        opacity: 0.4;
+        cursor: default;
+        pointer-events: none;
+      }
+
+      .btfw-channels--dragging .btfw-channels__link {
+        cursor: grabbing;
+      }
+
+      .btfw-channels__empty {
+        padding: 24px;
+        color: rgba(235, 238, 247, 0.7);
+        font-size: 15px;
+        width: 100%;
+        text-align: center;
+      }
+
+      .btfw-channels--no-scroll .btfw-channels__arrow {
+        display: none;
+      }
+
+      @media (max-width: 960px) {
+        .btfw-channels {
+          padding: 16px 44px;
+        }
+        .btfw-channels__item {
+          flex-basis: 190px;
+        }
+      }
+
       @media (max-width: 768px) {
-        .item {
-          flex: 0 0 120px !important;
-          height: 70px !important;
+        .btfw-channels {
+          padding: 14px 38px;
+          gap: 10px;
         }
-        .slider.btfw-channels {
-          height: 100px;
+        .btfw-channels__item {
+          flex-basis: 170px;
         }
-        .arrow {
-          width: 35px !important;
-          height: 35px !important;
-          font-size: 20px !important;
+        .btfw-channels__label {
+          font-size: 13px;
+        }
+        .btfw-channels__arrow {
+          width: 34px;
+          height: 34px;
+          font-size: 18px;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .btfw-channels {
+          padding: 12px 32px;
+        }
+        .btfw-channels__item {
+          flex-basis: 150px;
         }
       }
     `;
@@ -214,76 +287,198 @@ BTFW.define("feature:channels", [], async () => {
   }
 
   function setupCarouselControls(slider, channels) {
-    if (channels.length === 0) return;
-    
-    const carousel = slider.querySelector('#btfw-carousel');
-    const leftBtn = slider.querySelector('#btfw-left');
-    const rightBtn = slider.querySelector('#btfw-right');
-    
-    let currentIndex = 0;
-    const itemWidth = 140 + 12;
-    const visibleItems = Math.floor((slider.offsetWidth - 80) / itemWidth);
-    const maxIndex = Math.max(0, channels.length - visibleItems);
+    if (!slider || slider._btfwCarouselWired) return;
+    if (!channels || channels.length === 0) {
+      slider.classList.add('btfw-channels--no-scroll');
+      return;
+    }
+    slider._btfwCarouselWired = true;
 
-    if (maxIndex === 0) {
-      leftBtn.style.display = 'none';
-      rightBtn.style.display = 'none';
+    const viewport = slider.querySelector('.btfw-channels__viewport');
+    const track = slider.querySelector('.btfw-channels__track');
+    const leftBtn = slider.querySelector('.btfw-channels__arrow--prev');
+    const rightBtn = slider.querySelector('.btfw-channels__arrow--next');
+
+    if (!viewport || !track) return;
+
+    const items = Array.from(track.children);
+    if (!items.length) {
+      slider.classList.add('btfw-channels--no-scroll');
       return;
     }
 
-    function updateCarousel() {
-      const offset = currentIndex * itemWidth;
-      carousel.style.transform = `translateX(-${offset}px)`;
-      
-      leftBtn.style.opacity = currentIndex > 0 ? '1' : '0.5';
-      rightBtn.style.opacity = currentIndex < maxIndex ? '1' : '0.5';
+    let currentIndex = 0;
+    let itemWidth = 0;
+    let gap = 0;
+    let autoTimer = null;
+
+    const cleanup = () => {
+      if (slider._btfwCleanup) slider._btfwCleanup();
+      slider._btfwCleanup = () => {
+        if (autoTimer) clearInterval(autoTimer);
+        window.removeEventListener('resize', measure);
+      };
+    };
+
+    const stopAuto = () => {
+      if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    };
+
+    const startAuto = () => {
+      stopAuto();
+      if (channels.length <= 1) return;
+      autoTimer = setInterval(() => {
+        const max = getMaxIndex();
+        if (max <= 0) return;
+        currentIndex = currentIndex >= max ? 0 : currentIndex + 1;
+        scrollToIndex(currentIndex);
+      }, 48000);
+    };
+
+    function measure(){
+      const first = items.find(el => el.getBoundingClientRect().width > 0);
+      if (!first) {
+        itemWidth = 0;
+        gap = 0;
+        return;
+      }
+      const rect = first.getBoundingClientRect();
+      itemWidth = rect.width;
+      const style = window.getComputedStyle(track);
+      const parsedGap = parseFloat(style.columnGap || style.gap || '0');
+      gap = Number.isFinite(parsedGap) ? parsedGap : 0;
+      updateArrows();
     }
 
-    rightBtn.addEventListener('click', () => {
-      if (currentIndex < maxIndex) {
-        currentIndex++;
-        updateCarousel();
+    function getMaxIndex(){
+      if (!itemWidth) return 0;
+      const visible = Math.max(1, Math.floor((viewport.clientWidth + gap) / (itemWidth + gap)));
+      return Math.max(0, items.length - visible);
+    }
+
+    function updateArrows(){
+      const max = getMaxIndex();
+      if (leftBtn) leftBtn.disabled = currentIndex <= 0;
+      if (rightBtn) rightBtn.disabled = currentIndex >= max;
+      slider.classList.toggle('btfw-channels--no-scroll', max <= 0);
+    }
+
+    function scrollToIndex(index, behavior = 'smooth'){
+      const max = getMaxIndex();
+      currentIndex = Math.min(Math.max(index, 0), max);
+      viewport.scrollTo({ left: (itemWidth + gap) * currentIndex, behavior });
+      updateArrows();
+    }
+
+    if (leftBtn) {
+      leftBtn.addEventListener('click', () => {
+        stopAuto();
+        scrollToIndex(currentIndex - 1);
+        startAuto();
+      });
+    }
+
+    if (rightBtn) {
+      rightBtn.addEventListener('click', () => {
+        stopAuto();
+        scrollToIndex(currentIndex + 1);
+        startAuto();
+      });
+    }
+
+    viewport.addEventListener('scroll', () => {
+      if (!itemWidth) return;
+      const newIndex = Math.round(viewport.scrollLeft / (itemWidth + gap));
+      if (!Number.isNaN(newIndex)) {
+        currentIndex = newIndex;
+        updateArrows();
       }
     });
 
-    leftBtn.addEventListener('click', () => {
-      if (currentIndex > 0) {
-        currentIndex--;
-        updateCarousel();
+    let pointerActive = false;
+    let pointerId = null;
+    let startX = 0;
+    let startScroll = 0;
+
+    function releasePointer(){
+      if (!pointerActive) return;
+      pointerActive = false;
+      slider.classList.remove('btfw-channels--dragging');
+      if (pointerId !== null) {
+        try { viewport.releasePointerCapture(pointerId); } catch(_) {}
       }
+      pointerId = null;
+      startAuto();
+    }
+
+    viewport.addEventListener('pointerdown', (e) => {
+      pointerActive = true;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startScroll = viewport.scrollLeft;
+      slider.classList.add('btfw-channels--dragging');
+      viewport.setPointerCapture(e.pointerId);
+      stopAuto();
     });
 
-    let autoplayInterval = setInterval(() => {
-      if (currentIndex < maxIndex) {
-        currentIndex++;
-      } else {
-        currentIndex = 0;
-      }
-      updateCarousel();
-    }, 48000);
-
-    slider.addEventListener('mouseenter', () => {
-      clearInterval(autoplayInterval);
+    viewport.addEventListener('pointermove', (e) => {
+      if (!pointerActive || e.pointerId !== pointerId) return;
+      e.preventDefault();
+      const delta = e.clientX - startX;
+      viewport.scrollLeft = startScroll - delta;
     });
 
-    slider.addEventListener('mouseleave', () => {
-      clearInterval(autoplayInterval);
-      autoplayInterval = setInterval(() => {
-        if (currentIndex < maxIndex) {
-          currentIndex++;
-        } else {
-          currentIndex = 0;
-        }
-        updateCarousel();
-      }, 48000);
+    viewport.addEventListener('pointerup', releasePointer);
+    viewport.addEventListener('pointercancel', releasePointer);
+    viewport.addEventListener('pointerleave', () => {
+      if (!pointerActive) return;
+      releasePointer();
     });
 
-    setTimeout(updateCarousel, 100);
+    slider.addEventListener('mouseenter', stopAuto);
+    slider.addEventListener('mouseleave', startAuto);
+
+    window.addEventListener('resize', measure);
+    measure();
+    requestAnimationFrame(measure);
+    startAuto();
+
+    slider._btfwRecalc = () => {
+      measure();
+      updateArrows();
+    };
+
+    cleanup();
+  }
+
+  function placeSliderInStack(slider){
+    const stackBody = document.querySelector('#btfw-stack .btfw-stack-item[data-bind="channels-group"] .btfw-stack-item__body');
+    if (!stackBody) return false;
+    if (slider.parentElement !== stackBody) stackBody.appendChild(slider);
+    slider._btfwRecalc && slider._btfwRecalc();
+    return true;
+  }
+
+  function scheduleStackPlacement(slider){
+    if (placeSliderInStack(slider)) return;
+    let attempts = 0;
+    const iv = setInterval(() => {
+      attempts += 1;
+      if (placeSliderInStack(slider) || attempts > 10) clearInterval(iv);
+    }, 400);
   }
 
   function injectChannelSlider(channels) {
     const existing = document.getElementById('btfw-channels');
-    if (existing) existing.remove();
+    if (existing) {
+      if (typeof existing._btfwCleanup === 'function') {
+        try { existing._btfwCleanup(); } catch(_) {}
+      }
+      existing.remove();
+    }
 
     const slider = createChannelSlider(channels);
 
@@ -292,19 +487,13 @@ BTFW.define("feature:channels", [], async () => {
 
     let inserted = false;
 
-    if (videowrap && leftpad && leftpad.contains(videowrap)) {
-      if (videowrap.nextElementSibling) {
-        leftpad.insertBefore(slider, videowrap.nextElementSibling);
-      } else {
-        leftpad.appendChild(slider);
-      }
+    if (placeSliderInStack(slider)) {
+      inserted = true;
+    } else if (videowrap && leftpad && leftpad.contains(videowrap)) {
+      leftpad.insertBefore(slider, videowrap.nextSibling);
       inserted = true;
     } else if (leftpad) {
-      if (leftpad.firstElementChild) {
-        leftpad.insertBefore(slider, leftpad.firstElementChild);
-      } else {
-        leftpad.appendChild(slider);
-      }
+      leftpad.appendChild(slider);
       inserted = true;
     }
 
@@ -312,7 +501,11 @@ BTFW.define("feature:channels", [], async () => {
       document.body.appendChild(slider);
     }
 
-    setTimeout(() => setupCarouselControls(slider, channels), 200);
+    scheduleStackPlacement(slider);
+    setTimeout(() => {
+      setupCarouselControls(slider, channels);
+      slider._btfwRecalc && slider._btfwRecalc();
+    }, 150);
   }
 
   async function initializeChannels() {

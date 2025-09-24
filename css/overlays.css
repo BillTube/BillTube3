@@ -38,6 +38,7 @@
   border: 0 !important;
   box-shadow: none !important;
   min-height:300px;
+  overflow: visible !important;
 }
 #btfw-userlist-pop{
   position: fixed !important;
@@ -50,7 +51,22 @@
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#btfw-userlist-pop .btfw-popbody{
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 12px 10px 16px;
+  margin: 0;
+}
+
+#btfw-userlist-pop .btfw-popbody #userlist{
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
 }
 
 /* The close “X” inside the pop head uses .btfw-popclose */

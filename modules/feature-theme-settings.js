@@ -23,7 +23,9 @@ BTFW.define("feature:themeSettings", [], async () => {
   // apply CSS variables immediately (used by chat/emote sizing)
   function applyChatTextPx(px){
     const wrap = $("#chatwrap");
-    if (wrap) wrap.style.setProperty("--btfw-chat-text", `${px}px`);
+    if (!wrap) return;
+    const clamped = Math.min(Math.max(Number(px) || 14, 10), 20);
+    wrap.style.setProperty("--btfw-chat-text", `${clamped}px`);
   }
   function applyEmoteSize(size){
     const px = size==="small"?100 : size==="big"?170 : 130; // medium default
@@ -101,16 +103,11 @@ BTFW.define("feature:themeSettings", [], async () => {
 
                 <div class="field">
                   <label class="label">Chat text size</label>
-                  <div class="control">
-                    <div class="select is-small">
-                      <select id="btfw-chat-textsize">
-                        <option value="12">12 px</option>
-                        <option value="14">14 px</option>
-                        <option value="16">16 px</option>
-                        <option value="18">18 px</option>
-                      </select>
-                    </div>
+                  <div class="control btfw-range-control">
+                    <input type="range" id="btfw-chat-textsize" min="10" max="20" step="1">
+                    <span class="btfw-range-value" id="btfw-chat-textsize-value">14px</span>
                   </div>
+                  <p class="help">Adjusts the chat font between 10&nbsp;px and 20&nbsp;px.</p>
                 </div>
 
                 <div class="field">
@@ -195,6 +192,14 @@ BTFW.define("feature:themeSettings", [], async () => {
     // Apply button
     $("#btfw-ts-apply", m).addEventListener("click", applyAndPersist);
 
+    const chatTextSlider = $("#btfw-chat-textsize", m);
+    const chatTextValue  = $("#btfw-chat-textsize-value", m);
+    if (chatTextSlider && chatTextValue) {
+      const updateLabel = (val) => { chatTextValue.textContent = `${val}px`; };
+      chatTextSlider.addEventListener("input", () => updateLabel(chatTextSlider.value || "14"));
+      updateLabel(chatTextSlider.value || "14");
+    }
+
     // Open via event
     document.addEventListener("btfw:openThemeSettings", open);
 
@@ -259,7 +264,11 @@ BTFW.define("feature:themeSettings", [], async () => {
     const avNow = avatars?.getMode ? avatars.getMode() : get(TS_KEYS.avatarsMode,"small");
     $$('input[name="btfw-avatars-mode"]').forEach(i => i.checked = (i.value === avNow));
 
-    $("#btfw-chat-textsize").value = get(TS_KEYS.chatTextPx, "14");
+    const chatPxNow = get(TS_KEYS.chatTextPx, "14");
+    const chatSlider = $("#btfw-chat-textsize");
+    if (chatSlider) chatSlider.value = chatPxNow;
+    const chatLabel = $("#btfw-chat-textsize-value");
+    if (chatLabel) chatLabel.textContent = `${chatPxNow}px`;
     $("#btfw-emote-size").value   = get(TS_KEYS.emoteSize,   "medium");
     $("#btfw-gif-autoplay").checked = get(TS_KEYS.gifAutoplay, "1") === "1";
     $("#btfw-pip-toggle").checked   = get(TS_KEYS.pipEnabled,  "0") === "1";
