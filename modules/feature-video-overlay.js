@@ -1,4 +1,4 @@
-BTFW.define("feature:videoOverlay", [], async () => {
+BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
   const $ = (selector, root = document) => root.querySelector(selector);
 
   const CONTROL_SELECTORS = [
@@ -26,9 +26,9 @@ BTFW.define("feature:videoOverlay", [], async () => {
 
   let refreshClickCount = 0;
   let refreshCooldownUntil = 0;
-  let isAmbientActive = false;
-  let ambientScript = null;
+  let ambientModulePromise = null;
   let airplayListenerAttached = false;
+  let trackedAirplayVideo = null;
 
   function ensureCSS() {
     if ($("#btfw-vo-css")) return;
@@ -44,10 +44,11 @@ BTFW.define("feature:videoOverlay", [], async () => {
         transition: opacity 0.3s ease;
         background: linear-gradient(
           to bottom,
-          rgba(0, 0, 0, 0.3) 0%,
-          transparent 30%,
-          transparent 70%,
-          rgba(0, 0, 0, 0.3) 100%
+          rgba(0, 0, 0, 0.45) 0%,
+          rgba(0, 0, 0, 0.35) 12%,
+          rgba(0, 0, 0, 0.18) 32%,
+          rgba(0, 0, 0, 0.08) 55%,
+          transparent 75%
         );
       }
 
@@ -197,6 +198,99 @@ BTFW.define("feature:videoOverlay", [], async () => {
     return overlay;
   }
 
+  function ensureAmbientModule() {
+    if (ambientModulePromise) return ambientModulePromise;
+    if (!window.BTFW || typeof BTFW.init !== "function") {
+      return Promise.reject(new Error("Ambient module unavailable"));
+    }
+    ambientModulePromise = BTFW.init("feature:ambient").catch((err) => {
+      ambientModulePromise = null;
+      throw err;
+    });
+    return ambientModulePromise;
+  }
+
+  function updateAmbientButton(active) {
+    const btn = $("#btfw-ambient");
+    if (!btn) return;
+    btn.classList.toggle("active", !!active);
+  }
+
+  function syncAmbientButton() {
+    const btn = $("#btfw-ambient");
+    if (!btn) return;
+    ensureAmbientModule()
+      .then((ambient) => {
+        updateAmbientButton(ambient.isActive());
+      })
+      .catch(() => {});
+  }
+
+  document.addEventListener("btfw:ambient:state", (event) => {
+    updateAmbientButton(event?.detail?.active);
+  });
+
+  function getAirplayCandidate() {
+    return document.querySelector("#ytapiplayer video, video");
+  }
+
+  function hasAirplaySupport(video = getAirplayCandidate()) {
+    if (!video) return false;
+    return (
+      typeof window.WebKitPlaybackTargetAvailabilityEvent !== "undefined" ||
+      typeof video.webkitShowPlaybackTargetPicker === "function"
+    );
+  }
+
+  function unbindAirplayAvailability() {
+    if (!trackedAirplayVideo) return;
+    const handler = trackedAirplayVideo._btfwAirplayHandler;
+    if (handler) {
+      try {
+        trackedAirplayVideo.removeEventListener("webkitplaybacktargetavailabilitychanged", handler);
+      } catch (_) {}
+      delete trackedAirplayVideo._btfwAirplayHandler;
+    }
+    trackedAirplayVideo = null;
+  }
+
+  function bindAirplayAvailability(video) {
+    if (!video || typeof video.addEventListener !== "function") {
+      unbindAirplayAvailability();
+      return;
+    }
+    if (trackedAirplayVideo === video) return;
+
+    unbindAirplayAvailability();
+
+    const handler = (event) => {
+      const available = !event || event.availability === "available";
+      const btn = $("#btfw-airplay");
+      if (!btn) return;
+      btn.style.display = available ? "" : "none";
+    };
+
+    try {
+      video.addEventListener("webkitplaybacktargetavailabilitychanged", handler);
+      video._btfwAirplayHandler = handler;
+      trackedAirplayVideo = video;
+    } catch (_) {}
+  }
+
+  function updateAirplayButtonVisibility() {
+    const btn = $("#btfw-airplay");
+    if (!btn) return;
+    const video = getAirplayCandidate();
+    const supported = hasAirplaySupport(video);
+    if (!supported) {
+      btn.style.display = "none";
+      unbindAirplayAvailability();
+      return;
+    }
+    btn.style.display = "";
+    bindAirplayAvailability(video);
+  }
+
   function setupHoverEffects(videowrap, overlay) {
     if (overlay._hoverSetup) return;
     overlay._hoverSetup = true;
@@ -258,6 +352,9 @@ BTFW.define("feature:videoOverlay", [], async () => {
         bar.appendChild(btn);
       }
     });
+
+    syncAmbientButton();
+    updateAirplayButtonVisibility();
   }
 
   function adoptNativeControls(bar) {
@@ -377,56 +474,34 @@ BTFW.define("feature:videoOverlay", [], async () => {
   }
 
   async function toggleAmbient() {
-    if (!ambientScript) {
-      try {
-        showNotification("Loading ambient mode...", "info");
-        await loadAmbientScript();
-      } catch (e) {
-        showNotification("Failed to load ambient mode", "error");
-        return;
-      }
-    }
-
-    isAmbientActive = !isAmbientActive;
-
     try {
-      if (window.toggleAmbient) {
-        window.toggleAmbient();
-      } else if (window.ambientToggle) {
-        window.ambientToggle();
+      const ambient = await ensureAmbientModule();
+      const enabling = !ambient.isActive();
+      const active = await ambient.toggle();
+
+      if (active) {
+        try {
+          ambient.refresh();
+        } catch (_) {}
+      }
+
+      updateAmbientButton(active);
+
+      if (active) {
+        showNotification("Ambient mode enabled", "info");
+      } else if (enabling) {
+        showNotification("Unable to enable ambient mode", "error");
+      } else {
+        showNotification("Ambient mode disabled", "info");
       }
     } catch (e) {
       console.warn("[video-overlay] Ambient toggle failed:", e);
+      showNotification("Failed to toggle ambient mode", "error");
     }
-
-    const btn = $("#btfw-ambient");
-    if (btn) {
-      btn.classList.toggle("active", isAmbientActive);
-    }
-
-    showNotification(isAmbientActive ? "Ambient mode enabled" : "Ambient mode disabled", "info");
-  }
-
-  function loadAmbientScript() {
-    return new Promise((resolve, reject) => {
-      if (ambientScript) {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement("script");
-      script.src = "https://billtube.github.io/BillTube2/BillTube_Ambient.js";
-      script.onload = () => {
-        ambientScript = script;
-        resolve();
-      };
-      script.onerror = () => reject(new Error("Failed to load ambient script"));
-      document.head.appendChild(script);
-    });
   }
 
   function applyAirplayAttributes(video, showPicker = true) {
-    if (!video) return false;
+    if (!video || !hasAirplaySupport(video)) return false;
     video.setAttribute("airplay", "allow");
     video.setAttribute("x-webkit-airplay", "allow");
     if (showPicker && typeof video.webkitShowPlaybackTargetPicker === "function") {
@@ -436,27 +511,43 @@ BTFW.define("feature:videoOverlay", [], async () => {
         console.warn("[video-overlay] AirPlay picker failed:", err);
       }
     }
+    updateAirplayButtonVisibility();
     return true;
   }
 
   function attachAirplayListener() {
     if (airplayListenerAttached || !window.socket) return;
     airplayListenerAttached = true;
-    socket.on("changeMedia", () => {
-      setTimeout(() => {
-        applyAirplayAttributes(document.querySelector("#ytapiplayer video"), false);
-      }, 1000);
-    });
+    try {
+      socket.on("changeMedia", () => {
+        setTimeout(() => {
+          const video = getAirplayCandidate();
+          if (video) {
+            applyAirplayAttributes(video, false);
+            bindAirplayAvailability(video);
+          }
+          updateAirplayButtonVisibility();
+        }, 1000);
+      });
+    } catch (err) {
+      console.warn("[video-overlay] Failed to attach AirPlay listener:", err);
+    }
   }
 
   function enableAirplay() {
-    const video = document.querySelector("#ytapiplayer video, #ytapiplayer");
+    const video = getAirplayCandidate();
+    if (!hasAirplaySupport(video)) {
+      updateAirplayButtonVisibility();
+      showNotification("AirPlay not available", "warning");
+      return false;
+    }
     if (applyAirplayAttributes(video)) {
       showNotification("AirPlay enabled", "success");
       attachAirplayListener();
-    } else {
-      showNotification("AirPlay not available", "warning");
+      return true;
     }
+    showNotification("AirPlay not available", "warning");
+    return false;
   }
 
   function showNotification(message, type = "info") {
