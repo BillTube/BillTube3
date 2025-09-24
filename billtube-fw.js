@@ -76,6 +76,7 @@ function load(src){
       "modules/feature-chat-timestamps.js",
       "modules/feature-chat-ignore.js",
       "modules/feature-gifs.js",
+      "modules/feature-ambient.js",
       "modules/feature-video-overlay.js",
       "modules/feature-pip.js",
       "modules/feature-notify.js",
