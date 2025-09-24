@@ -12,7 +12,6 @@
   --btfw-chat-min: 320px;
   --btfw-chat-max: 30vw;
   --btfw-split-width: 8px;
-  --btfw-vertical-video: 40vh;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -74,51 +73,57 @@
   grid-template-areas:
     "video"
     "chat";
-  grid-template-rows: var(--btfw-vertical-video) 1fr;
+  grid-template-rows: auto 1fr;
   grid-row-gap: var(--btfw-gap);
-  min-height: 0;
-  height: calc(100vh - var(--btfw-top) - var(--btfw-gap));
+  min-height: calc(100vh - var(--btfw-top) - var(--btfw-gap));
+  height: auto;
+  align-content: start;
 }
 
 #btfw-grid.btfw-grid--vertical #btfw-vsplit{ display:none; }
 
 #btfw-grid.btfw-grid--vertical #btfw-leftpad{
-  min-height: 220px;
-  max-height: var(--btfw-vertical-video);
-  height: var(--btfw-vertical-video);
+  min-height: 0;
+  height: auto;
+  max-height: none;
   position: relative;
 }
 
 #btfw-grid.btfw-grid--vertical #videowrap{
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
+  flex: 0 0 auto;
 }
 
-#btfw-grid.btfw-grid--vertical #videowrap iframe{
-  width: 100%;
-  height: 100%;
-  aspect-ratio: unset;
+#btfw-grid.btfw-grid--vertical #videowrap iframe,
+#btfw-grid.btfw-grid--vertical #videowrap video{
+  height: auto;
 }
 
 #btfw-grid.btfw-grid--vertical #btfw-chatcol{
   position: relative;
   top: 0;
-  height: 100%;
+  height: auto;
   min-height: 0;
 }
 
 #btfw-grid.btfw-grid--vertical #chatwrap{
   flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
+  height: auto;
 }
 
 /* ---------- Content Stack under video ---------- */
-#btfw-stack{ 
-  display:block; 
+#btfw-stack{
+  display:block;
   flex: 1; /* Take remaining space in leftpad */
   min-height: 0; /* Allow shrinking */
+}
+#btfw-stack.btfw-stack--in-chat{
+  flex: 0 0 auto;
+  width: 100%;
+  margin-top: var(--btfw-gap);
+}
+#btfw-stack.btfw-stack--in-chat .btfw-stack-list{
+  margin-top: var(--btfw-gap);
 }
 #btfw-stack .btfw-stack-header{
   display:flex; align-items:center; justify-content:space-between;
