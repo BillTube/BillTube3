@@ -332,9 +332,50 @@
 /* Chat text size is controlled by a CSS var set by Theme Settings */
 #messagebuffer { font-size: var(--btfw-chat-text, 14px); line-height: 1.35; }
 
+#chatwrap .btfw-newmessages-slot{
+  display: flex;
+  justify-content: center;
+  margin: 6px 0;
+}
+
+#chatwrap .btfw-newmessages-slot #newmessages-indicator{
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(33, 43, 66, 0.95), rgba(25, 31, 49, 0.95));
+  border: 1px solid rgba(109, 77, 246, 0.4);
+  color: #f3f6ff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+#chatwrap .btfw-newmessages-slot #newmessages-indicator:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(109, 77, 246, 0.35);
+}
+
+#chatwrap .btfw-newmessages-slot #newmessages-indicator .glyphicon{
+  font-size: 12px;
+}
+
+#chatwrap .btfw-newmessages-slot #newmessages-indicator.hidden{
+  display: none !important;
+}
+
 /* ===== Chat Avatars (generic for chat-msg-* roots) ===== */
 
 #chatwrap.btfw-avatars-off  .btfw-chat-avatar { display: none !important; }
+#chatwrap.btfw-avatars-off  .btfw-chat-avatarwrap { display: none !important; }
 #chatwrap.btfw-avatars-small .btfw-chat-avatar { width: 28px; height: 28px; border-radius: 8px; }
 #chatwrap.btfw-avatars-big   .btfw-chat-avatar { width: 40px; height: 40px; border-radius: 10px; }
 
