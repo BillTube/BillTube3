@@ -197,14 +197,45 @@ function watchForStrayButtons(){
     if (!top) {
       top = document.createElement("div");
       top.className = "btfw-chat-topbar";
-      top.innerHTML = '<div class="btfw-chat-title" id="btfw-nowplaying-slot"></div>';
+      top.innerHTML = `
+        <div class="btfw-chat-topbar-left">
+          <div class="btfw-chat-title" id="btfw-nowplaying-slot"></div>
+        </div>
+        <div class="btfw-chat-topbar-actions" id="btfw-chat-topbar-actions"></div>
+      `;
       cw.prepend(top);
     }
-    if (!top.querySelector("#btfw-nowplaying-slot")) {
+
+    let left = top.querySelector(".btfw-chat-topbar-left");
+    if (!left) {
+      left = document.createElement("div");
+      left.className = "btfw-chat-topbar-left";
+      top.prepend(left);
+    }
+
+    if (!left.querySelector("#btfw-nowplaying-slot")) {
       const slot = document.createElement("div");
       slot.id = "btfw-nowplaying-slot";
       slot.className = "btfw-chat-title";
-      top.appendChild(slot);
+      left.appendChild(slot);
+    }
+
+    let topActions = top.querySelector("#btfw-chat-topbar-actions");
+    if (!topActions) {
+      topActions = document.createElement("div");
+      topActions.id = "btfw-chat-topbar-actions";
+      topActions.className = "btfw-chat-topbar-actions";
+      top.appendChild(topActions);
+    }
+
+    if (!topActions.querySelector("#btfw-mobile-modules-toggle")) {
+      const btn = document.createElement("button");
+      btn.id = "btfw-mobile-modules-toggle";
+      btn.className = "button is-dark is-small btfw-chatbtn";
+      btn.title = "Modules";
+      btn.setAttribute("aria-label", "Toggle modules stack");
+      btn.innerHTML = '<i class="fa fa-bars"></i>';
+      topActions.appendChild(btn);
     }
 
     // Bottom bar + actions
@@ -269,7 +300,15 @@ function watchForStrayButtons(){
       controls.classList.add("btfw-controls-row");
       bottom.after(controls);
     }
-	normalizeChatActionButtons();
+    normalizeChatActionButtons();
+
+    document.dispatchEvent(new CustomEvent("btfw:chat:barsReady", {
+      detail: {
+        topbar: top,
+        bottombar: bottom,
+        actions: topActions
+      }
+    }));
   }
 
   /* ---------------- Usercount to bottom-right & remove #chatheader ---------------- */
