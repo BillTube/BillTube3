@@ -174,6 +174,7 @@ function watchForStrayButtons(){
     const indicator = document.getElementById('newmessages-indicator');
     const controls = document.querySelector('#chatwrap .btfw-controls-row');
     if (!indicator || !controls) return;
+    const buffer = document.getElementById('messagebuffer');
 
     indicator.classList.add('btfw-newmessages');
     indicator.style.position = '';
@@ -186,7 +187,19 @@ function watchForStrayButtons(){
     if (!slot) {
       slot = document.createElement('div');
       slot.className = 'btfw-newmessages-slot';
-      controls.parentNode?.insertBefore(slot, controls);
+    }
+
+    if (buffer && buffer.parentNode) {
+      const parent = buffer.parentNode;
+      if (slot.parentNode !== parent) {
+        parent.insertBefore(slot, buffer.nextSibling);
+      } else if (slot.previousElementSibling !== buffer) {
+        parent.insertBefore(slot, buffer.nextSibling);
+      }
+    } else if (!slot.parentNode && controls.parentNode) {
+      controls.parentNode.insertBefore(slot, controls);
+    } else if (slot.parentNode === controls.parentNode && slot.nextSibling !== controls) {
+      controls.parentNode.insertBefore(slot, controls);
     }
 
     if (indicator.parentElement !== slot) {

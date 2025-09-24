@@ -33,10 +33,52 @@ BTFW.define("feature:themeSettings", [], async () => {
     document.dispatchEvent(new CustomEvent("btfw:chat:emoteSizeChanged", { detail:{ size, px } }));
   }
 
-  // cross-feature bridges (optional)
-  const bulma   = (()=>{ try { return BTFW.require("feature:bulma-layer"); } catch(_){ return null; } })();
-  const avatars = (()=>{ try { return BTFW.require("feature:chat-avatars") || BTFW.require("feature:chatAvatars"); } catch(_){ return null; } })();
-  const pip     = (()=>{ try { return BTFW.require("feature:pip"); } catch(_){ return null; } })();
+  // cross-feature bridges (lazy)
+  const moduleCache = new Map();
+  function getModule(name){
+    if (moduleCache.has(name)) return moduleCache.get(name);
+    const promise = (window.BTFW && typeof BTFW.init === "function")
+      ? BTFW.init(name).catch(()=>null)
+      : Promise.resolve(null);
+    moduleCache.set(name, promise);
+    return promise;
+  }
+
+  let bulmaModule = null;
+  let avatarsModule = null;
+  let pipModule = null;
+
+  function resolveBulma(){
+    if (bulmaModule) return Promise.resolve(bulmaModule);
+    return getModule("feature:bulma-layer").then(mod => {
+      if (mod) bulmaModule = mod;
+      return bulmaModule;
+    });
+  }
+
+  function resolveAvatars(){
+    if (avatarsModule) return Promise.resolve(avatarsModule);
+    return getModule("feature:chat-avatars").then(mod => {
+      if (mod) avatarsModule = mod;
+      if (avatarsModule) return avatarsModule;
+      return getModule("feature:chatAvatars").then(alt => {
+        if (alt) avatarsModule = alt;
+        return avatarsModule;
+      });
+    });
+  }
+
+  function resolvePip(){
+    if (pipModule) return Promise.resolve(pipModule);
+    return getModule("feature:pip").then(mod => {
+      if (mod) pipModule = mod;
+      return pipModule;
+    });
+  }
+
+  resolveBulma();
+  resolveAvatars();
+  resolvePip();
 
   // --- modal creation ---
   function ensureModal(){
@@ -233,11 +275,16 @@ BTFW.define("feature:themeSettings", [], async () => {
     set(TS_KEYS.layoutSide, chatSide);
 
     // apply live
-    if (bulma?.setTheme) bulma.setTheme(themeMode);
-    if (avatars?.setMode) avatars.setMode(avatarsMode);
+    if (bulmaModule?.setTheme) bulmaModule.setTheme(themeMode);
+    else resolveBulma().then(mod => { if (mod?.setTheme) mod.setTheme(themeMode); });
+
+    if (avatarsModule?.setMode) avatarsModule.setMode(avatarsMode);
+    else resolveAvatars().then(mod => { if (mod?.setMode) mod.setMode(avatarsMode); });
+
     applyChatTextPx(parseInt(chatTextPx,10));
     applyEmoteSize(emoteSize);
-    if (pip?.setEnabled) pip.setEnabled(!!pipOn);
+    if (pipModule?.setEnabled) pipModule.setEnabled(!!pipOn);
+    else resolvePip().then(mod => { if (mod?.setEnabled) mod.setEnabled(!!pipOn); });
 
     // notify modules
     document.dispatchEvent(new CustomEvent("btfw:chat:gifAutoplayChanged", { detail:{ autoplay: !!gifAutoOn } }));
@@ -258,11 +305,25 @@ BTFW.define("feature:themeSettings", [], async () => {
   function open(){
     const m = ensureModal();
 
-    const modeNow = bulma?.getTheme ? bulma.getTheme() : (get(TS_KEYS.themeMode, "dark"));
+    const storedMode = get(TS_KEYS.themeMode, "dark");
+    const modeNow = bulmaModule?.getTheme ? bulmaModule.getTheme() : storedMode;
     $$('input[name="btfw-theme-mode"]').forEach(i => i.checked = (i.value === modeNow));
+    resolveBulma().then(mod => {
+      if (mod?.getTheme) {
+        const live = mod.getTheme();
+        $$('input[name="btfw-theme-mode"]').forEach(i => i.checked = (i.value === live));
+      }
+    });
 
-    const avNow = avatars?.getMode ? avatars.getMode() : get(TS_KEYS.avatarsMode,"small");
+    const storedAv = get(TS_KEYS.avatarsMode,"small");
+    const avNow = avatarsModule?.getMode ? avatarsModule.getMode() : storedAv;
     $$('input[name="btfw-avatars-mode"]').forEach(i => i.checked = (i.value === avNow));
+    resolveAvatars().then(mod => {
+      if (mod?.getMode) {
+        const live = mod.getMode();
+        $$('input[name="btfw-avatars-mode"]').forEach(i => i.checked = (i.value === live));
+      }
+    });
 
     const chatPxNow = get(TS_KEYS.chatTextPx, "14");
     const chatSlider = $("#btfw-chat-textsize");

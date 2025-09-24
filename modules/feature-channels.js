@@ -471,14 +471,17 @@ BTFW.define("feature:channels", [], async () => {
     }, 400);
   }
 
-  function injectChannelSlider(channels) {
-    const existing = document.getElementById('btfw-channels');
-    if (existing) {
+  function removeExistingSliders() {
+    document.querySelectorAll('#btfw-channels').forEach(existing => {
       if (typeof existing._btfwCleanup === 'function') {
         try { existing._btfwCleanup(); } catch(_) {}
       }
-      existing.remove();
-    }
+      try { existing.remove(); } catch(_) {}
+    });
+  }
+
+  function injectChannelSlider(channels) {
+    removeExistingSliders();
 
     const slider = createChannelSlider(channels);
 
@@ -509,6 +512,7 @@ BTFW.define("feature:channels", [], async () => {
   }
 
   async function initializeChannels() {
+    removeExistingSliders();
     if (!isChannelListEnabled()) {
       return;
     }
