@@ -10,16 +10,22 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       priority: 1
     },
     {
-      id: "playlist-group", 
+      id: "playlist-group",
       title: "Playlist",
       selectors: ["#playlistrow", "#playlistwrap", "#queuecontainer", "#queue"],
       priority: 2
     },
     {
-      id: "poll-group",
-      title: "Polls & Voting", 
-      selectors: ["#pollwrap"],
+      id: "channels-group",
+      title: "Featured Channels",
+      selectors: ["#btfw-channels"],
       priority: 3
+    },
+    {
+      id: "poll-group",
+      title: "Polls & Voting",
+      selectors: ["#pollwrap"],
+      priority: 4
     }
   ];
   
@@ -101,12 +107,13 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     const plBar = document.getElementById("btfw-plbar");
     const playlistWrap = document.getElementById("playlistwrap");
     const queueContainer = document.getElementById("queuecontainer");
+    const playlistRow = document.getElementById("playlistrow");
 
     // Find any floating controls row (legacy CyTube layout)
     const controlsRows = document.querySelectorAll(".btfw-controls-row");
 
     // Find the main playlist container
-    const mainContainer = playlistWrap || queueContainer;
+    const mainContainer = playlistRow || playlistWrap || queueContainer;
     if (!mainContainer) return;
 
     // Create or enhance the playlist bar
@@ -176,20 +183,29 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       }
     };
 
-    // Move rightcontrols buttons into the enhanced bar
-    if (rightControls) {
-      Array.from(rightControls.childNodes).forEach(node => {
+    const moveControls = (root) => {
+      if (!root) return;
+      Array.from(root.childNodes).forEach(node => {
         if (!node || node.nodeType !== 1) return;
         const el = node;
-        // Normalise Bootstrap control groups inside the modern cluster
         el.classList.add("btfw-plbar__control");
         actionsCluster.appendChild(el);
       });
+    };
 
-      actionsCluster.querySelectorAll("button, a.btn, input[type=button], input[type=submit], input[type=reset], select").forEach(styleActionButton);
-
+    // Move rightcontrols buttons into the enhanced bar
+    if (rightControls) {
+      moveControls(rightControls);
       rightControls.remove();
     }
+
+    // Move any remaining legacy controls into the bar
+    if (controlsRow) {
+      moveControls(controlsRow);
+      controlsRow.remove();
+    }
+
+    actionsCluster.querySelectorAll("button, a.btn, input[type=button], input[type=submit], input[type=reset], select").forEach(styleActionButton);
 
     // Move any floating controls rows into the playlist container
     controlsRows.forEach(row => {
@@ -209,10 +225,6 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     });
 
     // Hide the legacy controls row if it no longer contains useful content
-    if (controlsRow && !controlsRow.querySelector("button, input, select, .btn, .dropdown")) {
-      controlsRow.style.display = "none";
-    }
-
     // Ensure the bar is at the top of the playlist container
     if (!mainContainer.contains(controlsBar)) {
       mainContainer.insertBefore(controlsBar, mainContainer.firstChild);
