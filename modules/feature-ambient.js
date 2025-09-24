@@ -14,6 +14,7 @@ BTFW.define("feature:ambient", [], async () => {
   let socketListenerAttached = false;
   let playerObserverSetup = false;
   let lastColor = "";
+  const listeners = new Set();
 
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = 8;
@@ -206,7 +207,15 @@ BTFW.define("feature:ambient", [], async () => {
   }
 
   function dispatchChange() {
-    document.dispatchEvent(new CustomEvent("btfw:ambient:change", { detail: { active } }));
+    const detail = { active };
+    document.dispatchEvent(new CustomEvent("btfw:ambient:change", { detail }));
+    listeners.forEach((callback) => {
+      try {
+        callback(detail);
+      } catch (err) {
+        console.warn("[ambient] listener failed", err);
+      }
+    });
   }
 
   function watchPlayerMount() {
@@ -256,6 +265,11 @@ BTFW.define("feature:ambient", [], async () => {
     disable: () => setActive(false),
     toggle: () => setActive(!active),
     refresh,
-    isActive: () => active
+    isActive: () => active,
+    onChange(callback) {
+      if (typeof callback !== "function") return () => {};
+      listeners.add(callback);
+      return () => listeners.delete(callback);
+    }
   };
 });

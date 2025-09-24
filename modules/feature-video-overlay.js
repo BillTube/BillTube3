@@ -28,6 +28,9 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async ({ init }) => {
   let refreshClickCount = 0;
   let refreshCooldownUntil = 0;
   let airplayListenerAttached = false;
+  let ambientCleanup = null;
+  let overlayObserver = null;
+  let localSubsListenerAttached = false;
 
   function ensureCSS() {
     if ($("#btfw-vo-css")) return;
@@ -265,6 +268,13 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async ({ init }) => {
         btn.classList.toggle("active", ambient.isActive());
       }
     });
+
+    syncAmbientButton();
+  }
+
+  function syncAmbientButton(activeState = ambient.isActive()) {
+    const btn = $("#btfw-ambient");
+    if (btn) btn.classList.toggle("active", !!activeState);
   }
 
   function adoptNativeControls(bar) {
@@ -386,8 +396,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async ({ init }) => {
   async function toggleAmbient() {
     try {
       const { active, reason } = await ambient.toggle();
-      const btn = $("#btfw-ambient");
-      if (btn) btn.classList.toggle("active", !!active);
+      syncAmbientButton(active);
 
       if (active) {
         showNotification("Ambient mode enabled", "info");
@@ -569,19 +578,37 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async ({ init }) => {
       $("#leftcontrols"),
       document.body
     ].filter(Boolean);
-    const mo = new MutationObserver(() => ensureOverlay());
-    targets.forEach((target) => mo.observe(target, { childList: true, subtree: true }));
 
-    document.addEventListener("btfw:video:localsubs:changed", () => ensureOverlay());
+    if (overlayObserver) overlayObserver.disconnect();
+    overlayObserver = new MutationObserver(() => {
+      ensureOverlay();
+      syncAmbientButton();
+    });
+    targets.forEach((target) => overlayObserver.observe(target, { childList: true, subtree: true }));
+
+    if (typeof ambient.onChange === "function") {
+      if (ambientCleanup) ambientCleanup();
+      ambientCleanup = ambient.onChange(({ active }) => syncAmbientButton(active));
+    }
+
+    if (!localSubsListenerAttached) {
+      document.addEventListener("btfw:video:localsubs:changed", handleLocalSubsChange);
+      localSubsListenerAttached = true;
+    }
+  }
+
+  function handleLocalSubsChange() {
+    ensureOverlay();
   }
 
   document.addEventListener("btfw:ambient:change", (event) => {
-    const btn = $("#btfw-ambient");
-    if (btn) btn.classList.toggle("active", !!event?.detail?.active);
+    syncAmbientButton(event?.detail?.active);
   });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
+
+  document.addEventListener("btfw:ready", boot);
 
   function refreshAirplaySupport() {
     return detectAirplaySupport();
