@@ -401,8 +401,30 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 
 #userlist, #messagebuffer, #chatheader, #videowrap-header {
     border: 0px solid #aaaaaa!important;
-	scroll-behavior: smooth;
+        scroll-behavior: smooth;
     overflow-x: hidden;
+}
+
+#userlist {
+  max-height: clamp(220px, calc(100vh - 360px), 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable both-edges;
+  padding-right: 4px;
+}
+
+#userlist::-webkit-scrollbar {
+  width: 8px;
+}
+
+#userlist::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+
+#userlist::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 :root { --btfw-emote-size: 130px; } /* default medium = 130px */

@@ -72,7 +72,16 @@ BTFW.define("feature:notify", [], async () => {
     if (!stack) { queued.push(o); return; }
     visible.push(o);
     stack.appendChild(o.el);
-    if (o.timeout > 0) startAutoclose(o);
+    if (o.timeout > 0) {
+      o.el.classList.add('btfw-notice--timed');
+      startAutoclose(o);
+    } else {
+      o.el.classList.remove('btfw-notice--timed');
+      const timer = o.el.querySelector('.btfw-notice-timer');
+      if (timer) timer.remove();
+      const progress = o.el.querySelector('.btfw-notice-progress');
+      if (progress) progress.remove();
+    }
   }
 
   function buildCard(o){
@@ -80,40 +89,91 @@ BTFW.define("feature:notify", [], async () => {
     card.className = `btfw-notice btfw-notice--${o.kind}`;
     card.setAttribute("role","status");
     card.setAttribute("aria-live","polite");
-    card.innerHTML = `
-      <div class="btfw-notice-head">
-        <div class="btfw-notice-titlewrap">
-          ${o.icon ? `<span class="btfw-notice-icon">${o.icon}</span>` : ``}
-          <strong class="btfw-notice-title"></strong>
-        </div>
-        <button class="btfw-notice-close" title="Close" aria-label="Close">×</button>
-      </div>
-      <div class="btfw-notice-body"></div>
-      <div class="btfw-notice-progress"><div></div></div>
-    `;
-    card.querySelector(".btfw-notice-title").textContent = o.title || "";
-    if (o.html) card.querySelector(".btfw-notice-body").innerHTML = o.html;
 
-    // actions
+    const shell = document.createElement("div");
+    shell.className = "btfw-notice-shell";
+
+    const iconWrap = document.createElement("div");
+    iconWrap.className = "btfw-notice-iconwrap";
+    if (o.icon) {
+      const icon = document.createElement("span");
+      icon.className = "btfw-notice-icon";
+      icon.innerHTML = o.icon;
+      iconWrap.appendChild(icon);
+    } else {
+      iconWrap.classList.add("is-empty");
+    }
+    shell.appendChild(iconWrap);
+
+    const content = document.createElement("div");
+    content.className = "btfw-notice-content";
+
+    const header = document.createElement("div");
+    header.className = "btfw-notice-header";
+    const title = document.createElement("strong");
+    title.className = "btfw-notice-title";
+    title.textContent = o.title || "";
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "btfw-notice-close";
+    closeBtn.type = "button";
+    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.innerHTML = "&times;";
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    content.appendChild(header);
+
+    const body = document.createElement("div");
+    body.className = "btfw-notice-body";
+    if (o.html) body.innerHTML = o.html;
+    content.appendChild(body);
+
     if (o.actions && o.actions.length){
       const row = document.createElement("div");
       row.className = "btfw-notice-actions";
       o.actions.forEach(a=>{
         const b = document.createElement("button");
-        b.className = "button is-small";
+        b.className = "btfw-notice-cta";
+        b.type = "button";
         b.textContent = a.label || "Action";
         b.addEventListener("click",(ev)=>{ ev.stopPropagation(); a.onclick && a.onclick(ev); });
         row.appendChild(b);
       });
-      card.appendChild(row);
+      content.appendChild(row);
     }
 
-    // clicks
-    card.addEventListener("click",(ev)=>{
-      if (ev.target.closest(".btfw-notice-close")) { close(o); return; }
+    if (o.timeout > 0) {
+      const timer = document.createElement("p");
+      timer.className = "btfw-notice-timer";
+      const label = document.createElement("span");
+      label.className = "btfw-notice-timer-label";
+      label.innerHTML = `This message will close in <span class="btfw-notice-timer-remaining"></span> seconds.`;
+      const stop = document.createElement("button");
+      stop.type = "button";
+      stop.className = "btfw-notice-stop";
+      stop.textContent = "Click to stop.";
+      timer.appendChild(label);
+      timer.appendChild(stop);
+      content.appendChild(timer);
+    }
+
+    shell.appendChild(content);
+    card.appendChild(shell);
+
+    const progress = document.createElement("div");
+    progress.className = "btfw-notice-progress";
+    const bar = document.createElement("div");
+    progress.appendChild(bar);
+    card.appendChild(progress);
+
+    card.addEventListener("click", (ev)=>{
+      if (ev.target.closest(".btfw-notice-close")) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        close(o);
+        return;
+      }
       if (typeof o.onClick === "function") o.onClick(ev);
     });
-    // pause progress on hover
     card.addEventListener("mouseenter", ()=> pause(o));
     card.addEventListener("mouseleave", ()=> resume(o));
     return card;
@@ -122,35 +182,85 @@ BTFW.define("feature:notify", [], async () => {
   // ---- timers / progress ------------------------------------------------------
   function startAutoclose(o){
     const bar = o.el.querySelector(".btfw-notice-progress > div");
-    const t0  = performance.now();
-    let remaining = o.timeout;
-    let rafId = 0;
-    let paused = false;
-    let last = t0;
+    const timer = o.el.querySelector(".btfw-notice-timer");
+    const label = o.el.querySelector(".btfw-notice-timer-label");
+    const remainingNode = o.el.querySelector(".btfw-notice-timer-remaining");
+    const stopBtn = o.el.querySelector(".btfw-notice-stop");
 
-    function tick(ts){
-      if (paused) { rafId = requestAnimationFrame(tick); return; }
-      const dt = ts - last; last = ts;
-      remaining -= dt;
-      const pct = Math.max(0, Math.min(1, remaining / o.timeout));
-      bar.style.transform = `scaleX(${pct})`;
-      if (remaining <= 0) { close(o); return; }
-      rafId = requestAnimationFrame(tick);
+    const state = {
+      total: Math.max(0, o.timeout),
+      remaining: Math.max(0, o.timeout),
+      paused: false,
+      manual: false,
+      lastTick: Date.now(),
+      intervalId: 0,
+      bar,
+      label,
+      timer,
+      remainingNode
+    };
+
+    function render(){
+      if (state.bar) {
+        const pct = state.total > 0 ? Math.max(0, Math.min(1, state.remaining / state.total)) : 0;
+        state.bar.style.transform = `scaleX(${pct})`;
+      }
+      if (state.remainingNode) {
+        const secs = state.total > 0 ? Math.max(0, Math.ceil(state.remaining / 1000)) : 0;
+        state.remainingNode.textContent = String(secs);
+      }
     }
-    o._state = { rafId, paused, remaining, bar };
-    bar.style.transformOrigin = "left";
-    bar.style.transform = "scaleX(1)";
-    rafId = requestAnimationFrame(tick);
-    o._state.rafId = rafId;
+
+    render();
+    state.intervalId = window.setInterval(()=>{
+      if (state.manual || state.paused) {
+        state.lastTick = Date.now();
+        return;
+      }
+      const now = Date.now();
+      const dt = now - state.lastTick;
+      state.lastTick = now;
+      state.remaining = Math.max(0, state.remaining - dt);
+      render();
+      if (state.remaining <= 0) {
+        clearInterval(state.intervalId);
+        state.intervalId = 0;
+        close(o);
+      }
+    }, 140);
+
+    o._state = state;
+
+    if (stopBtn) {
+      stopBtn.addEventListener("click", (ev)=>{
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (state.manual) return;
+        state.manual = true;
+        state.paused = true;
+        if (state.intervalId) {
+          clearInterval(state.intervalId);
+          state.intervalId = 0;
+        }
+        o.el.classList.add("btfw-notice--pinned");
+        if (state.timer) state.timer.classList.add("is-stopped");
+        if (state.label) state.label.textContent = "Timer stopped.";
+        if (state.remainingNode) state.remainingNode.textContent = "0";
+        stopBtn.remove();
+      }, { once: true });
+    }
   }
-  function pause(o){ const s=o._state; if (s) s.paused = true; }
-  function resume(o){ const s=o._state; if (s) s.paused = false; }
+  function pause(o){ const s=o._state; if (s) { s.paused = true; s.lastTick = Date.now(); } }
+  function resume(o){ const s=o._state; if (s && !s.manual) { s.paused = false; s.lastTick = Date.now(); } }
 
   function close(o){
-    if (o._state?.rafId) cancelAnimationFrame(o._state.rafId);
+    if (o._closed) return;
+    o._closed = true;
+    if (o._state?.intervalId) clearInterval(o._state.intervalId);
+    o._state = null;
     if (o.el && o.el.parentNode) {
       o.el.classList.add("btfw-notice--leaving");
-      setTimeout(()=>o.el.remove(), 150);
+      setTimeout(()=>{ try { o.el.remove(); } catch(_){}; }, 160);
     }
     const i = visible.indexOf(o);
     if (i>=0) visible.splice(i,1);

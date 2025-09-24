@@ -19,6 +19,31 @@ BTFW.define("feature:motd-editor", [], async () => {
     });
   }
 
+  function canEditMotd(){
+    try {
+      if (typeof window.hasPermission === "function") {
+        if (window.hasPermission("motdedit") || window.hasPermission("editMotd") || window.hasPermission("motd")) {
+          return true;
+        }
+      }
+      const client = window.CLIENT || null;
+      if (client?.hasPermission) {
+        if (client.hasPermission("motdedit") || client.hasPermission("editMotd") || client.hasPermission("motd")) {
+          return true;
+        }
+      }
+      if (client && typeof client.rank !== "undefined") {
+        const rank = client.rank|0;
+        const ranks = window.RANK || window.Ranks || {};
+        const thresholds = [ranks.moderator, ranks.mod, ranks.admin, ranks.administrator];
+        const needed = thresholds.find(v => typeof v === "number");
+        if (typeof needed === "number") return rank >= needed;
+        return rank >= 2;
+      }
+    } catch(_) {}
+    return false;
+  }
+
   function buildModal(){
     let m = $("#btfw-motd-modal");
     if (m) return m;
@@ -85,19 +110,43 @@ BTFW.define("feature:motd-editor", [], async () => {
   }
 
   function injectButton(){
-    if ($("#btfw-motd-editbtn")) return;
+    const existingBtn = document.getElementById("btfw-motd-editbtn");
+    const existingRow = existingBtn ? existingBtn.closest(".btfw-motd-editrow") : null;
+
+    if (!canEditMotd()) {
+      if (existingRow) existingRow.remove();
+      return;
+    }
+
     const motdWrap = $("#motdwrap") || $("#motd")?.closest(".well") || $("#btfw-leftpad");
-    if (!motdWrap) return;
+    const host = motdWrap?.parentNode;
+    if (!motdWrap || !host) return;
 
-    // Only show to users with modish rank (>=2)
-    try { if (!window.CLIENT || (CLIENT.rank|0) < 2) return; } catch(_) {}
+    let row = existingRow;
+    if (!row) {
+      row = document.createElement("div");
+      row.innerHTML = `<button id="btfw-motd-editbtn" class="button is-small is-link"><i class="fa fa-pencil"></i> Edit MOTD</button>`;
+    }
 
-    const bar = document.createElement("div");
-    bar.className = "buttons is-right";
-    bar.style.margin = "8px";
-    bar.innerHTML = `<button id="btfw-motd-editbtn" class="button is-small is-link"><i class="fa fa-pencil"></i> Edit MOTD</button>`;
-    motdWrap.insertBefore(bar, motdWrap.firstChild);
-    $("#btfw-motd-editbtn").addEventListener("click", openEditor);
+    row.classList.add("buttons", "is-right", "btfw-motd-editrow");
+
+    if (!row.querySelector("#btfw-motd-editbtn")) {
+      const btn = document.createElement("button");
+      btn.id = "btfw-motd-editbtn";
+      btn.className = "button is-small is-link";
+      btn.innerHTML = `<i class="fa fa-pencil"></i> Edit MOTD`;
+      row.appendChild(btn);
+    }
+
+    if (row.parentNode !== host || row.previousElementSibling !== motdWrap) {
+      host.insertBefore(row, motdWrap.nextSibling);
+    }
+
+    const btn = row.querySelector("#btfw-motd-editbtn");
+    if (btn && !btn._btfwMotdBound) {
+      btn._btfwMotdBound = true;
+      btn.addEventListener("click", openEditor);
+    }
   }
 
   function boot(){
