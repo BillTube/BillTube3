@@ -9,6 +9,10 @@
   --btfw-border: rgba(255,255,255,.08);
   --btfw-card-bg: rgba(20,24,34,.92);
   --btfw-radius: 12px;
+  --btfw-chat-min: 320px;
+  --btfw-chat-max: 30vw;
+  --btfw-split-width: 8px;
+  --btfw-vertical-video: 40vh;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -16,7 +20,8 @@
 /* ---------- Main 2-column grid: left content + splitter + right chat ---------- */
 #btfw-grid{
   display: grid;
-  grid-template-columns: minmax(640px,1fr) 8px minmax(320px,26vw);
+  grid-template-columns: minmax(520px,1fr) var(--btfw-split-width) minmax(var(--btfw-chat-min),var(--btfw-chat-max));
+  grid-template-areas: "video split chat";
   grid-column-gap: var(--btfw-gap);
   grid-row-gap: var(--btfw-gap);
   margin-top: calc(var(--btfw-top) + var(--btfw-gap));
@@ -24,13 +29,15 @@
   min-height: calc(100vh - var(--btfw-top) - var(--btfw-gap)); /* Ensure full height */
 }
 
-#btfw-leftpad{ 
-  min-width: 0; 
+#btfw-leftpad{
+  grid-area: video;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
 #btfw-chatcol{
+  grid-area: chat;
   position: sticky;
   top: calc(var(--btfw-top) + var(--btfw-gap)); /* Account for grid padding */
   height: calc(100vh - var(--btfw-top) - var(--btfw-gap) * 2); /* Account for both top and grid padding */
@@ -42,11 +49,69 @@
 
 /* Visual splitter (no drag in CSS; JS can attach drag later) */
 #btfw-vsplit{
-  width: 8px;
+  grid-area: split;
+  width: var(--btfw-split-width);
   background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
   border-radius: 4px;
   cursor: col-resize;
   align-self: stretch; /* Ensure splitter takes full height */
+}
+
+/* Allow swapping chat/video positions on desktop */
+#btfw-grid.btfw-grid--chat-left{
+  grid-template-columns: minmax(var(--btfw-chat-min),var(--btfw-chat-max)) var(--btfw-split-width) minmax(520px,1fr);
+  grid-template-areas: "chat split video";
+}
+
+#btfw-grid.btfw-grid--chat-right{
+  grid-template-columns: minmax(520px,1fr) var(--btfw-split-width) minmax(var(--btfw-chat-min),var(--btfw-chat-max));
+  grid-template-areas: "video split chat";
+}
+
+/* Vertical (mobile) layout with video stacked above chat */
+#btfw-grid.btfw-grid--vertical{
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "video"
+    "chat";
+  grid-template-rows: var(--btfw-vertical-video) 1fr;
+  grid-row-gap: var(--btfw-gap);
+  min-height: 0;
+  height: calc(100vh - var(--btfw-top) - var(--btfw-gap));
+}
+
+#btfw-grid.btfw-grid--vertical #btfw-vsplit{ display:none; }
+
+#btfw-grid.btfw-grid--vertical #btfw-leftpad{
+  min-height: 220px;
+  max-height: var(--btfw-vertical-video);
+  height: var(--btfw-vertical-video);
+  position: relative;
+}
+
+#btfw-grid.btfw-grid--vertical #videowrap{
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+#btfw-grid.btfw-grid--vertical #videowrap iframe{
+  width: 100%;
+  height: 100%;
+  aspect-ratio: unset;
+}
+
+#btfw-grid.btfw-grid--vertical #btfw-chatcol{
+  position: relative;
+  top: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+#btfw-grid.btfw-grid--vertical #chatwrap{
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
 /* ---------- Content Stack under video ---------- */

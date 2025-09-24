@@ -6,20 +6,98 @@
 
 /* --------- Tablet & down (<= 1100px): stack columns, unstick chat --------- */
 @media (max-width: 1100px){
-  #btfw-grid{
-    grid-template-columns: 1fr;
-    grid-row-gap: 10px;
+  #btfw-grid.btfw-grid--vertical{
     padding: 0 8px;
     margin-top: calc(var(--btfw-top,48px) + 8px);
+    height: calc(100vh - var(--btfw-top,48px) - 8px);
   }
-  #btfw-vsplit{ display:none; }
-  #btfw-chatcol{
-    position: relative;
-    top: auto;
+
+  #btfw-grid.btfw-grid--vertical #btfw-chatcol{
     height: auto;
     min-height: 420px;
   }
 }
+
+/* Mobile module drawer (shown when layout switches to vertical) */
+#btfw-mobile-stack{
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 7000;
+  padding: calc(var(--btfw-top,48px) + 10px) 16px 18px;
+  overflow-y: auto;
+}
+
+#btfw-mobile-stack::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(7,10,16,0.72);
+  backdrop-filter: blur(10px);
+}
+
+#btfw-mobile-stack .btfw-mobile-stack__panel{
+  position: relative;
+  width: min(560px, 94vw);
+  max-height: calc(100vh - var(--btfw-top,48px) - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(20,24,34,0.94);
+  box-shadow: 0 22px 48px rgba(4,6,12,0.6);
+  overflow: hidden;
+}
+
+#btfw-mobile-stack .btfw-mobile-stack__header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#btfw-mobile-stack .btfw-mobile-stack__title{
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+#btfw-mobile-stack .btfw-mobile-stack__close{
+  border: 0;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+#btfw-mobile-stack .btfw-mobile-stack__close:hover{
+  background: rgba(255,255,255,0.16);
+}
+
+#btfw-mobile-stack .btfw-mobile-stack__body{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--btfw-gap, 10px);
+}
+
+#btfw-mobile-stack .btfw-stack{
+  width: 100%;
+}
+
+#btfw-mobile-stack.btfw-mobile-stack--open{ display:flex; }
+
+body.btfw-mobile-stack-open{ overflow: hidden; }
+
+body:not(.btfw-mobile-stack-enabled) #btfw-mobile-stack{ display:none !important; }
 
 /* --------- Phones (<= 768px): larger touch targets, overlay sizes ---------- */
 @media (max-width: 768px){
