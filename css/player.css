@@ -12,23 +12,44 @@
 /* Support legacy .embed-responsive wrappers if present */
 #videowrap .embed-responsive{
   position: relative;
+  width: 100%;
+  height: auto;
   display: block;
-  height: 0;
   overflow: hidden;
+  aspect-ratio: var(--btfw-video-aspect, 16 / 9);
+  background: #000;
+  border-radius: 12px;
 }
+#videowrap .embed-responsive::before{
+  content: "";
+  display: block;
+  padding-top: 0;
+}
+#videowrap .embed-responsive .embed-responsive-item,
+#videowrap .embed-responsive embed,
 #videowrap .embed-responsive iframe,
+#videowrap .embed-responsive object,
 #videowrap .embed-responsive video{
-  position: absolute; top: 0; left: 0;
-  width: 100%; height: 100%;
+  position: static;
+  top: auto;
+  left: auto;
+  bottom: auto;
+  width: 100%;
+  height: 100%;
+  display: block;
   border: 0;
 }
 
 /* If no wrapper, modern browsers can use aspect-ratio on iframe */
-#videowrap iframe{
+#videowrap iframe,
+#videowrap video{
   width: 100%;
   height: auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--btfw-video-aspect, 16 / 9);
   border: 0;
+  display: block;
+  background: #000;
+  border-radius: 12px;
 }
 
 /* Video overlay buttons are styled in overlays.css; ensure interactivity */
