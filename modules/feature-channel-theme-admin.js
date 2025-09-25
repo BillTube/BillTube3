@@ -27,6 +27,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
   const DEFAULT_CONFIG = {
     version: 1,
+    sliderEnabled: false,
+
     sliderJson: "",
     resources: {
       scripts: [],
@@ -104,10 +106,18 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .section h4 { font-size: 0.95rem; margin-bottom: 14px; color: #f0f4ff; letter-spacing: 0.04em; text-transform: uppercase; }
       .btfw-theme-admin .field { margin-bottom: 14px; }
       .btfw-theme-admin label { display: block; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.02em; color: rgba(232,236,248,0.9); }
+      .btfw-theme-admin .btfw-checkbox { display: flex; align-items: center; gap: 10px; font-weight: 600; margin: 0; color: rgba(232,236,248,0.9); }
+      .btfw-theme-admin .btfw-checkbox input[type="checkbox"] { width: auto; height: 18px; accent-color: #6d4df6; box-shadow: none; }
+      .btfw-theme-admin .field.is-disabled label,
+      .btfw-theme-admin .field.is-disabled .help { opacity: 0.55; }
+
       .btfw-theme-admin input[type="text"],
       .btfw-theme-admin input[type="url"],
       .btfw-theme-admin textarea,
       .btfw-theme-admin select { width: 100%; background: rgba(7,10,22,0.76); border: 1px solid rgba(109,77,246,0.28); border-radius: 10px; padding: 10px 12px; color: #f8fbff; font-size: 0.95rem; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); transition: border 0.18s ease, box-shadow 0.18s ease; }
+      .btfw-theme-admin .field.is-disabled input,
+      .btfw-theme-admin .field.is-disabled textarea,
+      .btfw-theme-admin .field.is-disabled select { opacity: 0.55; }
       .btfw-theme-admin input[type="color"] { width: 100%; height: 42px; padding: 0; border-radius: 12px; border: 1px solid rgba(109,77,246,0.35); background: rgba(7,10,22,0.76); cursor: pointer; }
       .btfw-theme-admin input:focus,
       .btfw-theme-admin textarea:focus,
@@ -171,7 +181,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
   function buildConfigBlock(cfg){
     const json = JSON.stringify(cfg, null, 2);
-    return `\n${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n(function(cfg){\n  if (!cfg) return;\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelTheme = cfg;\n  function ensureAsset(id, url, kind){\n    if (!url) return;\n    var existing = document.getElementById(id);\n    if (existing) return;\n    if (kind === 'style'){\n      var link = document.createElement('link');\n      link.rel = 'stylesheet';\n      link.href = url;\n      link.id = id;\n      document.head.appendChild(link);\n    } else {\n      var script = document.createElement('script');\n      script.src = url;\n      script.async = true;\n      script.defer = true;\n      script.id = id;\n      document.head.appendChild(script);\n    }\n  }\n  if (Array.isArray(cfg.resources?.styles)) {\n    cfg.resources.styles.forEach(function(url, idx){ ensureAsset('btfw-theme-style-'+idx, url, 'style'); });\n  }\n  if (Array.isArray(cfg.resources?.scripts)) {\n    cfg.resources.scripts.forEach(function(url, idx){ ensureAsset('btfw-theme-script-'+idx, url, 'script'); });\n  }\n  if (cfg.sliderJson) {\n    window.BTFW = window.BTFW || {};\n    window.BTFW.channelSliderJSON = cfg.sliderJson;\n  }\n  document.documentElement.setAttribute('data-btfw-theme-tint', cfg.tint || 'custom');\n})(window.BTFW_THEME_ADMIN);\n${JS_BLOCK_END}`;
+    return `\n${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n(function(cfg){\n  if (!cfg) return;\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelTheme = cfg;\n  function ensureAsset(id, url, kind){\n    if (!url) return;\n    var existing = document.getElementById(id);\n    if (existing) return;\n    if (kind === 'style'){\n      var link = document.createElement('link');\n      link.rel = 'stylesheet';\n      link.href = url;\n      link.id = id;\n      document.head.appendChild(link);\n    } else {\n      var script = document.createElement('script');\n      script.src = url;\n      script.async = true;\n      script.defer = true;\n      script.id = id;\n      document.head.appendChild(script);\n    }\n  }\n  if (Array.isArray(cfg.resources?.styles)) {\n    cfg.resources.styles.forEach(function(url, idx){ ensureAsset('btfw-theme-style-'+idx, url, 'style'); });\n  }\n  if (Array.isArray(cfg.resources?.scripts)) {\n    cfg.resources.scripts.forEach(function(url, idx){ ensureAsset('btfw-theme-script-'+idx, url, 'script'); });\n  }\n  window.UI_ChannelList = cfg.sliderEnabled ? 1 : 0;\n  window.Channel_JSON = cfg.sliderJson || '';\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelSliderEnabled = Boolean(cfg.sliderEnabled);\n  window.BTFW.channelSliderJSON = cfg.sliderJson || '';\n  document.documentElement.setAttribute('data-btfw-theme-tint', cfg.tint || 'custom');\n})(window.BTFW_THEME_ADMIN);\n${JS_BLOCK_END}`;
+
   }
 
   function buildCssBlock(cfg){
@@ -254,6 +265,19 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     });
   }
 
+  function updateSliderFieldState(panel){
+    const toggle = panel.querySelector('#btfw-theme-slider-enabled');
+    const input = panel.querySelector('#btfw-theme-slider-json');
+    if (!toggle || !input) return;
+    const enabled = Boolean(toggle.checked);
+    input.disabled = !enabled;
+    const field = input.closest('.field');
+    if (field) {
+      field.classList.toggle('is-disabled', !enabled);
+    }
+  }
+
+
   function updateInputs(panel, cfg){
     $$('[data-btfw-bind]', panel).forEach(input => {
       const path = input.dataset.btfwBind;
@@ -274,6 +298,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
     });
     renderPreview(panel, cfg);
+    updateSliderFieldState(panel);
+
   }
 
   function setValueAtPath(obj, path, value){
@@ -306,6 +332,68 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return updated;
   }
 
+  function extractSliderSettings(jsText){
+    if (!jsText) return {};
+    const settings = {};
+    const enabledMatch = jsText.match(/UI_ChannelList\s*=\s*(['"]?)([01])\1/);
+    if (enabledMatch) {
+      settings.enabled = enabledMatch[2] === '1';
+    }
+    const urlMatch = jsText.match(/Channel_JSON\s*=\s*(['"`])([^'"`]*?)\1/);
+    if (urlMatch) {
+      settings.url = urlMatch[2].trim();
+    }
+    return settings;
+  }
+
+  function ensureSliderVariables(jsText, cfg){
+    const enabledValue = cfg.sliderEnabled ? '1' : '0';
+    const sliderUrl = cfg.sliderJson || '';
+    const escapedUrl = sliderUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    let updated = jsText || '';
+
+    let sliderUpdated = false;
+    updated = updated.replace(/(UI_ChannelList\s*=\s*)(['"]?)([01])\2/g, (match, prefix, quote) => {
+      sliderUpdated = true;
+      const q = quote || '';
+      return `${prefix}${q}${enabledValue}${q}`;
+    });
+    updated = updated.replace(/(window\.UI_ChannelList\s*=\s*)(['"]?)([01])\2/g, (match, prefix, quote) => {
+      sliderUpdated = true;
+      const q = quote || '';
+      return `${prefix}${q}${enabledValue}${q}`;
+    });
+
+    let jsonUpdated = false;
+    updated = updated.replace(/(Channel_JSON\s*=\s*)(['"`])([^'"`]*?)\2/g, (match, prefix) => {
+      jsonUpdated = true;
+      return `${prefix}'${escapedUrl}'`;
+    });
+    updated = updated.replace(/(window\.Channel_JSON\s*=\s*)(['"`])([^'"`]*?)\2/g, (match, prefix) => {
+      jsonUpdated = true;
+      return `${prefix}'${escapedUrl}'`;
+    });
+
+    if (!sliderUpdated || !jsonUpdated) {
+      const leadingMatch = updated.match(/^\s*/);
+      const leading = leadingMatch ? leadingMatch[0] : '';
+      let body = updated.slice(leading.length);
+      body = body.replace(/^\s*\n/, '');
+      const lines = [];
+      if (!sliderUpdated) {
+        lines.push(`var UI_ChannelList = ${enabledValue};`);
+      }
+      if (!jsonUpdated) {
+        lines.push(`var Channel_JSON = '${escapedUrl}';`);
+      }
+      const prefixBlock = lines.length ? lines.join('\n') + '\n' : '';
+      updated = leading + prefixBlock + body;
+    }
+
+    return updated;
+  }
+
+
   function ensureTab(modal){
     const nav =
       modal.querySelector(".nav-tabs") ||
@@ -317,7 +405,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       modal.querySelector(".tabs-content") ||
       modal.querySelector("#channelsettingsmodal .tab-content") ||
       document.querySelector("#channeloptions .tab-content");
-
     if (!nav || !tabContainer) return null;
 
     let tab = nav.querySelector("li[data-btfw-theme-tab]");
@@ -343,7 +430,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       panel = document.createElement("div");
       panel.id = "btfw-theme-admin-panel";
       panel.className = "tab-pane";
-      panel.style.display = "none";
       tabContainer.appendChild(panel);
     }
 
@@ -351,14 +437,15 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       const activeClass = nav.classList.contains("tabs") ? "is-active" : "active";
       $$('li', nav).forEach(li => li.classList.remove("active", "is-active"));
       tab.classList.add(activeClass);
-      $$(".tab-pane", tabContainer).forEach(p => { p.style.display = p === panel ? "block" : "none"; p.classList.remove("active", "in"); });
-      panel.style.display = "block";
-      panel.classList.add("active");
+      $$(".tab-pane", tabContainer).forEach(p => {
+        p.classList.remove("active", "in", "show");
+      });
+      panel.classList.add("active", "in", "show");
     };
 
     const deactivate = () => {
-      panel.style.display = "none";
-      panel.classList.remove("active");
+      panel.classList.remove("active", "in", "show");
+
     };
 
     const alreadyBound = Boolean(tab.dataset.btfwThemeTabBound);
@@ -369,8 +456,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         activate();
       });
     }
-
-
     panel.dataset.activate = activate;
     panel.dataset.deactivate = deactivate;
     return panel;
@@ -385,6 +470,13 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
         <div class="section">
           <h4>Featured Content & Resources</h4>
+          <div class="field">
+            <label class="btfw-checkbox" for="btfw-theme-slider-enabled">
+              <input type="checkbox" id="btfw-theme-slider-enabled" data-btfw-bind="sliderEnabled">
+              <span>Enable featured slider</span>
+            </label>
+            <p class="help">Toggles the channel list carousel by setting <code>UI_ChannelList</code> in Channel JS.</p>
+          </div>
           <div class="field">
             <label for="btfw-theme-slider-json">Featured slider JSON</label>
             <input type="url" id="btfw-theme-slider-json" data-btfw-bind="sliderJson" placeholder="https://example.com/featured.json">
@@ -474,6 +566,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
             tintSelect.value = "custom";
           }
         }
+        if (input.id === 'btfw-theme-slider-enabled') {
+          updateSliderFieldState(panel);
+        }
+
         onChange();
       };
       input.addEventListener("input", handler);
@@ -529,7 +625,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const jsBlock = buildConfigBlock(mergedConfig);
     const cssBlock = buildCssBlock(mergedConfig);
 
-    jsField.value = replaceBlock(existingJs, JS_BLOCK_START, JS_BLOCK_END, jsBlock);
+    const jsWithSlider = ensureSliderVariables(existingJs, mergedConfig);
+    jsField.value = replaceBlock(jsWithSlider, JS_BLOCK_START, JS_BLOCK_END, jsBlock);
+
     cssField.value = replaceBlock(existingCss, CSS_BLOCK_START, CSS_BLOCK_END, cssBlock);
 
     if (status) {
@@ -544,12 +642,20 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const panel = ensureTab(modal);
     if (!panel || panel.dataset.initialized === "1") return Boolean(panel);
 
-
     renderPanel(panel);
 
     const jsField = ensureField(modal, JS_FIELD_SELECTORS, "chanjs");
     const storedConfig = parseConfig(jsField?.value || "");
     const cfg = deepMerge(cloneDefaults(), storedConfig || {});
+
+    const sliderState = extractSliderSettings(jsField?.value || "");
+    if (typeof sliderState.enabled === "boolean") {
+      cfg.sliderEnabled = sliderState.enabled;
+    }
+    if (typeof sliderState.url !== "undefined") {
+      cfg.sliderJson = sliderState.url || "";
+    }
+
 
     updateInputs(panel, cfg);
 
@@ -584,7 +690,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
     panel.dataset.initialized = "1";
     return true;
-
   }
 
   function boot(){
@@ -598,7 +703,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       if (initPanel(modal)) {
         modal.dataset.btfwThemeAdminBound = "1";
       }
-
     }
   }
 
@@ -620,7 +724,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
     } else if (modal) {
       initPanel(modal);
-
     }
   });
   mo.observe(document.body, { childList: true, subtree: true });
