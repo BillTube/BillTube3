@@ -1,5 +1,5 @@
-/* BTFW — feature:chat-scroll (Auto-scroll management, bottom detection, user scroll awareness) */
-BTFW.define("feature:chat-scroll", [], async () => {
+/* BTFW — feature:chatScroll (Auto-scroll management, bottom detection, user scroll awareness) */
+BTFW.define("feature:chatScroll", [], async () => {
   
   let isUserScrolledUp = false;
   let scrollTimeout = null;
@@ -158,7 +158,7 @@ BTFW.define("feature:chat-scroll", [], async () => {
   }
 
   return {
-    name: "feature:chat-scroll",
+    name: "feature:chatScroll",
     scrollToBottom: scrollChat,
     isScrolledToBottom: () => isScrolledToBottom(),
     isUserScrolledUp: () => isUserScrolledUp

@@ -1,5 +1,5 @@
-/* BTFW — feature:footer-branding (DMCA disclaimer and theme branding) */
-BTFW.define("feature:footer-branding", [], async () => {
+/* BTFW — feature:footerBranding (DMCA disclaimer and theme branding) */
+BTFW.define("feature:footerBranding", [], async () => {
   
   // DMCA and theme branding content
   const BRANDING_HTML = `
@@ -163,7 +163,7 @@ BTFW.define("feature:footer-branding", [], async () => {
   }
 
   return { 
-    name: "feature:footer-branding",
+    name: "feature:footerBranding",
     insertBranding: insertBranding
   };
 });
