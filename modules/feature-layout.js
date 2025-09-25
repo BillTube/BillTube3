@@ -509,14 +509,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     }
   });
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
-
-  return {name:"feature:layout"};
-});
   function findNavbarElement(){
     const selectors = [
       "nav.navbar",
@@ -550,3 +542,47 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       grid.insertBefore(host, grid.firstChild);
     }
   }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+  return {name:"feature:layout"};
+});
+
+  function findNavbarElement(){
+    const selectors = [
+      "nav.navbar",
+      ".navbar-fixed-top",
+      "#navbar"
+    ];
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function ensureNavHost(grid){
+    if (!grid) return;
+    const navEl = findNavbarElement();
+    if (!navEl) return;
+
+    let host = document.getElementById(NAV_HOST_ID);
+    if (!host) {
+      host = document.createElement("div");
+      host.id = NAV_HOST_ID;
+      host.className = "btfw-navhost";
+    }
+
+    if (navEl.parentElement !== host) {
+      host.appendChild(navEl);
+    }
+
+    if (host.parentElement !== grid) {
+      grid.insertBefore(host, grid.firstChild);
+    }
+  }
+
