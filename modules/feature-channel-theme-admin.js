@@ -28,6 +28,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   const DEFAULT_CONFIG = {
     version: 1,
     sliderEnabled: false,
+
     sliderJson: "",
     resources: {
       scripts: [],
@@ -109,6 +110,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-checkbox input[type="checkbox"] { width: auto; height: 18px; accent-color: #6d4df6; box-shadow: none; }
       .btfw-theme-admin .field.is-disabled label,
       .btfw-theme-admin .field.is-disabled .help { opacity: 0.55; }
+
       .btfw-theme-admin input[type="text"],
       .btfw-theme-admin input[type="url"],
       .btfw-theme-admin textarea,
@@ -180,6 +182,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   function buildConfigBlock(cfg){
     const json = JSON.stringify(cfg, null, 2);
     return `\n${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n(function(cfg){\n  if (!cfg) return;\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelTheme = cfg;\n  function ensureAsset(id, url, kind){\n    if (!url) return;\n    var existing = document.getElementById(id);\n    if (existing) return;\n    if (kind === 'style'){\n      var link = document.createElement('link');\n      link.rel = 'stylesheet';\n      link.href = url;\n      link.id = id;\n      document.head.appendChild(link);\n    } else {\n      var script = document.createElement('script');\n      script.src = url;\n      script.async = true;\n      script.defer = true;\n      script.id = id;\n      document.head.appendChild(script);\n    }\n  }\n  if (Array.isArray(cfg.resources?.styles)) {\n    cfg.resources.styles.forEach(function(url, idx){ ensureAsset('btfw-theme-style-'+idx, url, 'style'); });\n  }\n  if (Array.isArray(cfg.resources?.scripts)) {\n    cfg.resources.scripts.forEach(function(url, idx){ ensureAsset('btfw-theme-script-'+idx, url, 'script'); });\n  }\n  window.UI_ChannelList = cfg.sliderEnabled ? 1 : 0;\n  window.Channel_JSON = cfg.sliderJson || '';\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelSliderEnabled = Boolean(cfg.sliderEnabled);\n  window.BTFW.channelSliderJSON = cfg.sliderJson || '';\n  document.documentElement.setAttribute('data-btfw-theme-tint', cfg.tint || 'custom');\n})(window.BTFW_THEME_ADMIN);\n${JS_BLOCK_END}`;
+
   }
 
   function buildCssBlock(cfg){
@@ -274,6 +277,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
   }
 
+
   function updateInputs(panel, cfg){
     $$('[data-btfw-bind]', panel).forEach(input => {
       const path = input.dataset.btfwBind;
@@ -295,6 +299,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     });
     renderPreview(panel, cfg);
     updateSliderFieldState(panel);
+
   }
 
   function setValueAtPath(obj, path, value){
@@ -388,6 +393,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return updated;
   }
 
+
   function ensureTab(modal){
     const nav =
       modal.querySelector(".nav-tabs") ||
@@ -408,6 +414,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       const anchor = document.createElement("a");
       anchor.href = "#btfw-theme-admin-panel";
       anchor.setAttribute("data-toggle", "tab");
+
       anchor.textContent = "Theme";
       anchor.style.display = "flex";
       anchor.style.alignItems = "center";
@@ -418,6 +425,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
 
     let panel = modal.querySelector("#btfw-theme-admin-panel") || document.querySelector("#channeloptions #btfw-theme-admin-panel");
+
     if (!panel) {
       panel = document.createElement("div");
       panel.id = "btfw-theme-admin-panel";
@@ -437,6 +445,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
     const deactivate = () => {
       panel.classList.remove("active", "in", "show");
+
     };
 
     const alreadyBound = Boolean(tab.dataset.btfwThemeTabBound);
@@ -447,7 +456,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         activate();
       });
     }
-
     panel.dataset.activate = activate;
     panel.dataset.deactivate = deactivate;
     return panel;
@@ -561,6 +569,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         if (input.id === 'btfw-theme-slider-enabled') {
           updateSliderFieldState(panel);
         }
+
         onChange();
       };
       input.addEventListener("input", handler);
@@ -618,6 +627,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
     const jsWithSlider = ensureSliderVariables(existingJs, mergedConfig);
     jsField.value = replaceBlock(jsWithSlider, JS_BLOCK_START, JS_BLOCK_END, jsBlock);
+
     cssField.value = replaceBlock(existingCss, CSS_BLOCK_START, CSS_BLOCK_END, cssBlock);
 
     if (status) {
@@ -645,6 +655,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     if (typeof sliderState.url !== "undefined") {
       cfg.sliderJson = sliderState.url || "";
     }
+
 
     updateInputs(panel, cfg);
 
