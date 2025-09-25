@@ -317,6 +317,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       modal.querySelector(".tabs-content") ||
       modal.querySelector("#channelsettingsmodal .tab-content") ||
       document.querySelector("#channeloptions .tab-content");
+
     if (!nav || !tabContainer) return null;
 
     let tab = nav.querySelector("li[data-btfw-theme-tab]");
@@ -326,6 +327,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       const anchor = document.createElement("a");
       anchor.href = "#btfw-theme-admin-panel";
       anchor.setAttribute("data-toggle", "tab");
+
       anchor.textContent = "Theme";
       anchor.style.display = "flex";
       anchor.style.alignItems = "center";
@@ -336,6 +338,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
 
     let panel = modal.querySelector("#btfw-theme-admin-panel") || document.querySelector("#channeloptions #btfw-theme-admin-panel");
+
     if (!panel) {
       panel = document.createElement("div");
       panel.id = "btfw-theme-admin-panel";
@@ -366,6 +369,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         activate();
       });
     }
+
 
     panel.dataset.activate = activate;
     panel.dataset.deactivate = deactivate;
@@ -540,6 +544,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const panel = ensureTab(modal);
     if (!panel || panel.dataset.initialized === "1") return Boolean(panel);
 
+
     renderPanel(panel);
 
     const jsField = ensureField(modal, JS_FIELD_SELECTORS, "chanjs");
@@ -579,6 +584,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
     panel.dataset.initialized = "1";
     return true;
+
   }
 
   function boot(){
@@ -592,6 +598,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       if (initPanel(modal)) {
         modal.dataset.btfwThemeAdminBound = "1";
       }
+
     }
   }
 
@@ -613,6 +620,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
     } else if (modal) {
       initPanel(modal);
+
     }
   });
   mo.observe(document.body, { childList: true, subtree: true });
