@@ -57,14 +57,21 @@ body, button, input, select, textarea, .btn {
 #queuecontainer,
 #videowrap,
 #chatwrap {
-  background: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
+  background: color-mix(in srgb, var(--btfw-color-bg) 92%, transparent 8%);
   color: var(--btfw-color-text);
 }
-
+footer {
+    background-color: linear-gradient(180deg,
+ color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%),
+ color-mix(in srgb, var(--btfw-color-surface) 90%, transparent 10%)) !important;
+}
 #mainpage {
   padding-top: 0px !important;
 }
-
+#plmeta {
+    border: 0px solid #aaaaaa!important;
+    padding: 8px;
+}
 #wrap {
   padding: 0 0 0px !important;
 }
@@ -365,11 +372,11 @@ a:hover {
 }
 
 .btfw-plbar__primary {
-  flex: 1 1 320px;
-  min-width: 240px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+    flex: 1 1 320px;
+    min-width: 235px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
 }
 
 .btfw-plbar__search {
@@ -418,7 +425,7 @@ a:hover {
 
 .btfw-plbar__actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   justify-content: flex-end;
   width: 100%;

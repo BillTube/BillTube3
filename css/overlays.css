@@ -603,7 +603,7 @@
   color: var(--btfw-color-text);
   border: 1px solid var(--btfw-border);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 6px 12px;
 }
 .modal.btfw-bulma-skin label { color: var(--btfw-color-text-soft); }
 
