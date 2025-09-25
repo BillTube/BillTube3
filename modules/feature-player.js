@@ -472,6 +472,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
       head.appendChild(style); // move to end to override legacy styles
     }
 
+
     return style;
   }
 
