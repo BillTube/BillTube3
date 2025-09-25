@@ -22,12 +22,44 @@ function positionAboveChatBar(el, opts){
   const cwRect  = cw.getBoundingClientRect();
   const barRect = bar.getBoundingClientRect();
 
+  const safeMargin = Math.max(6, margin);
+  const viewportLimitPx = isFinite(widthVw) ? (window.innerWidth * (widthVw / 100)) : widthPx;
+  const availableViewport = Math.max(0, window.innerWidth - safeMargin * 2);
+  const availableWithinChat = Math.max(0, cwRect.width - safeMargin * 2);
+
+  let width = Math.min(widthPx, viewportLimitPx, availableViewport || widthPx);
+  if (availableWithinChat > 0) {
+    width = Math.min(width, availableWithinChat);
+  }
+
+  const minComfort = Math.min(widthPx, viewportLimitPx, availableViewport || widthPx);
+  if (width < 280 && minComfort >= 280) {
+    width = Math.min(minComfort, Math.max(width, 280));
+  }
+
+  if (!Number.isFinite(width) || width <= 0) {
+    width = Math.min(widthPx, viewportLimitPx, availableViewport || widthPx);
+  }
+
+  const left = Math.max(safeMargin, cwRect.right - width);
+  const bottomOffset = Math.max(safeMargin, window.innerHeight - barRect.top + safeMargin);
+
+  const maxHeightViewport = isFinite(maxHvh) ? window.innerHeight * (maxHvh / 100) : maxHpx;
+  const availableHeight = Math.max(0, barRect.top - safeMargin);
+  const maxHeight = Math.min(maxHpx, maxHeightViewport, availableHeight || maxHpx);
+
   // Make it a fixed overlay and tuck it into the chat’s right edge
   el.style.position  = "fixed";
-  el.style.right     = Math.max(margin, window.innerWidth  - cwRect.right + margin) + "px";
-  el.style.bottom    = Math.max(margin, window.innerHeight - barRect.top   + margin) + "px";
-  el.style.width     = `min(${widthPx}px, ${widthVw}vw)`;
-  el.style.maxHeight = `min(${maxHpx}px, ${maxHvh}vh)`;
+  el.style.left      = `${Math.round(left)}px`;
+  el.style.right     = "auto";
+  el.style.bottom    = `${Math.round(bottomOffset)}px`;
+  el.style.width     = `${Math.round(width)}px`;
+  el.style.maxWidth  = `${Math.round(Math.min(widthPx, viewportLimitPx, Math.max(width, availableWithinChat || width, availableViewport || width)))}px`;
+  if (Number.isFinite(maxHeight) && maxHeight > 0) {
+    el.style.maxHeight = `${Math.round(maxHeight)}px`;
+  } else {
+    el.style.removeProperty("max-height");
+  }
   el.style.zIndex    = el.style.zIndex || "6002"; // keep above chat, below navbar modals
 }
 /* expose so other modules can use it */
