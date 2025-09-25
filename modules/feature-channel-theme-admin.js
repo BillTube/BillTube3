@@ -28,7 +28,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   ];
 
   const DEFAULT_CONFIG = {
-    version: 2,
+    version: 3,
     tint: "midnight",
     colors: {
       background: "#0f1524",
@@ -41,6 +41,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     slider: {
       enabled: false,
       feedUrl: ""
+    },
+    typography: {
+      preset: "inter",
+      customFamily: ""
     },
     resources: {
       scripts: [],
@@ -99,6 +103,61 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
   };
 
+  const FONT_PRESETS = {
+    inter: {
+      name: "Inter",
+      family: "'Inter', 'Segoe UI', sans-serif",
+      google: "Inter:wght@300;400;600;700"
+    },
+    roboto: {
+      name: "Roboto",
+      family: "'Roboto', 'Segoe UI', sans-serif",
+      google: "Roboto:wght@300;400;500;700"
+    },
+    poppins: {
+      name: "Poppins",
+      family: "'Poppins', 'Segoe UI', sans-serif",
+      google: "Poppins:wght@300;400;600;700"
+    },
+    montserrat: {
+      name: "Montserrat",
+      family: "'Montserrat', 'Segoe UI', sans-serif",
+      google: "Montserrat:wght@300;400;600;700"
+    },
+    opensans: {
+      name: "Open Sans",
+      family: "'Open Sans', 'Segoe UI', sans-serif",
+      google: "Open+Sans:wght@300;400;600;700"
+    },
+    lato: {
+      name: "Lato",
+      family: "'Lato', 'Segoe UI', sans-serif",
+      google: "Lato:wght@300;400;700;900"
+    },
+    nunito: {
+      name: "Nunito",
+      family: "'Nunito', 'Segoe UI', sans-serif",
+      google: "Nunito:wght@300;400;600;700"
+    },
+    manrope: {
+      name: "Manrope",
+      family: "'Manrope', 'Segoe UI', sans-serif",
+      google: "Manrope:wght@300;400;600;700"
+    },
+    outfit: {
+      name: "Outfit",
+      family: "'Outfit', 'Segoe UI', sans-serif",
+      google: "Outfit:wght@300;400;600;700"
+    },
+    urbanist: {
+      name: "Urbanist",
+      family: "'Urbanist', 'Segoe UI', sans-serif",
+      google: "Urbanist:wght@300;400;600;700"
+    }
+  };
+  const FONT_DEFAULT_ID = "inter";
+  const FONT_FALLBACK_FAMILY = FONT_PRESETS[FONT_DEFAULT_ID].family;
+
   const STYLE_ID = "btfw-theme-admin-style";
 
   function injectLocalStyles(){
@@ -106,55 +165,126 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
-      .btfw-theme-admin { padding: 16px 6px 26px; color: #d8ddf4; }
-      .btfw-theme-admin h3 { font-size: 1.1rem; margin: 0 0 12px; letter-spacing: 0.02em; }
-      .btfw-theme-admin p.lead { margin-bottom: 18px; color: rgba(216,221,244,0.72); }
-      .btfw-theme-admin .section { background: rgba(15,19,32,0.78); border: 1px solid rgba(109,77,246,0.22); border-radius: 14px; padding: 16px 18px; margin-bottom: 18px; box-shadow: 0 12px 30px rgba(8,12,24,0.45); }
-      .btfw-theme-admin .section h4 { font-size: 0.95rem; margin-bottom: 14px; color: #f0f4ff; letter-spacing: 0.04em; text-transform: uppercase; }
-      .btfw-theme-admin .field { margin-bottom: 14px; }
-      .btfw-theme-admin label { display: block; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.02em; color: rgba(232,236,248,0.9); }
-      .btfw-theme-admin .btfw-checkbox { display: flex; align-items: center; gap: 10px; font-weight: 600; margin: 0; color: rgba(232,236,248,0.9); }
-      .btfw-theme-admin .btfw-checkbox input[type="checkbox"] { width: auto; height: 18px; accent-color: #6d4df6; box-shadow: none; }
+      .btfw-theme-admin { padding: 18px 10px 28px; color: #dce4ff; font-family: var(--btfw-font-body, 'Inter', sans-serif); }
+      .btfw-theme-admin h3 { font-size: 1.12rem; margin: 0 0 12px; letter-spacing: 0.04em; font-weight: 700; }
+      .btfw-theme-admin p.lead { margin: 0 0 18px; color: rgba(220,228,255,0.72); max-width: 720px; }
+      .btfw-theme-admin details.section { border-radius: 20px; border: 1px solid rgba(109,77,246,0.28); margin-bottom: 18px; background: linear-gradient(135deg, rgba(18,26,42,0.82), rgba(27,36,58,0.88)); box-shadow: 0 18px 40px rgba(8,12,28,0.45); overflow: hidden; transition: border 0.2s ease, box-shadow 0.2s ease; }
+      .btfw-theme-admin details.section[open] { border-color: rgba(132,99,255,0.45); box-shadow: 0 20px 46px rgba(18,22,46,0.55); }
+      .btfw-theme-admin summary.section__summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; cursor: pointer; list-style: none; }
+      .btfw-theme-admin summary.section__summary::-webkit-details-marker { display: none; }
+      .btfw-theme-admin .section__title { display: flex; flex-direction: column; gap: 4px; }
+      .btfw-theme-admin .section__title h4 { margin: 0; font-size: 0.95rem; letter-spacing: 0.08em; text-transform: uppercase; color: #f4f6ff; }
+      .btfw-theme-admin .section__title span { font-size: 0.84rem; color: rgba(214,222,255,0.65); letter-spacing: 0.02em; }
+      .btfw-theme-admin .section__chevron { width: 28px; height: 28px; border-radius: 10px; border: 1px solid rgba(132,99,255,0.3); display: inline-flex; align-items: center; justify-content: center; color: rgba(214,222,255,0.7); font-size: 0.78rem; transition: transform 0.24s ease, border 0.18s ease, color 0.18s ease; }
+      .btfw-theme-admin details.section[open] .section__chevron { transform: rotate(90deg); color: #fff; border-color: rgba(132,99,255,0.52); }
+      .btfw-theme-admin .section__body { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+      .btfw-theme-admin .field { display: flex; flex-direction: column; gap: 6px; }
+      .btfw-theme-admin label { font-weight: 600; letter-spacing: 0.03em; color: rgba(232,236,252,0.9); }
+      .btfw-theme-admin .btfw-checkbox { display: inline-flex; gap: 10px; align-items: center; font-weight: 600; color: rgba(232,236,252,0.9); }
+      .btfw-theme-admin .btfw-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: #6d4df6; }
       .btfw-theme-admin .field.is-disabled label,
       .btfw-theme-admin .field.is-disabled .help { opacity: 0.55; }
-
       .btfw-theme-admin input[type="text"],
       .btfw-theme-admin input[type="url"],
       .btfw-theme-admin textarea,
-      .btfw-theme-admin select { width: 100%; background: rgba(7,10,22,0.76); border: 1px solid rgba(109,77,246,0.28); border-radius: 10px; padding: 10px 12px; color: #f8fbff; font-size: 0.95rem; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); transition: border 0.18s ease, box-shadow 0.18s ease; }
+      .btfw-theme-admin select { width: 100%; background: rgba(9,14,28,0.85); border: 1px solid rgba(132,99,255,0.32); border-radius: 12px; padding: 10px 12px; color: #f6f8ff; font-size: 0.95rem; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); transition: border 0.18s ease, box-shadow 0.18s ease; }
       .btfw-theme-admin .field.is-disabled input,
       .btfw-theme-admin .field.is-disabled textarea,
       .btfw-theme-admin .field.is-disabled select { opacity: 0.55; }
-      .btfw-theme-admin input[type="color"] { width: 100%; height: 42px; padding: 0; border-radius: 12px; border: 1px solid rgba(109,77,246,0.35); background: rgba(7,10,22,0.76); cursor: pointer; }
+      .btfw-theme-admin input[type="color"] { width: 100%; height: 44px; padding: 0; border-radius: 12px; border: 1px solid rgba(132,99,255,0.42); background: rgba(9,14,28,0.85); cursor: pointer; }
       .btfw-theme-admin input:focus,
       .btfw-theme-admin textarea:focus,
-      .btfw-theme-admin select:focus { border-color: rgba(132,99,255,0.82); box-shadow: 0 0 0 2px rgba(132,99,255,0.32); outline: none; }
+      .btfw-theme-admin select:focus { border-color: rgba(148,116,255,0.82); box-shadow: 0 0 0 2px rgba(132,99,255,0.32); outline: none; }
       .btfw-theme-admin textarea { min-height: 64px; resize: vertical; }
-      .btfw-theme-admin .help { font-size: 0.82rem; color: rgba(210,216,240,0.65); margin-top: 4px; }
+      .btfw-theme-admin .help { font-size: 0.82rem; color: rgba(206,216,245,0.6); margin-top: 2px; }
       .btfw-theme-admin .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px 18px; }
-      .btfw-theme-admin .preview { border-radius: 14px; overflow: hidden; border: 1px solid rgba(109,77,246,0.3); display: grid; grid-template-columns: 2fr 1fr; min-height: 120px; background: rgba(8,12,22,0.88); }
-      .btfw-theme-admin .preview__main { padding: 18px; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+      .btfw-theme-admin .preview { border-radius: 16px; border: 1px solid rgba(132,99,255,0.28); display: grid; grid-template-columns: 2fr 1fr; min-height: 130px; background: rgba(12,18,34,0.92); overflow: hidden; box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); }
+      .btfw-theme-admin .preview__main { padding: 18px; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
       .btfw-theme-admin .preview__chips { display: flex; gap: 8px; flex-wrap: wrap; }
-      .btfw-theme-admin .preview__chip { padding: 6px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; color: rgba(12,16,28,0.85); background: rgba(255,255,255,0.92); }
-      .btfw-theme-admin .preview__accent { display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; color: rgba(12,16,28,0.8); }
-      .btfw-theme-admin .buttons { display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
-      .btfw-theme-admin .btn-primary { background: linear-gradient(135deg, rgba(109,77,246,0.95), rgba(76,94,255,0.95)); border: 0; color: #fff; padding: 10px 18px; border-radius: 10px; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; box-shadow: 0 8px 18px rgba(86,72,255,0.35); transition: transform 0.16s ease, box-shadow 0.16s ease; }
-      .btfw-theme-admin .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(86,72,255,0.42); }
-      .btfw-theme-admin .btn-secondary { background: rgba(255,255,255,0.08); border: 0; color: rgba(232,236,248,0.88); padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 600; letter-spacing: 0.02em; }
-      .btfw-theme-admin .status { font-size: 0.85rem; font-weight: 600; letter-spacing: 0.02em; }
-      .btfw-theme-admin .status[data-variant="idle"] { color: rgba(210,216,240,0.7); }
+      .btfw-theme-admin .preview__chip { padding: 6px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; color: rgba(12,16,28,0.85); background: rgba(255,255,255,0.92); text-transform: capitalize; letter-spacing: 0.02em; }
+      .btfw-theme-admin .preview__accent { display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; color: rgba(12,16,28,0.85); background: rgba(255,255,255,0.92); }
+      .btfw-theme-admin .preview__font { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: rgba(230,236,255,0.92); }
+      .btfw-theme-admin .preview__font-label { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(214,222,255,0.65); }
+      .btfw-theme-admin .preview__font-text { margin: 0; font-size: 1.05rem; letter-spacing: 0.01em; }
+      .btfw-theme-admin .preview--font { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; border: 1px solid rgba(132,99,255,0.28); background: rgba(12,18,34,0.9); box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); }
+      .btfw-theme-admin .preview--font .preview__font-text { font-size: 1.2rem; }
+      .btfw-theme-admin .buttons { display: flex; gap: 12px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+      .btfw-theme-admin .btn-primary { background: linear-gradient(135deg, rgba(109,77,246,0.95), rgba(82,102,255,0.95)); border: 0; color: #fff; padding: 10px 20px; border-radius: 12px; font-weight: 600; letter-spacing: 0.03em; cursor: pointer; box-shadow: 0 12px 26px rgba(86,72,255,0.35); transition: transform 0.16s ease, box-shadow 0.16s ease; }
+      .btfw-theme-admin .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 16px 32px rgba(86,72,255,0.42); }
+      .btfw-theme-admin .btn-secondary { background: rgba(255,255,255,0.08); border: 0; color: rgba(232,236,252,0.88); padding: 10px 16px; border-radius: 12px; cursor: pointer; font-weight: 600; letter-spacing: 0.02em; transition: background 0.18s ease, color 0.18s ease; }
+      .btfw-theme-admin .btn-secondary:hover { background: rgba(255,255,255,0.12); color: rgba(244,248,255,0.92); }
+      .btfw-theme-admin .status { font-size: 0.85rem; font-weight: 600; letter-spacing: 0.02em; color: rgba(210,216,240,0.72); }
       .btfw-theme-admin .status[data-variant="saved"] { color: #5af2b2; }
       .btfw-theme-admin .status[data-variant="error"] { color: #ff7a8a; }
       @media (max-width: 720px) {
-        .btfw-theme-admin { padding: 12px 4px 18px; }
-        .btfw-theme-admin .section { padding: 14px; }
+        .btfw-theme-admin { padding: 14px 6px 24px; }
+        .btfw-theme-admin summary.section__summary { padding: 16px; }
+        .btfw-theme-admin .section__body { padding: 0 16px 16px; }
+        .btfw-theme-admin .grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
       }
+
     `;
     document.head.appendChild(style);
   }
 
+  function normalizeFontId(id){
+    if (!id) return FONT_DEFAULT_ID;
+    const str = String(id).trim().toLowerCase();
+    if (str === "custom") return "custom";
+    return str.replace(/[^a-z0-9]+/g, "");
+  }
+
+  function getFontPreset(id){
+    const key = normalizeFontId(id);
+    if (key === "custom") return null;
+    return FONT_PRESETS[key] || null;
+  }
+
+  function buildGoogleFontUrl(name){
+    if (!name) return "";
+    const trimmed = name.trim();
+    if (!trimmed) return "";
+    const encoded = trimmed.replace(/\s+/g, "+");
+    return `https://fonts.googleapis.com/css2?family=${encoded}:wght@300;400;600;700&display=swap`;
+  }
+
+  function resolveTypographyConfig(typo){
+    const presetId = normalizeFontId(typo?.preset || FONT_DEFAULT_ID);
+    const isCustom = presetId === "custom";
+    const preset = getFontPreset(presetId) || getFontPreset(FONT_DEFAULT_ID);
+    const customName = (typo?.customFamily || "").trim();
+    const family = isCustom && customName
+      ? `'${customName.replace(/'/g, "\\'")}', ${FONT_FALLBACK_FAMILY}`
+      : (preset?.family || FONT_FALLBACK_FAMILY);
+    let url = preset?.google
+      ? `https://fonts.googleapis.com/css2?family=${preset.google}&display=swap`
+      : "";
+    if (isCustom && customName) {
+      url = buildGoogleFontUrl(customName);
+    }
+    return {
+      preset: isCustom ? "custom" : (preset ? normalizeFontId(presetId) : FONT_DEFAULT_ID),
+      label: isCustom && customName ? customName : (preset?.name || "Inter"),
+      family,
+      url: url || ""
+    };
+  }
+
   function cloneDefaults(){
     return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  }
+
+  function overwriteConfig(target, source){
+    if (!target || typeof target !== "object") return target;
+    Object.keys(target).forEach(key => {
+      delete target[key];
+    });
+    if (!source || typeof source !== "object") return target;
+    const copy = JSON.parse(JSON.stringify(source));
+    Object.keys(copy).forEach(key => {
+      target[key] = copy[key];
+    });
+    return target;
   }
 
   function deepMerge(target, source){
@@ -197,7 +327,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     normalized.sliderJson = slider.feedUrl || slider.url || "";
 
     const json = JSON.stringify(normalized, null, 2);
-    return `\n${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n(function(cfg){\n  if (!cfg) return;\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelTheme = cfg;\n  function ensureAsset(id, url, kind){\n    if (!url) return;\n    var existing = document.getElementById(id);\n    if (existing) return;\n    if (kind === 'style'){\n      var link = document.createElement('link');\n      link.rel = 'stylesheet';\n      link.href = url;\n      link.id = id;\n      document.head.appendChild(link);\n    } else {\n      var script = document.createElement('script');\n      script.src = url;\n      script.async = true;\n      script.defer = true;\n      script.id = id;\n      document.head.appendChild(script);\n    }\n  }\n  function applyResources(resources){\n    if (!resources) return;\n    if (Array.isArray(resources.styles)) {\n      resources.styles.forEach(function(url, idx){ ensureAsset('btfw-theme-style-'+idx, url, 'style'); });\n    }\n    if (Array.isArray(resources.scripts)) {\n      resources.scripts.forEach(function(url, idx){ ensureAsset('btfw-theme-script-'+idx, url, 'script'); });\n    }\n  }\n  function applySlider(sliderCfg){\n    sliderCfg = sliderCfg || {};
+    return `\n${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n(function(cfg){\n  if (!cfg) return;\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelTheme = cfg;\n  const FONT_PRESETS = {"inter":{"name":"Inter","family":"'Inter', 'Segoe UI', sans-serif","google":"Inter:wght@300;400;600;700"},"roboto":{"name":"Roboto","family":"'Roboto', 'Segoe UI', sans-serif","google":"Roboto:wght@300;400;500;700"},"poppins":{"name":"Poppins","family":"'Poppins', 'Segoe UI', sans-serif","google":"Poppins:wght@300;400;600;700"},"montserrat":{"name":"Montserrat","family":"'Montserrat', 'Segoe UI', sans-serif","google":"Montserrat:wght@300;400;600;700"},"opensans":{"name":"Open Sans","family":"'Open Sans', 'Segoe UI', sans-serif","google":"Open+Sans:wght@300;400;600;700"},"lato":{"name":"Lato","family":"'Lato', 'Segoe UI', sans-serif","google":"Lato:wght@300;400;700;900"},"nunito":{"name":"Nunito","family":"'Nunito', 'Segoe UI', sans-serif","google":"Nunito:wght@300;400;600;700"},"manrope":{"name":"Manrope","family":"'Manrope', 'Segoe UI', sans-serif","google":"Manrope:wght@300;400;600;700"},"outfit":{"name":"Outfit","family":"'Outfit', 'Segoe UI', sans-serif","google":"Outfit:wght@300;400;600;700"},"urbanist":{"name":"Urbanist","family":"'Urbanist', 'Segoe UI', sans-serif","google":"Urbanist:wght@300;400;600;700"}};\n  const FONT_FALLBACK = "'Inter', 'Segoe UI', sans-serif";\n  function ensureAsset(id, url, kind){\n    if (!url) return;\n    var existing = document.getElementById(id);\n    if (existing) return;\n    if (kind === 'style'){\n      var link = document.createElement('link');\n      link.rel = 'stylesheet';\n      link.href = url;\n      link.id = id;\n      document.head.appendChild(link);\n    } else {\n      var script = document.createElement('script');\n      script.src = url;\n      script.async = true;\n      script.defer = true;\n      script.id = id;\n      document.head.appendChild(script);\n    }\n  }\n  function applyResources(resources){\n    if (!resources) return;\n    if (Array.isArray(resources.styles)) {\n      resources.styles.forEach(function(url, idx){ ensureAsset('btfw-theme-style-'+idx, url, 'style'); });\n    }\n    if (Array.isArray(resources.scripts)) {\n      resources.scripts.forEach(function(url, idx){ ensureAsset('btfw-theme-script-'+idx, url, 'script'); });\n    }\n  }\n  function applySlider(sliderCfg){\n    sliderCfg = sliderCfg || {};
     if (typeof sliderCfg.enabled === 'undefined' && typeof cfg.sliderEnabled !== 'undefined') {
       sliderCfg.enabled = cfg.sliderEnabled;
     }
@@ -327,26 +457,60 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     } catch (_) {}
   }
 
+  function resolveFont(typography){
+    typography = typography || {};
+    var preset = (typography.preset || 'inter').toLowerCase();
+    if (preset === 'custom') {
+      var name = (typography.customFamily || '').trim();
+      var family = name ? "'" + name.replace(/'/g, \"\'\") + "', " + FONT_FALLBACK : FONT_FALLBACK;
+      var url = name ? 'https://fonts.googleapis.com/css2?family=' + name.replace(/\s+/g, '+') + ':wght@300;400;600;700&display=swap' : '';
+      return { family: family, url: url, label: name || 'Custom' };
+    }
+    var meta = FONT_PRESETS[preset] || FONT_PRESETS['inter'];
+    var family = meta ? meta.family : FONT_FALLBACK;
+    var url = meta && meta.google ? 'https://fonts.googleapis.com/css2?family=' + meta.google + '&display=swap' : '';
+    return { family: family, url: url, label: (meta && meta.name) || 'Inter' };
+  }
+  function applyTypography(typography){
+    var resolved = resolveFont(typography);
+    var root = document.documentElement;
+    if (root && resolved.family) {
+      root.style.setProperty('--btfw-theme-font-family', resolved.family);
+    }
+    var existing = document.getElementById('btfw-theme-font');
+    if (resolved.url) {
+      if (existing && existing.tagName === 'LINK') {
+        if (existing.href !== resolved.url) existing.href = resolved.url;
+      } else {
+        ensureAsset('btfw-theme-font', resolved.url, 'style');
+      }
+    } else if (existing && existing.parentNode) {
+      existing.parentNode.removeChild(existing);
+    }
+    cfg.typography = cfg.typography || {};
+    cfg.typography.resolvedFamily = resolved.family;
+  }
   applyResources(cfg.resources);
   applySlider(cfg.slider || {});
   applyBranding(cfg.branding || {});
   applyColors(cfg.colors || {});
+  applyTypography(cfg.typography || {});
 })(window.BTFW_THEME_ADMIN);\n${JS_BLOCK_END}`;
 
   }
 
   function buildCssBlock(cfg){
     const colors = cfg.colors || {};
+    const typography = resolveTypographyConfig(cfg.typography || {});
     const bg = colors.background || "#0f1524";
     const surface = colors.surface || colors.panel || "#161f33";
     const panel = colors.panel || "#1d2640";
-    const text = colors.text || "#f0f4ff";
-    const chatText = colors.chatText || text;
+    const textColor = colors.text || "#f0f4ff";
+    const chatText = colors.chatText || textColor;
     const accent = colors.accent || "#6d4df6";
+    const fontFamily = typography.family || FONT_FALLBACK_FAMILY;
 
-    return `\n${CSS_BLOCK_START}\n:root {\n  --btfw-theme-bg: ${bg};\n  --btfw-theme-surface: ${surface};\n  --btfw-theme-panel: ${panel};\n  --btfw-theme-text: ${text};\n  --btfw-theme-chat-text: ${chatText};\n  --btfw-theme-accent: ${accent};\n}\nhtml, body {\n  background-color: var(--btfw-theme-bg);\n  color: var(--btfw-theme-text);\n}\n#mainpage, #wrap, #main {\n  background: linear-gradient(160deg, color-mix(in srgb, var(--btfw-theme-bg) 92%, black 8%), color-mix(in srgb, var(--btfw-theme-surface) 92%, black 5%));\n  color: var(--btfw-theme-text);\n}\n#chatwrap {\n  --btfw-chat-text: 14px;\n  color: var(--btfw-theme-chat-text);\n}\n#chatwrap .chat-msg, #chatwrap .timestamp, #chatwrap .username {\n  color: var(--btfw-theme-chat-text);\n}\n#chatwrap .server-msg {\n  color: color-mix(in srgb, var(--btfw-theme-accent) 80%, white 20%);\n}\n#queue, #rightpane, #leftpane, #userlist, .poll-menu, .pollwrap {\n  background: rgba(0,0,0,0.08) linear-gradient(180deg, color-mix(in srgb, var(--btfw-theme-panel) 96%, black 4%), color-mix(in srgb, var(--btfw-theme-surface) 92%, black 8%));\n  border-radius: 14px;\n  border: 1px solid color-mix(in srgb, var(--btfw-theme-accent) 30%, transparent 70%);\n  box-shadow: 0 18px 36px rgba(0,0,0,0.35);
-  color: var(--btfw-theme-text);
-}\n.btn, button, .btn-primary, .btn-default {\n  background: linear-gradient(135deg, color-mix(in srgb, var(--btfw-theme-accent) 88%, white 12%), color-mix(in srgb, var(--btfw-theme-accent) 62%, black 8%));\n  border: 0;\n  color: #fff;\n}\n.btn:hover, button:hover, .btn-primary:hover {\n  filter: brightness(1.08);\n}\na { color: color-mix(in srgb, var(--btfw-theme-accent) 70%, white 30%); }\n[data-btfw-theme-tint="${cfg.tint || "custom"}"] body::after {\n  content: "";\n  position: fixed;\n  inset: 0;\n  pointer-events: none;\n  background: linear-gradient(160deg, color-mix(in srgb, var(--btfw-theme-accent) 12%, transparent 88%), transparent);\n  mix-blend-mode: screen;\n  opacity: 0.22;\n}\n${CSS_BLOCK_END}`;
+    return `\n${CSS_BLOCK_START}\n:root {\n  --btfw-theme-bg: ${bg};\n  --btfw-theme-surface: ${surface};\n  --btfw-theme-panel: ${panel};\n  --btfw-theme-text: ${textColor};\n  --btfw-theme-chat-text: ${chatText};\n  --btfw-theme-accent: ${accent};\n  --btfw-theme-font-family: ${fontFamily};\n}\n${CSS_BLOCK_END}`;
   }
 
   function replaceBlock(original, startMarker, endMarker, block){
@@ -397,6 +561,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const preview = panel.querySelector(".preview");
     if (!preview) return;
     const colors = cfg.colors || {};
+    const typography = resolveTypographyConfig(cfg.typography || {});
     preview.style.setProperty("--bg", colors.background || "#0f1524");
     preview.style.setProperty("--surface", colors.surface || colors.panel || "#161f33");
     preview.style.setProperty("--panel", colors.panel || "#1d2640");
@@ -413,6 +578,21 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       chip.style.background = value;
       chip.textContent = `${key.replace(/([A-Z])/g, ' $1')}: ${value}`;
     });
+
+    const fontPreview = panel.querySelector('.preview--font');
+    if (fontPreview) {
+      if (typography.family) {
+        fontPreview.style.fontFamily = typography.family;
+      }
+      const nameNode = fontPreview.querySelector('[data-role="font-name"]');
+      if (nameNode) {
+        nameNode.textContent = typography.label || 'Inter';
+      }
+      const sampleNode = fontPreview.querySelector('[data-role="font-sample"]');
+      if (sampleNode) {
+        sampleNode.style.fontFamily = typography.family || FONT_FALLBACK_FAMILY;
+      }
+    }
   }
 
   function updateSliderFieldState(panel){
@@ -424,6 +604,19 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const field = input.closest('.field');
     if (field) {
       field.classList.toggle('is-disabled', !enabled);
+    }
+  }
+
+  function updateTypographyFieldState(panel){
+    const select = panel.querySelector('#btfw-theme-font');
+    const field = panel.querySelector('#btfw-theme-font-custom-field');
+    const input = panel.querySelector('#btfw-theme-font-custom');
+    const isCustom = (select?.value || '').toLowerCase() === 'custom';
+    if (input) {
+      input.disabled = !isCustom;
+    }
+    if (field) {
+      field.classList.toggle('is-disabled', !isCustom);
     }
   }
 
@@ -447,9 +640,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         input.value = value ?? "";
       }
     });
-    renderPreview(panel, cfg);
+    updateTypographyFieldState(panel);
     updateSliderFieldState(panel);
-
+    renderPreview(panel, cfg);
   }
 
   function setValueAtPath(obj, path, value){
@@ -487,8 +680,69 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
     updated.sliderEnabled = Boolean(updated.slider?.enabled);
     updated.sliderJson = updated.slider?.feedUrl || "";
+    if (!updated.typography || typeof updated.typography !== "object") {
+      updated.typography = cloneDefaults().typography;
+    }
+    const typo = updated.typography || {};
+    typo.preset = normalizeFontId(typo.preset || FONT_DEFAULT_ID);
+    if (typo.preset !== 'custom') {
+      typo.customFamily = '';
+    } else {
+      typo.customFamily = (typo.customFamily || '').trim();
+    }
+    updated.typography = {
+      preset: typo.preset,
+      customFamily: typo.customFamily || ''
+    };
     updated.version = DEFAULT_CONFIG.version;
     return updated;
+  }
+
+  function triggerChannelSubmit(modal, jsField, cssField){
+    const roots = [];
+    if (modal) roots.push(modal);
+    roots.push(document);
+
+    const selectors = [
+      '#cs-jssubmit',
+      '#cs-csssubmit',
+      "button[name='save-js']",
+      "button[name='save-css']",
+      "button[data-action='save-js']",
+      "button[data-action='save-css']"
+    ];
+
+    const clicked = new Set();
+    selectors.forEach(sel => {
+      roots.forEach(root => {
+        if (!root) return;
+        const el = root.querySelector(sel);
+        if (!el || clicked.has(el) || typeof el.click !== 'function') return;
+        try {
+          el.click();
+          clicked.add(el);
+        } catch (_) {}
+      });
+    });
+
+    let submitted = clicked.size > 0;
+    const formSet = new Set();
+    if (jsField && jsField.form) formSet.add(jsField.form);
+    if (cssField && cssField.form) formSet.add(cssField.form);
+    formSet.forEach(form => {
+      if (!form) return;
+      try {
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit();
+          submitted = true;
+        } else if (typeof form.submit === 'function') {
+          form.submit();
+          submitted = true;
+        }
+      } catch (_) {}
+    });
+
+    return submitted;
   }
 
   function extractSliderSettings(jsText){
@@ -627,103 +881,165 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     panel.innerHTML = `
       <div class="btfw-theme-admin">
         <h3>Channel Theme Toolkit</h3>
-        <p class="lead">Configure your BillTube channel's featured media, theme scripts, and palette without touching Channel JS or CSS. These settings will be stored alongside your channel and auto-applied on load.</p>
+        <p class="lead">Configure your BillTube channel's featured media, theme palette, typography, and resources without editing raw Channel JS or CSS.</p>
 
-        <div class="section">
-          <h4>Featured Content & Resources</h4>
-          <div class="field">
-            <label class="btfw-checkbox" for="btfw-theme-slider-enabled">
-              <input type="checkbox" id="btfw-theme-slider-enabled" data-btfw-bind="slider.enabled">
-              <span>Enable featured slider</span>
-            </label>
-            <p class="help">Toggles the channel list carousel by setting <code>UI_ChannelList</code> in Channel JS.</p>
+        <details class="section" data-section="resources" open>
+          <summary class="section__summary">
+            <div class="section__title">
+              <h4>Featured Content & Resources</h4>
+              <span>Manage the featured slider feed and extra theme assets.</span>
+            </div>
+            <span class="section__chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="section__body">
+            <div class="field">
+              <label class="btfw-checkbox" for="btfw-theme-slider-enabled">
+                <input type="checkbox" id="btfw-theme-slider-enabled" data-btfw-bind="slider.enabled">
+                <span>Enable featured slider</span>
+              </label>
+              <p class="help">Toggles the channel list carousel by setting <code>UI_ChannelList</code> in Channel JS.</p>
+            </div>
+            <div class="field">
+              <label for="btfw-theme-slider-json">Featured slider JSON</label>
+              <input type="url" id="btfw-theme-slider-json" data-btfw-bind="slider.feedUrl" placeholder="https://example.com/featured.json">
+              <p class="help">Paste the URL to the JSON feed used by the channel slider.</p>
+            </div>
+            <div class="field">
+              <label for="btfw-theme-css-urls">Additional CSS URLs</label>
+              <textarea id="btfw-theme-css-urls" data-btfw-bind="resources.styles" placeholder="https://example.com/theme.css"></textarea>
+              <p class="help">Each line becomes a stylesheet link injected before the theme renders.</p>
+            </div>
+            <div class="field">
+              <label for="btfw-theme-js-urls">Additional Script URLs</label>
+              <textarea id="btfw-theme-js-urls" data-btfw-bind="resources.scripts" placeholder="https://example.com/widget.js"></textarea>
+              <p class="help">Each line becomes a deferred script tag for optional widgets or behavior.</p>
+            </div>
           </div>
-          <div class="field">
-            <label for="btfw-theme-slider-json">Featured slider JSON</label>
-            <input type="url" id="btfw-theme-slider-json" data-btfw-bind="slider.feedUrl" placeholder="https://example.com/featured.json">
-            <p class="help">Paste the URL to the JSON feed used by the channel slider. We'll cache this in window.BTFW.channelTheme.sliderJson for other modules.</p>
-          </div>
-          <div class="field">
-            <label for="btfw-theme-css-urls">Additional CSS URLs</label>
-            <textarea id="btfw-theme-css-urls" data-btfw-bind="resources.styles" placeholder="https://example.com/theme.css"></textarea>
-            <p class="help">Each line becomes a stylesheet link, injected before the theme renders. Useful for advanced overrides.</p>
-          </div>
-          <div class="field">
-            <label for="btfw-theme-js-urls">Additional Script URLs</label>
-            <textarea id="btfw-theme-js-urls" data-btfw-bind="resources.scripts" placeholder="https://example.com/theme.js"></textarea>
-            <p class="help">Each line becomes a deferred script tag. Use this for widgets or extra behavior you previously pasted in Channel JS.</p>
-          </div>
-        </div>
+        </details>
 
-        <div class="section">
-          <h4>Palette & Tint</h4>
-          <div class="field">
-            <label for="btfw-theme-tint">Preset tint</label>
-            <select id="btfw-theme-tint" data-btfw-bind="tint">
-              <option value="midnight">Midnight Pulse</option>
-              <option value="aurora">Aurora Bloom</option>
-              <option value="sunset">Sunset Neon</option>
-              <option value="ember">Ember Forge</option>
-              <option value="custom">Custom mix</option>
-            </select>
-            <p class="help">Choose a curated palette to start from. Switching presets updates the swatches below. Adjust any color to craft your own look.</p>
-          </div>
-          <div class="grid">
-            <div class="field">
-              <label>Background</label>
-              <input type="color" data-btfw-bind="colors.background">
+        <details class="section" data-section="palette" open>
+          <summary class="section__summary">
+            <div class="section__title">
+              <h4>Palette & Tint</h4>
+              <span>Adjust surface colors and accent tint.</span>
             </div>
+            <span class="section__chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="section__body">
             <div class="field">
-              <label>Surface</label>
-              <input type="color" data-btfw-bind="colors.surface">
+              <label for="btfw-theme-tint">Preset tint</label>
+              <select id="btfw-theme-tint" data-btfw-bind="tint">
+                <option value="midnight">Midnight Pulse</option>
+                <option value="aurora">Aurora Bloom</option>
+                <option value="sunset">Sunset Neon</option>
+                <option value="ember">Ember Forge</option>
+                <option value="custom">Custom mix</option>
+              </select>
+              <p class="help">Choose a curated palette to start from, then fine-tune any swatch.</p>
             </div>
-            <div class="field">
-              <label>Panel</label>
-              <input type="color" data-btfw-bind="colors.panel">
-            </div>
-            <div class="field">
-              <label>Primary text</label>
-              <input type="color" data-btfw-bind="colors.text">
-            </div>
-            <div class="field">
-              <label>Chat text</label>
-              <input type="color" data-btfw-bind="colors.chatText">
-            </div>
-            <div class="field">
-              <label>Accent</label>
-              <input type="color" data-btfw-bind="colors.accent">
-            </div>
-          </div>
-          <div class="preview" aria-hidden="true">
-            <div class="preview__main">
-              <div class="preview__chips">
-                <div class="preview__chip" data-key="background"></div>
-                <div class="preview__chip" data-key="surface"></div>
-                <div class="preview__chip" data-key="panel"></div>
-                <div class="preview__chip" data-key="text"></div>
-                <div class="preview__chip" data-key="chatText"></div>
+            <div class="grid">
+              <div class="field">
+                <label>Background</label>
+                <input type="color" data-btfw-bind="colors.background">
+              </div>
+              <div class="field">
+                <label>Surface</label>
+                <input type="color" data-btfw-bind="colors.surface">
+              </div>
+              <div class="field">
+                <label>Panel</label>
+                <input type="color" data-btfw-bind="colors.panel">
+              </div>
+              <div class="field">
+                <label>Primary text</label>
+                <input type="color" data-btfw-bind="colors.text">
+              </div>
+              <div class="field">
+                <label>Chat text</label>
+                <input type="color" data-btfw-bind="colors.chatText">
+              </div>
+              <div class="field">
+                <label>Accent</label>
+                <input type="color" data-btfw-bind="colors.accent">
               </div>
             </div>
-            <div class="preview__accent">Accent</div>
+            <div class="preview" aria-hidden="true">
+              <div class="preview__main">
+                <div class="preview__chips">
+                  <div class="preview__chip" data-key="background"></div>
+                  <div class="preview__chip" data-key="surface"></div>
+                  <div class="preview__chip" data-key="panel"></div>
+                  <div class="preview__chip" data-key="text"></div>
+                  <div class="preview__chip" data-key="chatText"></div>
+                </div>
+              </div>
+              <div class="preview__accent">Accent</div>
+            </div>
           </div>
-        </div>
+        </details>
 
-        <div class="section">
-          <h4>Branding</h4>
-          <div class="field">
-            <label for="btfw-theme-header-name">Channel header name</label>
-            <input type="text" id="btfw-theme-header-name" data-btfw-bind="branding.headerName" placeholder="CyTube">
-            <p class="help">Replaces the navbar brand text (&lt;a class="navbar-brand" href="/"&gt;CyTube&lt;/a&gt;) for all visitors.</p>
+        <details class="section" data-section="typography" open>
+          <summary class="section__summary">
+            <div class="section__title">
+              <h4>Typography</h4>
+              <span>Select the base font used across the theme.</span>
+            </div>
+            <span class="section__chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="section__body">
+            <div class="field">
+              <label for="btfw-theme-font">Font preset</label>
+              <select id="btfw-theme-font" data-btfw-bind="typography.preset">
+                <option value="inter">Inter</option>
+                <option value="roboto">Roboto</option>
+                <option value="poppins">Poppins</option>
+                <option value="montserrat">Montserrat</option>
+                <option value="opensans">Open Sans</option>
+                <option value="lato">Lato</option>
+                <option value="nunito">Nunito</option>
+                <option value="manrope">Manrope</option>
+                <option value="outfit">Outfit</option>
+                <option value="urbanist">Urbanist</option>
+                <option value="custom">Custom Google Font</option>
+              </select>
+              <p class="help">Curated Google Fonts optimized for readability. Choose <em>Custom</em> to specify your own.</p>
+            </div>
+            <div class="field" id="btfw-theme-font-custom-field">
+              <label for="btfw-theme-font-custom">Custom Google font name</label>
+              <input type="text" id="btfw-theme-font-custom" data-btfw-bind="typography.customFamily" placeholder="Space Grotesk">
+              <p class="help">Enter the exact family name from Google Fonts. We load weights 300, 400, 600, and 700 automatically.</p>
+            </div>
+            <div class="preview preview--font" aria-hidden="true">
+              <div class="preview__font-label" data-role="font-name">Inter</div>
+              <p class="preview__font-text" data-role="font-sample">The quick brown fox jumps over the lazy dog.</p>
+            </div>
           </div>
-          <div class="field">
-            <label for="btfw-theme-favicon">Favicon URL</label>
-            <input type="url" id="btfw-theme-favicon" data-btfw-bind="branding.faviconUrl" placeholder="https://example.com/favicon.png">
-            <p class="help">Provide a full URL to the icon you want browsers to show in the tab bar. Leave blank to keep CyTube's default.</p>
+        </details>
+
+        <details class="section" data-section="branding">
+          <summary class="section__summary">
+            <div class="section__title">
+              <h4>Branding</h4>
+              <span>Navbar title and favicon overrides.</span>
+            </div>
+            <span class="section__chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="section__body">
+            <div class="field">
+              <label for="btfw-theme-header-name">Channel header name</label>
+              <input type="text" id="btfw-theme-header-name" data-btfw-bind="branding.headerName" placeholder="CyTube">
+              <p class="help">Replaces the navbar brand text for all visitors.</p>
+            </div>
+            <div class="field">
+              <label for="btfw-theme-favicon">Favicon URL</label>
+              <input type="url" id="btfw-theme-favicon" data-btfw-bind="branding.faviconUrl" placeholder="https://example.com/favicon.png">
+              <p class="help">Provide a full URL to the icon browsers should show in the tab bar.</p>
+            </div>
           </div>
-        </div>
+        </details>
 
         <div class="buttons">
-          <button type="button" class="btn-primary" id="btfw-theme-apply">Apply to Channel CSS & JS</button>
+          <button type="button" class="btn-primary" id="btfw-theme-apply">Apply to Channel CSS &amp; JS</button>
           <button type="button" class="btn-secondary" id="btfw-theme-reset">Reset to preset</button>
           <span class="status" id="btfw-theme-status" data-variant="idle">No changes applied yet.</span>
         </div>
@@ -744,6 +1060,15 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         if (input.id === 'btfw-theme-slider-enabled') {
           updateSliderFieldState(panel);
         }
+        if (input.dataset.btfwBind.startsWith("typography")) {
+          if (input.id === 'btfw-theme-font-custom') {
+            const fontSelect = panel.querySelector('#btfw-theme-font');
+            if (fontSelect && fontSelect.value !== 'custom') {
+              fontSelect.value = 'custom';
+            }
+          }
+          updateTypographyFieldState(panel);
+        }
 
         onChange();
       };
@@ -760,6 +1085,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
           Object.assign(cfg.colors, preset.colors);
           updateInputs(panel, cfg);
         }
+        updateTypographyFieldState(panel);
         onChange();
       });
     }
@@ -817,15 +1143,15 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
     if (status) {
       if (mode === 'manual') {
-        status.textContent = "Theme JS & CSS updated. Don't forget to save channel settings.";
-      } else if (mode === 'auto') {
-        status.textContent = "Theme JS & CSS synced automatically.";
+        status.textContent = "Theme JS & CSS applied. Submitting changes...";
+        status.dataset.variant = "pending";
       } else if (mode === 'init') {
-        status.textContent = "BillTube theme initialized in Channel JS & CSS.";
+        status.textContent = "BillTube theme prepared. Click apply to submit changes.";
+        status.dataset.variant = "idle";
       }
-      status.dataset.variant = "saved";
     }
     renderPreview(panel, mergedConfig);
+    return { config: mergedConfig, jsField, cssField };
   }
 
   function initPanel(modal){
@@ -867,26 +1193,18 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     initializing = false;
 
     let dirty = false;
-    let autoApplyTimer = null;
     const status = panel.querySelector('#btfw-theme-status');
-
-    const scheduleApply = (mode = 'auto', delay = 500) => {
-      if (autoApplyTimer) clearTimeout(autoApplyTimer);
-      autoApplyTimer = window.setTimeout(() => {
-        applyConfigToFields(panel, cfg, modal, { mode });
-        dirty = false;
-        autoApplyTimer = null;
-      }, Math.max(0, delay));
-    };
 
     const markDirty = () => {
       if (initializing) return;
+      const latest = collectConfig(panel, cfg);
+      overwriteConfig(cfg, latest);
+      renderPreview(panel, cfg);
       dirty = true;
       if (status) {
         status.textContent = "Changes pending. Click apply to sync with Channel JS/CSS.";
-        status.dataset.variant = "idle";
+        status.dataset.variant = "pending";
       }
-      scheduleApply('auto');
     };
 
     watchInputs(panel, cfg, markDirty);
@@ -894,12 +1212,23 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const applyBtn = panel.querySelector('#btfw-theme-apply');
     if (applyBtn) {
       applyBtn.addEventListener('click', () => {
-        if (autoApplyTimer) {
-          clearTimeout(autoApplyTimer);
-          autoApplyTimer = null;
-        }
-        applyConfigToFields(panel, cfg, modal, { mode: 'manual' });
+        const latest = collectConfig(panel, cfg);
+        overwriteConfig(cfg, latest);
+        const result = applyConfigToFields(panel, cfg, modal, { mode: 'manual' });
+        if (!result) return;
         dirty = false;
+        window.setTimeout(() => {
+          const submitted = triggerChannelSubmit(modal, result.jsField, result.cssField);
+          if (status) {
+            if (submitted) {
+              status.textContent = "Theme JS & CSS applied and submitted to CyTube.";
+              status.dataset.variant = "saved";
+            } else {
+              status.textContent = "Theme JS & CSS applied. Save channel settings to publish.";
+              status.dataset.variant = "idle";
+            }
+          }
+        }, 60);
       });
     }
 
@@ -907,7 +1236,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       const active = panel.classList.contains('active') || panel.style.display === 'block';
       if (active && status && dirty) {
         status.textContent = "Changes pending. Click apply to sync with Channel JS/CSS.";
-        status.dataset.variant = "idle";
+        status.dataset.variant = "pending";
       }
     });
     observer.observe(panel, { attributes: true, attributeFilter: ['class', 'style'] });
@@ -923,7 +1252,14 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       needsInit = true;
     }
     if (needsInit) {
-      scheduleApply('init', 0);
+      dirty = true;
+      if (status) {
+        status.textContent = "Theme config needs to be applied. Click Apply to sync with Channel JS/CSS.";
+        status.dataset.variant = "idle";
+      }
+    } else if (status && !dirty) {
+      status.textContent = "Theme settings loaded. No changes applied yet.";
+      status.dataset.variant = "idle";
     }
 
     panel.dataset.initialized = "1";

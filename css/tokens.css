@@ -1,5 +1,5 @@
 :root {
-  --btfw-top: 48px;
+  --btfw-top: 64px;
   --btfw-gap: 10px;
   --btfw-color-bg: var(--btfw-theme-bg, #0f1524);
   --btfw-color-surface: var(--btfw-theme-surface, #151d30);
@@ -30,4 +30,22 @@
   --btfw-chip-bg-hover: color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
   --btfw-chip-text: color-mix(in srgb, var(--btfw-color-text) 94%, white 6%);
   --btfw-video-bg: color-mix(in srgb, var(--btfw-color-bg) 45%, black 55%);
+  --btfw-font-default: 'Inter', 'Segoe UI', sans-serif;
+  --btfw-font-body: var(--btfw-theme-font-family, var(--btfw-font-default));
+  --btfw-navbar-height: 60px;
+  --btfw-navbar-bg: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  --btfw-navbar-gradient: linear-gradient(135deg,
+      color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%),
+      color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%));
+  --btfw-navbar-border: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
+  --btfw-navbar-shadow: 0 18px 42px color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%),
+    0 6px 12px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
+  --btfw-navbar-link: color-mix(in srgb, var(--btfw-color-text) 94%, transparent 6%);
+  --btfw-navbar-link-soft: color-mix(in srgb, var(--btfw-color-text) 70%, transparent 30%);
+  --btfw-navbar-link-hover: var(--btfw-color-text);
+  --btfw-navbar-pill-bg: linear-gradient(120deg,
+      color-mix(in srgb, var(--btfw-color-accent) 90%, white 10%),
+      color-mix(in srgb, var(--btfw-color-accent) 72%, transparent 28%));
+  --btfw-navbar-pill-hover: brightness(1.08);
+  --btfw-navbar-pill-text: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
 }
