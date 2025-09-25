@@ -17,8 +17,8 @@
   display: block;
   overflow: hidden;
   aspect-ratio: var(--btfw-video-aspect, 16 / 9);
-  background: #000;
-  border-radius: 12px;
+  background: var(--btfw-video-bg);
+  border-radius: var(--btfw-radius);
 }
 #videowrap .embed-responsive::before{
   content: "";
@@ -48,8 +48,8 @@
   aspect-ratio: var(--btfw-video-aspect, 16 / 9);
   border: 0;
   display: block;
-  background: #000;
-  border-radius: 12px;
+  background: var(--btfw-video-bg);
+  border-radius: var(--btfw-radius);
 }
 
 /* Video overlay buttons are styled in overlays.css; ensure interactivity */

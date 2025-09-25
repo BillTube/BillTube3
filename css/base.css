@@ -3,17 +3,6 @@
    Layout grid, content stack, and core spacing
    ====================================================================== */
 
-:root {
-  --btfw-top: 48px;                 /* set dynamically by layout module */
-  --btfw-gap: 10px;
-  --btfw-border: rgba(255,255,255,.08);
-  --btfw-card-bg: rgba(20,24,34,.92);
-  --btfw-radius: 12px;
-  --btfw-chat-min: 320px;
-  --btfw-chat-max: 30vw;
-  --btfw-split-width: 8px;
-}
-
 *, *::before, *::after { box-sizing: border-box; }
 
 /* ---------- Main 2-column grid: left content + splitter + right chat ---------- */
@@ -50,7 +39,7 @@
 #btfw-vsplit{
   grid-area: split;
   width: var(--btfw-split-width);
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--btfw-color-accent) 35%, transparent 65%), transparent);
   border-radius: 4px;
   cursor: col-resize;
   align-self: stretch; /* Ensure splitter takes full height */
@@ -149,22 +138,27 @@
 }
 .btfw-stack-arrows{ display:flex; gap:6px; }
 .btfw-arrow{
-  background:rgba(0,0,0,.25);
+  background: color-mix(in srgb, var(--btfw-color-panel) 30%, transparent 70%);
   border:1px solid var(--btfw-border);
   border-radius:8px;
   padding:2px 8px; line-height:1; cursor:pointer;
+  color: var(--btfw-color-text);
+  transition: background 0.18s ease, color 0.18s ease;
 }
-.btfw-arrow:hover{ background:rgba(255,255,255,.12); }
+.btfw-arrow:hover{
+  background: color-mix(in srgb, var(--btfw-color-accent) 48%, transparent 52%);
+  color: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
+}
 .btfw-stack-item__body{ padding:8px; }
 
 /* Grouped items styling */
 .btfw-stack-item.btfw-group-item .btfw-stack-item__header {
-  background: rgba(109, 77, 246, 0.15);
-  border-bottom: 1px solid rgba(109, 77, 246, 0.25);
+  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%);
 }
 .btfw-stack-item.btfw-group-item .btfw-stack-item__title {
   font-weight: 700;
-  color: #e6edf3;
+  color: var(--btfw-color-text);
 }
 .btfw-group-body {
   display: flex;
@@ -172,9 +166,9 @@
   gap: 8px;
 }
 .btfw-group-body > * {
-  border: 1px solid rgba(255,255,255,.05);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 40%);
   border-radius: 8px;
-  background: rgba(255,255,255,.02);
+  background: color-mix(in srgb, var(--btfw-color-surface) 86%, transparent 14%);
   padding: 6px;
 }
 
@@ -196,10 +190,12 @@
   gap: 12px !important;
   padding: 14px 16px !important;
   margin: 12px 0 10px 0 !important;
-  background: linear-gradient(135deg, rgba(109, 77, 246, 0.18), rgba(18, 26, 36, 0.92)) !important;
-  border: 1px solid rgba(109, 77, 246, 0.28) !important;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%),
+    color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%)) !important;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%) !important;
   border-radius: 14px !important;
-  box-shadow: 0 12px 32px rgba(8, 11, 20, 0.45);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--btfw-color-bg) 28%, transparent 72%);
 }
 
 .btfw-plbar__layout {
@@ -236,9 +232,9 @@
 
 .btfw-plbar__search .input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #f3f5ff;
+  background: color-mix(in srgb, var(--btfw-color-surface) 86%, transparent 14%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 78%, transparent 22%);
+  color: var(--btfw-color-text);
   border-radius: 10px;
 }
 
@@ -254,11 +250,11 @@
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--btfw-color-accent) 16%, transparent 84%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
   border-radius: 999px;
   padding: 4px 12px;
-  color: #d7defb;
+  color: color-mix(in srgb, var(--btfw-color-text) 92%, transparent 8%);
   align-self: flex-end;
 }
 
@@ -299,10 +295,10 @@
 .btfw-plbar__actions input[type=button],
 .btfw-plbar__actions input[type=submit],
 .btfw-plbar__actions input[type=reset] {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--btfw-color-surface) 82%, transparent 18%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 74%, transparent 26%);
   border-radius: 10px;
-  color: #e6edf8 !important;
+  color: var(--btfw-color-text) !important;
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 600;
@@ -311,10 +307,10 @@
 }
 
 .btfw-plbar__actions select {
-  background: rgba(12, 16, 26, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 78%, transparent 22%);
   border-radius: 10px;
-  color: #f5f7ff;
+  color: var(--btfw-color-text);
   padding: 6px 10px;
   font-size: 12px;
 }
@@ -326,8 +322,8 @@
 .btfw-plbar__actions input[type=submit]:hover,
 .btfw-plbar__actions input[type=reset]:hover,
 .btfw-plbar__actions select:hover {
-  background: rgba(109, 77, 246, 0.22) !important;
-  border-color: rgba(109, 77, 246, 0.5) !important;
+  background: color-mix(in srgb, var(--btfw-color-accent) 36%, transparent 64%) !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 52%, transparent 48%) !important;
 }
 
 .btfw-plbar__actions button:active,
@@ -393,7 +389,7 @@
   min-width: 48px;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  color: rgba(240, 244, 255, 0.85);
+  color: color-mix(in srgb, var(--btfw-color-text) 88%, transparent 12%);
 }
 
 /* Ensure videowrap doesn't collapse during load */

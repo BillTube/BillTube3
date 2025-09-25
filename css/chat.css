@@ -3,12 +3,6 @@
    Chat column structure, message area, avatars, and controls row
    ====================================================================== */
 
-:root{
-  --btfw-top: 48px;
-  --btfw-border: rgba(255,255,255,.08);
-  --btfw-radius: 12px;
-}
-
 #chatwrap{
   display:flex;
   flex-direction: column;
@@ -93,7 +87,7 @@
   align-items:center;
   padding:6px;
   border-top:1px solid var(--btfw-border);
-  background: rgba(20,24,34,.92);
+  background: color-mix(in srgb, var(--btfw-color-panel) 84%, transparent 16%);
   border-radius: 10px;
   margin-top:6px;
   flex-shrink: 0; /* Don't shrink the controls */
@@ -115,7 +109,7 @@
   margin-right: 8px;
   vertical-align: middle;
   object-fit: cover;
-  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
 }
 #messagebuffer .btfw-chat-avatar + .username{ vertical-align: middle; }
 
@@ -143,17 +137,17 @@
 #btfw-chattools{
   display:flex; align-items:center; justify-content:space-between;
   gap:8px; padding:6px; margin-bottom:6px;
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:12px; background: rgba(20,24,34,.92);
+  border:1px solid var(--btfw-border);
+  border-radius:12px; background: color-mix(in srgb, var(--btfw-color-panel) 84%, transparent 16%);
 }
 #btfw-chattools .btfw-ct{ border-radius:10px; }
 #btfw-ct-swatch{
   position: sticky; margin-top:6px; right:6px;
   display:grid; grid-template-columns: repeat(8, 22px); gap:6px;
   padding:8px; border-radius:10px;
-  background: rgba(10,14,20,.98);
-  border:1px solid rgba(255,255,255,.08);
-  box-shadow: 0 10px 26px rgba(0,0,0,.4);
+  background: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+  border:1px solid var(--btfw-border);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--btfw-color-bg) 35%, transparent 65%);
   z-index: 4700;
 }
 #btfw-ct-swatch.is-hidden{ display:none; }
@@ -167,10 +161,10 @@
 .btfw-ct-pop{
   position: absolute;
   left: 8px; right: 8px; bottom: 86px; /* JS adjusts bottom at runtime */
-  background: rgba(20,24,34,.98);
-  border: 1px solid rgba(255,255,255,.08);
+  background: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
+  border: 1px solid var(--btfw-border);
   border-radius: 12px;
-  box-shadow: 0 16px 40px rgba(0,0,0,.5);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--btfw-color-bg) 38%, transparent 62%);
   padding: 10px;
   z-index: 4700;
 }
@@ -186,12 +180,12 @@
   gap: 4px;
   padding: 10px 8px;
   border-radius: 10px;
-  background: rgba(0,0,0,.25);
-  border: 1px solid rgba(255,255,255,.08);
+  background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
+  border: 1px solid var(--btfw-border);
   cursor: pointer;
   user-select: none;
 }
-.btfw-ct-item:hover{ background: rgba(255,255,255,.12); }
+.btfw-ct-item:hover{ background: color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%); }
 .btfw-ct-item > span { font-size: 12px; opacity: .9; }
 
 .btfw-ct-swatch{
@@ -199,8 +193,8 @@
   display:grid; grid-template-columns: repeat(10, 22px); gap: 6px;
   padding: 8px;
   border-radius: 10px;
-  background: rgba(10,14,20,.98);
-  border: 1px solid rgba(255,255,255,.08);
+  background: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+  border: 1px solid var(--btfw-border);
 }
 .btfw-ct-swatch.is-hidden{ display:none; }
 .btfw-ct-swatchbtn{
@@ -222,26 +216,34 @@
 #btfw-ct-modal.is-active{ display: block; }
 #btfw-ct-modal .btfw-ct-backdrop{
   position: absolute; inset: 0;
-  background: rgba(0,0,0,.45);
+  background: color-mix(in srgb, var(--btfw-color-bg) 40%, black 60%);
   border-radius: 12px; /* matches chat column rounding if any */
 }
 #btfw-ct-modal .btfw-ct-card{
-  position: absolute; 
-  background: linear-gradient(180deg, #1b1624 0%, #171b24 100%);
-  border: 1px solid rgba(255,255,255,.08);
+  position: absolute;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%),
+    color-mix(in srgb, var(--btfw-color-surface) 88%, transparent 12%));
+  border: 1px solid var(--btfw-border);
   border-radius: 14px;
-  box-shadow: 0 18px 44px rgba(0,0,0,.55);
-  color: #eaeaf0;
+  box-shadow: 0 18px 44px color-mix(in srgb, var(--btfw-color-bg) 34%, transparent 66%);
+  color: var(--btfw-color-text);
   overflow: hidden;
 }
 #btfw-ct-modal .btfw-ct-cardhead{
   display:flex; align-items:center; justify-content:space-between;
   padding: 10px 12px;
-  background: linear-gradient(90deg,#702b8f 0%, #a03dc0 100%);
-  color: #fff; font-weight: 600; letter-spacing: .2px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--btfw-color-accent) 96%, transparent 4%),
+    color-mix(in srgb, var(--btfw-color-accent) 80%, white 20%));
+  color: var(--btfw-color-text); font-weight: 600; letter-spacing: .2px;
 }
 #btfw-ct-modal .btfw-ct-close{
-  background: transparent; border: 0; color: #fff; font-size: 18px; cursor: pointer;
+  background: transparent;
+  border: 0;
+  color: var(--btfw-color-on-accent);
+  font-size: 18px;
+  cursor: pointer;
 }
 #btfw-ct-modal .btfw-ct-body{ padding: 10px 12px 12px; }
 
@@ -253,10 +255,10 @@
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap: 3px; padding:10px 8px; cursor:pointer;
   border-radius: 10px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.1);
+  background: color-mix(in srgb, var(--btfw-color-surface) 82%, transparent 18%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 72%, transparent 28%);
 }
-#btfw-ct-modal .btfw-ct-item:hover{ background: rgba(255,255,255,.12); }
+#btfw-ct-modal .btfw-ct-item:hover{ background: color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%); }
 #btfw-ct-modal .btfw-ct-item > span{ font-size: 12px; opacity:.9; }
 
 #btfw-ct-modal .btfw-ct-section{ margin-top: 6px; }
@@ -276,27 +278,28 @@
   display:flex; align-items:center; gap:8px; margin-top:8px;
 }
 #btfw-ct-modal .btfw-ct-hex{
-  width:110px; background:#0f1218; color:#e9e9ee; border:1px solid rgba(255,255,255,.1);
+  width:110px; background:color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%); color:var(--btfw-color-text); border:1px solid color-mix(in srgb, var(--btfw-border) 76%, transparent 24%);
   border-radius:8px; padding:6px 8px;
 }
 
 /* Subtle polish for chat input row to echo style reference */
 .btfw-controls-row{
-  background: #121821;
-  border: 1px solid rgba(255,255,255,.08);
-  box-shadow: 0 8px 24px rgba(0,0,0,.35) inset;
+  background: color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%);
+  border: 1px solid var(--btfw-border);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--btfw-color-bg) 32%, transparent 68%) inset;
   border-radius: 12px;
 }
 #chatline{
-  background: #0e131b; color: #e8eaf0;
-  border: 1px solid rgba(255,255,255,.08);
+  background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
+  color: var(--btfw-color-text);
+  border: 1px solid var(--btfw-border);
   border-radius: 10px;
   padding: 8px 10px;
 }
 .btfw-chat-actions .button.btfw-chatbtn{
   border-radius: 999px;
-  background: radial-gradient(120% 120% at 30% 30%, rgba(255,255,255,.12), rgba(0,0,0,.15));
-  border: 1px solid rgba(255,255,255,.08);
+  background: radial-gradient(120% 120% at 30% 30%, color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%), color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%));
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 72%, transparent 28%);
 }
 .btfw-chat-actions .button.btfw-chatbtn:hover{ filter: brightness(1.08); }
 
@@ -323,9 +326,9 @@
 
 /* Fallback quick control styling (if Theme Settings modal is absent) */
 .btfw-avatars-dd .btfw-avatars-select{
-  background: rgba(0,0,0,.25);
-  border: 1px solid rgba(255,255,255,.08);
-  color: #e9e9ee;
+  background: color-mix(in srgb, var(--btfw-color-panel) 80%, transparent 20%);
+  border: 1px solid var(--btfw-border);
+  color: var(--btfw-color-text);
   border-radius: 8px;
   padding: 4px 8px;
 }
@@ -348,20 +351,22 @@
   gap: 6px;
   padding: 6px 14px;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(33, 43, 66, 0.95), rgba(25, 31, 49, 0.95));
-  border: 1px solid rgba(109, 77, 246, 0.4);
-  color: #f3f6ff;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%),
+    color-mix(in srgb, var(--btfw-color-accent) 38%, var(--btfw-color-panel) 62%));
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);
+  color: var(--btfw-color-text);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 32%, transparent 68%);
   cursor: pointer;
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
 #chatwrap .btfw-newmessages-slot #newmessages-indicator:hover{
   transform: translateY(-2px);
-  box-shadow: 0 16px 32px rgba(109, 77, 246, 0.35);
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--btfw-color-accent) 35%, transparent 65%);
 }
 
 #chatwrap .btfw-newmessages-slot #newmessages-indicator .glyphicon{
@@ -400,7 +405,7 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 #messagebuffer img.twemoji { width: 1.1em; height: 1.1em; }
 
 #userlist, #messagebuffer, #chatheader, #videowrap-header {
-    border: 0px solid #aaaaaa!important;
+    border: 0 solid transparent!important;
         scroll-behavior: smooth;
     overflow-x: hidden;
 }
@@ -419,8 +424,12 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 }
 
 #userlist::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--btfw-scrollbar-thumb);
   border-radius: 999px;
+}
+
+#userlist::-webkit-scrollbar-thumb:hover {
+  background: var(--btfw-scrollbar-thumb-hover);
 }
 
 #userlist::-webkit-scrollbar-track {
@@ -477,11 +486,18 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
 /* Muted user indicator in userlist */
 #userlist li.btfw-muted { opacity: .55; }
 #userlist .btfw-mute-chip {
-  margin-left: 6px; padding: 2px 6px; font-size: 11px;
-  border: 0; border-radius: 10px; cursor: pointer;
-  background: rgba(255,255,255,.10); color: #ddd;
+  margin-left: 6px;
+  padding: 2px 6px;
+  font-size: 11px;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--btfw-chip-bg);
+  color: var(--btfw-chip-text);
 }
-#userlist .btfw-mute-chip:hover { background: rgba(255,255,255,.18); }
+#userlist .btfw-mute-chip:hover {
+  background: var(--btfw-chip-bg-hover);
+}
 
 /* Chat bottom bar split: actions (left) + usercount (right) */
 .btfw-chat-bottombar{
