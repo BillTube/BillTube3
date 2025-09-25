@@ -110,18 +110,23 @@ function getCurrentTitle(){
   // ---------- TMDB summary ----------
   function getTMDBKey(){
     try {
-      const k1 = (window.BTFW_CONFIG && typeof window.BTFW_CONFIG.tmdbKey === "string") ? window.BTFW_CONFIG.tmdbKey.trim() : "";
-      let   k2 = ""; try { k2 = (localStorage.getItem("btfw:tmdb:key") || "").trim(); } catch(_) {}
+      const cfg = (window.BTFW_CONFIG && typeof window.BTFW_CONFIG === "object") ? window.BTFW_CONFIG : {};
+      const tmdbObj = (cfg.tmdb && typeof cfg.tmdb === "object") ? cfg.tmdb : {};
+      const cfgKey = typeof tmdbObj.apiKey === "string" ? tmdbObj.apiKey.trim() : "";
+      const legacyCfg = typeof cfg.tmdbKey === "string" ? cfg.tmdbKey.trim() : "";
+      let lsKey = "";
+      try { lsKey = (localStorage.getItem("btfw:tmdb:key") || "").trim(); }
+      catch(_) {}
       const g  = v => (v==null ? "" : String(v)).trim();
-      const k3 = g(window.TMDB_API_KEY) || g(window.BTFW_TMDB_KEY) || g(window.tmdb_key);
-      const k4 = (document.body?.dataset?.tmdbKey || "").trim();
-      const key = k1 || k2 || k3 || k4;
+      const globalKey = g(window.TMDB_API_KEY) || g(window.BTFW_TMDB_KEY) || g(window.tmdb_key);
+      const bodyKey = (document.body?.dataset?.tmdbKey || "").trim();
+      const key = cfgKey || legacyCfg || lsKey || globalKey || bodyKey;
       return key || null;
     } catch(_) { return null; }
   }
   async function fetchTMDBSummary(title){
     const key = getTMDBKey();
-    if (!key) return 'TMDB key missing. Set one of:\nwindow.BTFW_CONFIG.tmdbKey = "KEY";\nlocalStorage.setItem("btfw:tmdb:key","KEY");\nwindow.tmdb_key = "KEY";';
+    if (!key) return 'TMDB key missing. Open Theme Settings → General → Integrations to add your TMDB API key, or set one of:\nwindow.BTFW_CONFIG.tmdb = { apiKey: "KEY" };\nlocalStorage.setItem("btfw:tmdb:key","KEY");\nwindow.tmdb_key = "KEY";';
     try {
       const q = encodeURIComponent(title);
       const url = `https://api.themoviedb.org/3/search/multi?api_key=${key}&query=${q}&include_adult=false&language=en-US`;

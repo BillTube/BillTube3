@@ -50,7 +50,10 @@ BTFW.define("feature:styleCore", [], async () => {
       z.textContent = `
         /* Keep navbar on top */
         #nav-collapsible, .navbar, #navbar, .navbar-fixed-top {
-          position: fixed !important; top: 0; left: 0; right: 0;
+          position: sticky !important;
+          top: 0;
+          left: 0;
+          right: 0;
           z-index: 5000 !important;
         }
         /* Bulma modal layered correctly above content */
