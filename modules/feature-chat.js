@@ -121,6 +121,127 @@ function watchForStrayButtons(){
   obs.observe(document.documentElement, { childList:true, subtree:true });
 }
 
+  /* ---------------- Auto-scroll management ---------------- */
+  const scrollState = {
+    buffer: null,
+    observer: null,
+    isUserScrolledUp: false,
+    lastScrollTop: 0,
+    timeout: null
+  };
+
+  function getChatBuffer(){
+    return document.getElementById("messagebuffer") ||
+           document.querySelector(".chat-messages, #chatbuffer, .message-buffer");
+  }
+
+  function isScrolledToBottom(el){
+    if (!el) return false;
+    const tolerance = 5;
+    return el.scrollTop >= (el.scrollHeight - el.clientHeight - tolerance);
+  }
+
+  function scrollBufferToBottom(el, smooth){
+    if (!el) return;
+    if (smooth && typeof el.scrollTo === "function") {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
+  }
+
+  function handleScroll(event){
+    const el = event.currentTarget || event.target;
+    if (!el) return;
+
+    const current = el.scrollTop;
+    const atBottom = isScrolledToBottom(el);
+
+    if (current < scrollState.lastScrollTop && !atBottom) {
+      scrollState.isUserScrolledUp = true;
+    } else if (current > scrollState.lastScrollTop && atBottom) {
+      scrollState.isUserScrolledUp = false;
+    }
+
+    scrollState.lastScrollTop = current;
+
+    if (scrollState.timeout) clearTimeout(scrollState.timeout);
+    scrollState.timeout = setTimeout(() => {
+      if (isScrolledToBottom(el)) {
+        scrollState.isUserScrolledUp = false;
+      }
+    }, 800);
+  }
+
+  function handleNewMessage(){
+    const buffer = scrollState.buffer || getChatBuffer();
+    if (!buffer || scrollState.isUserScrolledUp) return;
+    setTimeout(() => scrollBufferToBottom(buffer, false), 16);
+  }
+
+  function handleMutations(mutations){
+    for (const mutation of mutations) {
+      if (mutation.type !== "childList" || mutation.addedNodes.length === 0) continue;
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType !== 1) continue;
+        if (node.matches?.(".chat-msg, .message, [class*=message]") ||
+            node.querySelector?.(".chat-msg, .message, [class*=message]")) {
+          handleNewMessage();
+          return;
+        }
+      }
+    }
+  }
+
+  function bindChatBuffer(buffer){
+    if (!buffer) return;
+    if (scrollState.buffer === buffer) return;
+
+    if (scrollState.buffer) {
+      scrollState.buffer.removeEventListener("scroll", handleScroll);
+    }
+    if (scrollState.observer) {
+      scrollState.observer.disconnect();
+      scrollState.observer = null;
+    }
+    if (scrollState.timeout) {
+      clearTimeout(scrollState.timeout);
+      scrollState.timeout = null;
+    }
+
+    scrollState.buffer = buffer;
+    scrollState.isUserScrolledUp = false;
+    scrollState.lastScrollTop = buffer.scrollTop;
+
+    buffer.addEventListener("scroll", handleScroll, { passive: true });
+
+    const observer = new MutationObserver(handleMutations);
+    observer.observe(buffer, { childList: true, subtree: true });
+    scrollState.observer = observer;
+
+    setTimeout(() => scrollBufferToBottom(buffer, false), 80);
+  }
+
+  function ensureScrollManagement(){
+    const buffer = getChatBuffer();
+    if (!buffer) return;
+    bindChatBuffer(buffer);
+  }
+
+  function scrollChat(opts){
+    const buffer = scrollState.buffer || getChatBuffer();
+    if (!buffer) return;
+    scrollState.isUserScrolledUp = false;
+    let smooth = true;
+    if (typeof opts === "boolean") smooth = opts;
+    else if (opts && Object.prototype.hasOwnProperty.call(opts, "smooth")) smooth = !!opts.smooth;
+    scrollBufferToBottom(buffer, smooth);
+  }
+
+  if (typeof window.scrollChat !== "function") {
+    window.scrollChat = scrollChat;
+  }
+
   function locateUserlistItem(name){
     if (!name) return null;
     const direct = document.querySelector(`#userlist li[data-name="${CSS.escape(name)}"]`);
@@ -487,6 +608,7 @@ function watchForStrayButtons(){
       ensureBars();
       adoptUserlistIntoPopover();
       adoptNewMessageIndicator();
+      ensureScrollManagement();
     }).observe(cw,{childList:true,subtree:true});
 
     const buf = $("#messagebuffer");
@@ -501,6 +623,8 @@ function watchForStrayButtons(){
       }).observe(buf,{childList:true});
       Array.from(buf.querySelectorAll(".username,.nick,.name")).forEach(colorizeUser);
     }
+
+    ensureScrollManagement();
   }
 
   /* ---------------- Theme Settings opener (unchanged) ---------------- */
@@ -585,11 +709,12 @@ function watchForStrayButtons(){
   /* ---------------- Boot ---------------- */
   function boot(){
     ensureBars();
+    ensureScrollManagement();
     ensureUsercountInBar();
     ensureUserlistPopover();
     observeChatDom();
     wireDelegatedClicks();
-	watchForStrayButtons();
+    watchForStrayButtons();
 
   }
 
