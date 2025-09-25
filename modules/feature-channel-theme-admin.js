@@ -14,34 +14,41 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   const CSS_BLOCK_END   = "/* ==BTFW_THEME_ADMIN_END== */";
 
   const JS_FIELD_SELECTORS = [
+    "#cs-jstext",
     "#chanjs", "#channel-js", "#channeljs", "#customjs", "#customJS",
     "textarea[name=chanjs]", "textarea[name=channeljs]",
     "textarea[data-setting='customJS']", "textarea[data-setting='chanjs']"
   ];
 
   const CSS_FIELD_SELECTORS = [
+    "#cs-csstext",
     "#chancss", "#channel-css", "#channelcss", "#customcss", "#customCSS",
     "textarea[name=chancss]", "textarea[name=channelcss]",
     "textarea[data-setting='customCSS']", "textarea[data-setting='chancss']"
   ];
 
   const DEFAULT_CONFIG = {
-    version: 1,
-    sliderEnabled: false,
-
-    sliderJson: "",
-    resources: {
-      scripts: [],
-      styles: []
-    },
+    version: 2,
     tint: "midnight",
     colors: {
       background: "#0f1524",
-      surface: "#161f33",
+      surface: "#151d30",
       panel: "#1d2640",
       text: "#e8ecf8",
       chatText: "#d4dcff",
       accent: "#6d4df6"
+    },
+    slider: {
+      enabled: false,
+      feedUrl: ""
+    },
+    resources: {
+      scripts: [],
+      styles: []
+    },
+    branding: {
+      headerName: "CyTube",
+      faviconUrl: ""
     }
   };
 
@@ -180,8 +187,151 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   }
 
   function buildConfigBlock(cfg){
-    const json = JSON.stringify(cfg, null, 2);
-    return `\n${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n(function(cfg){\n  if (!cfg) return;\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelTheme = cfg;\n  function ensureAsset(id, url, kind){\n    if (!url) return;\n    var existing = document.getElementById(id);\n    if (existing) return;\n    if (kind === 'style'){\n      var link = document.createElement('link');\n      link.rel = 'stylesheet';\n      link.href = url;\n      link.id = id;\n      document.head.appendChild(link);\n    } else {\n      var script = document.createElement('script');\n      script.src = url;\n      script.async = true;\n      script.defer = true;\n      script.id = id;\n      document.head.appendChild(script);\n    }\n  }\n  if (Array.isArray(cfg.resources?.styles)) {\n    cfg.resources.styles.forEach(function(url, idx){ ensureAsset('btfw-theme-style-'+idx, url, 'style'); });\n  }\n  if (Array.isArray(cfg.resources?.scripts)) {\n    cfg.resources.scripts.forEach(function(url, idx){ ensureAsset('btfw-theme-script-'+idx, url, 'script'); });\n  }\n  window.UI_ChannelList = cfg.sliderEnabled ? 1 : 0;\n  window.Channel_JSON = cfg.sliderJson || '';\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelSliderEnabled = Boolean(cfg.sliderEnabled);\n  window.BTFW.channelSliderJSON = cfg.sliderJson || '';\n  document.documentElement.setAttribute('data-btfw-theme-tint', cfg.tint || 'custom');\n})(window.BTFW_THEME_ADMIN);\n${JS_BLOCK_END}`;
+    const normalized = cloneDefaults();
+    deepMerge(normalized, cfg || {});
+    if (!normalized.slider || typeof normalized.slider !== "object") {
+      normalized.slider = cloneDefaults().slider;
+    }
+    const slider = normalized.slider || {};
+    normalized.sliderEnabled = Boolean(slider.enabled);
+    normalized.sliderJson = slider.feedUrl || slider.url || "";
+
+    const json = JSON.stringify(normalized, null, 2);
+    return `\n${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n(function(cfg){\n  if (!cfg) return;\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelTheme = cfg;\n  function ensureAsset(id, url, kind){\n    if (!url) return;\n    var existing = document.getElementById(id);\n    if (existing) return;\n    if (kind === 'style'){\n      var link = document.createElement('link');\n      link.rel = 'stylesheet';\n      link.href = url;\n      link.id = id;\n      document.head.appendChild(link);\n    } else {\n      var script = document.createElement('script');\n      script.src = url;\n      script.async = true;\n      script.defer = true;\n      script.id = id;\n      document.head.appendChild(script);\n    }\n  }\n  function applyResources(resources){\n    if (!resources) return;\n    if (Array.isArray(resources.styles)) {\n      resources.styles.forEach(function(url, idx){ ensureAsset('btfw-theme-style-'+idx, url, 'style'); });\n    }\n    if (Array.isArray(resources.scripts)) {\n      resources.scripts.forEach(function(url, idx){ ensureAsset('btfw-theme-script-'+idx, url, 'script'); });\n    }\n  }\n  function applySlider(sliderCfg){\n    sliderCfg = sliderCfg || {};
+    if (typeof sliderCfg.enabled === 'undefined' && typeof cfg.sliderEnabled !== 'undefined') {
+      sliderCfg.enabled = cfg.sliderEnabled;
+    }
+    if (!sliderCfg.feedUrl && cfg.sliderJson) {
+      sliderCfg.feedUrl = cfg.sliderJson;
+    }
+    var enabled = Boolean(sliderCfg.enabled);
+    var feed = sliderCfg.feedUrl || sliderCfg.url || '';
+    cfg.slider = cfg.slider || {};
+    cfg.slider.enabled = enabled;
+    cfg.slider.feedUrl = feed;
+    cfg.sliderEnabled = enabled;
+    cfg.sliderJson = feed;
+    window.BTFW.channelSlider = { enabled: enabled, feedUrl: feed };
+    window.BTFW.channelSliderEnabled = enabled;
+    window.BTFW.channelSliderJSON = feed;
+    window.UI_ChannelList = enabled ? 1 : 0;
+    window.Channel_JSON = feed || '';
+  }
+  function applyBranding(branding){
+    branding = branding || {};
+    var name = typeof branding.headerName === 'string' ? branding.headerName.trim() : '';
+    if (!name && typeof cfg.branding?.headerName === 'string') {
+      name = cfg.branding.headerName.trim();
+    }
+    if (!name && typeof cfg.headerName === 'string') {
+      name = cfg.headerName.trim();
+    }
+    if (!name) name = 'CyTube';
+    cfg.branding = cfg.branding || {};
+    cfg.branding.headerName = name;
+    var brandSelectors = [
+      '#nav-collapsible .navbar-brand',
+      '.navbar .navbar-brand',
+      '.navbar-brand',
+      '#navbrand'
+    ];
+    brandSelectors.forEach(function(sel){
+      var anchor = document.querySelector(sel);
+      if (!anchor) return;
+      var holder = anchor.querySelector('[data-btfw-brand-text]');
+      if (holder) {
+        holder.textContent = name;
+      } else {
+        var replaced = false;
+        var nodes = Array.prototype.slice.call(anchor.childNodes || []);
+        nodes.forEach(function(node){
+          if (node && node.nodeType === 3) {
+            var text = (node.textContent || '').trim();
+            if (!text) return;
+            if (!replaced) {
+              node.textContent = name;
+              replaced = true;
+            } else {
+              node.textContent = '';
+            }
+          }
+        });
+        if (!replaced) {
+          holder = document.createElement('span');
+          holder.dataset.btfwBrandText = '1';
+          if (anchor.childNodes.length > 0) {
+            anchor.appendChild(document.createTextNode(' '));
+          }
+          holder.textContent = name;
+          anchor.appendChild(holder);
+        }
+      }
+      anchor.setAttribute('title', name);
+      anchor.setAttribute('aria-label', name);
+    });
+
+    var faviconUrl = typeof branding.faviconUrl === 'string' ? branding.faviconUrl.trim() : '';
+    if (!faviconUrl && typeof cfg.branding?.faviconUrl === 'string') {
+      faviconUrl = cfg.branding.faviconUrl.trim();
+    }
+    cfg.branding.faviconUrl = faviconUrl || '';
+    if (faviconUrl) {
+      var linkSelectors = 'link[rel*="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]';
+      var links = Array.prototype.slice.call(document.querySelectorAll(linkSelectors));
+      if (!links.length) {
+        var created = document.createElement('link');
+        created.rel = 'icon';
+        document.head.appendChild(created);
+        links.push(created);
+      }
+      links.forEach(function(link){
+        try { link.href = faviconUrl; } catch (_) {}
+      });
+    }
+  }
+  function applyColors(colors){
+    colors = colors || {};
+    var root = document.documentElement;
+    if (!root) return;
+    var bg = colors.background || '#0f1524';
+    var surface = colors.surface || colors.panel || '#151d30';
+    var panel = colors.panel || '#1d2640';
+    var text = colors.text || '#e8ecf8';
+    var chatText = colors.chatText || text;
+    var accent = colors.accent || '#6d4df6';
+    cfg.colors = cfg.colors || {};
+    cfg.colors.background = bg;
+    cfg.colors.surface = surface;
+    cfg.colors.panel = panel;
+    cfg.colors.text = text;
+    cfg.colors.chatText = chatText;
+    cfg.colors.accent = accent;
+    var map = {
+      '--btfw-theme-bg': bg,
+      '--btfw-theme-surface': surface,
+      '--btfw-theme-panel': panel,
+      '--btfw-theme-text': text,
+      '--btfw-theme-chat-text': chatText,
+      '--btfw-theme-accent': accent
+    };
+    Object.keys(map).forEach(function(key){
+      if (map[key]) {
+        root.style.setProperty(key, map[key]);
+      }
+    });
+    root.setAttribute('data-btfw-theme-tint', cfg.tint || 'custom');
+    try {
+      document.dispatchEvent(new CustomEvent('btfw:channelThemeTint', {
+        detail: { tint: cfg.tint || 'custom', colors: { bg: bg, surface: surface, panel: panel, text: text, chat: chatText, accent: accent }, config: cfg }
+      }));
+    } catch (_) {}
+  }
+
+  applyResources(cfg.resources);
+  applySlider(cfg.slider || {});
+  applyBranding(cfg.branding || {});
+  applyColors(cfg.colors || {});
+})(window.BTFW_THEME_ADMIN);\n${JS_BLOCK_END}`;
 
   }
 
@@ -326,9 +476,18 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         value = lines;
       } else {
         value = input.value;
+        if (typeof value === "string") {
+          value = value.trim();
+        }
       }
       setValueAtPath(updated, path, value);
     });
+    if (!updated.slider || typeof updated.slider !== "object") {
+      updated.slider = cloneDefaults().slider;
+    }
+    updated.sliderEnabled = Boolean(updated.slider?.enabled);
+    updated.sliderJson = updated.slider?.feedUrl || "";
+    updated.version = DEFAULT_CONFIG.version;
     return updated;
   }
 
@@ -347,8 +506,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   }
 
   function ensureSliderVariables(jsText, cfg){
-    const enabledValue = cfg.sliderEnabled ? '1' : '0';
-    const sliderUrl = cfg.sliderJson || '';
+    const sliderCfg = cfg.slider || {};
+    const enabledValue = (typeof sliderCfg.enabled === 'boolean' ? sliderCfg.enabled : cfg.sliderEnabled) ? '1' : '0';
+    const rawUrl = sliderCfg.feedUrl || cfg.sliderJson || '';
+    const sliderUrl = typeof rawUrl === 'string' ? rawUrl : String(rawUrl || '');
     const escapedUrl = sliderUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     let updated = jsText || '';
 
@@ -472,14 +633,14 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
           <h4>Featured Content & Resources</h4>
           <div class="field">
             <label class="btfw-checkbox" for="btfw-theme-slider-enabled">
-              <input type="checkbox" id="btfw-theme-slider-enabled" data-btfw-bind="sliderEnabled">
+              <input type="checkbox" id="btfw-theme-slider-enabled" data-btfw-bind="slider.enabled">
               <span>Enable featured slider</span>
             </label>
             <p class="help">Toggles the channel list carousel by setting <code>UI_ChannelList</code> in Channel JS.</p>
           </div>
           <div class="field">
             <label for="btfw-theme-slider-json">Featured slider JSON</label>
-            <input type="url" id="btfw-theme-slider-json" data-btfw-bind="sliderJson" placeholder="https://example.com/featured.json">
+            <input type="url" id="btfw-theme-slider-json" data-btfw-bind="slider.feedUrl" placeholder="https://example.com/featured.json">
             <p class="help">Paste the URL to the JSON feed used by the channel slider. We'll cache this in window.BTFW.channelTheme.sliderJson for other modules.</p>
           </div>
           <div class="field">
@@ -547,6 +708,20 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
           </div>
         </div>
 
+        <div class="section">
+          <h4>Branding</h4>
+          <div class="field">
+            <label for="btfw-theme-header-name">Channel header name</label>
+            <input type="text" id="btfw-theme-header-name" data-btfw-bind="branding.headerName" placeholder="CyTube">
+            <p class="help">Replaces the navbar brand text (&lt;a class="navbar-brand" href="/"&gt;CyTube&lt;/a&gt;) for all visitors.</p>
+          </div>
+          <div class="field">
+            <label for="btfw-theme-favicon">Favicon URL</label>
+            <input type="url" id="btfw-theme-favicon" data-btfw-bind="branding.faviconUrl" placeholder="https://example.com/favicon.png">
+            <p class="help">Provide a full URL to the icon you want browsers to show in the tab bar. Leave blank to keep CyTube's default.</p>
+          </div>
+        </div>
+
         <div class="buttons">
           <button type="button" class="btn-primary" id="btfw-theme-apply">Apply to Channel CSS & JS</button>
           <button type="button" class="btn-secondary" id="btfw-theme-reset">Reset to preset</button>
@@ -606,7 +781,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
   }
 
-  function applyConfigToFields(panel, cfg, modal){
+  function applyConfigToFields(panel, cfg, modal, options = {}){
+    const mode = options.mode || 'manual';
     const status = panel.querySelector('#btfw-theme-status');
     const jsField = ensureField(modal, JS_FIELD_SELECTORS, "chanjs");
     const cssField = ensureField(modal, CSS_FIELD_SELECTORS, "chancss");
@@ -630,8 +806,23 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
     cssField.value = replaceBlock(existingCss, CSS_BLOCK_START, CSS_BLOCK_END, cssBlock);
 
+    ['input', 'change'].forEach(type => {
+      try {
+        jsField.dispatchEvent(new Event(type, { bubbles: true }));
+      } catch (_) {}
+      try {
+        cssField.dispatchEvent(new Event(type, { bubbles: true }));
+      } catch (_) {}
+    });
+
     if (status) {
-      status.textContent = "Theme JS & CSS updated. Don't forget to save channel settings.";
+      if (mode === 'manual') {
+        status.textContent = "Theme JS & CSS updated. Don't forget to save channel settings.";
+      } else if (mode === 'auto') {
+        status.textContent = "Theme JS & CSS synced automatically.";
+      } else if (mode === 'init') {
+        status.textContent = "BillTube theme initialized in Channel JS & CSS.";
+      }
       status.dataset.variant = "saved";
     }
     renderPreview(panel, mergedConfig);
@@ -645,28 +836,57 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     renderPanel(panel);
 
     const jsField = ensureField(modal, JS_FIELD_SELECTORS, "chanjs");
+    const cssField = ensureField(modal, CSS_FIELD_SELECTORS, "chancss");
     const storedConfig = parseConfig(jsField?.value || "");
     const cfg = deepMerge(cloneDefaults(), storedConfig || {});
+    const storedVersion = Number(cfg.version) || 0;
+    cfg.version = DEFAULT_CONFIG.version;
+
+    if (!cfg.slider || typeof cfg.slider !== "object") {
+      cfg.slider = cloneDefaults().slider;
+    }
+    if (typeof cfg.sliderEnabled === "boolean") {
+      cfg.slider.enabled = cfg.sliderEnabled;
+    }
+    if (typeof cfg.sliderJson === "string" && !cfg.slider.feedUrl) {
+      cfg.slider.feedUrl = cfg.sliderJson;
+    }
 
     const sliderState = extractSliderSettings(jsField?.value || "");
     if (typeof sliderState.enabled === "boolean") {
+      cfg.slider.enabled = sliderState.enabled;
       cfg.sliderEnabled = sliderState.enabled;
     }
     if (typeof sliderState.url !== "undefined") {
+      cfg.slider.feedUrl = sliderState.url || "";
       cfg.sliderJson = sliderState.url || "";
     }
 
-
+    let initializing = true;
     updateInputs(panel, cfg);
+    initializing = false;
 
     let dirty = false;
+    let autoApplyTimer = null;
     const status = panel.querySelector('#btfw-theme-status');
+
+    const scheduleApply = (mode = 'auto', delay = 500) => {
+      if (autoApplyTimer) clearTimeout(autoApplyTimer);
+      autoApplyTimer = window.setTimeout(() => {
+        applyConfigToFields(panel, cfg, modal, { mode });
+        dirty = false;
+        autoApplyTimer = null;
+      }, Math.max(0, delay));
+    };
+
     const markDirty = () => {
+      if (initializing) return;
       dirty = true;
       if (status) {
         status.textContent = "Changes pending. Click apply to sync with Channel JS/CSS.";
         status.dataset.variant = "idle";
       }
+      scheduleApply('auto');
     };
 
     watchInputs(panel, cfg, markDirty);
@@ -674,7 +894,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const applyBtn = panel.querySelector('#btfw-theme-apply');
     if (applyBtn) {
       applyBtn.addEventListener('click', () => {
-        applyConfigToFields(panel, cfg, modal);
+        if (autoApplyTimer) {
+          clearTimeout(autoApplyTimer);
+          autoApplyTimer = null;
+        }
+        applyConfigToFields(panel, cfg, modal, { mode: 'manual' });
         dirty = false;
       });
     }
@@ -687,6 +911,20 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
     });
     observer.observe(panel, { attributes: true, attributeFilter: ['class', 'style'] });
+
+    const existingJs = jsField?.value || "";
+    const existingCss = cssField?.value || "";
+    const hasJsBlock = existingJs.includes(JS_BLOCK_START) && existingJs.includes(JS_BLOCK_END);
+    const hasCssBlock = existingCss.includes(CSS_BLOCK_START) && existingCss.includes(CSS_BLOCK_END);
+    const currentVersion = storedVersion;
+    let needsInit = !hasJsBlock || !hasCssBlock;
+    if (currentVersion < DEFAULT_CONFIG.version) {
+      cfg.version = DEFAULT_CONFIG.version;
+      needsInit = true;
+    }
+    if (needsInit) {
+      scheduleApply('init', 0);
+    }
 
     panel.dataset.initialized = "1";
     return true;

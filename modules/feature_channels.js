@@ -1,20 +1,51 @@
 BTFW.define("feature:channels", [], async () => {
   const $ = (s, r = document) => r.querySelector(s);
 
-  function isChannelListEnabled() {
+  function resolveSliderSettings() {
     try {
-      return window.UI_ChannelList === "1" || window.UI_ChannelList === 1;
+      const global = window.BTFW || {};
+      const theme = global.channelTheme || {};
+      const slider = theme.slider || {};
+      let enabled = slider.enabled;
+      let url = slider.feedUrl || slider.url || slider.json || '';
+
+      if (typeof enabled === 'undefined' && typeof theme.sliderEnabled !== 'undefined') {
+        enabled = theme.sliderEnabled;
+      }
+      if (!url) {
+        url = theme.sliderJson || theme.sliderJSON || '';
+      }
+
+      if (typeof enabled === 'undefined' && global.channelSlider) {
+        enabled = global.channelSlider.enabled;
+        if (!url) url = global.channelSlider.feedUrl || '';
+      }
+      if (typeof enabled === 'undefined' && typeof global.channelSliderEnabled !== 'undefined') {
+        enabled = global.channelSliderEnabled;
+      }
+      if (!url && global.channelSliderJSON) {
+        url = global.channelSliderJSON;
+      }
+
+      if (typeof enabled === 'undefined' && typeof window.UI_ChannelList !== 'undefined') {
+        enabled = window.UI_ChannelList === '1' || window.UI_ChannelList === 1;
+      }
+      if (!url && typeof window.Channel_JSON !== 'undefined') {
+        url = window.Channel_JSON || '';
+      }
+
+      return { enabled: Boolean(enabled), url: url || '' };
     } catch (_) {
-      return false;
+      return { enabled: false, url: '' };
     }
   }
 
+  function isChannelListEnabled() {
+    return resolveSliderSettings().enabled;
+  }
+
   function getChannelJSON() {
-    try {
-      return window.Channel_JSON || '';
-    } catch (_) {
-      return '';
-    }
+    return resolveSliderSettings().url || '';
   }
 
   function createChannelSlider(channels) {
@@ -52,11 +83,13 @@ BTFW.define("feature:channels", [], async () => {
       .slider {
         position: relative;
         margin: 10px 0;
-        background: rgba(20, 24, 34, 0.92);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
+        background: color-mix(in srgb, var(--btfw-theme-panel, #1d2640) 86%, transparent 14%);
+        border: 1px solid color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 24%, transparent 76%);
+        border-radius: 14px;
         overflow: hidden;
         height: 120px;
+        color: var(--btfw-theme-text, #e6edf3);
+        box-shadow: 0 18px 36px color-mix(in srgb, var(--btfw-theme-bg, #0f1524) 28%, transparent 72%);
       }
       
       .carousel-inner {
@@ -73,16 +106,17 @@ BTFW.define("feature:channels", [], async () => {
         flex: 0 0 140px;
         height: 80px;
         cursor: pointer;
-        border-radius: 8px;
+        border-radius: 10px;
         overflow: hidden;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        border: 1px solid color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 18%, transparent 82%);
+        background: color-mix(in srgb, var(--btfw-theme-surface, #151d30) 84%, transparent 16%);
       }
-      
+
       .item:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(109, 77, 246, 0.15);
-        border-color: rgba(109, 77, 246, 0.4);
+        box-shadow: 0 8px 16px color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 30%, transparent 70%);
+        border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 65%, white 35%);
       }
       
       .item img.kek {
@@ -102,8 +136,8 @@ BTFW.define("feature:channels", [], async () => {
         top: 50%;
         transform: translateY(-50%);
         font-size: 24px;
-        color: #fff;
-        background: rgba(109, 77, 246, 0.8);
+        color: color-mix(in srgb, var(--btfw-theme-text, #e6edf3) 98%, transparent 2%);
+        background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 32%, rgba(0,0,0,0.55) 68%);
         width: 40px;
         height: 40px;
         border-radius: 50%;
@@ -115,10 +149,11 @@ BTFW.define("feature:channels", [], async () => {
         transition: all 0.2s ease;
         user-select: none;
       }
-      
+
       .arrow:hover {
-        background: rgba(109, 77, 246, 1);
+        background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 70%, white 30%);
         transform: translateY(-50%) scale(1.1);
+        box-shadow: 0 10px 24px color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 32%, transparent 68%);
       }
       
       .arrleft {
