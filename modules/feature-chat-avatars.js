@@ -14,7 +14,7 @@ BTFW.define("feature:chat-avatars", [], async () => {
       const stored = localStorage.getItem(AVATAR_KEY);
       if (stored === "off" || stored === "big" || stored === "small") return stored;
     } catch(_) {}
-    return "small";
+    return "big";
   }
 
   function saveMode(mode){

@@ -160,7 +160,8 @@ BTFW.define("feature:channels", [], async () => {
       }
 
       .btfw-channels__item {
-        flex: 0 0 210px;
+        flex: 0 0 clamp(160px, 18vw, 220px);
+        max-width: clamp(160px, 18vw, 220px);
       }
 
       .btfw-channels__link {
@@ -169,6 +170,7 @@ BTFW.define("feature:channels", [], async () => {
         gap: 8px;
         text-decoration: none;
         color: color-mix(in srgb, var(--btfw-theme-text, #e8ecfb) 96%, transparent 4%);
+        background: var(--btfw-theme-surface, #0b111d);
         background: color-mix(in srgb, var(--btfw-theme-surface, #0b111d) 88%, transparent 12%);
         border-radius: 12px;
         border: 1px solid color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 22%, transparent 78%);
@@ -189,8 +191,10 @@ BTFW.define("feature:channels", [], async () => {
 
       .btfw-channels__media {
         position: relative;
+        width: 100%;
         aspect-ratio: 16 / 9;
         overflow: hidden;
+        background: var(--btfw-theme-panel, #141f36);
         background: color-mix(in srgb, var(--btfw-theme-panel, #141f36) 88%, black 12%);
       }
 
