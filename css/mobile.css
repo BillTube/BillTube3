@@ -7,15 +7,15 @@
 /* --------- Tablet & down (<= 1100px): stack columns, unstick chat --------- */
 @media (max-width: 1100px){
   #btfw-grid.btfw-grid--vertical{
-    padding: 0 8px;
-    margin-top: calc(var(--btfw-top,48px) + 8px);
-    min-height: calc(100vh - var(--btfw-top,48px) - 8px);
+    padding: var(--btfw-gap, 10px) 8px;
+    margin-top: 0;
+    min-height: auto;
     height: auto;
   }
 
   #btfw-grid.btfw-grid--vertical #btfw-chatcol{
     height: auto;
-    min-height: 420px;
+    min-height: clamp(320px, 55vh, 520px);
   }
 }
 
