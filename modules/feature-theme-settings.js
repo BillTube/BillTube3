@@ -131,6 +131,19 @@ BTFW.define("feature:themeSettings", [], async () => {
                   </div>
                 </section>
 
+                <section class="btfw-ts-card">
+                  <header class="btfw-ts-card__header">
+                    <h3>Integrations</h3>
+                    <p>Connect API keys used by chat tools and commands.</p>
+                  </header>
+                  <div class="btfw-ts-card__body">
+                    <label class="btfw-input">
+                      <span class="btfw-input__label">TMDB API key</span>
+                      <input type="text" id="btfw-tmdb-key" data-btfw-bind="integrations.tmdb.apiKey" placeholder="YOUR_TMDB_KEY">
+                    </label>
+                    <p class="btfw-help">Required for the <code>!summary</code> command. Request a key at <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org</a>.</p>
+                  </div>
+                </section>
               </div>
             </div>
 
