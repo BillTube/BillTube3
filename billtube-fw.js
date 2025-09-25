@@ -14,6 +14,59 @@
   }
   window.BTFW = { define, init, BASE };
 
+  var BootOverlay=(function(){
+    var overlay=null;
+    var styleEl=null;
+
+    function ensureStyles(){
+      if (styleEl) return;
+      styleEl=document.createElement('style');
+      styleEl.id='btfw-boot-overlay-style';
+      styleEl.textContent="\n        #btfw-boot-overlay{\n          position:fixed;\n          inset:0;\n          background:radial-gradient(circle at 20% 20%, rgba(41,52,89,0.28), rgba(5,6,13,0.92));\n          backdrop-filter:blur(6px);\n          display:flex;\n          align-items:center;\n          justify-content:center;\n          z-index:10000;\n          opacity:1;\n          transition:opacity 220ms ease, visibility 220ms ease;\n          visibility:visible;\n        }\n        #btfw-boot-overlay[data-state=hidden]{\n          opacity:0;\n          visibility:hidden;\n        }\n        .btfw-boot-overlay__card{\n          display:flex;\n          flex-direction:column;\n          align-items:center;\n          gap:1rem;\n          padding:2.5rem 3rem;\n          border-radius:18px;\n          background:rgba(9,12,23,0.82);\n          box-shadow:0 18px 48px rgba(3,8,20,0.45);\n          color:#f5f7ff;\n          text-align:center;\n          min-width:260px;\n          font-family:'Inter','Segoe UI',sans-serif;\n        }\n        .btfw-boot-overlay__ring{\n          width:58px;\n          height:58px;\n          border-radius:50%;\n          border:4px solid rgba(255,255,255,0.18);\n          border-top-color:#6d4df6;\n          animation:btfw-boot-spin 1s linear infinite;\n        }\n        .btfw-boot-overlay__label{\n          font-size:0.95rem;\n          letter-spacing:0.02em;\n          opacity:0.88;\n        }\n        .btfw-boot-overlay__label strong{\n          display:block;\n          font-size:1.05rem;\n          letter-spacing:0.03em;\n          margin-bottom:0.35rem;\n        }\n        .btfw-boot-overlay__error{\n          display:none;\n          font-size:0.85rem;\n          color:#ffb4c1;\n        }\n        #btfw-boot-overlay[data-state=error] .btfw-boot-overlay__error{\n          display:block;\n        }\n        #btfw-boot-overlay[data-state=error] .btfw-boot-overlay__ring{\n          border-color:rgba(255,180,193,0.3);\n          border-top-color:#ff5678;\n          animation:none;\n        }\n        @keyframes btfw-boot-spin{\n          from{transform:rotate(0deg);}\n          to{transform:rotate(360deg);}\n        }\n      ";
+      document.head.appendChild(styleEl);
+    }
+
+    function attach(){
+      if (overlay) return overlay;
+      ensureStyles();
+      overlay=document.createElement('div');
+      overlay.id='btfw-boot-overlay';
+      overlay.setAttribute('role','status');
+      overlay.setAttribute('aria-live','polite');
+      overlay.innerHTML="\n        <div class=\"btfw-boot-overlay__card\">\n          <div class=\"btfw-boot-overlay__ring\"></div>\n          <p class=\"btfw-boot-overlay__label\">\n            <strong>BillTube theme</strong>\n            Preparing the channel experience…\n          </p>\n          <p class=\"btfw-boot-overlay__error\"></p>\n        </div>\n      ";
+      var mount=function(){
+        if (!overlay || overlay.isConnected) return;
+        var host=document.body||document.documentElement;
+        host.appendChild(overlay);
+      };
+      if (document.body) mount();
+      else document.addEventListener('DOMContentLoaded', mount, { once:true });
+      return overlay;
+    }
+
+    function show(){ attach(); }
+
+    function hide(){
+      if (!overlay) return;
+      overlay.setAttribute('data-state','hidden');
+      setTimeout(function(){ if(overlay){ overlay.remove(); overlay=null; } if(styleEl){ styleEl.remove(); styleEl=null; } }, 260);
+    }
+
+    function fail(message){
+      var ov=attach();
+      ov.setAttribute('data-state','error');
+      var label=ov.querySelector('.btfw-boot-overlay__label');
+      if (label) label.innerHTML='<strong>BillTube theme</strong>Something went wrong loading the experience.';
+      var err=ov.querySelector('.btfw-boot-overlay__error');
+      if (err) err.textContent=message||'Please refresh to retry.';
+      setTimeout(function(){ hide(); }, 4000);
+    }
+
+    return { show, hide, fail };
+  })();
+
+  BootOverlay.show();
+
 function qparam(u, kv){ return u + (u.indexOf('?')>=0?'&':'?') + kv; }
 
 var BTFW_VERSION = (function(){
@@ -88,7 +141,7 @@ function load(src){
       "modules/feature-bulma-layer.js",
       "modules/feature-layout.js",
       "modules/feature-channels.js",
-      "modules/feature-footer-forms.js",
+      "modules/feature-footer.js",
       "modules/feature-player.js",
       "modules/feature-stack.js",
       "modules/feature-chat.js",
@@ -116,8 +169,6 @@ function load(src){
       "modules/feature-billcast.js",
       "modules/feature-motd-editor.js",
       "modules/feature-video-enhancements.js",
-      "modules/feature-chat-scroll.js",
-      "modules/feature-footer-branding.js",
       "modules/feature-channel-theme-admin.js",
       "modules/feature-theme-settings.js"
     ];
@@ -137,7 +188,7 @@ function load(src){
     // Initialize all remaining modules
     return Promise.all([
       BTFW.init("feature:channels"),
-      BTFW.init("feature:footerForms"),
+      BTFW.init("feature:footer"),
       BTFW.init("feature:player"),
       BTFW.init("feature:stack"),
       BTFW.init("feature:chat"),
@@ -165,20 +216,21 @@ function load(src){
       BTFW.init("feature:billcast"),
       BTFW.init("feature:motd-editor"),
       BTFW.init("feature:videoEnhancements"),
-      BTFW.init("feature:chatScroll"),
-      BTFW.init("feature:footerBranding"),
+      BTFW.init("feature:footer"),
       BTFW.init("feature:channelThemeAdmin"),
       BTFW.init("feature:themeSettings")
     ]);
-  }).then(function(){ 
+  }).then(function(){
     console.log("[BTFW v3.4f] Ready.");
     // Dispatch a final ready event
-    document.dispatchEvent(new CustomEvent('btfw:ready', { 
-      detail: { version: '3.4f', timestamp: Date.now() } 
+    document.dispatchEvent(new CustomEvent('btfw:ready', {
+      detail: { version: '3.4f', timestamp: Date.now() }
     }));
+    BootOverlay.hide();
   })
-  .catch(function(e){ 
-    console.error("[BTFW v3.4f] boot failed:", e&&e.message||e); 
+  .catch(function(e){
+    console.error("[BTFW v3.4f] boot failed:", e&&e.message||e);
+    BootOverlay.fail((e&&e.message)||'Unknown error');
   });
 
 })();

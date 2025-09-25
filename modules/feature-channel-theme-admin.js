@@ -155,6 +155,67 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return textarea;
   }
 
+  function normalizeTargetId(raw){
+    if (!raw) return null;
+    if (raw.startsWith("#")) return raw.slice(1);
+    if (/^[A-Za-z][\w:-]*$/.test(raw)) return raw;
+    return null;
+  }
+
+  function setActiveTab(tabContainer, contentContainer, panel, trigger){
+    if (!panel || !tabContainer) return;
+    const anchors = Array.from(tabContainer.querySelectorAll("a[href^='#'], a[data-target^='#']"));
+    anchors.forEach(anchor => {
+      const host = anchor.closest("li, [role='tab'], .tab") || anchor;
+      const targetAttr = anchor.getAttribute("data-target") || anchor.getAttribute("href") || "";
+      const targetId = normalizeTargetId(targetAttr);
+      const isActive = trigger ? anchor === trigger : (targetId && targetId === panel.id);
+      host.classList.toggle("active", !!isActive);
+      host.classList.toggle("is-active", !!isActive);
+      if (host.setAttribute) host.setAttribute("aria-selected", isActive ? "true" : "false");
+      anchor.classList.toggle("active", !!isActive);
+      anchor.classList.toggle("is-active", !!isActive);
+    });
+
+    const container = contentContainer || panel.parentElement;
+    if (!container) return;
+    const panes = Array.from(container.querySelectorAll(".tab-pane, [role='tabpanel'], .modal-tab, .tab-panel"));
+    panes.forEach(pane => {
+      const active = pane === panel;
+      pane.classList.toggle("active", active);
+      pane.classList.toggle("is-active", active);
+      if (pane.classList.contains("tab-pane")) {
+        pane.classList.toggle("in", active);
+      }
+      pane.style.display = active ? "block" : "none";
+      if (pane.setAttribute) pane.setAttribute("aria-hidden", active ? "false" : "true");
+    });
+  }
+
+  function ensureTabSystem(modal){
+    if (!modal) return { tabContainer: null, contentContainer: null };
+    const tabContainer = modal.querySelector(".nav-tabs, .modal-tabs, [role='tablist']");
+    const contentContainer = modal.querySelector(".tab-content, .modal-content .modal-body, .modal-body");
+
+    if (tabContainer && !tabContainer.dataset.btfwTabsWired) {
+      tabContainer.dataset.btfwTabsWired = "1";
+      tabContainer.addEventListener("click", (event) => {
+        const anchor = event.target.closest("a[href^='#'], a[data-target^='#']");
+        if (!anchor) return;
+        const rawTarget = anchor.getAttribute("data-target") || anchor.getAttribute("href") || "";
+        const normalized = normalizeTargetId(rawTarget);
+        if (!normalized) return;
+        let panel = document.getElementById(normalized);
+        if (panel && !modal.contains(panel)) panel = null;
+        if (!panel) return;
+        event.preventDefault();
+        setActiveTab(tabContainer, contentContainer, panel, anchor);
+      }, true);
+    }
+
+    return { tabContainer, contentContainer };
+  }
+
   function renderPreview(panel, cfg){
     const preview = panel.querySelector(".preview");
     if (!preview) return;
@@ -429,25 +490,41 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   function ensureTab(modal) {
     if (!modal) return null;
 
-    const existingTab = modal.querySelector('.btfw-theme-admin');
-    if (existingTab) return existingTab.closest('.tab-pane, .modal-tab, [role="tabpanel"]') || existingTab.parentElement;
+    const { tabContainer, contentContainer } = ensureTabSystem(modal);
+    const panelHost = contentContainer || modal.querySelector('.tab-content') || modal;
 
-    const tabContainer = modal.querySelector('.nav-tabs, .modal-tabs, [role="tablist"]');
-    const contentContainer = modal.querySelector('.tab-content, .modal-content .modal-body, .modal-body');
+    const existingPanel = panelHost?.querySelector('#btfw-theme-tab');
+    if (existingPanel) return existingPanel;
 
-    if (!tabContainer || !contentContainer) return null;
+    if (!tabContainer || !panelHost) return null;
 
-    // Create tab button
-    const tabButton = document.createElement('li');
-    tabButton.innerHTML = '<a href="#btfw-theme-tab" data-toggle="tab">Theme</a>';
-    tabContainer.appendChild(tabButton);
+    const existingLink = tabContainer.querySelector("a[href='#btfw-theme-tab'], a[data-target='#btfw-theme-tab']");
+    if (!existingLink) {
+      if (tabContainer.tagName === 'UL' || tabContainer.tagName === 'OL' || tabContainer.classList.contains('nav-tabs')) {
+        const li = document.createElement('li');
+        li.className = 'btfw-theme-tab-toggle';
+        const anchor = document.createElement('a');
+        anchor.href = '#btfw-theme-tab';
+        anchor.setAttribute('data-toggle', 'tab');
+        anchor.textContent = 'Theme';
+        li.appendChild(anchor);
+        tabContainer.appendChild(li);
+      } else {
+        const anchor = document.createElement('a');
+        anchor.href = '#btfw-theme-tab';
+        anchor.setAttribute('data-toggle', 'tab');
+        anchor.className = 'btfw-theme-tab-toggle';
+        anchor.textContent = 'Theme';
+        tabContainer.appendChild(anchor);
+      }
+    }
 
-    // Create tab content
     const tabContent = document.createElement('div');
     tabContent.id = 'btfw-theme-tab';
     tabContent.className = 'tab-pane';
     tabContent.setAttribute('role', 'tabpanel');
-    contentContainer.appendChild(tabContent);
+    tabContent.style.display = 'none';
+    panelHost.appendChild(tabContent);
 
     return tabContent;
   }
