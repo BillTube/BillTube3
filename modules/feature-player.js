@@ -457,6 +457,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
   function ensureThemeStyle() {
     const head = document.head || document.getElementsByTagName("head")[0];
     if (!head) return null;
+
     let style = document.getElementById(THEME_ID);
     if (!style) {
       style = document.createElement("style");
@@ -466,7 +467,12 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     } else if (!style.firstChild || style.textContent !== videoPlayerThemeCSS) {
       style.textContent = videoPlayerThemeCSS;
     }
-    head.appendChild(style); // appending moves it to the end so it overrides legacy styles
+
+    if (style.parentNode !== head || head.lastElementChild !== style) {
+      head.appendChild(style); // move to end to override legacy styles
+    }
+
+
     return style;
   }
 
