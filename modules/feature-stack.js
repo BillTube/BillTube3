@@ -80,7 +80,8 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     }
 
     if (panel.parentElement !== mainContainer) {
-      mainContainer.insertBefore(panel, controlsBar.nextSibling);
+      const anchor = controlsBar.parentElement === mainContainer ? controlsBar.nextSibling : null;
+      mainContainer.insertBefore(panel, anchor);
     }
 
     const tabs = panel.querySelector(".btfw-addmedia-tabs");
@@ -325,6 +326,10 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
         }
       }
     };
+
+    if (controlsBar.parentElement !== mainContainer) {
+      mainContainer.insertBefore(controlsBar, mainContainer.firstChild);
+    }
 
     const addMedia = ensureAddMediaUI(mainContainer, controlsBar, actionsCluster);
     if (addMedia) {
