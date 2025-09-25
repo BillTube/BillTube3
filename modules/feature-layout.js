@@ -2,6 +2,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   const SPLIT_KEY = "btfw:grid:leftPx";
   const CHAT_SIDE_KEY = "btfw:layout:chatSide";
   const MOBILE_STACK_ID = "btfw-mobile-stack";
+  const NAV_HOST_ID = "btfw-navhost";
   const VIDEO_MIN_PX = 520;
   const DEFAULT_VIDEO_TARGET = 680;
   const CHAT_MIN_PX = 360;
@@ -385,6 +386,8 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       const split=document.createElement("div");
       split.id="btfw-vsplit";
 
+      ensureNavHost(grid);
+
       grid.appendChild(left);
       grid.appendChild(split);
       grid.appendChild(right);
@@ -397,11 +400,14 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       const left=document.getElementById("btfw-leftpad");
       const right=document.getElementById("btfw-chatcol");
       const v=document.getElementById("videowrap");
-      const c=document.getElementById("chatwrap"); 
+      const c=document.getElementById("chatwrap");
       const q=document.getElementById("playlistrow")||document.getElementById("playlistwrap")||document.getElementById("queuecontainer");
-      
-      if(v && !left.contains(v)) left.appendChild(v); 
-      if(q && !left.contains(q)) left.appendChild(q); 
+      const grid=document.getElementById("btfw-grid");
+
+      ensureNavHost(grid);
+
+      if(v && !left.contains(v)) left.appendChild(v);
+      if(q && !left.contains(q)) left.appendChild(q);
       if(c && !right.contains(c)) right.appendChild(c);
     }
 
@@ -511,3 +517,36 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
 
   return {name:"feature:layout"};
 });
+  function findNavbarElement(){
+    const selectors = [
+      "nav.navbar",
+      ".navbar-fixed-top",
+      "#navbar"
+    ];
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function ensureNavHost(grid){
+    if (!grid) return;
+    const navEl = findNavbarElement();
+    if (!navEl) return;
+
+    let host = document.getElementById(NAV_HOST_ID);
+    if (!host) {
+      host = document.createElement("div");
+      host.id = NAV_HOST_ID;
+      host.className = "btfw-navhost";
+    }
+
+    if (navEl.parentElement !== host) {
+      host.appendChild(navEl);
+    }
+
+    if (host.parentElement !== grid) {
+      grid.insertBefore(host, grid.firstChild);
+    }
+  }
