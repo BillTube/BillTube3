@@ -96,9 +96,12 @@
       const link = document.createElement("link");
       link.rel = "preload";
       link.as = "style";
-      link.href = BASE + url;
+      link.href = url; // Use the full URL as passed, don't prepend BASE
       link.onload = resolve;
-      link.onerror = reject;
+      link.onerror = () => {
+        console.warn(`[BTFW] Failed to preload ${url}, continuing anyway`);
+        resolve(); // Don't fail the entire init for missing CSS
+      };
       document.head.appendChild(link);
     });
   }
@@ -143,17 +146,8 @@
     // Set global theme attribute
     document.documentElement.setAttribute("data-btfw-framework", VERSION);
     
-    // Preload critical CSS files
-    Promise.all([
-      preload("/css/core.css"),
-      preload("/css/layout.css"),
-      preload("/css/chat.css"),
-      preload("/css/overlays.css"),
-      preload("/css/player.css"),
-      preload("/css/mobile.css")
-    ]).then(function(){
-      // Load all module files in parallel
-      var mods = [
+    // Load all module files in parallel (skip CSS preloading for now)
+    var mods = [
         "modules/feature-style-core.js",
         "modules/feature-bulma-layer.js",
         "modules/feature-layout.js",
