@@ -70,9 +70,32 @@
   -webkit-overflow-scrolling: touch;
 }
 
-#messagebuffer .chat-msg{ display:block; padding:3px 2px; }
-#messagebuffer .timestamp{ opacity:.6; font-size: 0.85em; margin-right:6px; }
-#messagebuffer .username{ font-weight:600; margin-right:6px; }
+#messagebuffer .chat-msg{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 6px;
+  position: relative;
+}
+#messagebuffer .timestamp{
+  order: 3;
+  margin-left: auto;
+  opacity: .65;
+  font-size: 0.8em;
+  padding-left: 12px;
+  color: color-mix(in srgb, var(--btfw-color-chat-text) 70%, transparent 30%);
+}
+#messagebuffer .username{
+  order: 1;
+  font-weight: 600;
+  margin-right: 0;
+}
+#messagebuffer .chat-msg > span:not(.timestamp):not(.username){
+  order: 2;
+  flex: 1 1 auto;
+  min-width: 0;
+}
 
 /* Keep images/GIFs reasonable inside chat */
 #messagebuffer .chat-msg img{

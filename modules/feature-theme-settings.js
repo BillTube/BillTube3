@@ -386,11 +386,49 @@ BTFW.define("feature:themeSettings", [], async () => {
     });
   }
 
+  function decorateUserOptions(){
+    const modal = document.getElementById("useroptions");
+    if (!modal) return;
+    const pane = modal.querySelector("#us-general");
+    if (pane && !pane._btfwDecorated) {
+      pane._btfwDecorated = true;
+      pane.classList.add("btfw-useroptions-pane");
+      pane.innerHTML = `
+        <div class="btfw-useroptions-about">
+          <div class="btfw-useroptions-hero">
+            <span class="btfw-useroptions-badge">BillTube3</span>
+            <h4>Made by Bill</h4>
+            <p>BillTube3 keeps the entire channel aligned with a unified visual language. Manual theme or layout overrides are disabled to protect the curated experience.</p>
+          </div>
+          <div class="btfw-useroptions-panels">
+            <article class="btfw-useroptions-panel">
+              <h5>Unified look</h5>
+              <p>Every viewer sees the same polished interface, playlists, and chat styling that Bill prepared for the community.</p>
+            </article>
+            <article class="btfw-useroptions-panel">
+              <h5>Need a tweak?</h5>
+              <p>Share feedback in chat or ping Bill directly. Adjustments roll out globally after testing in the Channel Theme Toolkit.</p>
+            </article>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  function observeUserOptions(){
+    if (document.body._btfwUserOptionsMO) return;
+    const mo = new MutationObserver(() => decorateUserOptions());
+    mo.observe(document.body, { childList: true, subtree: true });
+    document.body._btfwUserOptionsMO = mo;
+  }
+
   // --- boot: apply persisted variables even if modal never opened ---
   function boot(){
     applyChatTextPx(parseInt(get(TS_KEYS.chatTextPx, "14"),10));
     applyEmoteSize(get(TS_KEYS.emoteSize,"medium"));
     wireOpeners();
+    decorateUserOptions();
+    observeUserOptions();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
