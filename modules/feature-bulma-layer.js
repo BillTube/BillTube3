@@ -19,14 +19,22 @@ BTFW.define("feature:bulma-layer", [], async () => {
   const DARK_CSS = `
 /* --- Global dark scope --- */
 html[data-btfw-theme="dark"] { color-scheme: dark; }
-html[data-btfw-theme="dark"], html[data-btfw-theme="dark"] body { background:#0f131a; color:#e6edf3; }
+html[data-btfw-theme="dark"], html[data-btfw-theme="dark"] body {
+  background: var(--btfw-color-bg);
+  color: var(--btfw-color-text);
+}
+html[data-btfw-theme="dark"] body {
+  background-image: none;
+}
 
 /* Text/surfaces (Bulma) */
 html[data-btfw-theme="dark"] .content,
 html[data-btfw-theme="dark"] .title,
 html[data-btfw-theme="dark"] .subtitle,
 html[data-btfw-theme="dark"] p,
-html[data-btfw-theme="dark"] small { color:#e6edf3; }
+html[data-btfw-theme="dark"] small {
+  color: var(--btfw-color-text);
+}
 
 html[data-btfw-theme="dark"] .box,
 html[data-btfw-theme="dark"] .card,
@@ -35,65 +43,81 @@ html[data-btfw-theme="dark"] .menu,
 html[data-btfw-theme="dark"] .notification,
 html[data-btfw-theme="dark"] .dropdown-content,
 html[data-btfw-theme="dark"] .modal-card {
-  background:#141a22 !important;
-  color:#e6edf3 !important;
-  border:1px solid #253142 !important;
-  box-shadow: 0 12px 38px rgba(0,0,0,.6);
+  background: color-mix(in srgb, var(--btfw-color-surface) 92%, transparent 8%) !important;
+  color: var(--btfw-color-text) !important;
+  border: 1px solid var(--btfw-border) !important;
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%);
 }
 
 html[data-btfw-theme="dark"] .tabs.is-boxed li a { background:transparent; border-color:transparent; color:#c8d4e0; }
-html[data-btfw-theme="dark"] .tabs.is-boxed li.is-active a { background:#0f1620; color:#fff; border-color:#253142; }
+html[data-btfw-theme="dark"] .tabs.is-boxed li.is-active a {
+  background: color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%);
+  color: var(--btfw-color-text);
+  border-color: var(--btfw-border);
+}
 
 /* Inputs */
 html[data-btfw-theme="dark"] .input,
 html[data-btfw-theme="dark"] .textarea,
 html[data-btfw-theme="dark"] .select select {
-  background:#0f1620 !important;
-  color:#e6edf3 !important;
-  border-color:#2b3a4a !important;
+  background: color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%) !important;
+  color: var(--btfw-color-text) !important;
+  border-color: color-mix(in srgb, var(--btfw-border) 80%, transparent 20%) !important;
 }
 html[data-btfw-theme="dark"] .input::placeholder,
-html[data-btfw-theme="dark"] .textarea::placeholder { color:#9fb0c2 !important; }
+html[data-btfw-theme="dark"] .textarea::placeholder {
+  color: color-mix(in srgb, var(--btfw-color-text) 55%, transparent 45%) !important;
+}
 
 /* Buttons */
-html[data-btfw-theme="dark"] .button {
-  background:#1a2230; color:#e6edf3; border:1px solid rgba(255,255,255,.10);
+html[data-btfw-theme="dark"] .button,
+html[data-btfw-theme="dark"] .btn {
+  background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  color: var(--btfw-color-text);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 70%, transparent 30%);
 }
-html[data-btfw-theme="dark"] .button:hover { filter:brightness(1.08); }
+html[data-btfw-theme="dark"] .button:hover,
+html[data-btfw-theme="dark"] .btn:hover {
+  filter: brightness(1.05);
+}
 html[data-btfw-theme="dark"] .button.is-link,
 html[data-btfw-theme="dark"] .button.is-primary {
-  background:#2563eb !important; border-color:#2159d3 !important; color:#fff !important;
+  background: color-mix(in srgb, var(--btfw-color-accent) 82%, transparent 18%) !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 68%, transparent 32%) !important;
+  color: var(--btfw-color-on-accent) !important;
 }
 
 /* Chat/stack surfaces you themed */
-html[data-btfw-theme="dark"] #main,
-html[data-btfw-theme="dark"] .container-fluid,
-html[data-btfw-theme="dark"] .well,
-html[data-btfw-theme="dark"] .btfw-stack,
-html[data-btfw-theme="dark"] .btfw-topbar { background:#0f131a; color:#e6edf3; }
 html[data-btfw-theme="dark"] #chatwrap,
 html[data-btfw-theme="dark"] #messagebuffer { background:transparent; }
 
 /* --- Bulma modal dark --- */
 html[data-btfw-theme="dark"] .modal { z-index: 6000 !important; }
-html[data-btfw-theme="dark"] .modal .modal-background { background-color: rgba(8,10,14,.8) !important; }
+html[data-btfw-theme="dark"] .modal .modal-background { background-color: color-mix(in srgb, var(--btfw-color-bg) 88%, transparent 12%) !important; }
 html[data-btfw-theme="dark"] .modal-card-head,
 html[data-btfw-theme="dark"] .modal-card-foot {
-  background-color:#0f1620 !important; border-color:#253142 !important; color:#e6edf3 !important;
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%) !important;
+  border-color: var(--btfw-border) !important;
+  color: var(--btfw-color-text) !important;
 }
-html[data-btfw-theme="dark"] .modal-card { background-color:#141a22 !important; color:#e6edf3 !important; }
-html[data-btfw-theme="dark"] .modal-card-title { color:#e6edf3 !important; }
+html[data-btfw-theme="dark"] .modal-card {
+  background-color: color-mix(in srgb, var(--btfw-color-surface) 94%, transparent 6%) !important;
+  color: var(--btfw-color-text) !important;
+}
+html[data-btfw-theme="dark"] .modal-card-title { color: var(--btfw-color-text) !important; }
 
 /* --- Bootstrap/CyTube modal bridge (skin Bootstrap modals to match Bulma dark) --- */
 html[data-btfw-theme="dark"] .modal.fade,
 html[data-btfw-theme="dark"] .modal.in,
 html[data-btfw-theme="dark"] .modal { z-index: 6000 !important; }
 html[data-btfw-theme="dark"] .modal-backdrop {
-  background-color: rgba(8,10,14,.8) !important; z-index: 0 !important;
+  background-color: color-mix(in srgb, var(--btfw-color-bg) 88%, transparent 12%) !important; z-index: 0 !important;
 }
 html[data-btfw-theme="dark"] .modal-dialog { max-width: 880px; }
 html[data-btfw-theme="dark"] .modal-content {
-  background-color:#141a22 !important; color:#e6edf3 !important; border:1px solid #253142 !important;
+  background-color: color-mix(in srgb, var(--btfw-color-surface) 94%, transparent 6%) !important;
+  color: var(--btfw-color-text) !important;
+  border:1px solid var(--btfw-border) !important;
 }
 @media screen and (min-width: 769px) {
     .modal-card, .modal-content {
@@ -102,14 +126,20 @@ html[data-btfw-theme="dark"] .modal-content {
 }
 html[data-btfw-theme="dark"] .modal-header,
 html[data-btfw-theme="dark"] .modal-footer {
-  background-color:#0f1620 !important; border-color:#253142 !important; color:#e6edf3 !important;
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%) !important;
+  border-color: var(--btfw-border) !important;
+  color: var(--btfw-color-text) !important;
 }
-html[data-btfw-theme="dark"] .modal-title { color:#e6edf3 !important; }
+html[data-btfw-theme="dark"] .modal-title { color: var(--btfw-color-text) !important; }
 html[data-btfw-theme="dark"] .modal .btn-primary {
-  background:#2563eb !important; border-color:#2159d3 !important; color:#fff !important;
+  background: color-mix(in srgb, var(--btfw-color-accent) 82%, transparent 18%) !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 68%, transparent 32%) !important;
+  color: var(--btfw-color-on-accent) !important;
 }
 html[data-btfw-theme="dark"] .modal .btn-default {
-  background:#1c2530 !important; border-color:#2b3a4a !important; color:#e6edf3 !important;
+  background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%) !important;
+  border-color: color-mix(in srgb, var(--btfw-border) 70%, transparent 30%) !important;
+  color: var(--btfw-color-text) !important;
 }
 /* Scroll lock (Bootstrap) */
 body.modal-open { overflow: hidden; }

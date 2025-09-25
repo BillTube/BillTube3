@@ -1,11 +1,11 @@
 :root {
   --btfw-top: 64px;
   --btfw-gap: 10px;
-  --btfw-color-bg: var(--btfw-theme-bg, #0f1524);
-  --btfw-color-surface: var(--btfw-theme-surface, #151d30);
-  --btfw-color-panel: var(--btfw-theme-panel, #1d2640);
-  --btfw-color-text: var(--btfw-theme-text, #e6edf3);
-  --btfw-color-chat-text: var(--btfw-theme-chat-text, var(--btfw-color-text));
+  --btfw-color-bg: var(--btfw-theme-bg, #05060d);
+  --btfw-color-surface: var(--btfw-theme-surface, #0b101c);
+  --btfw-color-panel: var(--btfw-theme-panel, #121b2f);
+  --btfw-color-text: var(--btfw-theme-text, #e6edf5);
+  --btfw-color-chat-text: var(--btfw-theme-chat-text, #d9e3ff);
   --btfw-color-accent: var(--btfw-theme-accent, #6d4df6);
   --btfw-color-on-accent: color-mix(in srgb, var(--btfw-color-text) 94%, white 6%);
   --btfw-color-text-soft: color-mix(in srgb, var(--btfw-color-text) 82%, transparent 18%);
@@ -38,6 +38,7 @@
       color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%),
       color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%));
   --btfw-navbar-border: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
+  --btfw-navbar-divider: color-mix(in srgb, var(--btfw-color-panel) 60%, transparent 40%);
   --btfw-navbar-shadow: 0 18px 42px color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%),
     0 6px 12px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
   --btfw-navbar-link: color-mix(in srgb, var(--btfw-color-text) 94%, transparent 6%);
