@@ -119,8 +119,40 @@ BTFW.define("feature:footer", [], async () => {
   }
 
   function ensureFooterSlot(){
-    const stacked = document.querySelector("#btfw-stack-footer .btfw-footer .container");
-    if (stacked) return stacked;
+    const stackContainer = document.getElementById("btfw-stack-footer");
+    if (stackContainer) {
+      const stray = document.getElementById("btfw-footer");
+      const strayChildren = [];
+      if (stray && stray !== stackContainer && !stackContainer.contains(stray)) {
+        while (stray.firstChild) {
+          strayChildren.push(stray.firstChild);
+        }
+        stray.remove();
+      }
+
+      let host = stackContainer.querySelector("#btfw-footer") || stackContainer.querySelector(".btfw-footer");
+      if (!host) {
+        host = document.createElement("div");
+        host.id = "btfw-footer";
+        host.className = "btfw-footer";
+        stackContainer.appendChild(host);
+      } else {
+        host.id = "btfw-footer";
+        host.classList.add("btfw-footer");
+      }
+
+      strayChildren.forEach(node => host.appendChild(node));
+
+      // Merge any duplicate footer nodes into the primary host
+      stackContainer.querySelectorAll("#btfw-footer ~ .btfw-footer, #btfw-footer ~ #btfw-footer").forEach(extra => {
+        if (extra === host) return;
+        while (extra.firstChild) host.appendChild(extra.firstChild);
+        extra.remove();
+      });
+
+      host.classList.remove("btfw-footer--standalone");
+      return host;
+    }
 
     let host = $("#btfw-footer") || $(".btfw-footer");
     if (!host) {
@@ -130,7 +162,6 @@ BTFW.define("feature:footer", [], async () => {
       const stack = $("#btfw-content-stack") || $("#mainpage") || $("#main") || document.body;
       stack.appendChild(host);
     }
-    host.classList.add("btfw-footer--standalone");
     return host;
   }
 
