@@ -31,6 +31,146 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
   
   // Skip these - they're either empty or handled elsewhere
   const SKIP_SELECTORS = ["#main", "#mainpage", "#mainpane"];
+
+  const ADD_MEDIA_SECTIONS = [
+    { id: "addfromurl", title: "From URL", default: true },
+    { id: "searchcontrol", title: "Library & YouTube" },
+    { id: "customembed", title: "Custom embed" }
+  ];
+
+  function ensureAddMediaUI(mainContainer, controlsBar, actionsCluster) {
+    if (!mainContainer || !controlsBar || !actionsCluster) return null;
+
+    const available = ADD_MEDIA_SECTIONS.map(cfg => {
+      const el = document.getElementById(cfg.id);
+      if (!el) return null;
+      return { ...cfg, el };
+    }).filter(Boolean);
+
+    if (!available.length) {
+      const existingPanel = document.getElementById("btfw-addmedia-panel");
+      if (existingPanel) existingPanel.remove();
+      return null;
+    }
+
+    let panel = document.getElementById("btfw-addmedia-panel");
+    if (!panel) {
+      panel = document.createElement("section");
+      panel.id = "btfw-addmedia-panel";
+      panel.className = "btfw-addmedia-panel";
+      panel.dataset.open = "false";
+      panel.setAttribute("role", "region");
+      panel.setAttribute("aria-label", "Add media controls");
+      panel.setAttribute("aria-hidden", "true");
+      panel.setAttribute("hidden", "hidden");
+      panel.innerHTML = `
+        <div class="btfw-addmedia-panel__inner">
+          <header class="btfw-addmedia-panel__header">
+            <nav class="btfw-addmedia-tabs" role="tablist"></nav>
+            <button type="button" class="btfw-addmedia-close" aria-label="Close add media">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </header>
+          <div class="btfw-addmedia-panel__body">
+            <div class="btfw-addmedia-views"></div>
+            <p class="btfw-addmedia-help">Queue media by URL, browse your library, or embed custom players without leaving the playlist.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    if (panel.parentElement !== mainContainer) {
+      mainContainer.insertBefore(panel, controlsBar.nextSibling);
+    }
+
+    const tabs = panel.querySelector(".btfw-addmedia-tabs");
+    const viewsHost = panel.querySelector(".btfw-addmedia-views");
+    const closeBtn = panel.querySelector(".btfw-addmedia-close");
+
+    if (!tabs || !viewsHost) return null;
+
+    while (tabs.firstChild) tabs.removeChild(tabs.firstChild);
+    while (viewsHost.firstChild) viewsHost.removeChild(viewsHost.firstChild);
+
+    available.forEach(({ id, title, el }) => {
+      el.classList.remove("collapse", "in", "plcontrol-collapse");
+      el.style.removeProperty("display");
+      el.style.removeProperty("height");
+      el.removeAttribute("aria-expanded");
+      el.setAttribute("role", "tabpanel");
+      el.setAttribute("data-btfw-addmedia", "panel");
+
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.className = "btfw-addmedia-tab";
+      tab.dataset.target = id;
+      tab.textContent = title;
+      tab.setAttribute("role", "tab");
+      tabs.appendChild(tab);
+
+      const view = document.createElement("div");
+      view.className = "btfw-addmedia-view";
+      view.dataset.target = id;
+      view.setAttribute("role", "tabpanel");
+      view.setAttribute("aria-hidden", "true");
+      view.appendChild(el);
+      viewsHost.appendChild(view);
+    });
+
+    const defaultSection = available.find(sec => sec.default) || available[0];
+
+    const setActive = (targetId) => {
+      const activeId = targetId || panel.dataset.active || defaultSection.id;
+      panel.dataset.active = activeId;
+      tabs.querySelectorAll(".btfw-addmedia-tab").forEach(tab => {
+        const match = tab.dataset.target === activeId;
+        tab.classList.toggle("is-active", match);
+        tab.setAttribute("aria-selected", match ? "true" : "false");
+        tab.setAttribute("tabindex", match ? "0" : "-1");
+      });
+      viewsHost.querySelectorAll(".btfw-addmedia-view").forEach(view => {
+        const match = view.dataset.target === activeId;
+        view.classList.toggle("is-active", match);
+        view.setAttribute("aria-hidden", match ? "false" : "true");
+      });
+    };
+
+    const toggle = (force) => {
+      const open = force != null ? !!force : panel.dataset.open !== "true";
+      panel.dataset.open = open ? "true" : "false";
+      panel.classList.toggle("is-open", open);
+      panel.setAttribute("aria-hidden", open ? "false" : "true");
+      if (open) {
+        panel.removeAttribute("hidden");
+        setActive(panel.dataset.active || defaultSection.id);
+      } else {
+        panel.setAttribute("hidden", "hidden");
+      }
+      panel.dispatchEvent(new CustomEvent("btfw:addmedia:state", { detail: { open } }));
+      return open;
+    };
+
+    if (!panel._btfwWired) {
+      tabs.addEventListener("click", (ev) => {
+        const btn = ev.target.closest(".btfw-addmedia-tab");
+        if (!btn) return;
+        ev.preventDefault();
+        setActive(btn.dataset.target);
+      });
+      if (closeBtn) {
+        closeBtn.addEventListener("click", () => toggle(false));
+      }
+      panel._btfwWired = true;
+    }
+
+    setActive(panel.dataset.active || defaultSection.id);
+
+    panel._btfwToggle = toggle;
+    panel._btfwSetActive = setActive;
+
+    return { panel, toggle, setActive };
+  }
+
   
   function ensureStack(){ 
     const left=document.getElementById("btfw-leftpad"); 
@@ -168,6 +308,8 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       (aside || controlsBar).appendChild(actionsCluster);
     }
 
+    let addMediaBtn = document.getElementById("btfw-addmedia-btn");
+
     const styleActionButton = (btn) => {
       if (!btn) return;
       btn.classList.add("btfw-plbar__action-btn");
@@ -182,6 +324,23 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
         }
       }
     };
+
+    const addMedia = ensureAddMediaUI(mainContainer, controlsBar, actionsCluster);
+    if (addMedia) {
+      if (!addMediaBtn || !document.body.contains(addMediaBtn)) {
+        addMediaBtn = document.createElement("button");
+        addMediaBtn.id = "btfw-addmedia-btn";
+        addMediaBtn.type = "button";
+        addMediaBtn.className = "button is-small";
+        addMediaBtn.innerHTML = `<i class="fa fa-plus"></i><span>Add media</span>`;
+        actionsCluster.prepend(addMediaBtn);
+      } else if (!actionsCluster.contains(addMediaBtn)) {
+        actionsCluster.prepend(addMediaBtn);
+      }
+    } else if (addMediaBtn) {
+      if (addMediaBtn.parentElement) addMediaBtn.parentElement.removeChild(addMediaBtn);
+      addMediaBtn = null;
+    }
 
     const moveControls = (root) => {
       if (!root) return;
@@ -206,6 +365,42 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     }
 
     actionsCluster.querySelectorAll("button, a.btn, input[type=button], input[type=submit], input[type=reset], select").forEach(styleActionButton);
+
+    if (addMedia && addMediaBtn) {
+      addMediaBtn.classList.remove("is-dark");
+      addMediaBtn.classList.add("is-primary");
+      if (!addMediaBtn.dataset.iconified) {
+        addMediaBtn.innerHTML = `<i class="fa fa-plus"></i><span>Add media</span>`;
+        addMediaBtn.dataset.iconified = "1";
+      }
+      addMediaBtn.setAttribute("aria-controls", "btfw-addmedia-panel");
+
+      const syncState = (open) => {
+        addMediaBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      };
+
+      if (!addMediaBtn.dataset.btfwBound) {
+        addMediaBtn.dataset.btfwBound = "1";
+        addMediaBtn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          const panel = document.getElementById("btfw-addmedia-panel");
+          const toggleFn = panel && panel._btfwToggle;
+          const open = typeof toggleFn === "function" ? toggleFn() : false;
+          syncState(open);
+        });
+      }
+
+      const panel = addMedia.panel || document.getElementById("btfw-addmedia-panel");
+      if (panel) {
+        syncState(panel.dataset.open === "true");
+        if (!panel._btfwButtonSync) {
+          panel.addEventListener("btfw:addmedia:state", (ev) => {
+            syncState(!!(ev.detail && ev.detail.open));
+          });
+          panel._btfwButtonSync = true;
+        }
+      }
+    }
 
     // Move any floating controls rows into the playlist container
     controlsRows.forEach(row => {
