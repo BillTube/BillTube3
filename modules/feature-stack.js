@@ -80,7 +80,8 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     }
 
     if (panel.parentElement !== mainContainer) {
-      mainContainer.insertBefore(panel, controlsBar.nextSibling);
+      const anchor = controlsBar.parentElement === mainContainer ? controlsBar.nextSibling : null;
+      mainContainer.insertBefore(panel, anchor);
     }
 
     const tabs = panel.querySelector(".btfw-addmedia-tabs");
@@ -248,12 +249,13 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     const playlistWrap = document.getElementById("playlistwrap");
     const queueContainer = document.getElementById("queuecontainer");
     const playlistRow = document.getElementById("playlistrow");
+    const stackPlaylist = document.querySelector('#btfw-stack .btfw-stack-item[data-bind="playlist-group"] .btfw-stack-item__body');
 
     // Find any floating controls row (legacy CyTube layout)
     const controlsRows = document.querySelectorAll(".btfw-controls-row");
 
     // Find the main playlist container
-    const mainContainer = playlistRow || playlistWrap || queueContainer;
+    let mainContainer = playlistRow || playlistWrap || queueContainer || stackPlaylist;
     if (!mainContainer) return;
 
     // Create or enhance the playlist bar
@@ -325,6 +327,10 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       }
     };
 
+    if (controlsBar.parentElement !== mainContainer) {
+      mainContainer.insertBefore(controlsBar, mainContainer.firstChild);
+    }
+
     const addMedia = ensureAddMediaUI(mainContainer, controlsBar, actionsCluster);
     if (addMedia) {
       if (!addMediaBtn || !document.body.contains(addMediaBtn)) {
@@ -344,9 +350,9 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
 
     const moveControls = (root) => {
       if (!root) return;
-      Array.from(root.childNodes).forEach(node => {
-        if (!node || node.nodeType !== 1) return;
-        const el = node;
+      const elements = Array.from(root.children || []);
+      elements.forEach(el => {
+        if (!el) return;
         el.classList.add("btfw-plbar__control");
         actionsCluster.appendChild(el);
       });
