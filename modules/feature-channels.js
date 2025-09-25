@@ -132,17 +132,17 @@ BTFW.define("feature:channels", [], async () => {
         border-radius: 16px;
         border: 1px solid rgba(109, 77, 246, 0.22);
         border: 1px solid color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 28%, transparent 72%);
-        background: rgba(20, 28, 42, 0.92);
+        background: rgba(12, 18, 34, 0.92);
         background: linear-gradient(135deg,
-          color-mix(in srgb, var(--btfw-theme-surface, #151d30) 94%, transparent 6%),
-          color-mix(in srgb, var(--btfw-theme-panel, #1d2640) 86%, black 14%));
+          color-mix(in srgb, var(--btfw-theme-surface, #0b111d) 94%, transparent 6%),
+          color-mix(in srgb, var(--btfw-theme-panel, #141f36) 86%, black 14%));
         padding: 18px 52px;
         display: flex;
         align-items: center;
         gap: 14px;
         width: 100%;
-        color: var(--btfw-theme-text, #e6edf3);
-        box-shadow: 0 24px 48px color-mix(in srgb, var(--btfw-theme-bg, #0f1524) 30%, transparent 70%);
+        color: var(--btfw-theme-text, #e8ecfb);
+        box-shadow: 0 24px 48px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 30%, transparent 70%);
         backdrop-filter: blur(14px);
       }
 
@@ -168,12 +168,12 @@ BTFW.define("feature:channels", [], async () => {
         flex-direction: column;
         gap: 8px;
         text-decoration: none;
-        color: color-mix(in srgb, var(--btfw-theme-text, #e6edf3) 96%, transparent 4%);
-        background: color-mix(in srgb, var(--btfw-theme-surface, #151d30) 88%, transparent 12%);
+        color: color-mix(in srgb, var(--btfw-theme-text, #e8ecfb) 96%, transparent 4%);
+        background: color-mix(in srgb, var(--btfw-theme-surface, #0b111d) 88%, transparent 12%);
         border-radius: 12px;
         border: 1px solid color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 22%, transparent 78%);
         overflow: hidden;
-        box-shadow: 0 14px 30px color-mix(in srgb, var(--btfw-theme-panel, #1d2640) 28%, transparent 72%);
+        box-shadow: 0 14px 30px color-mix(in srgb, var(--btfw-theme-panel, #141f36) 28%, transparent 72%);
         transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
         cursor: grab;
         user-select: none;
@@ -183,7 +183,7 @@ BTFW.define("feature:channels", [], async () => {
       .btfw-channels__link:focus {
         transform: translateY(-4px);
         border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 70%, white 30%);
-        background: color-mix(in srgb, var(--btfw-theme-panel, #1d2640) 82%, var(--btfw-theme-accent, #6d4df6) 18%);
+        background: color-mix(in srgb, var(--btfw-theme-panel, #141f36) 82%, var(--btfw-theme-accent, #6d4df6) 18%);
         box-shadow: 0 18px 36px color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 35%, transparent 65%);
       }
 
@@ -191,7 +191,7 @@ BTFW.define("feature:channels", [], async () => {
         position: relative;
         aspect-ratio: 16 / 9;
         overflow: hidden;
-        background: color-mix(in srgb, var(--btfw-theme-panel, #1d2640) 88%, black 12%);
+        background: color-mix(in srgb, var(--btfw-theme-panel, #141f36) 88%, black 12%);
       }
 
       .btfw-channels__thumb {

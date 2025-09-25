@@ -93,13 +93,13 @@ BTFW.define("feature:themeSettings", [], async () => {
     m.className = "modal";
     m.innerHTML = `
       <div class="modal-background"></div>
-      <div class="modal-card" style="width:min(820px,92vw)">
+      <div class="modal-card btfw-theme-modal-card">
         <header class="modal-card-head">
           <p class="modal-card-title">Theme Settings</p>
           <button class="delete" aria-label="close"></button>
         </header>
         <section class="modal-card-body">
-          <div class="tabs is-boxed is-small" id="btfw-ts-tabs">
+          <div class="tabs btfw-ts-tabs is-small" id="btfw-ts-tabs">
             <ul>
               <li class="is-active" data-tab="general"><a>General</a></li>
               <li data-tab="chat"><a>Chat</a></li>
@@ -110,101 +110,133 @@ BTFW.define("feature:themeSettings", [], async () => {
           <div id="btfw-ts-panels">
             <!-- General -->
             <div class="btfw-ts-panel" data-tab="general" style="display:block;">
-              <div class="content">
-                <h4>Appearance</h4>
-                <div class="field">
-                  <label class="label">Theme mode</label>
-                  <div class="control">
-                    <label class="radio" style="margin-right:12px;">
-                      <input type="radio" name="btfw-theme-mode" value="auto"> Auto (match system)
-                    </label>
-                    <label class="radio" style="margin-right:12px;">
-                      <input type="radio" name="btfw-theme-mode" value="dark"> Dark
-                    </label>
-                    <label class="radio">
-                      <input type="radio" name="btfw-theme-mode" value="light"> Light
-                    </label>
+              <div class="btfw-ts-grid">
+                <section class="btfw-ts-card">
+                  <header class="btfw-ts-card__header">
+                    <h3>Appearance</h3>
+                    <p>Select how the interface adapts to your lighting preferences.</p>
+                  </header>
+                  <div class="btfw-ts-card__body">
+                    <div class="btfw-ts-control btfw-ts-control--radios">
+                      <label class="radio">
+                        <input type="radio" name="btfw-theme-mode" value="auto"> <span>Auto (match system)</span>
+                      </label>
+                      <label class="radio">
+                        <input type="radio" name="btfw-theme-mode" value="dark"> <span>Dark</span>
+                      </label>
+                      <label class="radio">
+                        <input type="radio" name="btfw-theme-mode" value="light"> <span>Light</span>
+                      </label>
+                    </div>
                   </div>
-                </div>
+                </section>
+
+                <section class="btfw-ts-card">
+                  <header class="btfw-ts-card__header">
+                    <h3>Integrations</h3>
+                    <p>Connect API keys used by chat tools and commands.</p>
+                  </header>
+                  <div class="btfw-ts-card__body">
+                    <label class="btfw-input">
+                      <span class="btfw-input__label">TMDB API key</span>
+                      <input type="text" id="btfw-tmdb-key" data-btfw-bind="integrations.tmdb.apiKey" placeholder="YOUR_TMDB_KEY">
+                    </label>
+                    <p class="btfw-help">Required for the <code>!summary</code> command. Request a key at <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org</a>.</p>
+                  </div>
+                </section>
               </div>
             </div>
 
             <!-- Chat -->
             <div class="btfw-ts-panel" data-tab="chat" style="display:none;">
-              <div class="content">
-                <h4>Chat</h4>
-
-                <div class="field">
-                  <label class="label">Avatar size</label>
-                  <div class="control">
-                    <label class="radio" style="margin-right:12px;"><input type="radio" name="btfw-avatars-mode" value="off"> Off</label>
-                    <label class="radio" style="margin-right:12px;"><input type="radio" name="btfw-avatars-mode" value="small"> Small</label>
-                    <label class="radio"><input type="radio" name="btfw-avatars-mode" value="big"> Big</label>
-                  </div>
-                </div>
-
-                <div class="field">
-                  <label class="label">Chat text size</label>
-                  <div class="control btfw-range-control">
-                    <input type="range" id="btfw-chat-textsize" min="10" max="20" step="1">
-                    <span class="btfw-range-value" id="btfw-chat-textsize-value">14px</span>
-                  </div>
-                  <p class="help">Adjusts the chat font between 10&nbsp;px and 20&nbsp;px.</p>
-                </div>
-
-                <div class="field">
-                  <label class="label">Emote & GIF size</label>
-                  <div class="control">
-                    <div class="select is-small">
-                      <select id="btfw-emote-size">
-                        <option value="small">Small (100×100)</option>
-                        <option value="medium">Medium (130×130)</option>
-                        <option value="big">Big (170×170)</option>
-                      </select>
+              <div class="btfw-ts-grid">
+                <section class="btfw-ts-card">
+                  <header class="btfw-ts-card__header">
+                    <h3>Avatars & text</h3>
+                    <p>Adjust density and readability for the chat column.</p>
+                  </header>
+                  <div class="btfw-ts-card__body">
+                    <div class="btfw-ts-control btfw-ts-control--radios">
+                      <span class="btfw-input__label">Avatar size</span>
+                      <label class="radio"><input type="radio" name="btfw-avatars-mode" value="off"> <span>Off</span></label>
+                      <label class="radio"><input type="radio" name="btfw-avatars-mode" value="small"> <span>Small</span></label>
+                      <label class="radio"><input type="radio" name="btfw-avatars-mode" value="big"> <span>Big</span></label>
+                    </div>
+                    <div class="btfw-ts-control">
+                      <span class="btfw-input__label">Chat text size</span>
+                      <div class="control btfw-range-control">
+                        <input type="range" id="btfw-chat-textsize" min="10" max="20" step="1">
+                        <span class="btfw-range-value" id="btfw-chat-textsize-value">14px</span>
+                      </div>
+                      <p class="btfw-help">Set chat typography anywhere between 10&nbsp;px and 20&nbsp;px.</p>
                     </div>
                   </div>
-                  <p class="help">Applies to images with <code>.channel-emote</code> and the GIF picker.</p>
-                </div>
+                </section>
 
-                <div class="field">
-                  <label class="checkbox">
-                    <input type="checkbox" id="btfw-gif-autoplay"> Autoplay GIFs in chat (otherwise play on hover)
-                  </label>
-                </div>
+                <section class="btfw-ts-card">
+                  <header class="btfw-ts-card__header">
+                    <h3>Media</h3>
+                    <p>Control sticker and GIF behaviour for the chat experience.</p>
+                  </header>
+                  <div class="btfw-ts-card__body">
+                    <div class="btfw-ts-control">
+                      <label class="btfw-input__label" for="btfw-emote-size">Emote & GIF size</label>
+                      <div class="select is-small">
+                        <select id="btfw-emote-size">
+                          <option value="small">Small (100×100)</option>
+                          <option value="medium">Medium (130×130)</option>
+                          <option value="big">Big (170×170)</option>
+                        </select>
+                      </div>
+                      <p class="btfw-help">Applies to elements with <code>.channel-emote</code> and the GIF picker.</p>
+                    </div>
+                    <label class="checkbox btfw-checkbox">
+                      <input type="checkbox" id="btfw-gif-autoplay"> <span>Autoplay GIFs in chat (otherwise play on hover)</span>
+                    </label>
+                  </div>
+                </section>
               </div>
             </div>
 
             <!-- Video -->
             <div class="btfw-ts-panel" data-tab="video" style="display:none;">
-              <div class="content">
-                <h4>Video</h4>
-                <div class="field">
-                  <label class="label">Desktop layout</label>
-                  <div class="control">
-                    <label class="radio" style="margin-right:12px;">
-                      <input type="radio" name="btfw-chat-side" value="right"> Video left, chat right
-                    </label>
-                    <label class="radio">
-                      <input type="radio" name="btfw-chat-side" value="left"> Chat left, video right
-                    </label>
+              <div class="btfw-ts-grid">
+                <section class="btfw-ts-card">
+                  <header class="btfw-ts-card__header">
+                    <h3>Layout</h3>
+                    <p>Choose how the desktop layout positions chat and video.</p>
+                  </header>
+                  <div class="btfw-ts-card__body">
+                    <div class="btfw-ts-control btfw-ts-control--radios">
+                      <label class="radio">
+                        <input type="radio" name="btfw-chat-side" value="right"> <span>Video left, chat right</span>
+                      </label>
+                      <label class="radio">
+                        <input type="radio" name="btfw-chat-side" value="left"> <span>Chat left, video right</span>
+                      </label>
+                    </div>
+                    <p class="btfw-help">Mobile screens automatically collapse into a stacked layout.</p>
                   </div>
-                  <p class="help">Mobile screens switch to a stacked view automatically.</p>
-                </div>
-                <div class="field">
-                  <label class="checkbox">
-                    <input type="checkbox" id="btfw-pip-toggle"> Picture-in-Picture (experimental)
-                  </label>
-                </div>
-                <label class="checkbox" style="display:block;margin-top:10px;">
-                  <input type="checkbox" id="btfw-billcast-toggle" checked>
-                  Enable Billcast (Chromecast sender)
-                </label>
-                <div class="field">
-                  <label class="checkbox">
-                    <input type="checkbox" id="btfw-localsubs-toggle"> Show “Local Subtitles” button
-                  </label>
-                  <p class="help">Load a local .vtt or .srt file into the HTML5 player.</p>
-                </div>
+                </section>
+
+                <section class="btfw-ts-card">
+                  <header class="btfw-ts-card__header">
+                    <h3>Playback tools</h3>
+                    <p>Toggle experimental features for the HTML5 player.</p>
+                  </header>
+                  <div class="btfw-ts-card__body">
+                    <label class="checkbox btfw-checkbox">
+                      <input type="checkbox" id="btfw-pip-toggle"> <span>Enable Picture-in-Picture controls</span>
+                    </label>
+                    <label class="checkbox btfw-checkbox">
+                      <input type="checkbox" id="btfw-billcast-toggle" checked> <span>Enable Billcast (Chromecast sender)</span>
+                    </label>
+                    <label class="checkbox btfw-checkbox">
+                      <input type="checkbox" id="btfw-localsubs-toggle"> <span>Show the “Local Subtitles” button</span>
+                    </label>
+                    <p class="btfw-help">Allows viewers to load local <code>.vtt</code> or <code>.srt</code> caption files.</p>
+                  </div>
+                </section>
               </div>
             </div>
           </div>
