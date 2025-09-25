@@ -61,6 +61,14 @@ body, button, input, select, textarea, .btn {
   color: var(--btfw-color-text);
 }
 
+#mainpage {
+  padding-top: 0px !important;
+}
+
+#wrap {
+  padding: 0 0 0px !important;
+}
+
 #queue,
 #rightpane,
 #leftpane,
@@ -145,7 +153,7 @@ a:hover {
   z-index: 6000;
   min-height: var(--btfw-top);
   padding-top: 0;
-  padding-bottom: var(--btfw-gap);
+  padding-bottom: 0;
   overflow: visible;
   background: linear-gradient(180deg, color-mix(in srgb, var(--btfw-color-bg) 88%, transparent 12%), color-mix(in srgb, var(--btfw-color-bg) 82%, transparent 18%));
 }
