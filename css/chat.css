@@ -70,16 +70,19 @@
   -webkit-overflow-scrolling: touch;
 }
 
-#messagebuffer .chat-msg{
+#messagebuffer > div {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-start;
-  gap: 6px;
-  padding: 3px 6px;
+  gap: 8px;
+  padding: 4px 10px;
   position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
-#messagebuffer .timestamp{
-  order: 99;
+
+#messagebuffer > div .timestamp {
+  order: 3;
   margin-left: auto !important;
   display: inline-flex;
   align-items: center;
@@ -93,15 +96,38 @@
   padding-left: 12px;
   color: color-mix(in srgb, var(--btfw-color-chat-text) 70%, transparent 30%);
 }
-#messagebuffer .username{
-  order: 1;
-  font-weight: 600;
-  margin-right: 0;
-}
-#messagebuffer .chat-msg > span:not(.timestamp):not(.username){
+
+#messagebuffer > div span.timestamp ~ span {
   order: 2;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+#messagebuffer > div span.timestamp + span {
+  flex-wrap: nowrap;
+}
+
+#messagebuffer > div span.timestamp ~ span:last-child {
   flex: 1 1 auto;
   min-width: 0;
+  word-break: break-word;
+}
+
+#messagebuffer > div.btfw-has-avatar span.timestamp + span {
+  align-items: center;
+}
+
+#messagebuffer > div span .username,
+#messagebuffer > div span .nick,
+#messagebuffer > div span .name {
+  font-weight: 600;
+}
+
+#messagebuffer > div.server-msg,
+#messagebuffer > div.server-msg-reconnect {
+  display: block;
 }
 
 /* Keep images/GIFs reasonable inside chat */
@@ -338,22 +364,6 @@
   #btfw-ct-modal .btfw-ct-grid{ grid-template-columns: repeat(3, minmax(80px,1fr)); }
 }
 
-#messagebuffer .chat-msg.btfw-has-avatar {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 4px 2px;
-}
-#messagebuffer .chat-msg.btfw-has-avatar .username,
-#messagebuffer .chat-msg.btfw-has-avatar .nick,
-#messagebuffer .chat-msg.btfw-has-avatar .name {
-  vertical-align: middle;
-}
-
-/* Consecutive messages from same user: hide avatar and tighten spacing */
-#messagebuffer .chat-msg.btfw-consecutive .btfw-chat-avatar { visibility: hidden; width: 0 !important; height: 0 !important; margin: 0 !important; }
-#messagebuffer .chat-msg.btfw-consecutive { padding-top: 2px; }
-
 /* Fallback quick control styling (if Theme Settings modal is absent) */
 .btfw-avatars-dd .btfw-avatars-select{
   background: color-mix(in srgb, var(--btfw-color-panel) 80%, transparent 20%);
@@ -413,22 +423,6 @@
 #chatwrap.btfw-avatars-off  .btfw-chat-avatarwrap { display: none !important; }
 #chatwrap.btfw-avatars-small .btfw-chat-avatar { width: 28px; height: 28px; border-radius: 8px; }
 #chatwrap.btfw-avatars-big   .btfw-chat-avatar { width: 40px; height: 40px; border-radius: 10px; }
-
-/* When we add an avatar, make the root a row with gaps */
-#messagebuffer .btfw-has-avatar{
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 4px 2px;
-}
-
-/* Consecutive messages from the same user: hide avatar on following lines */
-#messagebuffer .btfw-consecutive > .btfw-chat-avatar{
-  visibility: hidden;
-  width: 0 !important;
-  height: 0 !important;
-  margin: 0 !important;
-}
 
 /* Inline emoji images sized like text */
 img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
@@ -499,15 +493,25 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 
 :root { --btfw-avatar-size: 40px; }
 
-#messagebuffer .btfw-chat-avatarwrap { display:inline-block; margin-right:6px; vertical-align:middle; }
+#messagebuffer .btfw-chat-avatarwrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+  flex: 0 0 var(--btfw-avatar-size);
+  width: var(--btfw-avatar-size);
+  height: var(--btfw-avatar-size);
+  vertical-align: middle;
+}
 #messagebuffer .btfw-chat-avatar {
   width: var(--btfw-avatar-size);
   height: var(--btfw-avatar-size);
   border-radius: 6px;
   object-fit: cover;
+  display: block;
 }
 
-/* consecutive compaction: remove top gap, hide avatar (JS toggles) */
+/* consecutive compaction: remove top gap */
 #messagebuffer > div.btfw-compact { margin-top: 2px !important; }
 
 /* hide timestamps when off */
