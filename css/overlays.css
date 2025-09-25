@@ -189,13 +189,17 @@
 }
 /* --- BTFW Emotes Popover (mini) --- */
 /* Fixed-size popover container (JS sets an explicit height) */
+.btfw-popover {
+  max-width: calc(100vw - 16px);
+}
+
 #btfw-emotes-pop {
   position: absolute;
   right: 8px;
   bottom: 56px;            /* JS overrides; keep as safe fallback */
-  width: 520px;            /* JS adjusts within 320–560 */
+  width: min(520px, calc(100vw - 16px));
   height: 360px;           /* fallback; JS sets exact height per open */
-  max-width: calc(100% - 16px);
+  max-width: calc(100vw - 16px);
   display: flex;
   flex-direction: column;
   background: color-mix(in srgb, var(--btfw-overlay-bg) 94%, transparent 6%);
