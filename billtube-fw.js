@@ -87,6 +87,7 @@ function load(src){
       "modules/feature-emoji-loader.js",
       "modules/feature-billcast.js",
       "modules/feature-motd-editor.js",
+      "modules/feature-channel-theme-admin.js",
       "modules/feature-theme-settings.js"
     ];
     return mods.reduce((p,f)=>p.then(()=>load(BASE+"/"+f)), Promise.resolve());
@@ -133,6 +134,7 @@ function load(src){
       BTFW.init("feature:emoji-loader"),
       BTFW.init("feature:billcast"),
       BTFW.init("feature:motd-editor"),
+      BTFW.init("feature:channelThemeAdmin"),
       BTFW.init("feature:themeSettings")
     ]);
   }).then(function(){ 
