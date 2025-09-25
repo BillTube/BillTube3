@@ -1,5 +1,5 @@
-/* BTFW — feature:channel-theme-admin (Channel Theme Settings Panel) */
-BTFW.define("feature:channel-theme-admin", [], async () => {
+/* BTFW — feature:channelThemeAdmin (Channel Theme Settings Panel) */
+BTFW.define("feature:channelThemeAdmin", [], async () => {
   const JS_FIELD_SELECTORS = ["#chanjs", "#channel-js", ".channel-js-field", "textarea[name='js']"];
   const CSS_FIELD_SELECTORS = ["#chancss", "#channel-css", ".channel-css-field", "textarea[name='css']"];
   
