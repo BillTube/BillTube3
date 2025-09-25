@@ -497,7 +497,7 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
   color: var(--btfw-name-color) !important;
 }
 
-:root { --btfw-avatar-size: 24px; }
+:root { --btfw-avatar-size: 40px; }
 
 #messagebuffer .btfw-chat-avatarwrap { display:inline-block; margin-right:6px; vertical-align:middle; }
 #messagebuffer .btfw-chat-avatar {

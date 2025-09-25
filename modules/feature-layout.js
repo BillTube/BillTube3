@@ -69,10 +69,14 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     }
 
     const stored = videoColumnPx ? Math.max(videoColumnPx, VIDEO_MIN_PX) : null;
+    const fallbackVideo = `minmax(${VIDEO_MIN_PX}px, 7fr)`;
+    const fallbackChat = "minmax(var(--btfw-chat-min, 320px), 3fr)";
     const videoSegment = stored
       ? `minmax(${VIDEO_MIN_PX}px, ${stored}px)`
-      : `minmax(${VIDEO_MIN_PX}px, 1fr)`;
-    const chatSegment = "minmax(var(--btfw-chat-min, 320px), 1fr)";
+      : fallbackVideo;
+    const chatSegment = stored
+      ? "minmax(var(--btfw-chat-min, 320px), 1fr)"
+      : fallbackChat;
     const template = chatSidePref === "left"
       ? `${chatSegment} var(--btfw-split-width, 8px) ${videoSegment}`
       : `${videoSegment} var(--btfw-split-width, 8px) ${chatSegment}`;

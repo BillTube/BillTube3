@@ -273,7 +273,7 @@ BTFW.define("feature:themeSettings", [], async () => {
 
     // gather current values
     const themeMode   = ($$('input[name="btfw-theme-mode"]:checked', m)[0]?.value) || "dark";
-    const avatarsMode = ($$('input[name="btfw-avatars-mode"]:checked', m)[0]?.value) || "small";
+    const avatarsMode = ($$('input[name="btfw-avatars-mode"]:checked', m)[0]?.value) || "big";
     const chatTextPx  = $("#btfw-chat-textsize", m)?.value || "14";
     const emoteSize   = $("#btfw-emote-size", m)?.value   || "medium";
     const gifAutoOn   = $("#btfw-gif-autoplay", m)?.checked;
@@ -334,7 +334,7 @@ BTFW.define("feature:themeSettings", [], async () => {
       }
     });
 
-    const storedAv = get(TS_KEYS.avatarsMode,"small");
+    const storedAv = get(TS_KEYS.avatarsMode,"big");
     const avNow = avatarsModule?.getMode ? avatarsModule.getMode() : storedAv;
     $$('input[name="btfw-avatars-mode"]').forEach(i => i.checked = (i.value === avNow));
     resolveAvatars().then(mod => {
