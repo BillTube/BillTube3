@@ -28,14 +28,14 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   ];
 
   const DEFAULT_CONFIG = {
-    version: 3,
+    version: 4,
     tint: "midnight",
     colors: {
-      background: "#0f1524",
-      surface: "#151d30",
-      panel: "#1d2640",
-      text: "#e8ecf8",
-      chatText: "#d4dcff",
+      background: "#05060d",
+      surface: "#0b111d",
+      panel: "#141f36",
+      text: "#e8ecfb",
+      chatText: "#d4defd",
       accent: "#6d4df6"
     },
     slider: {
@@ -45,6 +45,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     typography: {
       preset: "inter",
       customFamily: ""
+    },
+    integrations: {
+      tmdb: {
+        apiKey: ""
+      }
     },
     resources: {
       scripts: [],
@@ -60,44 +65,44 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     midnight: {
       name: "Midnight Pulse",
       colors: {
-        background: "#0f1524",
-        surface: "#151d30",
-        panel: "#1d2640",
-        text: "#e8ecf8",
-        chatText: "#d4dcff",
+        background: "#05060d",
+        surface: "#0b111d",
+        panel: "#141f36",
+        text: "#e8ecfb",
+        chatText: "#d4defd",
         accent: "#6d4df6"
       }
     },
     aurora: {
       name: "Aurora Bloom",
       colors: {
-        background: "#081c26",
-        surface: "#0e2532",
-        panel: "#143144",
-        text: "#f2fbff",
-        chatText: "#daf3ff",
+        background: "#02121c",
+        surface: "#071b28",
+        panel: "#10273b",
+        text: "#e9fbff",
+        chatText: "#d0ebff",
         accent: "#4dd0f6"
       }
     },
     sunset: {
       name: "Sunset Neon",
       colors: {
-        background: "#1c0b16",
-        surface: "#28101f",
-        panel: "#331728",
-        text: "#ffeef8",
-        chatText: "#ffd1e5",
+        background: "#13030c",
+        surface: "#1b0813",
+        panel: "#26101d",
+        text: "#ffe7f1",
+        chatText: "#ffcade",
         accent: "#ff6b9d"
       }
     },
     ember: {
       name: "Ember Forge",
       colors: {
-        background: "#1b1309",
-        surface: "#241a0d",
-        panel: "#2e210f",
-        text: "#fcead6",
-        chatText: "#f7d3a8",
+        background: "#110802",
+        surface: "#190d05",
+        panel: "#24140a",
+        text: "#fbe3c9",
+        chatText: "#f6cea3",
         accent: "#ff914d"
       }
     }
@@ -157,6 +162,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   };
   const FONT_DEFAULT_ID = "inter";
   const FONT_FALLBACK_FAMILY = FONT_PRESETS[FONT_DEFAULT_ID].family;
+  const THEME_FONT_LINK_ID = "btfw-theme-font";
 
   const STYLE_ID = "btfw-theme-admin-style";
 
@@ -268,6 +274,34 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       family,
       url: url || ""
     };
+  }
+
+  function ensureStylesheetLink(id, url){
+    if (!document.head) return;
+    let link = document.getElementById(id);
+    if (url) {
+      if (!link) {
+        link = document.createElement("link");
+        link.id = id;
+        link.rel = "stylesheet";
+        document.head.appendChild(link);
+      }
+      if (link.getAttribute("href") !== url) {
+        link.setAttribute("href", url);
+      }
+    } else if (link && link.parentElement) {
+      link.parentElement.removeChild(link);
+    }
+  }
+
+  function applyLiveTypographyAssets(typography){
+    const resolved = resolveTypographyConfig(typography);
+    const root = document.documentElement;
+    if (root && resolved.family) {
+      root.style.setProperty("--btfw-theme-font-family", resolved.family);
+    }
+    ensureStylesheetLink(THEME_FONT_LINK_ID, resolved.url || "");
+    return resolved;
   }
 
   function cloneDefaults(){
@@ -419,14 +453,29 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       });
     }
   }
+  function applyIntegrations(integrations){
+    integrations = integrations || {};
+    cfg.integrations = cfg.integrations || {};
+    if (!cfg.integrations.tmdb || typeof cfg.integrations.tmdb !== 'object') {
+      cfg.integrations.tmdb = { apiKey: '' };
+    }
+    var tmdb = integrations.tmdb || cfg.integrations.tmdb || {};
+    var key = typeof tmdb.apiKey === 'string' ? tmdb.apiKey.trim() : '';
+    cfg.integrations.tmdb.apiKey = key;
+    window.BTFW_CONFIG = window.BTFW_CONFIG || {};
+    if (typeof window.BTFW_CONFIG.tmdb !== 'object') window.BTFW_CONFIG.tmdb = {};
+    window.BTFW_CONFIG.tmdb.apiKey = key;
+    window.BTFW_CONFIG.tmdbKey = key;
+    try { if (document.body) document.body.dataset.tmdbKey = key; } catch (_) {}
+  }
   function applyColors(colors){
     colors = colors || {};
     var root = document.documentElement;
     if (!root) return;
-    var bg = colors.background || '#0f1524';
-    var surface = colors.surface || colors.panel || '#151d30';
-    var panel = colors.panel || '#1d2640';
-    var text = colors.text || '#e8ecf8';
+    var bg = colors.background || '#05060d';
+    var surface = colors.surface || colors.panel || '#0b111d';
+    var panel = colors.panel || '#141f36';
+    var text = colors.text || '#e8ecfb';
     var chatText = colors.chatText || text;
     var accent = colors.accent || '#6d4df6';
     cfg.colors = cfg.colors || {};
@@ -494,6 +543,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   applySlider(cfg.slider || {});
   applyBranding(cfg.branding || {});
   applyColors(cfg.colors || {});
+  applyIntegrations(cfg.integrations || {});
   applyTypography(cfg.typography || {});
 })(window.BTFW_THEME_ADMIN);\n${JS_BLOCK_END}`;
 
@@ -501,11 +551,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
   function buildCssBlock(cfg){
     const colors = cfg.colors || {};
-    const typography = resolveTypographyConfig(cfg.typography || {});
-    const bg = colors.background || "#0f1524";
-    const surface = colors.surface || colors.panel || "#161f33";
-    const panel = colors.panel || "#1d2640";
-    const textColor = colors.text || "#f0f4ff";
+    const typography = applyLiveTypographyAssets(cfg.typography || {});
+    const bg = colors.background || "#05060d";
+    const surface = colors.surface || colors.panel || "#0b111d";
+    const panel = colors.panel || "#141f36";
+    const textColor = colors.text || "#e8ecfb";
     const chatText = colors.chatText || textColor;
     const accent = colors.accent || "#6d4df6";
     const fontFamily = typography.family || FONT_FALLBACK_FAMILY;
@@ -561,12 +611,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const preview = panel.querySelector(".preview");
     if (!preview) return;
     const colors = cfg.colors || {};
-    const typography = resolveTypographyConfig(cfg.typography || {});
-    preview.style.setProperty("--bg", colors.background || "#0f1524");
-    preview.style.setProperty("--surface", colors.surface || colors.panel || "#161f33");
-    preview.style.setProperty("--panel", colors.panel || "#1d2640");
+    const typography = applyLiveTypographyAssets(cfg.typography || {});
+    preview.style.setProperty("--bg", colors.background || "#05060d");
+    preview.style.setProperty("--surface", colors.surface || colors.panel || "#0b111d");
+    preview.style.setProperty("--panel", colors.panel || "#141f36");
     preview.style.setProperty("--accent", colors.accent || "#6d4df6");
-    preview.style.background = `linear-gradient(160deg, ${colors.background || "#0f1524"}, ${colors.surface || colors.panel || "#161f33"})`;
+    preview.style.background = `linear-gradient(160deg, ${colors.background || "#05060d"}, ${colors.surface || colors.panel || "#0b111d"})`;
     const accent = panel.querySelector(".preview__accent");
     if (accent) {
       accent.style.background = colors.accent || "#6d4df6";
@@ -680,6 +730,13 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
     updated.sliderEnabled = Boolean(updated.slider?.enabled);
     updated.sliderJson = updated.slider?.feedUrl || "";
+    if (!updated.integrations || typeof updated.integrations !== "object") {
+      updated.integrations = cloneDefaults().integrations;
+    }
+    if (!updated.integrations.tmdb || typeof updated.integrations.tmdb !== "object") {
+      updated.integrations.tmdb = { apiKey: "" };
+    }
+    updated.integrations.tmdb.apiKey = (updated.integrations.tmdb.apiKey || "").trim();
     if (!updated.typography || typeof updated.typography !== "object") {
       updated.typography = cloneDefaults().typography;
     }
