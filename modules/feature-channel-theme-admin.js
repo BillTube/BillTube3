@@ -307,8 +307,17 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   }
 
   function ensureTab(modal){
-    const nav = modal.querySelector(".nav-tabs") || modal.querySelector(".nav.nav-tabs") || modal.querySelector(".tabs ul");
-    const tabContainer = modal.querySelector(".tab-content") || modal.querySelector(".tabs-content") || modal.querySelector("#channelsettingsmodal .tab-content");
+    const nav =
+      modal.querySelector(".nav-tabs") ||
+      modal.querySelector(".nav.nav-tabs") ||
+      modal.querySelector(".tabs ul") ||
+      document.querySelector("#channeloptions .nav-tabs");
+    const tabContainer =
+      modal.querySelector(".tab-content") ||
+      modal.querySelector(".tabs-content") ||
+      modal.querySelector("#channelsettingsmodal .tab-content") ||
+      document.querySelector("#channeloptions .tab-content");
+
     if (!nav || !tabContainer) return null;
 
     let tab = nav.querySelector("li[data-btfw-theme-tab]");
@@ -316,7 +325,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       tab = document.createElement("li");
       tab.dataset.btfwThemeTab = "1";
       const anchor = document.createElement("a");
-      anchor.href = "#";
+      anchor.href = "#btfw-theme-admin-panel";
+      anchor.setAttribute("data-toggle", "tab");
+
       anchor.textContent = "Theme";
       anchor.style.display = "flex";
       anchor.style.alignItems = "center";
@@ -326,7 +337,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       nav.appendChild(tab);
     }
 
-    let panel = modal.querySelector("#btfw-theme-admin-panel");
+    let panel = modal.querySelector("#btfw-theme-admin-panel") || document.querySelector("#channeloptions #btfw-theme-admin-panel");
+
     if (!panel) {
       panel = document.createElement("div");
       panel.id = "btfw-theme-admin-panel";
@@ -349,10 +361,15 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       panel.classList.remove("active");
     };
 
-    tab.addEventListener("click", evt => {
-      evt.preventDefault();
-      activate();
-    });
+    const alreadyBound = Boolean(tab.dataset.btfwThemeTabBound);
+    if (!alreadyBound) {
+      tab.dataset.btfwThemeTabBound = "1";
+      tab.addEventListener("click", evt => {
+        evt.preventDefault();
+        activate();
+      });
+    }
+
 
     panel.dataset.activate = activate;
     panel.dataset.deactivate = deactivate;
@@ -523,9 +540,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   }
 
   function initPanel(modal){
-    if (!canManageChannel()) return;
+    if (!canManageChannel()) return false;
     const panel = ensureTab(modal);
-    if (!panel) return;
+    if (!panel || panel.dataset.initialized === "1") return Boolean(panel);
+
 
     renderPanel(panel);
 
@@ -565,14 +583,22 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     observer.observe(panel, { attributes: true, attributeFilter: ['class', 'style'] });
 
     panel.dataset.initialized = "1";
+    return true;
+
   }
 
   function boot(){
     if (!canManageChannel()) return;
-    const modal = document.getElementById('channelsettingsmodal') || document.getElementById('channeloptionsmodal') || document.querySelector('.channel-settings-modal');
+    const modal =
+      document.getElementById('channeloptions') ||
+      document.getElementById('channelsettingsmodal') ||
+      document.getElementById('channeloptionsmodal') ||
+      document.querySelector('.channel-settings-modal');
     if (modal && !modal.dataset.btfwThemeAdminBound) {
-      modal.dataset.btfwThemeAdminBound = "1";
-      initPanel(modal);
+      if (initPanel(modal)) {
+        modal.dataset.btfwThemeAdminBound = "1";
+      }
+
     }
   }
 
@@ -583,9 +609,18 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   }
 
   const mo = new MutationObserver(() => {
-    const modal = document.getElementById('channelsettingsmodal') || document.getElementById('channeloptionsmodal') || document.querySelector('.channel-settings-modal');
+    const modal =
+      document.getElementById('channeloptions') ||
+      document.getElementById('channelsettingsmodal') ||
+      document.getElementById('channeloptionsmodal') ||
+      document.querySelector('.channel-settings-modal');
     if (modal && !modal.dataset.btfwThemeAdminBound) {
-      boot();
+      if (initPanel(modal)) {
+        modal.dataset.btfwThemeAdminBound = "1";
+      }
+    } else if (modal) {
+      initPanel(modal);
+
     }
   });
   mo.observe(document.body, { childList: true, subtree: true });
