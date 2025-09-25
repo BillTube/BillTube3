@@ -1,1 +1,0 @@
-BTFW.define('core', [], async () => ({ boot(){ /* core boot */ } }));
