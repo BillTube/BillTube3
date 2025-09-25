@@ -169,6 +169,31 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     panel._btfwToggle = toggle;
     panel._btfwSetActive = setActive;
 
+    const wireLegacyTriggers = () => {
+      const triggers = [
+        { id: "showsearch", target: "searchcontrol" },
+        { id: "showcustomembed", target: "customembed" }
+      ];
+
+      triggers.forEach(({ id, target }) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        if (btn.dataset.btfwAddmedia === target) return;
+
+        btn.dataset.btfwAddmedia = target;
+        btn.setAttribute("aria-controls", "btfw-addmedia-panel");
+        btn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          setActive(target);
+          toggle(true);
+          btn.blur();
+        });
+      });
+    };
+
+    wireLegacyTriggers();
+
     return { panel, toggle, setActive };
   }
 
@@ -525,13 +550,23 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     } 
   }
   
-  function attachFooter(footer){ 
-    const real=document.getElementById("footer")||document.querySelector("footer"); 
-    if(real && !footer.contains(real)){ 
-      real.classList.add("btfw-footer"); 
-      footer.innerHTML=""; 
-      footer.appendChild(real); 
-    } 
+  function attachFooter(footer){
+    if (!footer) return;
+    if (footer.querySelector("#btfw-footer")) return;
+
+    const themed = document.getElementById("btfw-footer");
+    if (themed && themed !== footer && !footer.contains(themed)) {
+      footer.innerHTML = "";
+      footer.appendChild(themed);
+      return;
+    }
+
+    const real=document.getElementById("footer")||document.querySelector("footer");
+    if(real && !footer.contains(real)){
+      real.classList.add("btfw-footer");
+      footer.innerHTML="";
+      footer.appendChild(real);
+    }
   }
 
   function movePollButton() {

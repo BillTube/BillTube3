@@ -19,11 +19,9 @@
   border-bottom: 1px solid var(--btfw-navbar-divider, color-mix(in srgb, var(--btfw-border) 86%, transparent 14%));
   background:
     linear-gradient(180deg,
-      color-mix(in srgb, var(--btfw-color-bg) 76%, transparent 24%),
-      color-mix(in srgb, var(--btfw-color-surface) 88%, transparent 12%));
+      color-mix(in srgb, var(--btfw-color-bg) 82%, transparent 18%),
+      color-mix(in srgb, var(--btfw-color-surface) 92%, transparent 8%));
   background-image: none !important;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 58%, transparent 42%);
   display: flex;
   align-items: center;
@@ -237,6 +235,33 @@
   #btfw-navhost .nav > li > a {
     width: 100%;
     justify-content: space-between;
+  }
+}
+
+@media (max-width: 768px) {
+  :root { --btfw-navbar-height: 52px; }
+
+  #btfw-navhost > nav.navbar,
+  #btfw-navhost > .navbar,
+  #btfw-navhost > #navbar,
+  #btfw-navhost > .navbar-fixed-top {
+    min-height: var(--btfw-navbar-height);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--btfw-color-bg) 46%, transparent 54%);
+  }
+
+  #btfw-navhost > nav.navbar .container,
+  #btfw-navhost > .navbar .container {
+    padding: 0 clamp(14px, 4vw, 22px);
+    gap: clamp(10px, 3vw, 18px);
+  }
+
+  #btfw-navhost .navbar-header {
+    min-height: var(--btfw-navbar-height);
+  }
+
+  #btfw-navhost .navbar-nav > li > a,
+  #btfw-navhost .nav > li > a {
+    padding: 9px 12px;
   }
 }
 
