@@ -124,51 +124,51 @@ function load(src){
     return mods.reduce((p,f)=>p.then(()=>load(BASE+"/"+f)), Promise.resolve());
   }).then(function(){
     // Initialize core modules first, then layout-dependent ones
-    return BTFW.init([
-      "feature:style-core",
-      "feature:bulma-layer", 
-      "feature:layout"
+    return Promise.all([
+      BTFW.init("feature:style-core"),
+      BTFW.init("feature:bulma-layer"), 
+      BTFW.init("feature:layout")
     ]);
   }).then(function(){
     // Initialize UI and interaction modules
-    return BTFW.init([
-      "feature:channels",
-      "feature:footer-forms",
-      "feature:player", 
-      "feature:stack",
-      "feature:chat",
-      "feature:chat-tools",
-      "feature:navbar",
-      "feature:modal-skin",
-      "feature:nowplaying"
+    return Promise.all([
+      BTFW.init("feature:channels"),
+      BTFW.init("feature:footer-forms"),
+      BTFW.init("feature:player"), 
+      BTFW.init("feature:stack"),
+      BTFW.init("feature:chat"),
+      BTFW.init("feature:chat-tools"),
+      BTFW.init("feature:navbar"),
+      BTFW.init("feature:modal-skin"),
+      BTFW.init("feature:nowplaying")
     ]);
   }).then(function(){
     // Initialize enhancement modules
-    return BTFW.init([
-      "feature:chat-username-colors",
-      "feature:emotes",
-      "feature:chat-media", 
-      "feature:emoji-compat",
-      "feature:chat-avatars",
-      "feature:chat-timestamps",
-      "feature:chat-ignore",
-      "feature:gifs",
-      "feature:ambient",
-      "feature:video-overlay",
-      "feature:pip",
-      "feature:notify",
-      "feature:sync-guard",
-      "feature:chat-commands",
-      "feature:playlist-tools",
-      "feature:local-subs",
-      "feature:emoji-loader",
-      "feature:billcast",
-      "feature:motd-editor",
-      "feature:video-enhancements",
-      "feature:chat-scroll",
-      "feature:footer-branding",
-      "feature:channel-theme-admin",
-      "feature:theme-settings"
+    return Promise.all([
+      BTFW.init("feature:chat-username-colors"),
+      BTFW.init("feature:emotes"),
+      BTFW.init("feature:chat-media"), 
+      BTFW.init("feature:emoji-compat"),
+      BTFW.init("feature:chat-avatars"),
+      BTFW.init("feature:chat-timestamps"),
+      BTFW.init("feature:chat-ignore"),
+      BTFW.init("feature:gifs"),
+      BTFW.init("feature:ambient"),
+      BTFW.init("feature:video-overlay"),
+      BTFW.init("feature:pip"),
+      BTFW.init("feature:notify"),
+      BTFW.init("feature:sync-guard"),
+      BTFW.init("feature:chat-commands"),
+      BTFW.init("feature:playlist-tools"),
+      BTFW.init("feature:local-subs"),
+      BTFW.init("feature:emoji-loader"),
+      BTFW.init("feature:billcast"),
+      BTFW.init("feature:motd-editor"),
+      BTFW.init("feature:video-enhancements"),
+      BTFW.init("feature:chat-scroll"),
+      BTFW.init("feature:footer-branding"),
+      BTFW.init("feature:channel-theme-admin"),
+      BTFW.init("feature:theme-settings")
     ]);
   }).then(function(){
     // Framework fully loaded
