@@ -11,14 +11,14 @@ BTFW.define("feature:player", [], async () => {
   const videoPlayerThemeCSS = `
     /* ==== BillTube Player Theme ==== */
     .video-js {
-      --btfw-bg: #0e141a;
-      --btfw-bar: #162027;
-      --btfw-fg: #e6eef7;
-      --btfw-sub: #a9b2c3;
-      --btfw-accent: #6d4df6;
-      --btfw-accent-2: #8b5cf6;
+      --btfw-bg: color-mix(in srgb, var(--btfw-color-bg, #0e141a) 94%, black 6%);
+      --btfw-bar: color-mix(in srgb, var(--btfw-color-panel, #162027) 96%, black 4%);
+      --btfw-fg: var(--btfw-color-text, #e6eef7);
+      --btfw-sub: color-mix(in srgb, var(--btfw-color-text, #e6eef7) 68%, transparent 32%);
+      --btfw-accent: var(--btfw-color-accent, #6d4df6);
+      --btfw-accent-2: color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 78%, white 22%);
       color: var(--btfw-fg);
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-family: var(--btfw-font-body, Inter, system-ui, -apple-system, 'Segoe UI', sans-serif);
       background-color: #000; /* keep canvas black on load */
     }
 
