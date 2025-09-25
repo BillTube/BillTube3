@@ -21,15 +21,43 @@ var BTFW_VERSION = (function(){
   return (m && m[1]) || ('dev-' + Date.now());
 })();
 
+var SUPPORTS_PRELOAD = (function(){
+  try {
+    return document.createElement("link").relList.supports("preload");
+  } catch (e) {
+    return false;
+  }
+})();
+
 function preload(href){
   return new Promise(function(resolve){
     var l = document.createElement("link");
-    l.rel = "preload";
-    l.as  = "style";
-    l.href = qparam(href, "v="+encodeURIComponent(BTFW_VERSION));
-    l.onload = function(){ l.rel = "stylesheet"; resolve(true); };
-    l.onerror = function(){ l.rel = "stylesheet"; resolve(false); };
+    var url = qparam(href, "v="+encodeURIComponent(BTFW_VERSION));
+
+    if (SUPPORTS_PRELOAD) {
+      l.rel = "preload";
+      l.as  = "style";
+      l.onload = function(){
+        l.rel = "stylesheet";
+        l.removeAttribute("onload");
+        resolve(true);
+      };
+      l.onerror = function(){
+        l.rel = "stylesheet";
+        resolve(false);
+      };
+    } else {
+      l.rel = "stylesheet";
+      l.onload = function(){ resolve(true); };
+      l.onerror = function(){ resolve(false); };
+    }
+
+    l.href = url;
     document.head.appendChild(l);
+
+    if (!SUPPORTS_PRELOAD) {
+      resolve(true);
+    }
   });
 }
 
