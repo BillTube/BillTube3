@@ -1,12 +1,12 @@
 :root {
   --btfw-top: 64px;
   --btfw-gap: 10px;
-  --btfw-color-bg: var(--btfw-theme-bg, #0b0f12);
-  --btfw-color-surface: var(--btfw-theme-surface, #11161d);
-  --btfw-color-panel: var(--btfw-theme-panel, #171d27);
-  --btfw-color-text: var(--btfw-theme-text, #e8eff4);
-  --btfw-color-chat-text: var(--btfw-theme-chat-text, #d7e4ff);
-  --btfw-color-accent: var(--btfw-theme-accent, #4ade80);
+  --btfw-color-bg: var(--btfw-theme-bg, #05060d);
+  --btfw-color-surface: var(--btfw-theme-surface, #0b101c);
+  --btfw-color-panel: var(--btfw-theme-panel, #121b2f);
+  --btfw-color-text: var(--btfw-theme-text, #e6edf5);
+  --btfw-color-chat-text: var(--btfw-theme-chat-text, #d9e3ff);
+  --btfw-color-accent: var(--btfw-theme-accent, #6d4df6);
   --btfw-color-on-accent: color-mix(in srgb, var(--btfw-color-text) 94%, white 6%);
   --btfw-color-text-soft: color-mix(in srgb, var(--btfw-color-text) 82%, transparent 18%);
   --btfw-color-text-muted: color-mix(in srgb, var(--btfw-color-text) 62%, transparent 38%);
