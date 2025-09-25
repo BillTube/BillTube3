@@ -1,4 +1,4 @@
-/*! BillTube Framework â€" v3.4f */
+/*! BillTube Framework — v3.4f */
 (function(){
   var scripts=document.getElementsByTagName('script');
   var BASE=(document.currentScript&&document.currentScript.src)||scripts[scripts.length-1].src; BASE=BASE.replace(/\/[^\/]*$/, "");
@@ -123,59 +123,62 @@ function load(src){
     ];
     return mods.reduce((p,f)=>p.then(()=>load(BASE+"/"+f)), Promise.resolve());
   }).then(function(){
-    // Initialize core modules first, then layout-dependent ones
     return Promise.all([
-      BTFW.init("feature:style-core"),
-      BTFW.init("feature:bulma-layer"), 
-      BTFW.init("feature:layout")
+      BTFW.init("feature:styleCore"),
+      BTFW.init("feature:bulma-layer")
     ]);
   }).then(function(){
-    // Initialize UI and interaction modules
+    // Initialize layout early
+    return BTFW.init("feature:layout");
+  }).then(function(){
+    // Wait a bit for layout to settle
+    return new Promise(resolve => setTimeout(resolve, 100));
+  }).then(function(){
+    // Initialize all remaining modules
     return Promise.all([
       BTFW.init("feature:channels"),
-      BTFW.init("feature:footer-forms"),
-      BTFW.init("feature:player"), 
+      BTFW.init("feature:footerForms"),
+      BTFW.init("feature:player"),
       BTFW.init("feature:stack"),
       BTFW.init("feature:chat"),
       BTFW.init("feature:chat-tools"),
-      BTFW.init("feature:navbar"),
-      BTFW.init("feature:modal-skin"),
-      BTFW.init("feature:nowplaying")
-    ]);
-  }).then(function(){
-    // Initialize enhancement modules
-    return Promise.all([
       BTFW.init("feature:chat-username-colors"),
       BTFW.init("feature:emotes"),
-      BTFW.init("feature:chat-media"), 
+      BTFW.init("feature:chatMedia"),
       BTFW.init("feature:emoji-compat"),
       BTFW.init("feature:chat-avatars"),
       BTFW.init("feature:chat-timestamps"),
       BTFW.init("feature:chat-ignore"),
+      BTFW.init("feature:navbar"),
+      BTFW.init("feature:modal-skin"),
+      BTFW.init("feature:nowplaying"),
       BTFW.init("feature:gifs"),
       BTFW.init("feature:ambient"),
-      BTFW.init("feature:video-overlay"),
+      BTFW.init("feature:videoOverlay"),
       BTFW.init("feature:pip"),
       BTFW.init("feature:notify"),
-      BTFW.init("feature:sync-guard"),
+      BTFW.init("feature:syncGuard"),
       BTFW.init("feature:chat-commands"),
       BTFW.init("feature:playlist-tools"),
       BTFW.init("feature:local-subs"),
       BTFW.init("feature:emoji-loader"),
       BTFW.init("feature:billcast"),
       BTFW.init("feature:motd-editor"),
-      BTFW.init("feature:video-enhancements"),
-      BTFW.init("feature:chat-scroll"),
-      BTFW.init("feature:footer-branding"),
-      BTFW.init("feature:channel-theme-admin"),
-      BTFW.init("feature:theme-settings")
+      BTFW.init("feature:videoEnhancements"),
+      BTFW.init("feature:chatScroll"),
+      BTFW.init("feature:footerBranding"),
+      BTFW.init("feature:channelThemeAdmin"),
+      BTFW.init("feature:themeSettings")
     ]);
-  }).then(function(){
-    // Framework fully loaded
-    console.log("[BTFW] Framework loaded successfully");
-    document.documentElement.setAttribute("data-btfw-ready", "true");
-  }).catch(function(err){
-    console.error("[BTFW] Framework initialization failed:", err);
+  }).then(function(){ 
+    console.log("[BTFW v3.4f] Ready.");
+    // Dispatch a final ready event
+    document.dispatchEvent(new CustomEvent('btfw:ready', { 
+      detail: { version: '3.4f', timestamp: Date.now() } 
+    }));
+  })
+  .catch(function(e){ 
+    console.error("[BTFW v3.4f] boot failed:", e&&e.message||e); 
   });
 
 })();

@@ -1,5 +1,5 @@
-/* BTFW — feature:video-enhancements (title extraction, changeMedia handling) */
-BTFW.define("feature:video-enhancements", [], async () => {
+/* BTFW — feature:videoEnhancements (title extraction, changeMedia handling) */
+BTFW.define("feature:videoEnhancements", [], async () => {
   
   // Title length CSS variable handling
   function updateTitleLength(){
@@ -104,7 +104,6 @@ BTFW.define("feature:video-enhancements", [], async () => {
       subtree: true
     });
   }
-  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
@@ -113,7 +112,7 @@ BTFW.define("feature:video-enhancements", [], async () => {
   }
 
   return { 
-    name: "feature:video-enhancements",
+    name: "feature:videoEnhancements",
     updateTitleLength: updateTitleLength
   };
 });
