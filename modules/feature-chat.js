@@ -2,6 +2,8 @@
 BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+  const MESSAGE_SELECTOR = ".chat-msg, .message, [class*=message]";
+  const TRIVIA_PREFIX = /^Trivia:\s*/i;
   const BASE = (window.BTFW && BTFW.BASE ? BTFW.BASE.replace(/\/+$/,'') : "");
   
 /* --- Shared pop-in positioning helper (exports a global for other modules) --- */
@@ -211,18 +213,109 @@ function watchForStrayButtons(){
     setTimeout(() => scrollBufferToBottom(buffer, false), 16);
   }
 
+  function escapeHTML(str){
+    return (str || "").replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[ch] || ch);
+  }
+
+  function restyleTriviaMessage(msgEl){
+    if (!msgEl || msgEl.dataset?.btfwTriviaStyled) return;
+    const code = msgEl.querySelector("code");
+    if (!code) return;
+    const raw = (code.textContent || "").trim();
+    if (!TRIVIA_PREFIX.test(raw)) return;
+
+    const question = raw.replace(TRIVIA_PREFIX, "").trim();
+    const hostSpan = code.closest("span");
+    if (!hostSpan) return;
+
+    const optionNodes = Array.from(hostSpan.querySelectorAll(".chatcolor"));
+    const options = [];
+    optionNodes.forEach((node) => {
+      const text = (node.textContent || "").replace(/,\s*$/, "").trim();
+      if (!text) return;
+      const color = node.style?.color || "";
+      options.push({ text, color });
+    });
+
+    if (!options.length) {
+      const segments = (hostSpan.textContent || "").split(/Options:/i);
+      if (segments[1]) {
+        segments[1].split(",").map(part => part.trim()).filter(Boolean).forEach((text) => {
+          options.push({ text, color: "" });
+        });
+      }
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "btfw-chat-trivia";
+
+    const questionRow = document.createElement("div");
+    questionRow.className = "btfw-chat-trivia__question";
+    questionRow.innerHTML = `
+      <span class="btfw-chat-trivia__icon" aria-hidden="true">🎬</span>
+      <span class="btfw-chat-trivia__prompt">${escapeHTML(question || "Trivia question")}</span>
+    `;
+    wrapper.appendChild(questionRow);
+
+    if (options.length) {
+      const meta = document.createElement("div");
+      meta.className = "btfw-chat-trivia__meta";
+      meta.textContent = "Choose the correct answer:";
+      wrapper.appendChild(meta);
+
+      const list = document.createElement("ol");
+      list.className = "btfw-chat-trivia__options";
+      options.forEach((opt, index) => {
+        const li = document.createElement("li");
+        li.className = "btfw-chat-trivia__option";
+        if (opt.color) li.style.setProperty("--btfw-trivia-option-color", opt.color);
+        li.innerHTML = `
+          <span class="btfw-chat-trivia__badge">${index + 1}</span>
+          <span class="btfw-chat-trivia__label">${escapeHTML(opt.text)}</span>
+        `;
+        list.appendChild(li);
+      });
+      wrapper.appendChild(list);
+    }
+
+    hostSpan.replaceWith(wrapper);
+    msgEl.classList.add("btfw-chat-trivia-msg");
+    msgEl.dataset.btfwTriviaStyled = "1";
+  }
+
+  function processChatNode(node){
+    if (!node || node.nodeType !== 1) return false;
+    const targets = [];
+    if (node.matches?.(MESSAGE_SELECTOR)) targets.push(node);
+    node.querySelectorAll?.(MESSAGE_SELECTOR).forEach((el) => {
+      if (!targets.includes(el)) targets.push(el);
+    });
+    if (!targets.length) return false;
+    targets.forEach(restyleTriviaMessage);
+    return true;
+  }
+
   function handleMutations(mutations){
+    let sawMessage = false;
     for (const mutation of mutations) {
       if (mutation.type !== "childList" || mutation.addedNodes.length === 0) continue;
       for (const node of mutation.addedNodes) {
-        if (node.nodeType !== 1) continue;
-        if (node.matches?.(".chat-msg, .message, [class*=message]") ||
-            node.querySelector?.(".chat-msg, .message, [class*=message]")) {
-          handleNewMessage();
-          return;
-        }
+        if (processChatNode(node)) sawMessage = true;
       }
     }
+    if (sawMessage) handleNewMessage();
+  }
+
+  function restyleExistingTrivia(){
+    const buffer = getChatBuffer();
+    if (!buffer) return;
+    buffer.querySelectorAll(MESSAGE_SELECTOR).forEach(restyleTriviaMessage);
   }
 
   function bindChatBuffer(buffer){
@@ -641,6 +734,7 @@ function watchForStrayButtons(){
       adoptUserlistIntoPopover();
       adoptNewMessageIndicator();
       ensureScrollManagement();
+      restyleExistingTrivia();
     }).observe(cw,{childList:true,subtree:true});
 
     const buf = $("#messagebuffer");
@@ -745,6 +839,7 @@ function watchForStrayButtons(){
     ensureUsercountInBar();
     ensureUserlistPopover();
     observeChatDom();
+    restyleExistingTrivia();
     wireDelegatedClicks();
     watchForStrayButtons();
 
