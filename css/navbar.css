@@ -1,105 +1,247 @@
 /* ======================================================================
    BillTube Framework — navbar.css
-   Keep content clear of fixed navbar; theme button styling
+   Elevated navbar styling aligned with theme tint + accent system
    ====================================================================== */
 
-/* Z-index is enforced in overlays.css; here we ensure spacing below it */
-#btfw-grid{
-  margin-top: calc(var(--btfw-top));
+/* Keep content offset below the floating navbar */
+#btfw-grid {
+  margin-top: var(--btfw-top);
 }
 
-/* Theme button in navbar */
-#btfw-theme-btn-nav.button{
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
-  background: color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%);
-  padding: 6px 10px;
-}
-#btfw-theme-btn-nav.button:hover{
-  background: color-mix(in srgb, var(--btfw-color-accent) 36%, transparent 64%);
-}
-
-.btfw-topbar {
+nav.navbar,
+.navbar,
+#navbar,
+.navbar-fixed-top {
+  position: fixed !important;
+  top: 12px;
+  left: 16px;
+  right: 16px;
+  z-index: 5200;
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  height: 56px;
-  padding: 6px 12px;
-  background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
-  border-bottom: 1px solid var(--btfw-border);
-  position: sticky;
-  top: 0;
-  z-index: 3000;
+  gap: 12px;
+  min-height: var(--btfw-navbar-height);
+  padding: 10px 18px;
+  background: var(--btfw-navbar-gradient);
+  border: 1px solid var(--btfw-navbar-border);
+  border-radius: 18px;
+  box-shadow: var(--btfw-navbar-shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-sizing: border-box;
 }
 
-/* Each list item behaves as a flex item */
-.btfw-topbar > li.btfw-topitem,
-.btfw-topbar > li { display: flex; align-items: center; }
-
-/* Push everything after Theme button to the right */
-.btfw-topbar > li.btfw-flex-spacer { margin-left: auto; }
-
-/* Links look tidy */
-.btfw-topbar > li > a {
-  color: color-mix(in srgb, var(--btfw-color-text) 92%, transparent 8%) !important;
-  padding: 8px 10px;
-  border-radius: 8px;
-}
-.btfw-topbar > li > a:hover {
-  background: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
-  color: var(--btfw-color-text) !important;
-}
-
-/* Theme button pill (purple gradient) */
-.btfw-topbar > li > a#btfw-theme-btn-nav {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--btfw-color-accent) 100%, transparent 0%), color-mix(in srgb, var(--btfw-color-accent) 80%, white 20%));
-  color: var(--btfw-color-text) !important;
+.navbar .navbar-header,
+.navbar .navbar-collapse {
+  background: transparent;
   border: 0;
-  font-weight: 600;
-  padding: 8px 14px;
-  border-radius: 999px;
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
-}
-.btfw-topbar > li > a#btfw-theme-btn-nav:hover {
-  filter: brightness(1.06);
 }
 
-/* Avatar chip on the right */
-.btfw-topbar #useravatar {
+.navbar .navbar-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar .navbar-brand {
+  color: var(--btfw-navbar-link);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 1.05rem;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navbar .navbar-brand:hover,
+.navbar .navbar-brand:focus {
+  color: var(--btfw-navbar-link-hover);
+  text-decoration: none;
+}
+
+.navbar .navbar-toggle {
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%);
+  background: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
+  color: var(--btfw-navbar-link);
+  padding: 6px 12px;
+  transition: filter 0.18s ease;
+}
+
+.navbar .navbar-toggle .icon-bar {
+  background-color: var(--btfw-navbar-link);
+  transition: background 0.18s ease;
+}
+
+.navbar .navbar-toggle:hover,
+.navbar .navbar-toggle:focus {
+  filter: brightness(1.1);
+}
+
+.navbar .nav,
+.navbar .navbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.navbar .nav > li,
+.navbar .navbar-nav > li {
+  display: flex;
+  align-items: center;
+}
+
+.navbar .nav > li > a,
+.navbar .navbar-nav > li > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  color: var(--btfw-navbar-link);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.navbar .nav > li > a .fa,
+.navbar .navbar-nav > li > a .glyphicon {
+  font-size: 0.95em;
+  opacity: 0.8;
+}
+
+.navbar .nav > li > a:hover,
+.navbar .nav > li > a:focus,
+.navbar .nav > li.open > a,
+.navbar .navbar-nav > li > a:hover,
+.navbar .navbar-nav > li > a:focus,
+.navbar .navbar-nav > li.open > a {
+  background: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
+  color: var(--btfw-navbar-link-hover);
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+}
+
+.navbar .dropdown-menu {
+  background: color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
+  border-radius: 16px;
+  box-shadow: 0 20px 36px color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%);
+  padding: 10px 0;
+  min-width: 210px;
+}
+
+.navbar .dropdown-menu > li > a {
+  color: var(--btfw-navbar-link-soft);
+  font-weight: 500;
+  padding: 10px 18px;
+  border-radius: 10px;
+  margin: 0 8px;
+}
+
+.navbar .dropdown-menu > li > a:hover,
+.navbar .dropdown-menu > li.active > a,
+.navbar .dropdown-menu > li > a:focus {
+  background: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+  color: var(--btfw-navbar-link-hover);
+}
+
+.navbar .dropdown-menu .divider {
+  background-color: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+}
+
+#btfw-theme-btn-nav,
+.navbar .nav > li > a#btfw-theme-btn-nav {
+  background: var(--btfw-navbar-pill-bg);
+  color: var(--btfw-navbar-pill-text) !important;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 16px 28px color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
+  padding: 8px 18px;
+  font-weight: 700;
+}
+
+#btfw-theme-btn-nav:hover,
+#btfw-theme-btn-nav:focus {
+  filter: var(--btfw-navbar-pill-hover);
+  color: var(--btfw-navbar-pill-text) !important;
+}
+
+#btfw-nav-avatar-item,
+.btfw-nav-avatar-item {
+  margin-left: 6px;
+}
+
+#btfw-nav-avatar-item .btfw-nav-avatar-link,
+.btfw-nav-avatar-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 4px;
+  transition: background 0.18s ease;
+}
+
+#btfw-nav-avatar-item .btfw-nav-avatar-link:hover,
+.btfw-nav-avatar-link:hover {
+  background: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+}
+
+#btfw-useravatar,
+.btfw-nav-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  display: block;
-  border: 2px solid color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
-  box-shadow: 0 4px 10px color-mix(in srgb, var(--btfw-color-bg) 35%, transparent 65%);
+  border: 2px solid color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
 }
 
-/* Space around avatar link */
-.btfw-topbar li.btfw-avatar-li .btfw-avatar-link {
-  display: flex; align-items: center; justify-content: center;
-  padding: 4px;
-  border-radius: 999px;
-}
-.btfw-topbar li.btfw-avatar-li .btfw-avatar-link:hover {
-  background: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+/* Collapsed menu (mobile) */
+@media (max-width: 767px) {
+  nav.navbar,
+  .navbar,
+  #navbar,
+  .navbar-fixed-top {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .navbar .navbar-collapse {
+    width: 100%;
+    padding: 12px;
+    margin-top: 6px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+    background: color-mix(in srgb, var(--btfw-color-panel) 96%, transparent 4%);
+    box-shadow: 0 14px 28px color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%);
+  }
+
+  .navbar .navbar-nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .navbar .navbar-nav > li {
+    width: 100%;
+  }
+
+  .navbar .navbar-nav > li > a {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  #btfw-nav-avatar-item,
+  .btfw-nav-avatar-item {
+    justify-content: flex-start;
+  }
 }
 
-/* Optional: hide the old Bootstrap divider lines inside dropdowns when using dark bar */
-.btfw-topbar .dropdown-menu .divider { background-color: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%); }
-/* Navbar avatar */
-.btfw-nav-avatar-item { display:inline-block; margin-left:12px; }
-.btfw-nav-avatar-link { display:inline-flex; align-items:center; }
-.btfw-nav-avatar {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
-}
 @media (min-width: 768px) {
-    .navbar-nav {
-        float: right!important;
-    }
+  .navbar .navbar-nav {
+    margin-left: auto;
+  }
 }
