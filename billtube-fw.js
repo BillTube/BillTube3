@@ -1,280 +1,181 @@
-/*! BillTube Framework - Modern CyTube Theme System */
+/*! BillTube Framework â€" v3.4f */
 (function(){
-  "use strict";
+  var scripts=document.getElementsByTagName('script');
+  var BASE=(document.currentScript&&document.currentScript.src)||scripts[scripts.length-1].src; BASE=BASE.replace(/\/[^\/]*$/, "");
 
-  const VERSION = "3.0.0";
-  const BASE = (function(){
-    const scripts = document.querySelectorAll("script[src*='billtube-fw']");
-    const src = scripts[scripts.length-1]?.src || "";
-    const match = src.match(/^(.+\/)billtube-fw(?:\.min)?\.js/);
-    return match ? match[1].replace(/\/$/, "") : "";
-  })();
+  var Registry=Object.create(null);
+  function define(name,deps,factory){ Registry[name]={deps:deps||[],factory:factory,instance:null}; }
+  async function init(name){
+    var m=Registry[name]; if(!m) throw new Error("Module not found: "+name);
+    if(m.instance) return m.instance;
+    for(var i=0;i<m.deps.length;i++){ await init(m.deps[i]); }
+    m.instance = await m.factory({define, init, BASE});
+    return m.instance;
+  }
+  window.BTFW = { define, init, BASE };
 
-  // Global framework object
-  window.BTFW = {
-    version: VERSION,
-    base: BASE,
-    modules: new Map(),
-    dependencies: new Map(),
-    ready: new Set(),
-    
-    define(name, deps, factory) {
-      if (typeof deps === "function") {
-        factory = deps;
-        deps = [];
-      }
-      this.dependencies.set(name, { deps: deps || [], factory });
-      this.tryResolve(name);
-    },
+function qparam(u, kv){ return u + (u.indexOf('?')>=0?'&':'?') + kv; }
 
-    async tryResolve(name) {
-      const def = this.dependencies.get(name);
-      if (!def || this.modules.has(name)) return;
-      
-      const depModules = {};
-      let allReady = true;
-      
-      for (const dep of def.deps) {
-        if (this.modules.has(dep)) {
-          depModules[dep] = this.modules.get(dep);
-        } else {
-          allReady = false;
-          break;
-        }
-      }
-      
-      if (allReady) {
-        try {
-          const module = await def.factory(depModules);
-          this.modules.set(name, module);
-          this.ready.add(name);
-          
-          // Try to resolve dependent modules
-          for (const [depName, depDef] of this.dependencies) {
-            if (!this.modules.has(depName) && depDef.deps.includes(name)) {
-              await this.tryResolve(depName);
-            }
-          }
-        } catch (err) {
-          console.error(`[BTFW] Failed to resolve module ${name}:`, err);
-        }
-      }
-    },
+var BTFW_VERSION = (function(){
+  var m = /[?&]v=([^&]+)/.exec(location.search);
+  return (m && m[1]) || ('dev-' + Date.now());
+})();
 
-    async init(moduleNames) {
-      const promises = moduleNames.map(name => this.waitFor(name));
-      return Promise.all(promises);
-    },
+var SUPPORTS_PRELOAD = (function(){
+  try {
+    return document.createElement("link").relList.supports("preload");
+  } catch (e) {
+    return false;
+  }
+})();
 
-    async waitFor(name) {
-      if (this.modules.has(name)) return this.modules.get(name);
-      
-      return new Promise((resolve, reject) => {
-        const check = () => {
-          if (this.modules.has(name)) {
-            resolve(this.modules.get(name));
-          } else {
-            setTimeout(check, 50);
-          }
-        };
-        check();
-        
-        // Timeout after 30 seconds
-        setTimeout(() => {
-          if (!this.modules.has(name)) {
-            reject(new Error(`Module ${name} failed to load within timeout`));
-          }
-        }, 30000);
-      });
-    }
-  };
+function preload(href){
+  return new Promise(function(resolve){
+    var l = document.createElement("link");
+    var url = qparam(href, "v="+encodeURIComponent(BTFW_VERSION));
 
-  // Utility functions
-  function preload(url){
-    return new Promise((resolve, reject) => {
-      if (!url) { resolve(); return; }
-      const link = document.createElement("link");
-      link.rel = "preload";
-      link.as = "style";
-      link.href = url; // Use the full URL as passed, don't prepend BASE
-      link.onload = resolve;
-      link.onerror = () => {
-        console.warn(`[BTFW] Failed to preload ${url}, continuing anyway`);
-        resolve(); // Don't fail the entire init for missing CSS
+    if (SUPPORTS_PRELOAD) {
+      l.rel = "preload";
+      l.as  = "style";
+      l.onload = function(){
+        l.rel = "stylesheet";
+        l.removeAttribute("onload");
+        resolve(true);
       };
-      document.head.appendChild(link);
-    });
-  }
-
-  function load(url){
-    return new Promise((resolve, reject) => {
-      if (!url) { resolve(); return; }
-      const script = document.createElement("script");
-      script.src = url;
-      script.async = true;
-      script.defer = true;
-      script.onload = resolve;
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
-  }
-
-  // Detect environment
-  function detectEnvironment(){
-    const isCytube = !!(window.CLIENT || window.socket || document.querySelector("#cytube-layout, #mainpage"));
-    const hasJQuery = typeof $ !== "undefined";
-    const hasVideoJS = typeof videojs !== "undefined";
-    
-    return {
-      platform: isCytube ? "cytube" : "unknown",
-      jquery: hasJQuery,
-      videojs: hasVideoJS,
-      mobile: window.innerWidth <= 768
-    };
-  }
-
-  // Initialize framework
-  function bootstrap(){
-    const env = detectEnvironment();
-    
-    console.log(`[BTFW] Initializing v${VERSION} on ${env.platform}`);
-    
-    if (env.platform !== "cytube") {
-      console.warn("[BTFW] Not running on CyTube, some features may not work");
+      l.onerror = function(){
+        l.rel = "stylesheet";
+        resolve(false);
+      };
+    } else {
+      l.rel = "stylesheet";
+      l.onload = function(){ resolve(true); };
+      l.onerror = function(){ resolve(false); };
     }
 
-    // Set global theme attribute
-    document.documentElement.setAttribute("data-btfw-framework", VERSION);
-    
-    // Load all module files in parallel (skip CSS preloading for now)
-    var mods = [
-        "modules/feature-style-core.js",
-        "modules/feature-bulma-layer.js",
-        "modules/feature-layout.js",
-        "modules/feature-channels.js",
-        "modules/feature-footer-forms.js",
-        "modules/feature-player.js",
-        "modules/feature-stack.js",
-        "modules/feature-chat.js",
-        "modules/feature-chat-tools.js",
-        "modules/feature-navbar.js",
-        "modules/feature-modal-skin.js",
-        "modules/feature-nowplaying.js",
-        "modules/feature-chat-username-colors.js",
-        "modules/feature-emotes.js",
-        "modules/feature-chat-media.js",
-        "modules/feature-emoji-compat.js",
-        "modules/feature-chat-avatars.js",
-        "modules/feature-chat-timestamps.js",
-        "modules/feature-chat-ignore.js",
-        "modules/feature-gifs.js",
-        "modules/feature-ambient.js",
-        "modules/feature-video-overlay.js",
-        "modules/feature-pip.js",
-        "modules/feature-notify.js",
-        "modules/feature-sync-guard.js",
-        "modules/feature-chat-commands.js",
-        "modules/feature-playlist-tools.js",
-        "modules/feature-local-subs.js",
-        "modules/feature-emoji-loader.js",
-        "modules/feature-billcast.js",
-        "modules/feature-motd-editor.js",
-        "modules/feature-video-enhancements.js",
-        "modules/feature-chat-scroll.js",
-        "modules/feature-footer-branding.js",
-        "modules/feature-channel-theme-admin.js",
-        "modules/feature-theme-settings.js"
-      ];
-      return mods.reduce((p,f)=>p.then(()=>load(BASE+"/"+f)), Promise.resolve());
-    }).then(function(){
-      // Initialize core modules first, then layout-dependent ones
-      return BTFW.init([
-        "feature:style-core",
-        "feature:bulma-layer", 
-        "feature:layout"
-      ]);
-    }).then(function(){
-      // Initialize UI and interaction modules
-      return BTFW.init([
-        "feature:channels",
-        "feature:footer-forms",
-        "feature:player", 
-        "feature:stack",
-        "feature:chat",
-        "feature:chat-tools",
-        "feature:navbar",
-        "feature:modal-skin",
-        "feature:nowplaying"
-      ]);
-    }).then(function(){
-      // Initialize enhancement modules
-      return BTFW.init([
-        "feature:chat-username-colors",
-        "feature:emotes",
-        "feature:chat-media", 
-        "feature:emoji-compat",
-        "feature:chat-avatars",
-        "feature:chat-timestamps",
-        "feature:chat-ignore",
-        "feature:gifs",
-        "feature:ambient",
-        "feature:video-overlay",
-        "feature:pip",
-        "feature:notify",
-        "feature:sync-guard",
-        "feature:chat-commands",
-        "feature:playlist-tools",
-        "feature:local-subs",
-        "feature:emoji-loader",
-        "feature:billcast",
-        "feature:motd-editor",
-        "feature:video-enhancements",
-        "feature:chat-scroll",
-        "feature:footer-branding",
-        "feature:channel-theme-admin",
-        "feature:theme-settings"
-      ]);
-    }).then(function(){
-      // Framework fully loaded
-      console.log(`[BTFW] Framework v${VERSION} fully initialized`);
-      document.documentElement.setAttribute("data-btfw-ready", "true");
-      
-      // Dispatch ready event
-      document.dispatchEvent(new CustomEvent("btfw:ready", {
-        detail: { version: VERSION, modules: Array.from(BTFW.ready) }
-      }));
-      
-      // Apply any pending configurations
-      if (window.BTFW_THEME_ADMIN) {
-        setTimeout(() => {
-          const cfg = window.BTFW_THEME_ADMIN;
-          if (cfg && typeof cfg === "object") {
-            window.BTFW.channelTheme = cfg;
-            console.log("[BTFW] Applied channel theme configuration");
-          }
-        }, 100);
-      }
-      
-    }).catch(function(err){
-      console.error("[BTFW] Framework initialization failed:", err);
-      document.documentElement.setAttribute("data-btfw-error", "true");
-    });
-  }
+    l.href = url;
+    document.head.appendChild(l);
 
-  // Wait for DOM and start bootstrap
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bootstrap);
-  } else {
-    bootstrap();
-  }
+    if (!SUPPORTS_PRELOAD) {
+      resolve(true);
+    }
+  });
+}
 
-  // Export for debugging
-  window.BTFW_DEBUG = {
-    version: VERSION,
-    base: BASE,
-    modules: () => Array.from(BTFW.modules.keys()),
-    ready: () => Array.from(BTFW.ready),
-    dependencies: () => Array.from(BTFW.dependencies.keys())
-  };
+function load(src){
+  return new Promise(function(resolve, reject){
+    var s = document.createElement("script");
+    s.async = true; s.defer = true;
+    s.src = qparam(src, "v="+encodeURIComponent(BTFW_VERSION)) + "&t=" + Date.now();
+    s.onload = function(){ resolve(); };
+    s.onerror = function(){ reject(new Error("Failed to load "+src)); };
+    document.head.appendChild(s);
+  });
+}
+
+  // Preload CSS in proper order for layout stability
+  Promise.all([
+    preload(BASE+"/css/tokens.css"),
+    preload(BASE+"/css/base.css"),
+    preload(BASE+"/css/navbar.css"),
+    preload(BASE+"/css/chat.css"),
+    preload(BASE+"/css/overlays.css"),
+    preload(BASE+"/css/player.css"),
+    preload(BASE+"/css/mobile.css")
+  ]).then(function(){
+    // Load modules in dependency order - core first, then layout-dependent modules
+    var mods=[
+      "modules/feature-style-core.js",
+      "modules/feature-bulma-layer.js",
+      "modules/feature-layout.js",
+      "modules/feature-channels.js",
+      "modules/feature-footer-forms.js",
+      "modules/feature-player.js",
+      "modules/feature-stack.js",
+      "modules/feature-chat.js",
+      "modules/feature-chat-tools.js",
+      "modules/feature-navbar.js",
+      "modules/feature-modal-skin.js",
+      "modules/feature-nowplaying.js",
+      "modules/feature-chat-username-colors.js",
+      "modules/feature-emotes.js",
+      "modules/feature-chat-media.js",
+      "modules/feature-emoji-compat.js",
+      "modules/feature-chat-avatars.js",
+      "modules/feature-chat-timestamps.js",
+      "modules/feature-chat-ignore.js",
+      "modules/feature-gifs.js",
+      "modules/feature-ambient.js",
+      "modules/feature-video-overlay.js",
+      "modules/feature-pip.js",
+      "modules/feature-notify.js",
+      "modules/feature-sync-guard.js",
+      "modules/feature-chat-commands.js",
+      "modules/feature-playlist-tools.js",
+      "modules/feature-local-subs.js",
+      "modules/feature-emoji-loader.js",
+      "modules/feature-billcast.js",
+      "modules/feature-motd-editor.js",
+      "modules/feature-video-enhancements.js",
+      "modules/feature-chat-scroll.js",
+      "modules/feature-footer-branding.js",
+      "modules/feature-channel-theme-admin.js",
+      "modules/feature-theme-settings.js"
+    ];
+    return mods.reduce((p,f)=>p.then(()=>load(BASE+"/"+f)), Promise.resolve());
+  }).then(function(){
+    // Initialize core modules first, then layout-dependent ones
+    return BTFW.init([
+      "feature:style-core",
+      "feature:bulma-layer", 
+      "feature:layout"
+    ]);
+  }).then(function(){
+    // Initialize UI and interaction modules
+    return BTFW.init([
+      "feature:channels",
+      "feature:footer-forms",
+      "feature:player", 
+      "feature:stack",
+      "feature:chat",
+      "feature:chat-tools",
+      "feature:navbar",
+      "feature:modal-skin",
+      "feature:nowplaying"
+    ]);
+  }).then(function(){
+    // Initialize enhancement modules
+    return BTFW.init([
+      "feature:chat-username-colors",
+      "feature:emotes",
+      "feature:chat-media", 
+      "feature:emoji-compat",
+      "feature:chat-avatars",
+      "feature:chat-timestamps",
+      "feature:chat-ignore",
+      "feature:gifs",
+      "feature:ambient",
+      "feature:video-overlay",
+      "feature:pip",
+      "feature:notify",
+      "feature:sync-guard",
+      "feature:chat-commands",
+      "feature:playlist-tools",
+      "feature:local-subs",
+      "feature:emoji-loader",
+      "feature:billcast",
+      "feature:motd-editor",
+      "feature:video-enhancements",
+      "feature:chat-scroll",
+      "feature:footer-branding",
+      "feature:channel-theme-admin",
+      "feature:theme-settings"
+    ]);
+  }).then(function(){
+    // Framework fully loaded
+    console.log("[BTFW] Framework loaded successfully");
+    document.documentElement.setAttribute("data-btfw-ready", "true");
+  }).catch(function(err){
+    console.error("[BTFW] Framework initialization failed:", err);
+  });
 
 })();
