@@ -132,7 +132,7 @@ a:hover {
 /* ---------- Main 2-column grid: left content + splitter + right chat ---------- */
 #btfw-grid{
   display: grid;
-  grid-template-columns: minmax(520px,1fr) var(--btfw-split-width) minmax(var(--btfw-chat-min),var(--btfw-chat-max));
+  grid-template-columns: minmax(520px,7fr) var(--btfw-split-width) minmax(var(--btfw-chat-min),3fr);
   grid-template-areas:
     "nav nav nav"
     "video split chat";
@@ -196,14 +196,14 @@ a:hover {
 
 /* Allow swapping chat/video positions on desktop */
 #btfw-grid.btfw-grid--chat-left{
-  grid-template-columns: minmax(var(--btfw-chat-min),var(--btfw-chat-max)) var(--btfw-split-width) minmax(520px,1fr);
+  grid-template-columns: minmax(var(--btfw-chat-min),3fr) var(--btfw-split-width) minmax(520px,7fr);
   grid-template-areas:
     "nav nav nav"
     "chat split video";
 }
 
 #btfw-grid.btfw-grid--chat-right{
-  grid-template-columns: minmax(520px,1fr) var(--btfw-split-width) minmax(var(--btfw-chat-min),var(--btfw-chat-max));
+  grid-template-columns: minmax(520px,7fr) var(--btfw-split-width) minmax(var(--btfw-chat-min),3fr);
   grid-template-areas:
     "nav nav nav"
     "video split chat";
@@ -256,7 +256,8 @@ a:hover {
 
 /* ---------- Content Stack under video ---------- */
 #btfw-stack{
-  display:block;
+  display:flex;
+  flex-direction:column;
   flex: 1; /* Take remaining space in leftpad */
   min-height: 0; /* Allow shrinking */
 }
@@ -277,8 +278,11 @@ a:hover {
 }
 #btfw-stack .btfw-stack-title{ font-weight:600; opacity:.9; }
 #btfw-stack .btfw-stack-list{
-  display:flex; flex-direction:column; gap: var(--btfw-gap);
+  display:flex;
+  flex-direction:column;
+  gap: var(--btfw-gap);
   margin-top: var(--btfw-gap);
+  flex: 1;
 }
 .btfw-stack-item{
   border:1px solid var(--btfw-border);
@@ -669,6 +673,7 @@ a:hover {
 #btfw-stack-footer {
   margin-top: auto;
   padding: clamp(18px, 4vw, 28px) clamp(18px, 4vw, 32px);
+  background: var(--btfw-color-panel);
   background: linear-gradient(180deg,
     color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%),
     color-mix(in srgb, var(--btfw-color-surface) 90%, transparent 10%));
