@@ -17,6 +17,61 @@
   var BootOverlay=(function(){
     var overlay=null;
     var styleEl=null;
+    var muteInterval=null;
+    var suppressedVideos=new Map();
+
+    function cleanupVideoRefs(){
+      for (const [video] of suppressedVideos) {
+        if (!(video instanceof HTMLVideoElement) || !video.isConnected) {
+          suppressedVideos.delete(video);
+        }
+      }
+    }
+
+    function suppressVideoAudio(){
+      cleanupVideoRefs();
+      var videos=document.querySelectorAll('video');
+      videos.forEach(function(video){
+        if (!(video instanceof HTMLVideoElement)) return;
+        if (!suppressedVideos.has(video)) {
+          var state={
+            muted: video.muted,
+            volume: (typeof video.volume === 'number') ? video.volume : null
+          };
+          suppressedVideos.set(video, state);
+        }
+        try { video.muted = true; }
+        catch(_){}
+      });
+    }
+
+    function startAudioSuppression(){
+      suppressVideoAudio();
+      if (muteInterval) return;
+      muteInterval = setInterval(suppressVideoAudio, 250);
+      document.documentElement && document.documentElement.classList.add('btfw-loading-muted');
+    }
+
+    function stopAudioSuppression(){
+      if (muteInterval) {
+        clearInterval(muteInterval);
+        muteInterval = null;
+      }
+      for (const [video, state] of suppressedVideos.entries()) {
+        if (!(video instanceof HTMLVideoElement)) {
+          suppressedVideos.delete(video);
+          continue;
+        }
+        try {
+          if (!state.muted) {
+            video.muted = false;
+            if (typeof state.volume === 'number') video.volume = state.volume;
+          }
+        } catch(_){}
+        suppressedVideos.delete(video);
+      }
+      document.documentElement && document.documentElement.classList.remove('btfw-loading-muted');
+    }
 
     function ensureStyles(){
       if (styleEl) return;
@@ -44,9 +99,10 @@
       return overlay;
     }
 
-    function show(){ attach(); }
+    function show(){ attach(); startAudioSuppression(); }
 
     function hide(){
+      stopAudioSuppression();
       if (!overlay) return;
       overlay.setAttribute('data-state','hidden');
       setTimeout(function(){ if(overlay){ overlay.remove(); overlay=null; } if(styleEl){ styleEl.remove(); styleEl=null; } }, 260);
