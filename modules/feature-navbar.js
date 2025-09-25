@@ -154,12 +154,29 @@ BTFW.define("feature:navbar", [], async () => {
     li.appendChild(buildAvatarElement(getUserName()));
   }
 
-  function refresh(){ renderAvatar(); }
+  function pruneNavLinks(){
+    const navUL = findNavList();
+    if (!navUL) return;
+    Array.from(navUL.querySelectorAll("li")).forEach(li => {
+      const link = li.querySelector("a");
+      if (!link) return;
+      const label = (link.textContent || "").trim().toLowerCase();
+      const href = (link.getAttribute("href") || "").trim();
+      const isHome = label === "home" || href === "/";
+      const isLayout = label === "layout" || /layout/i.test(link.dataset?.target || "");
+      if (isHome || isLayout) {
+        li.remove();
+      }
+    });
+  }
+
+  function refresh(){ pruneNavLinks(); renderAvatar(); }
 
   // ---------- Boot ----------
   function boot(){
     // Keep existing nav look; only ensure Theme button hook and avatar item.
     ensureThemeButtonHook();
+    pruneNavLinks();
     renderAvatar();
 
     // Refresh when userlist changes (profile image may load later)
@@ -185,7 +202,7 @@ BTFW.define("feature:navbar", [], async () => {
     const t = setInterval(()=>{
       tries++;
       const navUL = findNavList();
-      if (navUL) { ensureThemeButtonHook(); renderAvatar(); }
+      if (navUL) { ensureThemeButtonHook(); pruneNavLinks(); renderAvatar(); }
       if (tries > 10 || navUL) clearInterval(t);
     }, 300);
   }

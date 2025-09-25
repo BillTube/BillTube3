@@ -140,11 +140,14 @@ a:hover {
 
 #btfw-navhost{
   grid-area: nav;
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 6000;
   min-height: var(--btfw-top);
   padding-top: 0;
   padding-bottom: var(--btfw-gap);
   overflow: visible;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--btfw-color-bg) 88%, transparent 12%), color-mix(in srgb, var(--btfw-color-bg) 82%, transparent 18%));
 }
 
 #btfw-navhost::before{
@@ -498,9 +501,260 @@ a:hover {
   display: none !important;
 }
 
+/* Modal tab navigations get tint-aware styling */
+.btfw-card-head > ul,
+#channeloptions .btfw-card-head > ul,
+#useroptions .btfw-card-head > ul,
+.modal .btfw-card-head > ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
+  border-radius: 12px;
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%);
+}
+
+.btfw-card-head > ul > li,
+#channeloptions .btfw-card-head > ul > li,
+#useroptions .btfw-card-head > ul > li {
+  margin: 0;
+}
+
+.btfw-card-head > ul > li > a,
+.btfw-card-head > ul > li > button,
+#channeloptions .btfw-card-head > ul > li > a,
+#channeloptions .btfw-card-head > ul > li > button,
+#useroptions .btfw-card-head > ul > li > a,
+#useroptions .btfw-card-head > ul > li > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  color: color-mix(in srgb, var(--btfw-color-text) 92%, transparent 8%);
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.btfw-card-head > ul > li > a:hover,
+.btfw-card-head > ul > li > a:focus,
+.btfw-card-head > ul > li > button:hover,
+.btfw-card-head > ul > li > button:focus {
+  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+  color: var(--btfw-color-text);
+}
+
+.btfw-card-head > ul > li.active > a,
+.btfw-card-head > ul > li.active > button,
+.btfw-card-head > ul > li.is-active > a,
+.btfw-card-head > ul > li.is-active > button {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--btfw-color-accent) 86%, white 14%),
+    color-mix(in srgb, var(--btfw-color-accent) 62%, transparent 38%));
+  color: color-mix(in srgb, var(--btfw-color-text) 98%, white 2%);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+}
+
+.tabs,
+.tabs ul {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.tabs li a {
+  border-bottom: 0 !important;
+}
+
+.tabs li.is-active a {
+  color: var(--btfw-color-text);
+  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+  border-radius: 8px;
+  padding-bottom: 0.6em;
+}
+
+#useroptions .btfw-useroptions-pane {
+  padding: 0;
+}
+
+#useroptions .btfw-useroptions-about {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 8px 4px 4px;
+}
+
+#useroptions .btfw-useroptions-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%),
+    color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%));
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+  box-shadow: 0 18px 36px color-mix(in srgb, var(--btfw-color-bg) 48%, transparent 52%);
+}
+
+#useroptions .btfw-useroptions-badge {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
+  color: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
+}
+
+#useroptions .btfw-useroptions-hero h4 {
+  margin: 0;
+  font-size: 1.3rem;
+  letter-spacing: 0.04em;
+  color: var(--btfw-color-text);
+}
+
+#useroptions .btfw-useroptions-hero p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: color-mix(in srgb, var(--btfw-color-text) 74%, transparent 26%);
+  max-width: 520px;
+}
+
+#useroptions .btfw-useroptions-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+#useroptions .btfw-useroptions-panel {
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
+}
+
+#useroptions .btfw-useroptions-panel h5 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+  color: var(--btfw-color-text);
+}
+
+#useroptions .btfw-useroptions-panel p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: color-mix(in srgb, var(--btfw-color-text) 70%, transparent 30%);
+  line-height: 1.6;
+}
+
 /* Footer pinned to bottom of stack area */
-#btfw-stack-footer{ margin-top: auto; padding-top: var(--btfw-gap); }
-#btfw-stack-footer .btfw-footer{ margin:0; }
+#btfw-stack-footer {
+  margin-top: auto;
+  padding: clamp(18px, 4vw, 28px) clamp(18px, 4vw, 32px);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%),
+    color-mix(in srgb, var(--btfw-color-surface) 90%, transparent 10%));
+  border-top: 1px solid color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+  box-shadow: 0 -12px 32px color-mix(in srgb, var(--btfw-color-bg) 46%, transparent 54%);
+}
+
+#btfw-stack-footer .btfw-footer {
+  margin: 0;
+}
+
+#btfw-stack-footer .btfw-footer .container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0;
+}
+
+#btfw-stack-footer .btfw-footer .credit {
+  margin: 0;
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--btfw-color-text) 72%, transparent 28%);
+}
+
+#btfw-stack-footer .btfw-footer .credit a {
+  color: color-mix(in srgb, var(--btfw-color-accent) 72%, white 28%);
+  text-decoration: none;
+}
+
+#btfw-stack-footer .btfw-footer .credit a:hover {
+  color: color-mix(in srgb, var(--btfw-color-accent) 88%, white 12%);
+  text-decoration: underline;
+}
+
+#btfw-stack-footer .btfw-footer__auth {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+#btfw-stack-footer .btfw-footer__auth form {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%);
+  background: color-mix(in srgb, var(--btfw-color-surface) 90%, transparent 10%);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
+}
+
+#btfw-stack-footer .btfw-footer__auth span,
+#btfw-stack-footer .btfw-footer__auth #welcome {
+  color: color-mix(in srgb, var(--btfw-color-text) 86%, transparent 14%);
+  font-size: 0.85rem;
+}
+
+#btfw-stack-footer .btfw-footer__auth input[type="submit"],
+#btfw-stack-footer .btfw-footer__auth .navbar-link {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--btfw-color-accent) 90%, white 10%),
+    color-mix(in srgb, var(--btfw-color-accent) 68%, transparent 32%));
+  border: 0;
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
+  cursor: pointer;
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+
+#btfw-stack-footer .btfw-footer__auth input[type="submit"]:hover,
+#btfw-stack-footer .btfw-footer__auth .navbar-link:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+#btfw-stack-footer .btfw-footer__auth input[type="submit"]:focus,
+#btfw-stack-footer .btfw-footer__auth .navbar-link:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
+}
+
+#mainpage > #btfw-footer:not(.btfw-footer--standalone),
+#mainpage #sitefooter,
+#sitefooter,
+#btfw-footer.navbar-text {
+  display: none !important;
+}
 
 /* ---------- Ensure key wrappers expand and not float ---------- */
 #videowrap, #playlistwrap, #queuecontainer, #main, #mainpage, #mainpane, #motdrow{
