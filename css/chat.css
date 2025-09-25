@@ -73,14 +73,21 @@
 #messagebuffer .chat-msg{
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 6px;
   padding: 3px 6px;
   position: relative;
 }
 #messagebuffer .timestamp{
-  order: 3;
-  margin-left: auto;
+  order: 99;
+  margin-left: auto !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  text-align: right;
+  min-width: max-content;
+  white-space: nowrap;
   opacity: .65;
   font-size: 0.8em;
   padding-left: 12px;
