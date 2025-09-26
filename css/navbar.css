@@ -15,10 +15,8 @@
   right: auto;
   width: 100%;
   margin: 0;
-  padding: 0 clamp(16px, 3vw, 32px);
   border: 0;
   border-radius: 0 !important;
-  border-bottom: 1px solid var(--btfw-navbar-divider, color-mix(in srgb, var(--btfw-border) 86%, transparent 14%));
   background: var(--btfw-navbar-bg, var(--btfw-color-panel)) !important;
   background-image: none !important;
   box-shadow: 0 12px 32px color-mix(in srgb, var(--btfw-color-bg) 60%, transparent 40%);
