@@ -11,6 +11,11 @@
 BTFW.define("feature:navbar", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
 
+  const MOBILE_BREAKPOINT = 768;
+  let navToggleButton = null;
+  let mobileNavActive = false;
+  let mobileNavHandlersBound = false;
+
   // ---------- Helpers ----------
   function getUserName(){
     try { return (window.CLIENT && CLIENT.name) ? CLIENT.name : ""; }
@@ -81,11 +86,24 @@ BTFW.define("feature:navbar", [], async () => {
         || document.querySelector(".navbar ul");
   }
 
+  function styleThemeButton(btn){
+    if (!btn) return;
+    btn.id = "btfw-theme-btn-nav";
+    btn.classList.add("btfw-nav-pill");
+    btn.classList.remove("button","is-dark","is-small","btn","btn-default","is-primary");
+    if (btn.tagName === "BUTTON" && !btn.hasAttribute("type")) {
+      btn.type = "button";
+    }
+    if (!btn.getAttribute("aria-label")) {
+      btn.setAttribute("aria-label", "Theme settings");
+    }
+  }
+
   function ensureThemeButtonHook(){
     // If your nav already injects the Theme button elsewhere, we do nothing.
     // This only assigns an ID to an existing Theme button if missing.
     const existing = document.getElementById("btfw-theme-btn-nav");
-    if (existing) return;
+    if (existing) { styleThemeButton(existing); return; }
 
     // Try to reuse a theme button in nav, or create a minimal one
     const navUL = findNavList();
@@ -96,8 +114,7 @@ BTFW.define("feature:navbar", [], async () => {
     if (btn) {
       const a = btn.closest("a,button");
       if (a) {
-        a.id = "btfw-theme-btn-nav";
-        a.classList.add("button","is-dark","is-small");
+        styleThemeButton(a);
         return;
       }
     }
@@ -105,10 +122,12 @@ BTFW.define("feature:navbar", [], async () => {
     // As a last resort, add a small Theme button
     const li = document.createElement("li");
     const a  = document.createElement("a");
-    a.id = "btfw-theme-btn-nav";
-    a.className = "button is-dark is-small";
-    a.innerHTML = `<i class="fa fa-sliders"></i> Theme`;
+    a.innerHTML = `
+      <span class="btfw-nav-pill__icon" aria-hidden="true"><i class="fa fa-sliders"></i></span>
+      <span class="btfw-nav-pill__label">Theme</span>
+    `;
     a.href = "javascript:void(0)";
+    styleThemeButton(a);
     li.appendChild(a);
     navUL.appendChild(li);
 
@@ -170,7 +189,89 @@ BTFW.define("feature:navbar", [], async () => {
     });
   }
 
-  function refresh(){ pruneNavLinks(); renderAvatar(); }
+  function refresh(){
+    pruneNavLinks();
+    renderAvatar();
+    setupMobileNav();
+  }
+
+  function ensureMobileToggle(){
+    const host = document.getElementById("btfw-navhost");
+    if (!host) return null;
+    if (!navToggleButton) {
+      navToggleButton = document.createElement("button");
+      navToggleButton.id = "btfw-nav-toggle";
+      navToggleButton.type = "button";
+      navToggleButton.className = "btfw-nav-toggle";
+      navToggleButton.setAttribute("aria-expanded", "false");
+      navToggleButton.setAttribute("aria-label", "Open navigation");
+      navToggleButton.innerHTML = `
+        <span class="btfw-nav-toggle__bars" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </span>
+        <span class="btfw-nav-toggle__label">Menu</span>
+      `;
+      navToggleButton.addEventListener("click", () => {
+        const hostEl = document.getElementById("btfw-navhost");
+        if (!hostEl) return;
+        const isOpen = hostEl.getAttribute("data-mobile-open") === "true";
+        const next = !isOpen;
+        hostEl.setAttribute("data-mobile-open", next ? "true" : "false");
+        syncToggleState();
+      });
+    }
+    if (navToggleButton.parentElement !== host) {
+      host.insertBefore(navToggleButton, host.firstChild);
+    }
+    return navToggleButton;
+  }
+
+  function syncToggleState(){
+    const host = document.getElementById("btfw-navhost");
+    if (!host || !navToggleButton) return;
+    const isOpen = host.getAttribute("data-mobile-open") === "true";
+    navToggleButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    navToggleButton.setAttribute("aria-label", isOpen ? "Close navigation" : "Open navigation");
+    navToggleButton.classList.toggle("btfw-nav-toggle--open", isOpen);
+    const label = navToggleButton.querySelector(".btfw-nav-toggle__label");
+    if (label) label.textContent = isOpen ? "Close" : "Menu";
+  }
+
+  function updateMobileNavState(){
+    const host = document.getElementById("btfw-navhost");
+    if (!host) return;
+    ensureMobileToggle();
+    const shouldEnable = window.innerWidth <= MOBILE_BREAKPOINT;
+    host.classList.toggle("btfw-navhost--mobile", shouldEnable);
+    if (shouldEnable) {
+      if (!mobileNavActive) {
+        host.setAttribute("data-mobile-open", "false");
+        mobileNavActive = true;
+      }
+    } else {
+      host.setAttribute("data-mobile-open", "true");
+      mobileNavActive = false;
+    }
+    syncToggleState();
+  }
+
+  function setupMobileNav(){
+    const host = document.getElementById("btfw-navhost");
+    if (!host) return;
+    ensureMobileToggle();
+    updateMobileNavState();
+    if (mobileNavHandlersBound) return;
+    mobileNavHandlersBound = true;
+    window.addEventListener("resize", () => updateMobileNavState());
+    host.addEventListener("click", (ev) => {
+      if (window.innerWidth > MOBILE_BREAKPOINT) return;
+      if (!host) return;
+      const target = ev.target.closest?.('#btfw-navhost a, #btfw-navhost button');
+      if (!target || target === navToggleButton) return;
+      host.setAttribute("data-mobile-open", "false");
+      syncToggleState();
+    }, true);
+  }
 
   // ---------- Boot ----------
   function boot(){
@@ -178,6 +279,7 @@ BTFW.define("feature:navbar", [], async () => {
     ensureThemeButtonHook();
     pruneNavLinks();
     renderAvatar();
+    setupMobileNav();
 
     // Refresh when userlist changes (profile image may load later)
     const userlist = $("#userlist");
@@ -202,7 +304,7 @@ BTFW.define("feature:navbar", [], async () => {
     const t = setInterval(()=>{
       tries++;
       const navUL = findNavList();
-      if (navUL) { ensureThemeButtonHook(); pruneNavLinks(); renderAvatar(); }
+      if (navUL) { ensureThemeButtonHook(); pruneNavLinks(); renderAvatar(); setupMobileNav(); }
       if (tries > 10 || navUL) clearInterval(t);
     }, 300);
   }
