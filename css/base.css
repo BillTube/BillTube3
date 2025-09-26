@@ -398,7 +398,7 @@ a:hover {
   gap: calc(var(--btfw-gap) + 6px);
 }
 body:not(.btfw-mobile-stack-enabled) #btfw-stack .btfw-stack-list.btfw-stack-list--compact{
-  padding-inline: clamp(16px, 4vw, 52px);
+  padding-inline: clamp(16px, 5vw, 130px);
 }
 body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack-item{
   border-radius: calc(var(--btfw-radius) + 6px);
