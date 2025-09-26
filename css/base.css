@@ -409,6 +409,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   border:1px solid var(--btfw-border);
   border-radius: var(--btfw-radius);
   background: var(--btfw-card-bg);
+  margin-top: 20px;
 }
 .btfw-stack-item__header{
   display:flex; align-items:center; justify-content:space-between;
@@ -434,6 +435,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 .btfw-stack-item.btfw-group-item .btfw-stack-item__header {
   background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
   border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%);
+  border-radius: 10px;
 }
 .btfw-stack-item.btfw-group-item .btfw-stack-item__title {
   font-weight: 700;
