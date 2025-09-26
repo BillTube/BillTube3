@@ -1,6 +1,6 @@
 :root {
   --btfw-top: 64px;
-  --btfw-gap: 10px;
+  --btfw-gap: 5px;
   --btfw-color-bg: var(--btfw-theme-bg, #0b0f12);
   --btfw-color-surface: var(--btfw-theme-surface, #11161d);
   --btfw-color-panel: var(--btfw-theme-panel, #171d27);
