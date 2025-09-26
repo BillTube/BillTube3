@@ -93,6 +93,104 @@ footer {
   color: var(--btfw-color-text);
 }
 
+#pollwrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+#pollwrap .poll-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px clamp(16px, 4vw, 22px);
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%),
+    color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%));
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 36%, transparent 64%);
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--btfw-color-bg) 32%, transparent 68%);
+}
+
+#pollwrap .poll-menu > .btn-danger {
+  align-self: flex-end;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--btfw-color-danger, #ff4d6d) 38%, transparent 62%);
+}
+
+#pollwrap .poll-menu strong {
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--btfw-color-text) 92%, transparent 8%);
+}
+
+#pollwrap .poll-menu strong:not(:first-of-type) {
+  margin-top: 6px;
+}
+
+#pollwrap .poll-menu .text-muted {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--btfw-color-text) 70%, transparent 30%);
+  background: color-mix(in srgb, var(--btfw-color-surface) 82%, transparent 18%);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 40%);
+}
+
+#pollwrap .poll-menu .checkbox {
+  background: color-mix(in srgb, var(--btfw-color-surface) 86%, transparent 14%);
+  border-radius: 12px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 68%, transparent 32%);
+}
+
+#pollwrap .poll-menu .checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--btfw-color-text) 86%, transparent 14%);
+}
+
+#pollwrap .poll-menu .form-control {
+  background: color-mix(in srgb, var(--btfw-color-surface) 90%, transparent 10%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 74%, transparent 26%);
+  color: var(--btfw-color-text);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+#pollwrap .poll-menu .form-control:focus {
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+}
+
+#pollwrap .poll-menu .btn {
+  align-self: flex-start;
+  border-radius: 12px;
+}
+
+#pollwrap .poll-menu .btn.btn-block {
+  align-self: stretch;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+#pollwrap .poll-controls {
+  justify-content: flex-end;
+  background: color-mix(in srgb, var(--btfw-color-surface) 88%, transparent 12%);
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+  padding: 8px 12px;
+}
+
+#pollwrap .poll-controls .button {
+  margin-left: auto;
+}
+
 #chatwrap {
   --btfw-chat-text: 14px;
   color: var(--btfw-color-chat-text);
@@ -168,6 +266,12 @@ a:hover {
   padding: 0;
   margin: 0;
   background: transparent;
+  pointer-events: none;
+}
+
+#btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top),
+#btfw-navhost #btfw-nav-toggle {
+  pointer-events: auto;
 }
 
 #btfw-leftpad{
