@@ -156,6 +156,27 @@ body:not(.btfw-mobile-stack-enabled) #btfw-mobile-stack{ display:none !important
     border-radius: 10px;
   }
 
+  /* Give the video a little breathing room below the nav toggle */
+  #btfw-grid.btfw-grid--vertical #videowrap{
+    margin-top: 10px;
+  }
+
+  /* Compact the playlist toolbar columns */
+  .btfw-plbar__primary,
+  .btfw-plbar__aside{
+    flex: 1 1 20px;
+    min-width: 0;
+  }
+  .btfw-plbar__aside{
+    align-items: stretch;
+  }
+
+  /* Hide runtime chips in the tight mobile queue */
+  #queue li.queue_entry .qe_time,
+  .queue_entry .qe_time{
+    display: none;
+  }
+
   /* Content stack spacing tighter on mobile */
   #btfw-stack .btfw-stack-list{ gap: 8px; }
   .btfw-stack-item__body{ padding: 6px; }

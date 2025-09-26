@@ -166,6 +166,12 @@
   opacity: 0.8;
 }
 
+#queue li.queue_entry .btn-group .btn i.fa,
+.queue_entry .btn-group .btn i.fa {
+  margin-right: 4px;
+  opacity: 0.85;
+}
+
 #queue li.queue_entry.queue_active,
 #queue li.queue_entry.playing,
 #queue li.queue_active,

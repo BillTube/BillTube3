@@ -327,6 +327,9 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       aside = layout.querySelector(".btfw-plbar__aside") || layout;
     }
 
+    // Drop legacy controls that conflict with the modern bar
+    controlsBar.querySelectorAll("#showmediaurl, #btfw-pl-poll").forEach(btn => btn.remove());
+
     // Ensure we have an actions cluster for playlist controls
     let actionsCluster = controlsBar.querySelector(".btfw-plbar__actions");
     if (!actionsCluster) {
