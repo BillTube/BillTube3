@@ -7,18 +7,52 @@
   width: 100%;
   min-width: 0;
   position: relative; /* anchor overlay chrome */
+  display: grid;
+  place-items: stretch;
+  aspect-ratio: var(--btfw-video-aspect, 16 / 9);
+  background: color-mix(in srgb, var(--btfw-video-bg) 88%, transparent 12%);
+  border-radius: 24px;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 68%, transparent 32%);
+  box-shadow: 0 32px 62px color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+#videowrap::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--btfw-video-bg) 40%, transparent 60%) 0%,
+    transparent 35%,
+    transparent 65%,
+    color-mix(in srgb, var(--btfw-video-bg) 22%, transparent 78%) 100%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.18;
+  transition: opacity 0.24s ease;
+}
+
+#videowrap:hover::after{
+  opacity: 0.32;
+}
+
+#videowrap > *{
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
 }
 
 /* Support legacy .embed-responsive wrappers if present */
 #videowrap .embed-responsive{
   position: relative;
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
   overflow: hidden;
-  aspect-ratio: var(--btfw-video-aspect, 16 / 9);
   background: var(--btfw-video-bg);
-  border-radius: var(--btfw-radius);
+  border-radius: inherit;
 }
 #videowrap .embed-responsive::before{
   content: "";
@@ -39,22 +73,36 @@
   height: 100%;
   display: block;
   border: 0;
+  border-radius: inherit;
 }
 
 /* If no wrapper, modern browsers can use aspect-ratio on iframe */
 #videowrap iframe,
 #videowrap video{
   width: 100%;
-  height: auto;
-  aspect-ratio: var(--btfw-video-aspect, 16 / 9);
+  height: 100%;
+  aspect-ratio: auto;
   border: 0;
   display: block;
   background: var(--btfw-video-bg);
-  border-radius: var(--btfw-radius);
+  border-radius: inherit;
+  object-fit: contain;
+}
+
+#videowrap #ytapiplayer,
+#videowrap .video-js,
+#videowrap .jwplayer,
+#videowrap .flowplayer{
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: inherit;
 }
 
 /* Video overlay buttons are styled in overlays.css; ensure interactivity */
-#videowrap .btfw-video-overlay{ pointer-events: none; }
+#videowrap .btfw-video-overlay{
+  pointer-events: none;
+  grid-area: 1 / 1;
+}
 #videowrap .btfw-video-overlay .btfw-vo-right{ pointer-events: auto; }
 
 /* Space for modules stacked under the player */
@@ -166,6 +214,13 @@
 .queue_entry .btn-group .btn i.fa {
   margin-right: 4px;
   opacity: 0.85;
+}
+
+@media (max-width: 768px){
+  #videowrap{
+    border-radius: 18px;
+    box-shadow: 0 26px 48px color-mix(in srgb, var(--btfw-color-bg) 46%, transparent 54%);
+  }
 }
 
 #queue li.queue_entry.queue_active,
