@@ -1,5 +1,6 @@
 BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
   const SKEY="btfw-stack-order";
+  let compactSpacing = true;
   
   // Define what should be grouped together
   const GROUPS = [
@@ -198,31 +199,42 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
   }
 
   
-  function ensureStack(){ 
-    const left=document.getElementById("btfw-leftpad"); 
-    if(!left) return null; 
-    let stack=document.getElementById("btfw-stack"); 
-    if(!stack){ 
-      stack=document.createElement("div"); 
-      stack.id="btfw-stack"; 
-      stack.className="btfw-stack"; 
-      const v=document.getElementById("videowrap"); 
-      if(v&&v.nextSibling) v.parentNode.insertBefore(stack, v.nextSibling); 
-      else left.appendChild(stack); 
-      
+  function applyCompactSpacing(enabled){
+    const stack = document.getElementById("btfw-stack");
+    if (!stack) return;
+    const want = !!enabled;
+    stack.classList.toggle("btfw-stack--compact", want);
+    stack.querySelectorAll(".btfw-stack-list").forEach(list => {
+      list.classList.toggle("btfw-stack-list--compact", want);
+    });
+  }
+
+  function ensureStack(){
+    const left=document.getElementById("btfw-leftpad");
+    if(!left) return null;
+    let stack=document.getElementById("btfw-stack");
+    if(!stack){
+      stack=document.createElement("div");
+      stack.id="btfw-stack";
+      stack.className="btfw-stack";
+      const v=document.getElementById("videowrap");
+      if(v&&v.nextSibling) v.parentNode.insertBefore(stack, v.nextSibling);
+      else left.appendChild(stack);
+
       // Just create the list - no header with "Page Modules"
-      const list=document.createElement("div"); 
-      list.className="btfw-stack-list"; 
-      stack.appendChild(list); 
-      const footer=document.createElement("div"); 
-      footer.id="btfw-stack-footer"; 
-      footer.className="btfw-stack-footer"; 
+      const list=document.createElement("div");
+      list.className="btfw-stack-list";
+      stack.appendChild(list);
+      const footer=document.createElement("div");
+      footer.id="btfw-stack-footer";
+      footer.className="btfw-stack-footer";
       stack.appendChild(footer);
-    } 
+    }
+    applyCompactSpacing(compactSpacing);
     return {
-      list:stack.querySelector(".btfw-stack-list"), 
+      list:stack.querySelector(".btfw-stack-list"),
       footer:stack.querySelector("#btfw-stack-footer")
-    }; 
+    };
   }
   
   function normalizeId(el){ 
@@ -603,7 +615,7 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     }
   }
   
-  function populate(refs){ 
+  function populate(refs){
     const list = refs.list;
     const footer = refs.footer;
     
@@ -674,14 +686,24 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       }
     });
     
+    applyCompactSpacing(compactSpacing);
     save(list);
     attachFooter(footer);
   }
-  
-  function boot(){ 
-    const refs=ensureStack(); 
-    if(!refs) return; 
-    populate(refs); 
+
+  function setCompactSpacing(enabled){
+    compactSpacing = !!enabled;
+    applyCompactSpacing(compactSpacing);
+  }
+
+  function getCompactSpacing(){
+    return compactSpacing;
+  }
+
+  function boot(){
+    const refs=ensureStack();
+    if(!refs) return;
+    populate(refs);
     const obs=new MutationObserver(()=>populate(refs)); 
     obs.observe(document.body,{childList:true,subtree:true}); 
     let n=0; 
@@ -690,8 +712,23 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       if(++n>8) clearInterval(iv); 
     },700); 
   }
-  
-  document.addEventListener("btfw:layoutReady", boot); 
+
+  document.addEventListener("btfw:layoutReady", boot);
   setTimeout(boot, 1200);
-  return {name:"feature:stack"};
+  document.addEventListener("btfw:layout:orientation", () => {
+    requestAnimationFrame(() => applyCompactSpacing(compactSpacing));
+  });
+  document.addEventListener("btfw:stack:compactChanged", (ev) => {
+    if (ev && ev.detail && "enabled" in ev.detail) {
+      setCompactSpacing(!!ev.detail.enabled);
+    } else {
+      applyCompactSpacing(compactSpacing);
+    }
+  });
+
+  return {
+    name:"feature:stack",
+    setCompactSpacing,
+    getCompactSpacing
+  };
 });

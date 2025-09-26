@@ -391,6 +391,19 @@ a:hover {
   gap: var(--btfw-gap);
   margin-top: var(--btfw-gap);
   flex: 1;
+  padding-inline: 0;
+  transition: padding 0.24s ease, gap 0.24s ease;
+}
+.btfw-stack-list--compact{
+  gap: calc(var(--btfw-gap) + 6px);
+}
+body:not(.btfw-mobile-stack-enabled) #btfw-stack .btfw-stack-list.btfw-stack-list--compact{
+  padding-inline: clamp(16px, 4vw, 52px);
+}
+body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack-item{
+  border-radius: calc(var(--btfw-radius) + 6px);
+  box-shadow: 0 20px 48px color-mix(in srgb, var(--btfw-color-bg) 48%, transparent 52%);
+  border-color: color-mix(in srgb, var(--btfw-border) 68%, transparent 32%);
 }
 .btfw-stack-item{
   border:1px solid var(--btfw-border);
@@ -1016,6 +1029,60 @@ a:hover {
   gap: 14px;
 }
 
+#btfw-theme-modal .btfw-compact-stack-btn{
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 70%, transparent 30%);
+  background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  color: color-mix(in srgb, var(--btfw-color-text) 90%, transparent 10%);
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+#btfw-theme-modal .btfw-compact-stack-btn .btfw-compact-stack-label{
+  font-size: 0.85rem;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+#btfw-theme-modal .btfw-compact-stack-btn .btfw-compact-stack-status{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--btfw-color-panel) 76%, transparent 24%);
+  color: color-mix(in srgb, var(--btfw-color-text) 72%, transparent 28%);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+#btfw-theme-modal .btfw-compact-stack-btn[aria-pressed="true"]{
+  background: var(--btfw-navbar-pill-bg);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 40%, transparent 60%);
+  color: var(--btfw-navbar-pill-text);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
+}
+
+#btfw-theme-modal .btfw-compact-stack-btn[aria-pressed="true"] .btfw-compact-stack-status{
+  background: var(--btfw-color-accent);
+  color: var(--btfw-color-on-accent);
+}
+
+#btfw-theme-modal .btfw-compact-stack-btn:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 65%, transparent 35%);
+  outline-offset: 3px;
+}
+
 #btfw-theme-modal .btfw-ts-control{
   display: flex;
   flex-direction: column;
@@ -1168,4 +1235,7 @@ a:hover {
 }
 #btfw-grid.btfw-loaded {
   opacity: 1;
+}
+#showmediaurl{
+  display: none !important;
 }

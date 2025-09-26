@@ -16,9 +16,8 @@ BTFW.define("feature:notify", [], async () => {
     const buf = $("#messagebuffer");
     if (!buf) return null;
 
-    // make sure the buffer is a positioning context for our absolute overlay
-    const cs = getComputedStyle(buf);
-    if (cs.position === "static") buf.style.position = "relative";
+    const chatWrap = $("#chatwrap");
+    const topbar = chatWrap?.querySelector(".btfw-chat-topbar");
 
     let stack = $("#btfw-notify-stack");
     if (!stack) {
@@ -29,11 +28,22 @@ BTFW.define("feature:notify", [], async () => {
       stack.setAttribute("aria-relevant", "additions");
     }
 
-    if (stack.parentElement !== buf) buf.appendChild(stack);
+    const inTopbar = !!topbar;
 
-    const first = buf.firstElementChild;
-    if (first && first !== stack) {
-      buf.insertBefore(stack, first);
+    stack.classList.toggle("btfw-notify-stack--topbar", inTopbar);
+    stack.classList.toggle("btfw-notify-stack--buffer", !inTopbar);
+
+    if (inTopbar) {
+      if (getComputedStyle(topbar).position === "static") {
+        topbar.style.position = "relative";
+      }
+      if (stack.parentElement !== topbar) topbar.appendChild(stack);
+    } else {
+      const cs = getComputedStyle(buf);
+      if (cs.position === "static") buf.style.position = "relative";
+      if (stack.parentElement !== buf) buf.appendChild(stack);
+      const first = buf.firstElementChild;
+      if (first && first !== stack) buf.insertBefore(stack, first);
     }
 
     return stack;
