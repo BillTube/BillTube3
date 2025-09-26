@@ -24,8 +24,18 @@ BTFW.define("feature:notify", [], async () => {
     if (!stack) {
       stack = document.createElement("div");
       stack.id = "btfw-notify-stack";
-      buf.appendChild(stack);
+      stack.setAttribute("role", "region");
+      stack.setAttribute("aria-live", "polite");
+      stack.setAttribute("aria-relevant", "additions");
     }
+
+    if (stack.parentElement !== buf) buf.appendChild(stack);
+
+    const first = buf.firstElementChild;
+    if (first && first !== stack) {
+      buf.insertBefore(stack, first);
+    }
+
     return stack;
   }
 

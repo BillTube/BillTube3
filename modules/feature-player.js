@@ -1,62 +1,63 @@
 /* BTFW — feature:player (VideoJS player theming, tech guards, responsive fit) */
 BTFW.define("feature:player", ["feature:layout"], async ({}) => {
-  const THEME_ID = "btfw-videojs-zen-theme";
+  const THEME_ID = "btfw-videojs-streamlined-theme";
 
-  // Zen-inspired VideoJS theme CSS - clean, minimal, modern
+  // Streamlined VideoJS theme CSS - minimal, palette-aware, performant
   const videoPlayerThemeCSS = /* css */`
     :root {
-      --btfw-videojs-radius: 14px;
-      --btfw-videojs-control-size: 42px;
-      --btfw-videojs-control-gap: 8px;
-      --btfw-videojs-surface: linear-gradient(180deg, rgba(8, 10, 18, 0.92), rgba(8, 10, 18, 0.55));
-      --btfw-videojs-bar-bg: rgba(255, 255, 255, 0.22);
-      --btfw-videojs-bar-fill: var(--btfw-color-accent, #6d4df6);
-      --btfw-videojs-pill-bg: rgba(10, 12, 20, 0.55);
+      --btfw-videojs-radius: 18px;
+      --btfw-videojs-control-height: 44px;
+      --btfw-videojs-control-padding: 14px;
+      --btfw-videojs-chrome: color-mix(in srgb, var(--btfw-color-panel, #121824) 92%, transparent 8%);
+      --btfw-videojs-chrome-alt: color-mix(in srgb, var(--btfw-color-panel, #121824) 82%, transparent 18%);
+      --btfw-videojs-border: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 22%, transparent 78%);
+      --btfw-videojs-accent: var(--btfw-color-accent, #4ade80);
+      --btfw-videojs-text: var(--btfw-color-text, #f5faff);
+      --btfw-videojs-text-soft: color-mix(in srgb, var(--btfw-videojs-text) 70%, transparent 30%);
     }
 
     .video-js {
       font-family: var(--btfw-theme-font-family, 'Inter', sans-serif);
       font-size: 14px;
       line-height: 1.4;
-      color: #fff;
-      background-color: #000;
-      vertical-align: top;
-      box-sizing: border-box;
-      background-size: cover;
-      background-position: center;
-      user-select: none;
+      color: var(--btfw-videojs-text);
+      background: var(--btfw-videojs-chrome);
       border-radius: var(--btfw-videojs-radius);
       overflow: hidden;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 10px 28px color-mix(in srgb, var(--btfw-color-bg, #02060c) 48%, transparent 52%);
     }
 
-    .video-js * {
-      box-sizing: border-box;
+    .video-js .vjs-tech,
+    .video-js .vjs-poster {
+      border-radius: inherit;
+      background-color: color-mix(in srgb, var(--btfw-color-bg, #000) 72%, black 28%);
     }
 
     .video-js .vjs-poster {
-      background-size: cover;
       background-position: center;
+      background-size: cover;
     }
 
     .video-js .vjs-control-bar {
       display: flex;
       align-items: center;
-      gap: var(--btfw-videojs-control-gap);
-      padding: 12px 16px;
-      background: var(--btfw-videojs-surface);
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      transition: opacity 0.25s ease, transform 0.25s ease;
+      gap: 8px;
+      padding: var(--btfw-videojs-control-padding) calc(var(--btfw-videojs-control-padding) + 4px);
+      background: linear-gradient(180deg,
+        color-mix(in srgb, var(--btfw-videojs-chrome) 88%, transparent 12%),
+        color-mix(in srgb, var(--btfw-videojs-chrome-alt) 92%, transparent 8%)
+      );
+      border-top: 1px solid var(--btfw-videojs-border);
       position: absolute;
       left: 0;
       right: 0;
       bottom: 0;
-      width: 100%;
+      transition: opacity 0.2s ease, transform 0.2s ease;
     }
 
     .video-js.vjs-user-inactive .vjs-control-bar {
       opacity: 0;
-      transform: translateY(14px);
+      transform: translateY(10px);
       pointer-events: none;
     }
 
@@ -69,49 +70,47 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     }
 
     .video-js .vjs-control {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: var(--btfw-videojs-control-size);
-      height: var(--btfw-videojs-control-size);
-      min-width: var(--btfw-videojs-control-size);
-      min-height: var(--btfw-videojs-control-size);
+      width: var(--btfw-videojs-control-height);
+      height: var(--btfw-videojs-control-height);
+      min-width: var(--btfw-videojs-control-height);
+      min-height: var(--btfw-videojs-control-height);
       border-radius: 12px;
       color: inherit;
       background: transparent;
-      transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+      transition: background 0.16s ease, color 0.16s ease;
     }
 
     .video-js .vjs-control .vjs-icon-placeholder {
       font-size: 18px;
-      line-height: 1;
     }
 
     .video-js .vjs-play-control .vjs-icon-placeholder {
-      font-size: 22px;
+      font-size: 24px;
     }
 
     .video-js .vjs-button:hover,
     .video-js .vjs-button:focus-visible {
-      background: rgba(255, 255, 255, 0.12);
-      transform: translateY(-1px);
+      background: color-mix(in srgb, var(--btfw-videojs-accent) 24%, transparent 76%);
+      color: var(--btfw-color-on-accent, #111);
       outline: none;
     }
 
     .video-js .vjs-button:active {
-      transform: translateY(0);
+      transform: scale(0.96);
     }
 
     .video-js .vjs-volume-panel {
-      display: flex !important;
+      display: inline-flex !important;
       align-items: center;
       gap: 6px;
     }
 
     .video-js .vjs-volume-panel .vjs-volume-control {
-      width: 90px;
-      max-width: 120px;
-      transition: width 0.2s ease, opacity 0.2s ease;
+      width: 96px;
+      transition: width 0.18s ease, opacity 0.18s ease;
     }
 
     .video-js .vjs-volume-panel.vjs-mute-toggle-only .vjs-volume-control {
@@ -121,93 +120,84 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     }
 
     .video-js .vjs-volume-bar {
-      background: var(--btfw-videojs-bar-bg);
-      border-radius: 999px;
       height: 6px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--btfw-videojs-text-soft) 30%, transparent 70%);
     }
 
     .video-js .vjs-volume-level {
-      background: var(--btfw-videojs-bar-fill);
-      border-radius: inherit;
+      background: var(--btfw-videojs-accent);
     }
 
     .video-js .vjs-progress-control {
-      flex: 1;
       display: flex;
       align-items: center;
+      flex: 1 1 auto;
       height: 8px;
-      cursor: pointer;
-      margin: 0 12px;
     }
 
     .video-js .vjs-progress-holder {
-      flex: 1;
       position: relative;
+      width: 100%;
       height: 100%;
-      background: rgba(255, 255, 255, 0.24);
       border-radius: 999px;
+      background: color-mix(in srgb, var(--btfw-videojs-text-soft) 32%, transparent 68%);
       overflow: hidden;
     }
 
     .video-js .vjs-load-progress {
-      background: rgba(255, 255, 255, 0.36);
+      background: color-mix(in srgb, var(--btfw-videojs-text-soft) 46%, transparent 54%);
     }
 
     .video-js .vjs-play-progress {
-      background: linear-gradient(90deg,
-        var(--btfw-videojs-bar-fill),
-        color-mix(in srgb, var(--btfw-videojs-bar-fill) 78%, #ffffff 22%)
-      );
-      border-radius: inherit;
+      background: color-mix(in srgb, var(--btfw-videojs-accent) 88%, white 12%);
       position: relative;
-      transition: background 0.2s ease;
     }
 
     .video-js .vjs-play-progress::after {
-      content: '';
+      content: "";
       position: absolute;
-      right: -8px;
+      right: -7px;
       top: 50%;
       transform: translateY(-50%);
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      background: var(--btfw-videojs-accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-color-bg, #02060c) 72%, transparent 28%);
+      transition: transform 0.16s ease;
     }
 
     .video-js .vjs-progress-control:hover .vjs-play-progress::after {
       transform: translate(-1px, -50%) scale(1.05);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
     }
 
     .video-js .vjs-time-tooltip {
-      background: rgba(8, 10, 18, 0.9);
-      color: #fff;
+      background: color-mix(in srgb, var(--btfw-videojs-chrome-alt) 86%, transparent 14%);
+      color: var(--btfw-videojs-text);
       padding: 6px 10px;
       border-radius: 8px;
       font-size: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--btfw-videojs-border);
+      box-shadow: 0 10px 24px color-mix(in srgb, var(--btfw-color-bg, #02060c) 55%, transparent 45%);
     }
 
     .video-js .vjs-time-control {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 4px;
       padding: 0 12px;
-      height: var(--btfw-videojs-control-size);
+      height: var(--btfw-videojs-control-height);
       border-radius: 999px;
-      background: var(--btfw-videojs-pill-bg);
-      color: rgba(255, 255, 255, 0.9);
+      background: color-mix(in srgb, var(--btfw-videojs-chrome-alt) 80%, transparent 20%);
+      color: var(--btfw-videojs-text-soft);
       font-weight: 600;
       font-size: 13px;
-      min-width: auto;
+      font-variant-numeric: tabular-nums;
     }
 
     .video-js .vjs-time-control .vjs-time-divider {
-      color: rgba(255, 255, 255, 0.55);
+      color: color-mix(in srgb, var(--btfw-videojs-text-soft) 80%, transparent 20%);
     }
 
     .video-js .vjs-remaining-time {
@@ -215,7 +205,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     }
 
     .video-js .vjs-spacer {
-      flex: 0 0 12px;
+      flex: 0 0 8px;
     }
 
     .video-js .vjs-menu-button-popup .vjs-menu {
@@ -225,49 +215,49 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     }
 
     .video-js .vjs-menu-button-popup .vjs-menu .vjs-menu-content {
-      background: rgba(10, 12, 20, 0.95);
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: color-mix(in srgb, var(--btfw-videojs-chrome) 94%, transparent 6%);
+      border: 1px solid var(--btfw-videojs-border);
       border-radius: 12px;
-      min-width: 140px;
-      max-height: 240px;
+      min-width: 150px;
+      max-height: 220px;
       overflow-y: auto;
       padding: 8px 0;
-      box-shadow: 0 16px 42px rgba(0, 0, 0, 0.55);
+      box-shadow: 0 16px 36px color-mix(in srgb, var(--btfw-color-bg, #02060c) 52%, transparent 48%);
     }
 
     .video-js .vjs-menu-button-popup .vjs-menu li {
-      color: rgba(255, 255, 255, 0.85);
-      padding: 10px 18px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background 0.18s ease, color 0.18s ease;
+      padding: 9px 18px;
+      font-size: 13px;
+      color: var(--btfw-videojs-text-soft);
+      transition: background 0.15s ease, color 0.15s ease;
     }
 
     .video-js .vjs-menu-button-popup .vjs-menu li:hover,
     .video-js .vjs-menu-button-popup .vjs-menu li:focus-visible {
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
+      background: color-mix(in srgb, var(--btfw-videojs-accent) 22%, transparent 78%);
+      color: var(--btfw-color-on-accent, #111);
       outline: none;
     }
 
     .video-js .vjs-menu-button-popup .vjs-menu li.vjs-selected {
-      background: var(--btfw-videojs-bar-fill);
-      color: #fff;
+      background: var(--btfw-videojs-accent);
+      color: var(--btfw-color-on-accent, #111);
     }
 
     .video-js .vjs-menu-button-popup .vjs-menu li.vjs-menu-title {
-      color: rgba(255, 255, 255, 0.68);
+      font-size: 12px;
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--btfw-videojs-text-soft);
       padding: 8px 18px 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-      margin-bottom: 4px;
     }
 
     .video-js .vjs-text-track-display {
       font-family: var(--btfw-theme-font-family, 'Inter', sans-serif);
       font-size: 18px;
       font-weight: 600;
-      text-shadow: 2px 2px 12px rgba(0, 0, 0, 0.9);
+      text-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
       bottom: 78px;
     }
 
@@ -276,32 +266,31 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 78px;
-      height: 78px;
+      width: 80px;
+      height: 80px;
       border-radius: 50%;
-      background: rgba(8, 10, 16, 0.82);
-      border: 2px solid rgba(255, 255, 255, 0.28);
-      color: #fff;
-      font-size: 28px;
-      cursor: pointer;
-      transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+      background: color-mix(in srgb, var(--btfw-videojs-chrome-alt) 78%, transparent 22%);
+      border: 2px solid color-mix(in srgb, var(--btfw-videojs-accent) 36%, transparent 64%);
+      color: var(--btfw-videojs-text);
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
     }
 
     .video-js .vjs-big-play-button:hover,
     .video-js .vjs-big-play-button:focus-visible {
-      background: rgba(8, 10, 16, 0.95);
-      border-color: var(--btfw-videojs-bar-fill);
       transform: translate(-50%, -50%) scale(1.05);
+      background: color-mix(in srgb, var(--btfw-videojs-accent) 24%, transparent 76%);
+      border-color: var(--btfw-videojs-accent);
+      color: var(--btfw-color-on-accent, #111);
       outline: none;
     }
 
     .video-js .vjs-big-play-button .vjs-icon-placeholder {
-      font-size: inherit;
+      font-size: 28px;
     }
 
     .video-js .vjs-loading-spinner {
-      border: 3px solid rgba(255, 255, 255, 0.18);
-      border-top-color: var(--btfw-videojs-bar-fill);
+      border: 3px solid color-mix(in srgb, var(--btfw-videojs-text-soft) 36%, transparent 64%);
+      border-top-color: var(--btfw-videojs-accent);
       border-radius: 50%;
       width: 48px;
       height: 48px;
@@ -309,7 +298,11 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      animation: btfw-video-spin 1s linear infinite;
+      animation: btfw-video-spin 0.9s linear infinite;
+    }
+
+    .video-js .vjs-loading-spinner .vjs-control-text {
+      display: none;
     }
 
     @keyframes btfw-video-spin {
@@ -317,19 +310,15 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
       to { transform: translate(-50%, -50%) rotate(360deg); }
     }
 
-    .video-js .vjs-loading-spinner .vjs-control-text {
-      display: none;
-    }
-
     .video-js .vjs-error-display {
-      background: rgba(6, 8, 14, 0.92);
-      color: #fff;
+      background: color-mix(in srgb, var(--btfw-videojs-chrome) 94%, transparent 6%);
+      border: 1px solid var(--btfw-videojs-border);
       border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--btfw-videojs-text);
       padding: 24px;
+      margin: 24px;
       font-size: 16px;
       text-align: center;
-      margin: 24px;
     }
 
     .video-js .vjs-picture-in-picture-control,
@@ -338,7 +327,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     }
 
     .video-js .vjs-subs-caps-button {
-      display: flex;
+      display: inline-flex;
     }
 
     @media (max-width: 768px) {
