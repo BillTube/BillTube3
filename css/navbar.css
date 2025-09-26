@@ -12,23 +12,24 @@
 
 #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
   position: sticky !important;
+
   top: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  border-radius: 0 !important;
-  border: 0;
-  border-bottom: 1px solid var(--btfw-navbar-divider, color-mix(in srgb, var(--btfw-border) 86%, transparent 14%));
-  background:
-    linear-gradient(180deg,
-      color-mix(in srgb, var(--btfw-color-bg) 82%, transparent 18%),
-      color-mix(in srgb, var(--btfw-color-surface) 92%, transparent 8%));
-  background-image: none !important;
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 58%, transparent 42%);
+  z-index: 6000;
   display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 10px;
+  padding: clamp(6px, 1.8vw, 12px) clamp(10px, 4vw, 18px) 0;
+}
+
+#btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding: 0 clamp(16px, 3vw, 26px);
+  background: var(--btfw-navbar-gradient);
+  border: 1px solid var(--btfw-navbar-border);
+  border-radius: calc(var(--btfw-radius) + 6px);
+  box-shadow: var(--btfw-navbar-shadow);
   min-height: var(--btfw-navbar-height);
   box-sizing: border-box;
   isolation: isolate;
@@ -36,17 +37,20 @@
 
 #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) > .container {
   width: 100%;
+  margin: 0;
+  padding: 0;
   display: flex;
   align-items: center;
   gap: clamp(12px, 2vw, 28px);
   padding: 0 clamp(18px, 3vw, 36px);
   margin: 0;
+
 }
 
 #btfw-navhost :is(.navbar-header, .navbar-brand-container) {
   display: flex;
   align-items: center;
-  gap: clamp(10px, 1.6vw, 22px);
+  gap: clamp(8px, 1.6vw, 20px);
   margin-right: auto;
   min-height: var(--btfw-navbar-height);
 }
@@ -55,13 +59,12 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-size: clamp(1.05rem, 1.7vw, 1.2rem);
+  color: var(--btfw-navbar-link);
+  font-size: clamp(1.05rem, 1.8vw, 1.2rem);
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: var(--btfw-navbar-link);
   text-decoration: none;
   text-transform: none;
-  padding: 0;
 }
 
 #btfw-navhost .navbar-brand:hover,
@@ -74,13 +77,15 @@
   display: none !important;
 }
 
+
 #btfw-navhost :is(.navbar-nav, .nav) {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: clamp(4px, 0.9vw, 14px);
   margin: 0;
   padding: 0;
   float: none !important;
+
   list-style: none;
 }
 
@@ -90,13 +95,13 @@
 }
 
 #btfw-navhost :is(.navbar-nav, .nav) > li > :is(a, button) {
+
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 10px 14px;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--btfw-navbar-link);
+  border-radius: 10px;
   font-weight: 600;
   letter-spacing: 0.01em;
   border: 0;
@@ -114,31 +119,32 @@
 #btfw-navhost :is(.navbar-nav, .nav) > li > :is(a, button):focus,
 #btfw-navhost :is(.navbar-nav, .nav) > li.open > :is(a, button) {
   background: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
+
   color: var(--btfw-navbar-link-hover);
-  box-shadow: 0 10px 20px color-mix(in srgb, var(--btfw-color-accent) 16%, transparent 84%);
+  background: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
 }
 
 #btfw-navhost .dropdown-menu {
   background: color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
   border-radius: 14px;
-  box-shadow: 0 20px 40px color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%);
-  padding: 10px 0;
   min-width: 210px;
+
 }
 
 #btfw-navhost .dropdown-menu > li > a {
+  padding: 10px 18px;
   color: var(--btfw-navbar-link-soft);
   font-weight: 500;
-  padding: 10px 18px;
-  border-radius: 10px;
-  margin: 0 8px;
+  border-radius: 8px;
+  transition: background 0.18s ease, color 0.18s ease;
 }
 
 #btfw-navhost .dropdown-menu > li > a:hover,
-#btfw-navhost .dropdown-menu > li.active > a,
-#btfw-navhost .dropdown-menu > li > a:focus {
-  background: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+#btfw-navhost .dropdown-menu > li.active > a {
+  background: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
   color: var(--btfw-navbar-link-hover);
 }
 
@@ -177,6 +183,7 @@
   font-weight: inherit;
   box-shadow: none;
   border: 0;
+
 }
 
 #btfw-navhost .btfw-nav-pill__icon {
@@ -207,10 +214,9 @@
 #btfw-navhost .btfw-nav-avatar {
   width: 32px;
   height: 32px;
+
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%);
-  box-shadow: 0 6px 14px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
 }
 
 #btfw-nav-toggle {
@@ -365,5 +371,6 @@
 @media (max-width: 520px) {
   #btfw-navhost #btfw-nav-toggle {
     padding: 8px 14px;
+
   }
 }
