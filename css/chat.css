@@ -26,6 +26,11 @@
   flex-shrink: 0; /* Don't shrink these bars */
 }
 
+#chatwrap .btfw-chat-topbar{
+  position: relative;
+  overflow: visible;
+}
+
 .btfw-chat-topbar-left{
   display:flex;
   align-items:center;
