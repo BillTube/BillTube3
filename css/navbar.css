@@ -1,10 +1,18 @@
 /* ======================================================================
    BillTube Framework — navbar.css
-   Modernized navigation bar styling with mobile toggle support
+   Desktop layout stays true to original CyTube nav while adding a
+   collapsed mobile drawer that is hidden by default.
    ====================================================================== */
 
 #btfw-navhost {
-  position: sticky;
+  position: relative;
+  z-index: 6000;
+  width: 100%;
+}
+
+#btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+  position: sticky !important;
+
   top: 0;
   z-index: 6000;
   display: flex;
@@ -23,9 +31,7 @@
   border-radius: calc(var(--btfw-radius) + 6px);
   box-shadow: var(--btfw-navbar-shadow);
   min-height: var(--btfw-navbar-height);
-  display: flex;
-  align-items: center;
-  gap: clamp(10px, 2vw, 24px);
+  box-sizing: border-box;
   isolation: isolate;
 }
 
@@ -35,7 +41,10 @@
   padding: 0;
   display: flex;
   align-items: center;
-  gap: inherit;
+  gap: clamp(12px, 2vw, 28px);
+  padding: 0 clamp(18px, 3vw, 36px);
+  margin: 0;
+
 }
 
 #btfw-navhost :is(.navbar-header, .navbar-brand-container) {
@@ -68,17 +77,6 @@
   display: none !important;
 }
 
-#btfw-navhost :is(.navbar-collapse, #nav-collapsible) {
-  display: flex !important;
-  align-items: center;
-  justify-content: flex-end;
-  gap: clamp(6px, 1vw, 16px);
-  margin-left: auto;
-  padding: 0;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-}
 
 #btfw-navhost :is(.navbar-nav, .nav) {
   display: flex;
@@ -86,6 +84,8 @@
   gap: clamp(4px, 0.9vw, 14px);
   margin: 0;
   padding: 0;
+  float: none !important;
+
   list-style: none;
 }
 
@@ -94,8 +94,8 @@
   align-items: center;
 }
 
-#btfw-navhost :is(.navbar-nav, .nav) > li > a,
-#btfw-navhost :is(.navbar-nav, .nav) > li > button {
+#btfw-navhost :is(.navbar-nav, .nav) > li > :is(a, button) {
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -104,18 +104,22 @@
   border-radius: 10px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  color: var(--btfw-navbar-link);
-  background: transparent;
   border: 0;
   text-decoration: none;
-  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
-#btfw-navhost :is(.navbar-nav, .nav) > li > a:hover,
-#btfw-navhost :is(.navbar-nav, .nav) > li > a:focus,
-#btfw-navhost :is(.navbar-nav, .nav) > li > button:hover,
-#btfw-navhost :is(.navbar-nav, .nav) > li > button:focus,
-#btfw-navhost :is(.navbar-nav, .nav) > li.open > a {
+#btfw-navhost :is(.navbar-nav, .nav) > li > :is(a, button) .fa,
+#btfw-navhost :is(.navbar-nav, .nav) > li > :is(a, button) .glyphicon {
+  font-size: 0.95em;
+  opacity: 0.8;
+}
+
+#btfw-navhost :is(.navbar-nav, .nav) > li > :is(a, button):hover,
+#btfw-navhost :is(.navbar-nav, .nav) > li > :is(a, button):focus,
+#btfw-navhost :is(.navbar-nav, .nav) > li.open > :is(a, button) {
+  background: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
+
   color: var(--btfw-navbar-link-hover);
   background: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
   transform: translateY(-1px);
@@ -127,8 +131,7 @@
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
   border-radius: 14px;
   min-width: 210px;
-  padding: 10px 0;
-  box-shadow: 0 18px 40px color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%);
+
 }
 
 #btfw-navhost .dropdown-menu > li > a {
@@ -147,32 +150,40 @@
 
 #btfw-navhost .dropdown-menu .divider {
   height: 1px;
-  margin: 6px 0;
-  background: color-mix(in srgb, var(--btfw-navbar-divider) 70%, transparent 30%);
+  background-color: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+}
+
+#btfw-navhost :is(#nav-collapsible, .navbar-collapse) {
+  margin-left: auto !important;
+  display: flex !important;
+  justify-content: flex-end;
+  align-items: center;
+  gap: clamp(10px, 1.2vw, 18px);
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0;
+}
+
+#btfw-navhost :is(#nav-collapsible, .navbar-collapse) > ul {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 0.8vw, 12px);
+  margin: 0;
 }
 
 #btfw-navhost .btfw-nav-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 18px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%),
-    color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%));
-  color: var(--btfw-navbar-pill-text);
-  font-weight: 600;
-  text-decoration: none;
-  box-shadow: 0 16px 32px color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
-}
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-weight: inherit;
+  box-shadow: none;
+  border: 0;
 
-#btfw-navhost .btfw-nav-pill:hover,
-#btfw-navhost .btfw-nav-pill:focus-visible {
-  filter: brightness(1.05);
-  transform: translateY(-1px);
-  outline: none;
 }
 
 #btfw-navhost .btfw-nav-pill__icon {
@@ -201,8 +212,9 @@
 }
 
 #btfw-navhost .btfw-nav-avatar {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
+
   border-radius: 50%;
   object-fit: cover;
 }
@@ -255,67 +267,110 @@
   transform: translateY(-6px) rotate(-45deg);
 }
 
+/* ---------- Responsive tweaks ---------- */
 @media (max-width: 1024px) {
-  #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
-    padding: 0 clamp(14px, 3vw, 22px);
+  #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) > .container {
+    padding: 0 clamp(16px, 3vw, 28px);
   }
 }
 
-@media (max-width: 768px) {
-  #btfw-navhost {
-    align-items: stretch;
-    gap: 8px;
+@media (max-width: 900px) {
+  #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) > .container {
+    flex-wrap: wrap;
   }
 
-  #btfw-nav-toggle {
-    display: inline-flex;
-    align-self: flex-end;
-  }
-
-  #btfw-navhost[data-mobile-open="false"] > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
-    display: none;
-  }
-
-  #btfw-navhost[data-mobile-open="true"] > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    padding: 12px clamp(12px, 4vw, 18px);
-  }
-
-  #btfw-navhost.btfw-navhost--mobile :is(.navbar-collapse, #nav-collapsible) {
+  #btfw-navhost :is(.navbar-header, .navbar-brand-container) {
     width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+    justify-content: space-between;
+    margin-right: 0;
   }
 
-  #btfw-navhost.btfw-navhost--mobile :is(.navbar-nav, .nav) {
+  #btfw-navhost :is(#nav-collapsible, .navbar-collapse) {
     width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px !important;
+    justify-content: space-between;
   }
 
-  #btfw-navhost.btfw-navhost--mobile :is(.navbar-nav, .nav) > li > a,
-  #btfw-navhost.btfw-navhost--mobile :is(.navbar-nav, .nav) > li > button {
+  #btfw-navhost :is(#nav-collapsible, .navbar-collapse) > ul {
+    flex-wrap: wrap;
     justify-content: flex-start;
-    width: 100%;
   }
+}
 
-  #btfw-navhost .dropdown-menu {
-    position: static;
-    box-shadow: none;
-    margin-top: 0;
-  }
+/* ---------- Mobile drawer ---------- */
+#btfw-navhost.btfw-navhost--mobile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+#btfw-navhost.btfw-navhost--mobile #btfw-nav-toggle {
+  display: inline-flex;
+  align-self: flex-end;
+}
+
+#btfw-navhost.btfw-navhost--mobile[data-mobile-open="false"] > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+  display: none;
+}
+
+#btfw-navhost.btfw-navhost--mobile[data-mobile-open="true"] > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+  position: relative !important;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 12px clamp(12px, 4vw, 18px);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%);
+  border-radius: 18px;
+}
+
+#btfw-navhost.btfw-navhost--mobile :is(#nav-collapsible, .navbar-collapse) {
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin: 0 !important;
+  padding: 0;
+}
+
+#btfw-navhost.btfw-navhost--mobile :is(#nav-collapsible, .navbar-collapse) > ul {
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+#btfw-navhost.btfw-navhost--mobile :is(.navbar-nav, .nav) > li {
+  width: 100%;
+}
+
+#btfw-navhost.btfw-navhost--mobile :is(.navbar-nav, .nav) > li > :is(a, button) {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+#btfw-navhost.btfw-navhost--mobile .btfw-nav-pill {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%),
+    color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%));
+  color: var(--btfw-navbar-pill-text, var(--btfw-navbar-link-hover));
+  font-weight: 600;
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+}
+
+#btfw-navhost.btfw-navhost--mobile .btfw-nav-pill:hover,
+#btfw-navhost.btfw-navhost--mobile .btfw-nav-pill:focus-visible {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  outline: none;
 }
 
 @media (max-width: 520px) {
-  #btfw-nav-toggle {
+  #btfw-navhost #btfw-nav-toggle {
     padding: 8px 14px;
-  }
 
-  #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
-    padding: 0 clamp(10px, 4vw, 16px);
   }
 }
