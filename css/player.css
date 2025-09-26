@@ -1,8 +1,3 @@
-/* ======================================================================
-   BillTube Framework — player.css
-   Player sizing, responsive fit, and spacing around player modules
-   ====================================================================== */
-
 #videowrap{
   width: 100%;
   min-width: 0;
@@ -106,6 +101,7 @@
 #videowrap .btfw-video-overlay .btfw-vo-right{ pointer-events: auto; }
 
 /* Space for modules stacked under the player */
+
 #playlistwrap, #playlistrow, #queuecontainer, #queue{ margin-top: 10px; }
 #btfw-channels{ margin-top: 10px; }
 
@@ -296,16 +292,18 @@
 }
 
 .btfw-addmedia-panel {
-  margin-top: 16px;
-  border-radius: 18px;
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
-  background: color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%);
-  box-shadow: 0 22px 48px color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%),
-    0 10px 24px color-mix(in srgb, var(--btfw-color-bg) 34%, transparent 66%);
-  padding: 20px;
-  display: none;
-  position: relative;
-  overflow: hidden;
+    margin-top: 16px;
+    border-radius: 18px;
+    border: 1px solid
+ color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
+    background: var(--btfw-color-bg);
+    box-shadow: 0 22px 48px 
+ color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%), 0 10px 24px 
+ color-mix(in srgb, var(--btfw-color-bg) 34%, transparent 66%);
+    padding: 20px;
+    display: none;
+    position: relative;
+    overflow: hidden;
 }
 
 .btfw-addmedia-panel.is-open {
