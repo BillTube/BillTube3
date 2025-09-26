@@ -150,9 +150,10 @@
   justify-content: center;
 }
 #videowrap.btfw-pip {
-  border-radius: var(--btfw-radius);
+  border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 10px 30px color-mix(in srgb, var(--btfw-color-bg) 54%, transparent 46%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 70%, transparent 30%);
+  box-shadow: 0 22px 48px color-mix(in srgb, var(--btfw-color-bg) 46%, transparent 54%);
 }
 
 /* ======================================================================
@@ -708,16 +709,36 @@ html[data-btfw-theme="dark"] .panel {
 
 #btfw-notify-stack{
   position: absolute;
-  top: 12px;
-  right: 12px;
-  left: auto;
   z-index: 4200;
   display: flex;
   flex-direction: column;
   gap: 12px;
   align-items: flex-end;
   pointer-events: none;
+  right: 12px;
+  left: auto;
+  top: calc(100% + 12px);
+  width: min(360px, 100%);
+  max-width: calc(100vw - 32px);
+}
+
+#btfw-notify-stack.btfw-notify-stack--buffer{
+  top: 12px;
   width: min(360px, calc(100% - 24px));
+}
+
+#chatwrap .btfw-chat-topbar > #btfw-notify-stack{
+  transform-origin: top right;
+}
+
+@media (max-width: 720px){
+  #chatwrap .btfw-chat-topbar > #btfw-notify-stack{
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-width: none;
+    align-items: stretch;
+  }
 }
 
 .btfw-notice{
