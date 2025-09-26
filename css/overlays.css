@@ -813,6 +813,7 @@ html[data-btfw-theme="dark"] .panel {
   font-weight: 600;
   letter-spacing: .01em;
   margin-top: 2px;
+  color: color-mix(in srgb, var(--btfw-color-accent) 78%, var(--btfw-color-text) 22%);
 }
 
 .btfw-notice-close{

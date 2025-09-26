@@ -153,26 +153,52 @@ BTFW.define("feature:playlist-tools", [], async () => {
       if (!entry) return;
       const titleEl = entry.querySelector(".qe_title") || entry.querySelector("a");
       const title = titleEl ? (titleEl.textContent || "").trim() : "";
-      if (!title) { toast("No title found for this entry"); return; }
+      if (!title) { toast("No title found for this entry", "warn"); return; }
 
       const pollInputs = findOpenPollInputs();
-      if (!pollInputs) { toast("No poll is open"); return; }
+      if (!pollInputs) { toast("No poll is open", "warn"); return; }
       const targetInput = pollInputs.find(input => !(input.value || "").trim());
-      if (!targetInput) { toast("No empty poll option available"); return; }
+      if (!targetInput) { toast("No empty poll option available", "warn"); return; }
 
       targetInput.value = title;
       targetInput.dispatchEvent(new Event("input", { bubbles: true }));
-      toast("Successfully added to poll options");
+      toast("Successfully added to poll options", "success");
     }, true);
   }
 
   /* ---------- Utils ---------- */
   function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
-  function toast(msg){
+  function toast(msg, kind="info"){
+    const text = (msg == null) ? "" : String(msg).trim();
+    if (!text) return;
     try {
-      if (window.makeAlert) { makeAlert("Playlist", msg).insertBefore("#motdrow"); return; }
+      const notify = window.BTFW_notify;
+      if (notify && typeof notify.notify === "function") {
+        const type = (kind && typeof notify[kind] === "function") ? kind : "info";
+        const fn = (type === "info") ? notify.info : notify[type];
+        const icons = { info: "📝", success: "✅", warn: "⚠️", error: "⚠️" };
+        fn({
+          title: "Playlist",
+          html: `<span>${escapeHtml(text)}</span>`,
+          icon: icons[type] || icons.info,
+          timeout: type === "success" ? 4200 : 5200
+        });
+        return;
+      }
     } catch(_){}
-    console.log("[playlist-tools]", msg);
+    try {
+      if (window.makeAlert) { makeAlert("Playlist", text).insertBefore("#motdrow"); return; }
+    } catch(_){}
+    console.log("[playlist-tools]", text);
+  }
+  function escapeHtml(str){
+    return str.replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[c]);
   }
 
   /* ---------- Boot & observe ---------- */
