@@ -277,11 +277,13 @@
   height: auto;
   min-height: 0;
   padding: clamp(6px, 4vw, 12px);
+  justify-content: flex-start;
 }
 
 #btfw-navhost.btfw-navhost--mobile #btfw-nav-toggle {
   display: inline-flex;
-  align-self: flex-end;
+  align-self: flex-start;
+  margin-left: clamp(6px, 4vw, 18px);
 }
 
 #btfw-navhost.btfw-navhost--mobile[data-mobile-open="false"] > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
