@@ -623,6 +623,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       ".poll-btn"
     ].join(", ");
 
+
     const processButtons = () => {
       let pollButtons;
       try {
