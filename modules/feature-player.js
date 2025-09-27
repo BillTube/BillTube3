@@ -1,28 +1,43 @@
-/* BTFW — feature:player (streamlined VideoJS look + tech guards) */
+/* BTFW — feature:player (Video.js theme + tech guards) */
 BTFW.define("feature:player", ["feature:layout"], async ({}) => {
-  const CUSTOM_THEME_CLASS = "btfw-videojs-themed";
+  const PLAYER_SELECTOR = "#videowrap .video-js";
   const DEFAULT_SKIN_CLASS = "vjs-default-skin";
-  const DEFAULT_STYLES_LINK_ID = "btfw-videojs-default-css";
-  const DEFAULT_STYLES_URL = "https://vjs.zencdn.net/7.20.3/video-js.css";
+  const CITY_THEME_CLASS = "vjs-theme-city";
+  const BIG_PLAY_CLASS = "vjs-big-play-centered";
+  const BASE_STYLES_LINK_ID = "btfw-videojs-base-css";
+  const CITY_STYLES_LINK_ID = "btfw-videojs-city-css";
+  const BASE_STYLES_URLS = ["https://vjs.zencdn.net/7.20.3/video-js.css"];
+  const CITY_STYLES_URLS = [
+    "https://cdn.jsdelivr.net/npm/@videojs/themes@1/dist/city/index.css",
+    "https://unpkg.com/@videojs/themes@1/dist/city/index.css"
+  ];
 
-  function ensureDefaultStylesheet() {
+  function ensureStylesheet(id, urls) {
     const doc = document;
     if (!doc || !doc.head) return;
-    if (doc.getElementById(DEFAULT_STYLES_LINK_ID)) return;
-
-    const existing = doc.querySelector(
-      'link[href*="video-js"], link[href*="videojs"], style[data-vjs-styles]' 
-    );
-    if (existing) return;
+    if (doc.getElementById(id)) return;
 
     const link = doc.createElement("link");
-    link.id = DEFAULT_STYLES_LINK_ID;
+    link.id = id;
     link.rel = "stylesheet";
-    link.href = DEFAULT_STYLES_URL;
-    doc.head.appendChild(link);
+    const sources = Array.isArray(urls) ? urls.slice() : [urls];
+    const tryNext = () => {
+      if (!sources.length) return false;
+      const href = sources.shift();
+      if (!href) return tryNext();
+      link.href = href;
+      return true;
+    };
+    link.addEventListener("error", () => {
+      if (tryNext()) return;
+      link.remove();
+    });
+    if (tryNext()) {
+      doc.head.appendChild(link);
+    }
   }
 
-  function defaultSkinAppearsActive() {
+  function baseStylesActive() {
     if (typeof window === "undefined" || !document.body) return false;
     const probe = document.createElement("div");
     probe.className = `video-js ${DEFAULT_SKIN_CLASS}`;
@@ -37,23 +52,41 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     return fontSize && Math.abs(parseFloat(fontSize) - 10) < 0.2;
   }
 
-  function ensureDefaultSkin() {
-    document.querySelectorAll(".video-js").forEach((player) => {
-      player.classList.remove(CUSTOM_THEME_CLASS);
-      if (!player.classList.contains(DEFAULT_SKIN_CLASS)) {
-        player.classList.add(DEFAULT_SKIN_CLASS);
-      }
-    });
+  function ensureBaseStylesheet() {
+    if (baseStylesActive()) return;
+    const existing = document.querySelector(
+      'link[href*="video-js"], link[href*="videojs"], style[data-vjs-styles]'
+    );
+    if (existing) return;
+    ensureStylesheet(BASE_STYLES_LINK_ID, BASE_STYLES_URLS);
   }
 
-  function applyStreamlinedTheme() {
-    if (!defaultSkinAppearsActive()) {
-      ensureDefaultStylesheet();
-    }
-    ensureDefaultSkin();
-    document.querySelectorAll(".video-js").forEach((player) => {
-      if (!player.classList.contains(CUSTOM_THEME_CLASS)) {
-        player.classList.add(CUSTOM_THEME_CLASS);
+  function ensureCityStylesheet() {
+    const existing = document.querySelector(
+      'link[href*="videojs" i][href*="city" i], link[href*="@videojs/themes" i][href*="city" i]'
+    );
+    if (existing) return;
+    ensureStylesheet(CITY_STYLES_LINK_ID, CITY_STYLES_URLS);
+  }
+
+  function applyCityTheme() {
+    ensureBaseStylesheet();
+    ensureCityStylesheet();
+    document.querySelectorAll(PLAYER_SELECTOR).forEach((player) => {
+      if (player.classList.contains(DEFAULT_SKIN_CLASS)) {
+        player.classList.remove(DEFAULT_SKIN_CLASS);
+      }
+      Array.from(player.classList).forEach((cls) => {
+        if (cls.startsWith("vjs-theme-") && cls !== CITY_THEME_CLASS) {
+          player.classList.remove(cls);
+        }
+      });
+      if (!player.classList.contains(CITY_THEME_CLASS)) {
+        player.classList.add(CITY_THEME_CLASS);
+      }
+      if (!player.classList.contains(BIG_PLAY_CLASS)) {
+        player.classList.add(BIG_PLAY_CLASS);
+
       }
     });
   }
@@ -105,7 +138,8 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
       try { watchPlayerMount._mo.disconnect(); } catch (_) {}
     }
     const mo = new MutationObserver(() => {
-      applyStreamlinedTheme();
+      applyCityTheme();
+
       attachGuards();
     });
     mo.observe(target, { childList: true, subtree: true });
@@ -116,16 +150,16 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     const head = document.head;
     if (!head || watchHead._mo) return;
     const mo = new MutationObserver(() => {
-      if (!defaultSkinAppearsActive()) {
-        ensureDefaultStylesheet();
-      }
+      ensureBaseStylesheet();
+      ensureCityStylesheet();
+
     });
     mo.observe(head, { childList: true });
     watchHead._mo = mo;
   }
 
   function boot() {
-    applyStreamlinedTheme();
+    applyCityTheme();
     attachGuards();
     watchPlayerMount();
     watchHead();
@@ -141,7 +175,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
 
   return {
     name: "feature:player",
-    applyStreamlinedTheme,
+    applyCityTheme,
     attachGuards
   };
 });
