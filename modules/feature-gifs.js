@@ -68,7 +68,7 @@ BTFW.define("feature:gifs", [], async () => {
         btn.id = "btfw-btn-gif";
         btn.type = "button";
         btn.className = "button is-dark is-small btfw-chatbtn btfw-btn-gif";
-        btn.innerHTML = (document.querySelector(".fa")) ? '<i class="fa fa-gif"></i>' : 'GIF';
+        btn.innerHTML = (document.querySelector(".fa")) ? '<i class="fa fa-file-video-o"></i>' : 'GIF';
         btn.title = "GIFs";
         bar.appendChild(btn);
         btn.addEventListener("click", e => { e.preventDefault(); open(); }, { capture:true });
