@@ -615,8 +615,22 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function hijackPollButtons() {
     if (buttonObserver) return; // Already watching
 
+    const pollButtonSelector = [
+      'button[onclick*="poll"]',
+      'button[title*="Poll"]',
+      'button[title*="poll"]',
+      '#newpollbtn',
+      '.poll-btn'
+    ].join(', ');
+
     const processButtons = () => {
-      const pollButtons = document.querySelectorAll('button[onclick*="poll"], button[title*="Poll"], button[title*="poll"], #newpollbtn, .poll-btn');
+      let pollButtons;
+      try {
+        pollButtons = document.querySelectorAll(pollButtonSelector);
+      } catch (e) {
+        console.warn('[poll-overlay] Failed to query poll buttons:', e);
+        return;
+      }
       
       pollButtons.forEach(btn => {
         if (btn.dataset.btfwHijacked) return;
