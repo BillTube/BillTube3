@@ -615,22 +615,41 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function hijackPollButtons() {
     if (buttonObserver) return; // Already watching
 
+    const pollButtonSelector = [
+      "button[onclick*='poll']",
+      "button[title*='Poll']",
+      "button[title*='poll']",
+      "#newpollbtn",
+      ".poll-btn"
+    ].join(", ");
+
     const processButtons = () => {
-      const pollButtons = document.querySelectorAll('button[onclick*="poll"], button[title*="Poll"], button[title*="poll"], #newpollbtn, .poll-btn');
-      
+      let pollButtons;
+      try {
+        pollButtons = document.querySelectorAll(pollButtonSelector);
+      } catch (e) {
+        console.warn('[poll-overlay] Failed to query poll buttons:', e);
+        return;
+      }
+
       pollButtons.forEach(btn => {
         if (btn.dataset.btfwHijacked) return;
         btn.dataset.btfwHijacked = "true";
-        
-        // Remove existing onclick handlers
-        btn.removeAttribute("onclick");
-        
-        // Add our handler
-        btn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
+
+        const handleClick = (event) => {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          event.stopPropagation();
           openPollModal();
-        });
+        };
+
+        // Intercept clicks in the capture phase so inline handlers never run.
+        try {
+          btn.addEventListener("click", handleClick, { capture: true });
+        } catch (e) {
+          // Older browsers may not support options object; fall back gracefully.
+          btn.addEventListener("click", handleClick, true);
+        }
       });
     };
 
@@ -639,16 +658,27 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
     // Watch for new buttons with debouncing to prevent infinite loops
     let debounceTimer = null;
-    buttonObserver = new MutationObserver(() => {
+    const observer = new MutationObserver(() => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(processButtons, 100);
     });
 
-    buttonObserver.observe(document.body, { 
-      childList: true, 
+    const targetNode = document.querySelector("#btfw-chat-actions")
+      || document.querySelector("#chatwrap")
+      || document.body
+      || document.documentElement;
+    if (!targetNode) {
+      console.warn('[poll-overlay] Unable to observe poll buttons: no document body yet');
+      return;
+    }
+
+    observer.observe(targetNode, {
+      childList: true,
       subtree: true,
       attributes: false // Only watch for DOM changes, not attribute changes
     });
+
+    buttonObserver = observer;
   }
 
   function waitForSocket() {
