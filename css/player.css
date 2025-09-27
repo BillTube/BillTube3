@@ -95,17 +95,18 @@
 
 /* ===== Video.js streamlined theme ===== */
 #videowrap .video-js.btfw-videojs-themed{
-  --btfw-vjs-accent: color-mix(in srgb, var(--btfw-color-accent) 86%, white 14%);
-  --btfw-vjs-accent-soft: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
-  --btfw-vjs-muted: color-mix(in srgb, var(--btfw-color-text) 66%, transparent 34%);
-  --btfw-vjs-strong: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
-  --btfw-vjs-panel: color-mix(in srgb, var(--btfw-color-bg) 78%, transparent 22%);
-  --btfw-vjs-panel-strong: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  --btfw-vjs-surface: color-mix(in srgb, var(--btfw-color-bg) 88%, transparent 12%);
+  --btfw-vjs-surface-strong: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
+  --btfw-vjs-text-muted: color-mix(in srgb, var(--btfw-color-text) 68%, transparent 32%);
+  --btfw-vjs-text-strong: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
+  --btfw-vjs-accent: color-mix(in srgb, var(--btfw-color-accent) 90%, white 10%);
+  --btfw-vjs-accent-soft: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
   font-family: var(--btfw-font-body);
-  color: var(--btfw-vjs-strong);
-  background: radial-gradient(circle at 20% 20%,
-      color-mix(in srgb, var(--btfw-color-bg) 68%, transparent 32%),
-      color-mix(in srgb, var(--btfw-color-bg) 92%, black 8%) 62%);
+  color: var(--btfw-vjs-text-strong);
+  background: radial-gradient(circle at 18% 18%,
+      color-mix(in srgb, var(--btfw-color-bg) 62%, transparent 38%),
+      color-mix(in srgb, var(--btfw-color-bg) 96%, black 4%) 68%);
+
   border-radius: inherit;
   overflow: hidden;
   font-size: 10px;
@@ -125,30 +126,32 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 96px;
-  height: 96px;
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--btfw-color-bg) 32%, black 68%);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
-  box-shadow: 0 18px 40px color-mix(in srgb, var(--btfw-color-bg) 58%, transparent 42%),
-    0 4px 10px color-mix(in srgb, black 18%, transparent 82%);
+  width: 84px;
+  height: 84px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--btfw-color-bg) 30%, black 70%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--btfw-color-bg) 56%, transparent 44%),
+    0 6px 16px color-mix(in srgb, black 20%, transparent 80%);
+
   display: grid;
   place-items: center;
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-big-play-button .vjs-icon-placeholder:before{
-  font-size: 42px;
+  font-size: 40px;
   line-height: 1;
   margin-left: 4px;
-  color: var(--btfw-vjs-strong);
+  color: var(--btfw-vjs-text-strong);
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-big-play-button:hover{
-  background: color-mix(in srgb, var(--btfw-color-bg) 20%, black 80%);
+  background: color-mix(in srgb, var(--btfw-color-bg) 18%, black 82%);
   transform: translate(-50%, -50%) scale(1.02);
-  box-shadow: 0 22px 50px color-mix(in srgb, var(--btfw-color-bg) 64%, transparent 36%),
-    0 6px 14px color-mix(in srgb, black 24%, transparent 76%);
+  box-shadow: 0 20px 40px color-mix(in srgb, var(--btfw-color-bg) 62%, transparent 38%),
+    0 8px 20px color-mix(in srgb, black 24%, transparent 76%);
+
 }
 
 #videowrap .video-js.btfw-videojs-themed.vjs-has-started .vjs-big-play-button{
@@ -157,17 +160,20 @@
 
 #videowrap .video-js.btfw-videojs-themed .vjs-control-bar{
   position: absolute;
-  inset-inline: clamp(10px, 4vw, 22px);
-  bottom: clamp(10px, 3.2vw, 26px);
+  inset-inline: clamp(12px, 4vw, 26px);
+  bottom: clamp(12px, 3vw, 28px);
   display: flex;
   align-items: center;
-  gap: clamp(8px, 2vw, 16px);
-  padding: clamp(10px, 1.8vw, 18px) clamp(12px, 3vw, 22px);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--btfw-vjs-panel) 84%, transparent 16%);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%);
-  box-shadow: 0 18px 48px color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%),
-    0 8px 20px color-mix(in srgb, black 22%, transparent 78%);
+  gap: clamp(10px, 2.5vw, 18px);
+  padding: clamp(10px, 1.6vw, 16px) clamp(14px, 2.6vw, 20px);
+  border-radius: clamp(14px, 2vw, 18px);
+  background: linear-gradient(135deg,
+      color-mix(in srgb, var(--btfw-vjs-surface) 86%, transparent 14%),
+      color-mix(in srgb, var(--btfw-vjs-surface-strong) 92%, transparent 8%));
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--btfw-color-bg) 48%, transparent 52%),
+    0 8px 20px color-mix(in srgb, black 20%, transparent 80%);
+
   backdrop-filter: blur(18px);
   transition: opacity 0.2s ease, transform 0.24s ease;
   pointer-events: auto;
@@ -175,7 +181,8 @@
 
 @supports not ((-webkit-backdrop-filter: blur(0)) or (backdrop-filter: blur(0))){
   #videowrap .video-js.btfw-videojs-themed .vjs-control-bar{
-    background: color-mix(in srgb, var(--btfw-vjs-panel-strong) 92%, transparent 8%);
+    background: color-mix(in srgb, var(--btfw-vjs-surface-strong) 96%, transparent 4%);
+
   }
 }
 
@@ -185,93 +192,110 @@
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-control{
-  color: var(--btfw-vjs-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  color: var(--btfw-vjs-text-muted);
+
   transition: color 0.16s ease, background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-control:focus-visible{
-  outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 62%, transparent 38%);
+  outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 56%, transparent 44%);
+
   outline-offset: 4px;
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-button{
-  width: clamp(36px, 5vw, 44px);
-  height: clamp(36px, 5vw, 44px);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--btfw-vjs-panel-strong) 86%, transparent 14%);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 14%, transparent 86%);
-  display: grid;
-  place-items: center;
+  width: clamp(34px, 4.6vw, 40px);
+  height: clamp(34px, 4.6vw, 40px);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--btfw-vjs-surface-strong) 86%, transparent 14%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   box-shadow: inset 0 0 0 0 transparent;
 }
 
+#videowrap .video-js.btfw-videojs-themed .vjs-button:not(.vjs-play-control):hover{
+  color: var(--btfw-vjs-text-strong);
+  background: color-mix(in srgb, var(--btfw-vjs-surface-strong) 94%, transparent 6%);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
+}
+
 #videowrap .video-js.btfw-videojs-themed .vjs-play-control{
-  background: linear-gradient(135deg,
+  width: clamp(38px, 5vw, 44px);
+  height: clamp(38px, 5vw, 44px);
+  border-radius: 14px;
+  background: linear-gradient(145deg,
       color-mix(in srgb, var(--btfw-color-accent) 92%, white 8%),
-      color-mix(in srgb, var(--btfw-color-accent) 60%, transparent 40%));
+      color-mix(in srgb, var(--btfw-color-accent) 58%, transparent 42%));
   border: 0;
-  color: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--btfw-color-accent) 36%, transparent 64%),
-    0 6px 12px color-mix(in srgb, black 22%, transparent 78%);
+  color: color-mix(in srgb, var(--btfw-color-text) 98%, white 2%);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%),
+    0 6px 16px color-mix(in srgb, black 22%, transparent 78%);
+
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-play-control:hover{
   transform: translateY(-1px);
-  box-shadow: 0 14px 30px color-mix(in srgb, var(--btfw-color-accent) 46%, transparent 54%),
-    0 8px 16px color-mix(in srgb, black 26%, transparent 74%);
-}
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--btfw-color-accent) 44%, transparent 56%),
+    0 8px 18px color-mix(in srgb, black 26%, transparent 74%);
 
-#videowrap .video-js.btfw-videojs-themed .vjs-button:not(.vjs-play-control):hover{
-  color: var(--btfw-vjs-strong);
-  background: color-mix(in srgb, var(--btfw-vjs-panel-strong) 94%, transparent 6%);
-  transform: translateY(-1px);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--btfw-color-bg) 42%, transparent 58%);
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-current-time,
 #videowrap .video-js.btfw-videojs-themed .vjs-duration,
 #videowrap .video-js.btfw-videojs-themed .vjs-remaining-time{
-  font-size: clamp(12px, 1.6vw, 14px);
+  font-size: clamp(11px, 1.5vw, 13px);
   font-weight: 600;
-  color: var(--btfw-vjs-muted);
+  color: var(--btfw-vjs-text-muted);
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-time-divider{
-  color: color-mix(in srgb, var(--btfw-vjs-muted) 90%, transparent 10%);
-  font-size: clamp(12px, 1.6vw, 14px);
+  color: color-mix(in srgb, var(--btfw-vjs-text-muted) 92%, transparent 8%);
+  font-size: clamp(11px, 1.4vw, 13px);
+
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-progress-control{
   flex: 1 1 auto;
-  max-width: 100%;
-  min-width: 120px;
+  min-width: 140px;
+
   display: flex;
   align-items: center;
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-progress-control .vjs-progress-holder{
   flex: 1;
-  height: clamp(6px, 1.2vw, 10px);
+  height: clamp(4px, 0.9vw, 6px);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--btfw-vjs-panel-strong) 78%, transparent 22%);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 12%, transparent 88%);
+  background: color-mix(in srgb, var(--btfw-vjs-surface-strong) 78%, transparent 22%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+
   overflow: visible;
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-progress-control:hover .vjs-progress-holder{
-  background: color-mix(in srgb, var(--btfw-vjs-panel-strong) 88%, transparent 12%);
+  background: color-mix(in srgb, var(--btfw-vjs-surface-strong) 88%, transparent 12%);
+
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-play-progress{
   background: linear-gradient(90deg,
       color-mix(in srgb, var(--btfw-color-accent) 96%, white 4%),
-      color-mix(in srgb, var(--btfw-color-accent) 72%, transparent 28%));
+      color-mix(in srgb, var(--btfw-color-accent) 64%, transparent 36%));
   border-radius: inherit;
-  box-shadow: 0 0 18px color-mix(in srgb, var(--btfw-color-accent) 40%, transparent 60%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%),
+    0 0 14px color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-load-progress{
-  background: color-mix(in srgb, var(--btfw-vjs-accent-soft) 32%, transparent 68%);
+  background: color-mix(in srgb, var(--btfw-vjs-accent-soft) 36%, transparent 64%);
+
   border-radius: inherit;
 }
 
@@ -280,36 +304,37 @@
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-progress-control .vjs-time-tooltip{
-  background: color-mix(in srgb, var(--btfw-color-bg) 90%, transparent 10%);
+  background: color-mix(in srgb, var(--btfw-color-bg) 92%, transparent 8%);
   border-radius: 8px;
   font-size: 12px;
-  color: var(--btfw-vjs-strong);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
+  color: var(--btfw-vjs-text-strong);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
   padding: 4px 8px;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--btfw-color-bg) 48%, transparent 52%);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--btfw-color-bg) 46%, transparent 54%);
+
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-slider-bar{
   background: transparent;
 }
 
-#videowrap .video-js.btfw-videojs-themed .vjs-progress-holder .vjs-slider-bar:before{
+#videowrap .video-js.btfw-videojs-themed .vjs-progress-holder .vjs-slider-bar::after{
   content: "";
   position: absolute;
-  right: -6px;
   top: 50%;
-  width: 16px;
-  height: 16px;
-  transform: translateY(-50%);
+  left: 100%;
+  width: 14px;
+  height: 14px;
+  transform: translate(-50%, -50%);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--btfw-color-accent) 92%, white 8%);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--btfw-color-accent) 46%, transparent 54%);
-  opacity: 0;
-  transition: opacity 0.16s ease;
+  background: color-mix(in srgb, var(--btfw-color-accent) 94%, white 6%);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);
+  transition: box-shadow 0.16s ease;
 }
 
-#videowrap .video-js.btfw-videojs-themed .vjs-progress-control:hover .vjs-progress-holder .vjs-slider-bar:before{
-  opacity: 1;
+#videowrap .video-js.btfw-videojs-themed .vjs-progress-control:hover .vjs-progress-holder .vjs-slider-bar::after{
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--btfw-color-accent) 52%, transparent 48%);
+
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-volume-panel{
@@ -320,31 +345,34 @@
 
 #videowrap .video-js.btfw-videojs-themed .vjs-volume-bar{
   width: clamp(80px, 14vw, 120px);
-  height: 6px;
+  height: 4px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--btfw-vjs-panel-strong) 74%, transparent 26%);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 16%, transparent 84%);
+  background: color-mix(in srgb, var(--btfw-vjs-surface-strong) 74%, transparent 26%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+
   overflow: visible;
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-volume-level{
   background: linear-gradient(90deg,
-      color-mix(in srgb, var(--btfw-color-accent) 94%, white 6%),
-      color-mix(in srgb, var(--btfw-color-accent) 64%, transparent 36%));
+
+      color-mix(in srgb, var(--btfw-color-accent) 92%, white 8%),
+      color-mix(in srgb, var(--btfw-color-accent) 58%, transparent 42%));
   border-radius: inherit;
 }
 
-#videowrap .video-js.btfw-videojs-themed .vjs-volume-level:before{
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-level::after{
   content: "";
   position: absolute;
-  right: -6px;
   top: 50%;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--btfw-color-accent) 92%, white 8%);
-  transform: translateY(-50%);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--btfw-color-accent) 46%, transparent 54%);
+  left: 100%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--btfw-color-accent) 94%, white 6%);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);
+
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-volume-panel.vjs-mute-toggle-only .vjs-volume-control{
@@ -352,56 +380,64 @@
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu{
-  background: color-mix(in srgb, var(--btfw-vjs-panel-strong) 94%, transparent 6%);
+
+  background: color-mix(in srgb, var(--btfw-vjs-surface-strong) 96%, transparent 4%);
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%);
-  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--btfw-color-bg) 48%, transparent 52%);
+  padding: 6px 0;
+
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu-item{
   font-size: 13px;
-  color: var(--btfw-vjs-muted);
-  padding: 10px 16px;
+  color: var(--btfw-vjs-text-muted);
+  padding: 8px 18px;
+
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu-item.vjs-selected,
 #videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu-item:focus,
 #videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu-item:hover{
-  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
-  color: var(--btfw-vjs-strong);
+  background: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+  color: var(--btfw-vjs-text-strong);
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-menu li.vjs-menu-title{
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--btfw-vjs-muted);
+  color: var(--btfw-vjs-text-muted);
+  padding: 8px 18px 4px;
+
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-live-control,
 #videowrap .video-js.btfw-videojs-themed .vjs-live-control .vjs-live-display{
-  font-size: 12px;
-  color: var(--btfw-vjs-muted);
+  font-size: 11px;
+  color: var(--btfw-vjs-text-muted);
+
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
-#videowrap .video-js.btfw-videojs-themed .vjs-live-control:before{
+#videowrap .video-js.btfw-videojs-themed .vjs-live-control::before{
   content: "";
   display: inline-block;
   width: 8px;
   height: 8px;
   margin-right: 8px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--btfw-color-accent) 80%, transparent 20%);
-  box-shadow: 0 0 0 6px color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%);
+  background: color-mix(in srgb, var(--btfw-color-accent) 78%, transparent 22%);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+
 }
 
 @media (max-width: 720px){
   #videowrap .video-js.btfw-videojs-themed .vjs-control-bar{
-    inset-inline: clamp(6px, 4vw, 16px);
-    padding: clamp(10px, 4vw, 18px);
+    inset-inline: clamp(8px, 4vw, 18px);
+    padding: clamp(10px, 3.8vw, 18px);
+
     flex-wrap: wrap;
     row-gap: 10px;
   }

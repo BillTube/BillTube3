@@ -73,12 +73,6 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     if (!el || el[GUARD_MARK]) return;
     el[GUARD_MARK] = true;
 
-    el.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    }, true);
-
     const block = (e) => {
       if (shouldAllowClick(e.target)) return;
       if (e.type === "click" && e.button !== 0) return;
