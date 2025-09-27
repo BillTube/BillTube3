@@ -575,10 +575,34 @@ function watchForStrayButtons(){
     if (!bottom) {
       bottom = document.createElement("div");
       bottom.className = "btfw-chat-bottombar";
-      bottom.innerHTML = '<div class="btfw-chat-actions" id="btfw-chat-actions"></div>';
       cw.appendChild(bottom);
     }
-    const actions = bottom.querySelector("#btfw-chat-actions");
+
+    let composer = bottom.querySelector(".btfw-chat-composer");
+    if (!composer) {
+      composer = document.createElement("div");
+      composer.className = "btfw-chat-composer";
+      bottom.prepend(composer);
+    }
+
+    let composerMain = composer.querySelector("#btfw-chat-composer-main");
+    if (!composerMain) {
+      composerMain = document.createElement("div");
+      composerMain.id = "btfw-chat-composer-main";
+      composerMain.className = "btfw-chat-composer-main";
+      composer.prepend(composerMain);
+    }
+
+    let actions = composer.querySelector("#btfw-chat-actions") || bottom.querySelector("#btfw-chat-actions");
+    if (actions && actions.parentElement !== composer) {
+      composer.appendChild(actions);
+    }
+    if (!actions) {
+      actions = document.createElement("div");
+      actions.id = "btfw-chat-actions";
+      composer.appendChild(actions);
+    }
+    actions.classList.add("btfw-chat-actions");
 
     // 🔹 Remove deprecated/duplicate buttons from previous versions
     const oldGif = $("#btfw-gif-btn");            if (oldGif) oldGif.remove();
@@ -628,9 +652,9 @@ function watchForStrayButtons(){
     // Buffer & controls layout
     const msg = $("#messagebuffer"); if (msg) msg.classList.add("btfw-messagebuffer");
     const controls = $("#chatcontrols,#chat-controls") || ($("#chatline") && $("#chatline").parentElement);
-    if (controls && controls.previousElementSibling !== bottom) {
+    if (controls && controls.parentElement !== composerMain) {
       controls.classList.add("btfw-controls-row");
-      bottom.after(controls);
+      composerMain.appendChild(controls);
     }
     normalizeChatActionButtons();
     wireChatUsernameContextMenu();
