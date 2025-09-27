@@ -136,14 +136,40 @@ function normalizeChatActionButtons() {
     b.id = "btfw-btn-gif";
     b.className = "button is-dark is-small btfw-chatbtn";
     b.title = "GIFs";
-    b.innerHTML = '<span class="gif-badge">GIF</span>';
+    b.innerHTML = '<i class="fa fa-file-video-o"></i>';
     actions.appendChild(b);
   }
 
   // if some other module created them elsewhere, adopt them
-  ["btfw-btn-emotes", "btfw-btn-gif", "btfw-chatcmds-btn", "btfw-users-toggle"].forEach(id=>{
+  ["btfw-btn-emotes", "btfw-btn-gif", "btfw-chatcmds-btn", "btfw-users-toggle", "usercount"].forEach(id=>{
     const el = document.getElementById(id);
     if (el && el.parentElement !== actions) actions.appendChild(el);
+  });
+
+  const gifBtn = actions.querySelector("#btfw-btn-gif");
+  if (gifBtn) {
+    gifBtn.innerHTML = '<i class="fa fa-file-video-o"></i>';
+    gifBtn.title = gifBtn.title || "GIFs";
+  }
+
+  orderChatActions(actions);
+}
+
+function orderChatActions(actions){
+  if (!actions) return;
+  const orderedSelectors = [
+    "#btfw-btn-emotes",
+    "#btfw-btn-gif",
+    "#btfw-chattools-btn",
+    "#btfw-ct-open",
+    "#btfw-chatcmds-btn",
+    "#btfw-users-toggle",
+    "#usercount"
+  ];
+
+  orderedSelectors.forEach(sel => {
+    const el = actions.querySelector(sel);
+    if (el && el.parentElement === actions) actions.appendChild(el);
   });
 }
 
@@ -628,7 +654,7 @@ function watchForStrayButtons(){
       b.id = "btfw-btn-gif";
       b.className = "button is-dark is-small btfw-chatbtn";
       b.title = "GIFs";
-      b.innerHTML = '<span class="gif-badge">GIF</span>';
+      b.innerHTML = '<i class="fa fa-file-video-o"></i>';
       actions.appendChild(b);
     }
 
@@ -673,27 +699,25 @@ function watchForStrayButtons(){
   function ensureUsercountInBar(){
     const cw  = $("#chatwrap"); if (!cw) return;
     const bar = cw.querySelector(".btfw-chat-bottombar"); if (!bar) return;
-
-    let right = bar.querySelector(".btfw-chat-right");
-    if (!right) {
-      right = document.createElement("div");
-      right.className = "btfw-chat-right";
-      bar.appendChild(right);
-    }
+    const actions = bar.querySelector("#btfw-chat-actions"); if (!actions) return;
 
     let uc = $("#usercount");
     if (!uc) uc = Object.assign(document.createElement("div"), { id:"usercount" });
     uc.classList.add("btfw-usercount");
 
-    if (!uc.querySelector(".btfw-usercount-num")) {
-      uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
-                      <span class="btfw-usercount-num">0</span>`;
-    } else {
-      const num = uc.textContent.match(/\d+/);
-      uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
-                      <span class="btfw-usercount-num">${num ? num[0] : "0"}</span>`;
-    }
-    right.appendChild(uc);
+    const existingText = uc.querySelector(".btfw-usercount-num")
+      ? uc.querySelector(".btfw-usercount-num").textContent
+      : uc.textContent;
+    const existingNum = (existingText && existingText.match(/\d+/))
+      ? existingText.match(/\d+/)[0]
+      : "0";
+
+    uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
+                    <span class="btfw-usercount-num">${existingNum}</span>`;
+
+    if (uc.parentElement !== actions) actions.appendChild(uc);
+
+    orderChatActions(actions);
 
     const ch = $("#chatheader");
     if (ch) ch.remove();
