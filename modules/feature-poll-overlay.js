@@ -623,6 +623,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       ".poll-btn"
     ].join(", ");
 
+
     const processButtons = () => {
       let pollButtons;
       try {
@@ -667,6 +668,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       || document.querySelector("#chatwrap")
       || document.body
       || document.documentElement;
+
     if (!targetNode) {
       console.warn('[poll-overlay] Unable to observe poll buttons: no document body yet');
       return;
