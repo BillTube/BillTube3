@@ -1,8 +1,3 @@
-/* ======================================================================
-   BillTube Framework — overlays.css
-   Scope: overlay layers, modals, userlist overlay, video overlay chrome,
-          and z-index fixes so UI stays interactive and above content.
-   ====================================================================== */
 
 /* ---------- Navbar should stay above app content ---------- */
 #nav-collapsible,
@@ -18,12 +13,6 @@
 .modal .modal-background { z-index: 6001 !important; }
 .modal .modal-card,
 .modal .modal-content { z-index: 6002 !important; }
-
-/* ======================================================================
-   USERLIST OVERLAY
-   - Closed by default; opens as an overlay panel over the chat column.
-   - Toggled by #btfw-users-toggle.
-   ====================================================================== */
 
 #userlist.btfw-userlist-overlay{
   position: static !important;
@@ -273,11 +262,16 @@
   font-size: 12px; padding: 6px 8px; width: 180px;
 }
 #btfw-emotes-pop #btfw-emotes-clear {
-  background: color-mix(in srgb, var(--btfw-color-panel) 84%, transparent 16%);
-  border: 1px solid var(--btfw-border);
-  color: var(--btfw-color-text-soft);
-  border-radius: 8px;
-  width: 28px; height: 28px; line-height: 1; cursor: pointer;
+    background: 
+ color-mix(in srgb, var(--btfw-color-panel) 84%, transparent 16%);
+    border: 1px solid var(--btfw-border);
+    color: var(--btfw-color-text-soft);
+    border-radius: 8px;
+    width: 53px;
+    font-size: 12px;
+    height: 30px;
+    line-height: 1;
+    cursor: pointer;
 }
 #btfw-emotes-pop .btfw-emotes-close {
   margin-left: 8px;
@@ -1036,4 +1030,5 @@ html[data-btfw-theme="dark"] .panel {
   #btfw-ct-modal .btfw-ct-card { width: min(92vw, 640px); }
   #btfw-emotes-pop { width: min(92vw, 720px); }
 }
+
 
