@@ -1,7 +1,3 @@
-/* ======================================================================
-   BillTube Framework – base.css
-   Layout grid, content stack, and core spacing
-   ====================================================================== */
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -794,14 +790,11 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 
 /* Footer pinned to bottom of stack area */
 #btfw-stack-footer {
-  margin-top: auto;
-  padding: clamp(18px, 4vw, 28px) clamp(18px, 4vw, 32px);
-  background: var(--btfw-color-panel);
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%),
-    color-mix(in srgb, var(--btfw-color-surface) 90%, transparent 10%));
-  border-top: 1px solid color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
-  box-shadow: 0 -12px 32px color-mix(in srgb, var(--btfw-color-bg) 46%, transparent 54%);
+    margin-top: auto;
+    padding: clamp(18px, 4vw, 28px) clamp(18px, 4vw, 32px);
+    border-top: 1px solid
+ color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+    margin-top: 40px;
 }
 
 #btfw-stack-footer .btfw-footer {
@@ -838,6 +831,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+   justify-content: space-evenly;
 }
 
 #btfw-stack-footer .btfw-footer__auth form {
