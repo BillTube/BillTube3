@@ -294,6 +294,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let pollModal = null;
   let videoOverlay = null;
   let currentPoll = null;
+  let socketEventsWired = false;
+  let buttonObserver = null;
 
   function injectCSS() {
     if (document.getElementById(CSS_ID)) return;
@@ -581,8 +583,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
   }
 
-  function wireEvents() {
-    if (window.socket) {
+  function wireSocketEvents() {
+    if (socketEventsWired || !window.socket) return;
+    
+    try {
       // Listen for new polls
       window.socket.on("newPoll", (poll) => {
         if (poll && poll.title) {
@@ -601,12 +605,17 @@ BTFW.define("feature:poll-overlay", [], async () => {
       window.socket.on("closePoll", () => {
         hideVideoOverlay();
       });
+
+      socketEventsWired = true;
+    } catch (e) {
+      console.warn("[poll-overlay] Socket event wiring failed:", e);
     }
   }
 
   function hijackPollButtons() {
-    // Find and replace existing poll creation buttons
-    const observer = new MutationObserver(() => {
+    if (buttonObserver) return; // Already watching
+
+    const processButtons = () => {
       const pollButtons = document.querySelectorAll('button[onclick*="poll"], button[title*="Poll"], button[title*="poll"], #newpollbtn, .poll-btn');
       
       pollButtons.forEach(btn => {
@@ -623,43 +632,76 @@ BTFW.define("feature:poll-overlay", [], async () => {
           openPollModal();
         });
       });
+    };
+
+    // Initial processing
+    processButtons();
+
+    // Watch for new buttons with debouncing to prevent infinite loops
+    let debounceTimer = null;
+    buttonObserver = new MutationObserver(() => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(processButtons, 100);
     });
 
-    observer.observe(document.body, { 
+    buttonObserver.observe(document.body, { 
       childList: true, 
-      subtree: true 
-    });
-
-    // Initial scan
-    const existingButtons = document.querySelectorAll('button[onclick*="poll"], button[title*="Poll"], button[title*="poll"], #newpollbtn, .poll-btn');
-    existingButtons.forEach(btn => {
-      if (btn.dataset.btfwHijacked) return;
-      btn.dataset.btfwHijacked = "true";
-      btn.removeAttribute("onclick");
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openPollModal();
-      });
+      subtree: true,
+      attributes: false // Only watch for DOM changes, not attribute changes
     });
   }
 
-  function boot() {
-    injectCSS();
-    wireEvents();
-    hijackPollButtons();
+  function waitForSocket() {
+    return new Promise((resolve) => {
+      if (window.socket && window.socket.on) {
+        resolve();
+        return;
+      }
+
+      let attempts = 0;
+      const maxAttempts = 50; // 5 seconds max
+      const checkSocket = () => {
+        attempts++;
+        if (window.socket && window.socket.on) {
+          resolve();
+        } else if (attempts < maxAttempts) {
+          setTimeout(checkSocket, 100);
+        } else {
+          console.warn("[poll-overlay] Socket not available after 5 seconds");
+          resolve(); // Continue anyway
+        }
+      };
+
+      setTimeout(checkSocket, 100);
+    });
+  }
+
+  async function boot() {
+    try {
+      injectCSS();
+      
+      // Wait for socket to be available before wiring events
+      await waitForSocket();
+      wireSocketEvents();
+      
+      // Set up button hijacking
+      hijackPollButtons();
+      
+    } catch (e) {
+      console.error("[poll-overlay] Boot failed:", e);
+    }
   }
 
   // Boot when DOM is ready
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
   } else {
-    boot();
+    setTimeout(boot, 0); // Async to avoid blocking
   }
 
-  // Also boot on layout ready event
+  // Also boot on layout ready event (with delay to ensure everything is settled)
   document.addEventListener("btfw:layoutReady", () => {
-    setTimeout(boot, 50);
+    setTimeout(boot, 200);
   });
 
   return {
