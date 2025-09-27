@@ -234,7 +234,10 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     b.id = "btfw-chattools-btn";
     b.className = "button is-dark is-small btfw-chatbtn";
     b.innerHTML = '<span style="font-weight:700;letter-spacing:.5px;">Aa</span>';
-    actions.prepend(b);
+    const insertBefore = actions.querySelector("#btfw-chatcmds-btn")
+      || actions.querySelector("#btfw-users-toggle")
+      || actions.querySelector("#usercount");
+    actions.insertBefore(b, insertBefore || null);
   }
 
   /* ---------- History ---------- */

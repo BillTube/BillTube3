@@ -127,6 +127,10 @@
   align-items: center;
 }
 
+#messagebuffer > div.btfw-has-avatar span.timestamp + span + span {
+  margin-top: 10px;
+}
+
 #messagebuffer > div span .username,
 #messagebuffer > div span .nick,
 #messagebuffer > div span .name {
@@ -213,6 +217,9 @@
   padding-top:6px;
   border-top:1px solid color-mix(in srgb, var(--btfw-border) 55%, transparent 45%);
   margin-top:2px;
+}
+.btfw-chat-actions #usercount{
+  margin-left:auto;
 }
 .button.btfw-chatbtn{ display:inline-flex; align-items:center; gap:6px; }
 
@@ -711,20 +718,15 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
   background: var(--btfw-chip-bg-hover);
 }
 
-/* Chat bottom bar split: composer (top) + meta (bottom-right) */
-.btfw-chat-right{
+#usercount.btfw-usercount{
   display:flex;
   align-items:center;
-  gap:8px;
-  align-self:flex-end;
-  padding:0 6px;
-  color: color-mix(in srgb, var(--btfw-color-chat-text) 86%, transparent 14%);
+  gap:6px;
   font-size: 12px;
-}
-
-#usercount.btfw-usercount{
-  display:flex; align-items:center; gap:6px;
-  font-size: 12px; opacity:.9;
+  opacity:.9;
+  margin-left:auto;
+  padding-left:12px;
+  color: color-mix(in srgb, var(--btfw-color-chat-text) 86%, transparent 14%);
 }
 
 #usercount .fa-users{ font-size:14px; opacity:.75; }
