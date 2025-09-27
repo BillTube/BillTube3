@@ -103,10 +103,16 @@ body:not(.btfw-mobile-stack-enabled) #btfw-mobile-stack{ display:none !important
 /* --------- Phones (<= 768px): larger touch targets, overlay sizes ---------- */
 @media (max-width: 768px){
   /* Chat bars */
-  #chatwrap .btfw-chat-topbar,
-  #chatwrap .btfw-chat-bottombar{
+  #chatwrap .btfw-chat-topbar{
     padding: 8px;
     border-radius: 12px;
+  }
+  #chatwrap .btfw-chat-bottombar{
+    padding: 8px 0 6px;
+  }
+  .btfw-chat-composer{
+    border-radius: 18px;
+    padding: 12px;
   }
   .btfw-chat-actions{ gap: 6px; }
   .button.btfw-chatbtn{
@@ -125,13 +131,10 @@ body:not(.btfw-mobile-stack-enabled) #btfw-mobile-stack{ display:none !important
 
   /* Keep controls row visible; allow wrapping */
   .btfw-controls-row{
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
     gap: 6px;
     flex-wrap: wrap;
   }
-  #chatline{ flex: 1 1 100%; min-height: 38px; }
+  #chatline{ flex: 1 1 100%; min-height: 42px; }
 
   /* Userlist overlay as a sheet */
   #userlist.btfw-userlist-overlay{
@@ -200,7 +203,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-mobile-stack{ display:none !important
       padding-left: max(8px, env(safe-area-inset-left));
       padding-right: max(8px, env(safe-area-inset-right));
     }
-    .btfw-controls-row{
+    #chatwrap .btfw-chat-bottombar{
       padding-bottom: max(6px, env(safe-area-inset-bottom));
     }
     .modal .modal-card{
