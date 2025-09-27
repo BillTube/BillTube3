@@ -432,7 +432,7 @@
 }
 
 .btfw-addmedia-panel .input-group-btn .btn {
-  border-radius: 12px;
+  border-radius: 10px!important;
   border: 0;
   background: linear-gradient(140deg,
       color-mix(in srgb, var(--btfw-color-accent) 70%, transparent 30%),
@@ -552,3 +552,4 @@
     justify-content: flex-start;
   }
 }
+
