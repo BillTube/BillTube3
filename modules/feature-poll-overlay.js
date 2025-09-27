@@ -1,4 +1,5 @@
-window.BTFW_Feature_Poll = (function() {
+/* BTFW — feature:poll-overlay (poll creation modal + video overlay display) */
+BTFW.define("feature:poll-overlay", [], async () => {
   "use strict";
 
   const CSS_ID = "btfw-poll-overlay-styles";
@@ -668,4 +669,4 @@ window.BTFW_Feature_Poll = (function() {
     showOverlay: showVideoOverlay,
     hideOverlay: hideVideoOverlay
   };
-})();
+});
