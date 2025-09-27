@@ -399,14 +399,16 @@
 }
 
 .btfw-addmedia-panel .input-group {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
+  display: flex;
+  flex-wrap: nowrap;
   align-items: stretch;
-  gap: 10px;
+  gap: 12px;
+  width: 100%;
 }
 
 .btfw-addmedia-panel .input-group .form-control {
-  flex: 1 1 auto;
+  flex: 1 1 240px;
+  min-width: 0;
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
   background: color-mix(in srgb, var(--btfw-color-surface) 90%, transparent 10%);
@@ -422,11 +424,17 @@
 
 .btfw-addmedia-panel .input-group-btn {
   display: flex;
+  position: static;
   align-items: stretch;
   justify-content: center;
+  flex: 0 0 auto;
+  white-space: normal;
+  font-size: inherit;
 }
 
 .btfw-addmedia-panel .input-group-btn .btn {
+  flex: 0 0 auto;
+
   border-radius: 12px;
   border: 0;
   background: linear-gradient(140deg,
@@ -440,14 +448,21 @@
   white-space: nowrap;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 680px) {
   .btfw-addmedia-panel .input-group {
-    grid-template-columns: 1fr;
+    flex-wrap: wrap;
+    gap: 10px;
   }
 
   .btfw-addmedia-panel .input-group-btn {
+    width: 100%;
     justify-content: flex-start;
   }
+
+  .btfw-addmedia-panel .input-group-btn .btn {
+    width: 100%;
+  }
+
 }
 
 .btfw-addmedia-panel .input-group-btn .btn:hover {
