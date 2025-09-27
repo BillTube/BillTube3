@@ -399,7 +399,8 @@
 }
 
 .btfw-addmedia-panel .input-group {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
   align-items: stretch;
   gap: 10px;
 }
@@ -421,6 +422,8 @@
 
 .btfw-addmedia-panel .input-group-btn {
   display: flex;
+  align-items: stretch;
+  justify-content: center;
 }
 
 .btfw-addmedia-panel .input-group-btn .btn {
@@ -434,6 +437,17 @@
   padding: 10px 16px;
   box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
   transition: transform 0.16s ease, filter 0.16s ease;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .btfw-addmedia-panel .input-group {
+    grid-template-columns: 1fr;
+  }
+
+  .btfw-addmedia-panel .input-group-btn {
+    justify-content: flex-start;
+  }
 }
 
 .btfw-addmedia-panel .input-group-btn .btn:hover {
