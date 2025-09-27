@@ -86,6 +86,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
       }
       if (!player.classList.contains(BIG_PLAY_CLASS)) {
         player.classList.add(BIG_PLAY_CLASS);
+
       }
     });
   }
@@ -138,6 +139,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     }
     const mo = new MutationObserver(() => {
       applyCityTheme();
+
       attachGuards();
     });
     mo.observe(target, { childList: true, subtree: true });
@@ -150,6 +152,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     const mo = new MutationObserver(() => {
       ensureBaseStylesheet();
       ensureCityStylesheet();
+
     });
     mo.observe(head, { childList: true });
     watchHead._mo = mo;
