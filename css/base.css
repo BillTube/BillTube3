@@ -1235,3 +1235,6 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 #showmediaurl{
   display: none !important;
 }
+.queue_temp {
+    background: #ffffff14 !important;
+}
