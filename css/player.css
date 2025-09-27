@@ -434,6 +434,7 @@
 
 .btfw-addmedia-panel .input-group-btn .btn {
   flex: 0 0 auto;
+
   border-radius: 12px;
   border: 0;
   background: linear-gradient(140deg,
@@ -461,6 +462,7 @@
   .btfw-addmedia-panel .input-group-btn .btn {
     width: 100%;
   }
+
 }
 
 .btfw-addmedia-panel .input-group-btn .btn:hover {
