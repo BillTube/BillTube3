@@ -13,8 +13,7 @@
 }
 
 /* Bars are visually styled further in overlays.css */
-#chatwrap .btfw-chat-topbar,
-#chatwrap .btfw-chat-bottombar{
+#chatwrap .btfw-chat-topbar{
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -24,6 +23,14 @@
   border:1px solid var(--btfw-border);
   border-radius: var(--btfw-radius);
   flex-shrink: 0; /* Don't shrink these bars */
+}
+
+#chatwrap .btfw-chat-bottombar{
+  display:flex;
+  flex-direction: column;
+  gap: 8px;
+  margin:0 0 8px 0;
+  flex-shrink: 0;
 }
 
 #chatwrap .btfw-chat-topbar{
@@ -144,18 +151,71 @@
 /* Controls row sits below messages, stays visible */
 .btfw-controls-row{
   display:flex;
+  align-items:flex-end;
   gap:8px;
-  align-items:center;
-  padding:6px;
-  border-top:1px solid var(--btfw-border);
-  background: color-mix(in srgb, var(--btfw-color-panel) 84%, transparent 16%);
-  border-radius: 10px;
-  margin-top:6px;
-  flex-shrink: 0; /* Don't shrink the controls */
+  flex-wrap:wrap;
+  width:100%;
+  min-width:0;
+  margin:0;
+  padding:0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  flex: 1 1 auto;
+}
+
+.btfw-chat-composer{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  width:100%;
+  padding:12px 14px 14px;
+  border-radius: 20px;
+  border:1px solid color-mix(in srgb, var(--btfw-border) 70%, transparent 30%);
+  background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--btfw-color-bg) 38%, transparent 62%);
+  position: relative;
+  overflow: hidden;
+}
+
+.btfw-chat-composer::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(60% 80% at 12% 46%, color-mix(in srgb, var(--btfw-color-accent) 44%, transparent 56%), transparent 58%);
+  opacity: .65;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.btfw-chat-composer > *{
+  position: relative;
+  z-index: 1;
+}
+
+.btfw-chat-composer-main{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  width:100%;
+}
+
+.btfw-chat-composer-main > *{
+  width:100%;
 }
 
 /* Bottom action buttons container */
-.btfw-chat-actions{ display:flex; gap:6px; flex-wrap:wrap; }
+.btfw-chat-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  flex-wrap:wrap;
+  gap:8px;
+  width:100%;
+  padding-top:6px;
+  border-top:1px solid color-mix(in srgb, var(--btfw-border) 55%, transparent 45%);
+  margin-top:2px;
+}
 .button.btfw-chatbtn{ display:inline-flex; align-items:center; gap:6px; }
 
 /* Bottom bar should not have margin-bottom to avoid extra space */
@@ -343,26 +403,40 @@
   border-radius:8px; padding:6px 8px;
 }
 
-/* Subtle polish for chat input row to echo style reference */
-.btfw-controls-row{
-  background: color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%);
-  border: 1px solid var(--btfw-border);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--btfw-color-bg) 32%, transparent 68%) inset;
-  border-radius: 12px;
-}
+/* Chat composer input + button polish */
 #chatline{
-  background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
+  flex: 1 1 auto;
+  min-width: 0;
+  background: color-mix(in srgb, var(--btfw-color-panel) 74%, transparent 26%);
   color: var(--btfw-color-text);
-  border: 1px solid var(--btfw-border);
-  border-radius: 10px;
-  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 40%);
+  border-radius: 999px;
+  padding: 10px 16px;
+  min-height: 44px;
+  line-height: 1.25;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
+  transition: border-color .2s ease, box-shadow .2s ease;
 }
+
+#chatline:focus{
+  outline: none;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 60%, transparent 40%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+}
+
 .btfw-chat-actions .button.btfw-chatbtn{
   border-radius: 999px;
-  background: radial-gradient(120% 120% at 30% 30%, color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%), color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%));
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 72%, transparent 28%);
+  padding: 8px 14px;
+  background: radial-gradient(120% 140% at 28% 28%, color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%), color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%));
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 68%, transparent 32%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 18%, transparent 82%);
+  transition: filter .2s ease, transform .2s ease;
 }
-.btfw-chat-actions .button.btfw-chatbtn:hover{ filter: brightness(1.08); }
+
+.btfw-chat-actions .button.btfw-chatbtn:hover{
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
 
 /* Responsive modal grid on phones */
 @media (max-width: 768px){
@@ -639,12 +713,16 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
   background: var(--btfw-chip-bg-hover);
 }
 
-/* Chat bottom bar split: actions (left) + usercount (right) */
-.btfw-chat-bottombar{
-  display:flex; align-items:center; gap:8px;
+/* Chat bottom bar split: composer (top) + meta (bottom-right) */
+.btfw-chat-right{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  align-self:flex-end;
+  padding:0 6px;
+  color: color-mix(in srgb, var(--btfw-color-chat-text) 86%, transparent 14%);
+  font-size: 12px;
 }
-.btfw-chat-actions{ display:flex; align-items:center; gap:6px; }
-.btfw-chat-right{ margin-left:auto; display:flex; align-items:center; gap:10px; }
 
 #usercount.btfw-usercount{
   display:flex; align-items:center; gap:6px;
