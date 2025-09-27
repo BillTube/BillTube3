@@ -161,8 +161,7 @@
    (Primary layout/spacing for chat lives in chat.css / base.css)
    ====================================================================== */
 
-.btfw-chat-topbar,
-.btfw-chat-bottombar {
+.btfw-chat-topbar {
   background: linear-gradient(180deg,
     color-mix(in srgb, var(--btfw-overlay-bg) 88%, transparent 12%),
     color-mix(in srgb, var(--btfw-overlay-elevated) 88%, transparent 12%));
@@ -171,22 +170,48 @@
   box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 48%, transparent 52%);
 }
 
-.btfw-chat-actions .button.btfw-chatbtn {
-  border-radius: 10px;
-  border: 1px solid var(--btfw-border);
-  background: color-mix(in srgb, var(--btfw-color-bg) 74%, transparent 26%);
-}
-.btfw-chat-actions .button.btfw-chatbtn:hover {
-  background: color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
-}
-
-/* Keep the chat controls row visible at the bottom of chat column */
-.btfw-controls-row {
+.btfw-chat-bottombar {
   position: sticky;
   bottom: 0;
-  background: color-mix(in srgb, var(--btfw-overlay-bg) 90%, transparent 10%);
-  border-top: 1px solid var(--btfw-border);
   z-index: 10;
+  padding: 6px 0 4px;
+  background: color-mix(in srgb, var(--btfw-overlay-bg) 92%, transparent 8%);
+  backdrop-filter: saturate(120%) blur(6px);
+  border-radius: var(--btfw-radius);
+  isolation: isolate;
+}
+
+.btfw-chat-composer {
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--btfw-overlay-elevated) 86%, transparent 14%),
+    color-mix(in srgb, var(--btfw-overlay-bg) 80%, transparent 20%));
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 68%, transparent 32%);
+  box-shadow: 0 20px 46px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
+}
+
+.btfw-chat-actions .button.btfw-chatbtn {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 62%, transparent 38%);
+  background: radial-gradient(130% 160% at 24% 28%,
+    color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%),
+    color-mix(in srgb, var(--btfw-overlay-elevated) 80%, transparent 20%));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent 88%);
+}
+.btfw-chat-actions .button.btfw-chatbtn:hover {
+  background: radial-gradient(130% 160% at 24% 28%,
+    color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%),
+    color-mix(in srgb, var(--btfw-overlay-elevated) 70%, transparent 30%));
+}
+
+/* Keep the chat composer visible at the bottom of chat column */
+.btfw-chat-bottombar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent 92%);
+  pointer-events: none;
+  z-index: -1;
 }
 /* --- BTFW Emotes Popover (mini) --- */
 /* Fixed-size popover container (JS sets an explicit height) */
