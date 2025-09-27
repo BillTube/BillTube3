@@ -1,7 +1,4 @@
-/* ======================================================================
-   BillTube Framework – chat.css
-   Chat column structure, message area, avatars, and controls row
-   ====================================================================== */
+
 
 #chatwrap{
   display:flex;
@@ -12,7 +9,6 @@
   overflow: hidden; /* Prevent overflow issues */
 }
 
-/* Bars are visually styled further in overlays.css */
 #chatwrap .btfw-chat-topbar{
   display:flex;
   align-items:center;
@@ -25,12 +21,12 @@
   flex-shrink: 0; /* Don't shrink these bars */
 }
 
-#chatwrap .btfw-chat-bottombar{
-  display:flex;
-  flex-direction: column;
-  gap: 8px;
-  margin:0 0 8px 0;
-  flex-shrink: 0;
+#chatwrap .btfw-chat-bottombar {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 5px 0 0px 0;
+    flex-shrink: 0;
 }
 
 #chatwrap .btfw-chat-topbar{
@@ -728,4 +724,5 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
   display:flex; align-items:center; gap:6px;
   font-size: 12px; opacity:.9;
 }
+
 #usercount .fa-users{ font-size:14px; opacity:.75; }
