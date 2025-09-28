@@ -41,10 +41,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
     #btfw-poll-overlay .btfw-poll-overlay__inner {
       position: absolute;
-      top: clamp(12px, 4vw, 32px);
+      top: 50%;
       right: clamp(12px, 4vw, 32px);
-      width: min(420px, calc(100% - clamp(24px, 8vw, 72px)));
-      max-width: min(420px, calc(100% - clamp(24px, 8vw, 72px)));
+      transform: translateY(-50%);
+      width: min(520px, calc(100% - clamp(32px, 10vw, 112px)));
+      max-width: min(520px, calc(100% - clamp(32px, 10vw, 112px)));
       pointer-events: auto;
       display: flex;
       flex-direction: column;
@@ -53,7 +54,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
     #btfw-poll-overlay .btfw-poll-overlay__toggle {
       position: absolute;
-      top: clamp(8px, 3vw, 20px);
+      top: 50%;
+      margin-top: -17px;
       right: clamp(8px, 3vw, 20px);
       width: 34px;
       height: 34px;
@@ -68,6 +70,53 @@ BTFW.define("feature:poll-overlay", [], async () => {
       cursor: pointer;
       pointer-events: auto;
       transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    #btfw-poll-overlay .btfw-poll-overlay__toggle::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+    }
+
+    #btfw-poll-overlay-launcher {
+      position: absolute;
+      top: 50%;
+      right: clamp(12px, 4vw, 32px);
+      transform: translateY(-50%);
+      z-index: 1645;
+      display: none;
+      pointer-events: auto;
+    }
+
+    #btfw-poll-overlay-launcher.btfw-visible {
+      display: inline-flex;
+    }
+
+    #btfw-poll-overlay-launcher .btfw-poll-overlay__launcher-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 0;
+      background: rgba(17, 17, 26, 0.72);
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    #btfw-poll-overlay-launcher .btfw-poll-overlay__launcher-btn:hover {
+      background: rgba(109, 77, 246, 0.9);
+      transform: translateY(-1px);
+    }
+
+    #btfw-poll-overlay-launcher .btfw-poll-overlay__launcher-btn:focus-visible {
+      outline: 2px solid var(--btfw-color-accent, #6d4df6);
+      outline-offset: 2px;
     }
 
     #btfw-poll-overlay .btfw-poll-overlay__toggle:hover {
@@ -149,12 +198,22 @@ BTFW.define("feature:poll-overlay", [], async () => {
         top: clamp(8px, 4vw, 20px);
         right: clamp(8px, 4vw, 20px);
         left: clamp(8px, 4vw, 20px);
+
         width: auto;
         max-width: none;
       }
 
       #btfw-poll-overlay .btfw-poll-overlay__toggle {
+        top: clamp(8px, 4vw, 20px);
         right: clamp(8px, 4vw, 20px);
+        margin-top: 0;
+      }
+
+      #btfw-poll-overlay-launcher {
+        top: clamp(8px, 4vw, 20px);
+        right: clamp(8px, 4vw, 20px);
+        transform: none;
+
       }
 
       #pollwrap.btfw-poll-overlay__panel {
@@ -173,13 +232,14 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let overlayToggle = null;
   let placeholder = null;
   let placeholderToggle = null;
+  let overlayLauncher = null;
   let pollWrap = null;
   let originalParent = null;
   let originalNextSibling = null;
   let pollObserver = null;
   let maintainTimer = null;
   let overlayEnabled = loadInitialOverlayState();
-  let pollActiveHint = null;
+  let pollActiveState = null;
   let socketWired = false;
 
   function loadInitialOverlayState() {
@@ -261,7 +321,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
     inner.setAttribute("aria-live", "polite");
     inner.setAttribute("aria-label", "Current poll");
     overlayHost.appendChild(inner);
-
     const toggle = document.createElement("button");
     toggle.type = "button";
     toggle.className = "btfw-poll-overlay__toggle";
@@ -274,7 +333,35 @@ BTFW.define("feature:poll-overlay", [], async () => {
     overlayToggle = toggle;
     videoWrap.appendChild(overlayHost);
 
+    ensureLauncher();
+
     return overlayHost;
+  }
+
+  function ensureLauncher() {
+    if (overlayLauncher) return overlayLauncher;
+
+    const videoWrap = document.getElementById("videowrap");
+    if (!videoWrap) return null;
+
+    const launcher = document.createElement("div");
+    launcher.id = "btfw-poll-overlay-launcher";
+    launcher.setAttribute("aria-hidden", "true");
+    launcher.hidden = true;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btfw-poll-overlay__launcher-btn";
+    button.setAttribute("aria-label", "Show poll over video");
+    button.innerHTML = "<span class=\"btfw-poll-overlay__launcher-text\">Show poll overlay</span>";
+    button.addEventListener("click", () => setOverlayEnabled(true));
+
+    launcher.appendChild(button);
+    videoWrap.appendChild(launcher);
+
+    overlayLauncher = launcher;
+
+    return overlayLauncher;
   }
 
   function ensurePlaceholder() {
@@ -298,6 +385,12 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (placeholderToggle) {
       placeholderToggle.addEventListener("click", () => setOverlayEnabled(true));
     }
+    wrap.classList.add("btfw-poll-overlay__panel");
+    startPollObserver();
+    startMaintainLoop();
+    syncVisibility();
+    return true;
+  }
 
     if (originalNextSibling && originalNextSibling.parentElement === originalParent) {
       originalParent.insertBefore(placeholder, originalNextSibling);
@@ -364,7 +457,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
           ? originalNextSibling
           : null);
 
-
       if (target) {
         originalParent.insertBefore(wrap, target);
       } else {
@@ -375,10 +467,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (placeholder) {
       placeholder.removeAttribute("hidden");
     }
-
     if (overlayHost) {
       overlayHost.classList.remove("btfw-visible");
       overlayHost.setAttribute("aria-hidden", "true");
+    }
+
+    if (pollWrap) {
+      startPollObserver();
     }
 
     return true;
@@ -392,7 +487,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       localStorage.setItem(STATE_KEY, value ? "1" : "0");
     } catch (_) {}
 
-    if (overlayEnabled) adoptPollWrap();
+    if (overlayEnabled && getCurrentActiveState()) adoptPollWrap();
     else restorePollWrap();
 
     updateControls();
@@ -409,6 +504,15 @@ BTFW.define("feature:poll-overlay", [], async () => {
       if (overlayEnabled) placeholder.setAttribute("hidden", "hidden");
       else placeholder.removeAttribute("hidden");
     }
+    ensureLauncher();
+    if (overlayLauncher) {
+      const active = getCurrentActiveState();
+      const visible = !overlayEnabled && active;
+      overlayLauncher.classList.toggle("btfw-visible", visible);
+      overlayLauncher.hidden = !visible;
+      overlayLauncher.setAttribute("aria-hidden", visible ? "false" : "true");
+
+    }
   }
 
   function detectActiveFromDOM() {
@@ -423,15 +527,39 @@ BTFW.define("feature:poll-overlay", [], async () => {
     return true;
   }
 
-  function syncVisibility() {
-    if (!overlayHost) return;
-    if (!overlayEnabled || !pollWrap) {
-      overlayHost.classList.remove("btfw-visible");
-      overlayHost.setAttribute("aria-hidden", "true");
-      return;
+  function setPollActiveState(active) {
+    const value = !!active;
+    if (pollActiveState === value) return;
+    pollActiveState = value;
+
+    if (value) {
+      if (overlayEnabled) {
+        const adopted = adoptPollWrap();
+        if (!adopted) {
+          scheduleFrame(() => {
+            if (overlayEnabled && getCurrentActiveState()) adoptPollWrap();
+          });
+        }
+      } else {
+        restorePollWrap();
+      }
+    } else {
+      restorePollWrap();
     }
 
-    const active = pollActiveHint != null ? pollActiveHint : detectActiveFromDOM();
+    updateControls();
+    scheduleFrame(syncVisibility);
+  }
+
+  function getCurrentActiveState() {
+    if (pollActiveState != null) return pollActiveState;
+    return detectActiveFromDOM();
+  }
+
+  function syncVisibility() {
+    if (!overlayHost) return;
+
+    const active = overlayEnabled && pollWrap && getCurrentActiveState();
     overlayHost.classList.toggle("btfw-visible", !!active);
     overlayHost.setAttribute("aria-hidden", active ? "false" : "true");
   }
@@ -439,7 +567,14 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function startPollObserver() {
     if (!pollWrap) return;
     if (pollObserver) pollObserver.disconnect();
-    pollObserver = new MutationObserver(() => scheduleFrame(syncVisibility));
+    pollObserver = new MutationObserver(() => {
+      const active = detectActiveFromDOM();
+      if (pollActiveState == null || pollActiveState !== active) {
+        setPollActiveState(active);
+      } else {
+        scheduleFrame(syncVisibility);
+      }
+    });
     pollObserver.observe(pollWrap, {
       childList: true,
       subtree: true,
@@ -449,10 +584,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function startMaintainLoop() {
-    if (maintainTimer || !overlayEnabled) return;
+    if (maintainTimer || !overlayEnabled || !getCurrentActiveState()) return;
     const tick = () => {
       maintainTimer = null;
-      if (!overlayEnabled) return;
+      if (!overlayEnabled || !getCurrentActiveState()) return;
       if (pollWrap && overlayInner && pollWrap.parentElement !== overlayInner) {
         overlayInner.appendChild(pollWrap);
         pollWrap.classList.add("btfw-poll-overlay__panel");
@@ -483,14 +618,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   function wireSocket(socket) {
     if (!socket || socketWired) return;
-    const markActive = () => {
-      pollActiveHint = true;
-      scheduleFrame(syncVisibility);
-    };
-    const markInactive = () => {
-      pollActiveHint = false;
-      scheduleFrame(syncVisibility);
-    };
+    const markActive = () => setPollActiveState(true);
+    const markInactive = () => setPollActiveState(false);
 
     ["newPoll", "updatePoll", "pollUpdate", "startPoll"].forEach(evt => {
       if (typeof socket.on === "function") socket.on(evt, markActive);
@@ -508,7 +637,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
     pollWrap = wrap;
     rememberOriginalLocation(wrap);
     ensurePlaceholder();
-    if (overlayEnabled) adoptPollWrap();
+    const active = detectActiveFromDOM();
+    pollActiveState = active;
+    if (overlayEnabled && active) adoptPollWrap();
+
     else restorePollWrap();
     updateControls();
     scheduleFrame(syncVisibility);
