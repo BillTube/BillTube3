@@ -159,9 +159,10 @@ body:not(.btfw-mobile-stack-enabled) #btfw-mobile-stack{ display:none !important
     border-radius: 10px;
   }
 
-  /* Give the video a little breathing room below the nav toggle */
+  /* Give the video breathing room + a slightly wider aspect on phones */
   #btfw-grid.btfw-grid--vertical #videowrap{
-    margin-top: 10px;
+    margin-top: clamp(18px, 5vw, 32px);
+    --btfw-video-aspect: 16 / 8.5;
   }
 
   /* Compact the playlist toolbar columns */
