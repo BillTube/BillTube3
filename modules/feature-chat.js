@@ -167,10 +167,27 @@ function orderChatActions(actions){
     "#usercount"
   ];
 
+  let anchor = null;
+  let reordered = false;
+
   orderedSelectors.forEach(sel => {
     const el = actions.querySelector(sel);
-    if (el && el.parentElement === actions) actions.appendChild(el);
+    if (!el || el.parentElement !== actions) return;
+
+    if (!anchor) {
+      if (actions.firstElementChild !== el) {
+        actions.insertBefore(el, actions.firstElementChild);
+        reordered = true;
+      }
+    } else if (anchor.nextElementSibling !== el) {
+      actions.insertBefore(el, anchor.nextElementSibling);
+      reordered = true;
+    }
+
+    anchor = el;
   });
+
+  return reordered;
 }
 
 /* Watch the whole document for late/stray button injections and normalize */
