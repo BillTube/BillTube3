@@ -306,6 +306,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function ensureOverlayHost() {
     if (overlayHost && overlayInner) return overlayHost;
 
+
     const videoWrap = document.getElementById("videowrap");
     if (!videoWrap) return null;
 
@@ -384,7 +385,14 @@ BTFW.define("feature:poll-overlay", [], async () => {
     placeholderToggle = placeholder.querySelector(".btfw-poll-overlay-placeholder__btn");
     if (placeholderToggle) {
       placeholderToggle.addEventListener("click", () => setOverlayEnabled(true));
+
     }
+    wrap.classList.add("btfw-poll-overlay__panel");
+    startPollObserver();
+    startMaintainLoop();
+    syncVisibility();
+    return true;
+  }
 
     if (originalNextSibling && originalNextSibling.parentElement === originalParent) {
       originalParent.insertBefore(placeholder, originalNextSibling);
@@ -521,7 +529,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (!pollWrap) return false;
     for (const selector of ACTIVE_SELECTORS) {
       if (pollWrap.querySelector(selector)) return true;
+
     }
+  }
 
     const text = (pollWrap.textContent || "").trim();
     if (!text) return false;
@@ -566,6 +576,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     overlayHost.classList.toggle("btfw-visible", visible);
     overlayHost.setAttribute("aria-hidden", visible ? "false" : "true");
     document.documentElement.classList.toggle("btfw-poll-overlay-active", visible);
+
   }
 
   function startPollObserver() {
