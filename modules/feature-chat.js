@@ -202,6 +202,7 @@ function orderChatActions(actions){
   anchor.remove();
 }
 
+
 const scheduleNormalizeChatActions = (() => {
   let pending = false;
   const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
@@ -219,7 +220,6 @@ const scheduleNormalizeChatActions = (() => {
 function watchForStrayButtons(){
   if (document._btfw_btn_watch) return;
   document._btfw_btn_watch = true;
-
   const body = document.body || document.documentElement;
   if (!body) return;
 
@@ -263,6 +263,7 @@ function watchForStrayButtons(){
     // If we cannot observe, fall back to a one-shot normalization so buttons aren't lost.
     scheduleNormalizeChatActions();
   }
+
 }
 
   /* ---------------- Auto-scroll management ---------------- */
