@@ -603,7 +603,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
         btn.addEventListener("click", () => {
           if (window.socket && window.socket.emit) {
             try {
-              window.socket.emit("votePoll", { option: index });
+              // CyTube expects poll votes to be emitted on the "vote" channel.
+              // The legacy BillTube2 theme used this event which successfully
+              // registers the user's vote server-side. The newer implementation
+              // mistakenly used "votePoll", preventing the vote from being
+              // recorded. Switching back to "vote" restores the expected
+              // behaviour.
+              window.socket.emit("vote", { option: index });
               btn.classList.add("voted");
               
               // Disable all options after voting (unless multi-choice)
