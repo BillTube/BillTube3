@@ -10,18 +10,16 @@ BTFW.define("feature:poll-overlay", [], async () => {
   const LAUNCHER_ID = "btfw-poll-overlay-launcher";
 
   const ACTIVE_SELECTORS = [
-    ".poll-menu",
     ".poll-answers",
     ".poll-entry",
     ".poll-options",
     ".poll-votes",
-    ".poll-results",
     "button[data-option]",
     "input[type=radio][name^=poll]",
     "input[type=checkbox][name^=poll]"
   ];
 
-  const INACTIVE_TEXT = /there is no active poll|no current poll|no poll active/i;
+  const INACTIVE_TEXT = /there is no active poll|no current poll|no poll active|poll closed|the poll has closed/i;
 
   const raf = (fn) => {
     if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
@@ -52,6 +50,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let videoMountObserver = null;
   let overlayPreferred = readPreference();
   let pollActive = false;
+  let placeholderActions = null;
+  let placeholderNewButton = null;
+  let socketWired = false;
 
 
   if (!featureEnabled()) {
@@ -273,6 +274,23 @@ BTFW.define("feature:poll-overlay", [], async () => {
         gap: 6px;
       }
 
+      #${PLACEHOLDER_ID} .btfw-poll-placeholder__actions {
+        display: none;
+        margin-top: 12px;
+        gap: 8px;
+      }
+
+      #${PLACEHOLDER_ID} .btfw-poll-placeholder__actions.btfw-visible {
+        display: flex;
+        flex-wrap: wrap;
+      }
+
+      #${PLACEHOLDER_ID} .btfw-poll-placeholder__new {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
       @media (max-width: 768px) {
         #${OVERLAY_ID} .btfw-poll-overlay__card {
           top: clamp(8px, 6vw, 20px);
@@ -309,11 +327,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
       <div class="btfw-poll-placeholder__title">Poll overlay</div>
       <p class="btfw-poll-placeholder__text">The active poll is floating over the video.</p>
       <button type="button" class="btn btn-sm btn-default btfw-poll-placeholder__btn">Return poll to sidebar</button>
+      <div class="btfw-poll-placeholder__actions" aria-hidden="true"></div>
     `;
     placeholderButton = placeholder.querySelector(".btfw-poll-placeholder__btn");
     if (placeholderButton) {
       placeholderButton.addEventListener("click", () => setOverlayPreferred(false));
     }
+    placeholderActions = placeholder.querySelector(".btfw-poll-placeholder__actions");
     return placeholder;
   }
 
@@ -328,6 +348,52 @@ BTFW.define("feature:poll-overlay", [], async () => {
     } else {
       originalParent.appendChild(placeholder);
     }
+  }
+
+  function findNewPollButton() {
+    if (pollWrap) {
+      const button = pollWrap.querySelector("#newpollbtn, button[data-action=\"newpoll\"], button[data-action=\"newPoll\"], .newpollbtn, .poll-new-btn");
+      if (button) return button;
+    }
+    return document.getElementById("newpollbtn");
+  }
+
+  function ensurePlaceholderNewButton() {
+    if (!placeholderActions) return;
+    if (!placeholderNewButton) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn btn-sm btn-primary btfw-poll-placeholder__new";
+      btn.innerHTML = "<span aria-hidden=\"true\">➕</span><span>New poll</span>";
+      btn.addEventListener("click", () => {
+        const target = findNewPollButton();
+        if (target && typeof target.click === "function") {
+          target.click();
+        }
+        btn.blur();
+      });
+      placeholderActions.appendChild(btn);
+      placeholderNewButton = btn;
+    }
+  }
+
+  function syncPlaceholderControls() {
+    if (!placeholder) return;
+    ensurePlaceholderNewButton();
+    if (!placeholderActions) return;
+    const target = findNewPollButton();
+    const hasTarget = !!(target && typeof target.click === "function");
+    if (placeholderNewButton) {
+      placeholderNewButton.disabled = !hasTarget;
+    }
+    placeholderActions.classList.toggle("btfw-visible", hasTarget);
+    placeholderActions.setAttribute("aria-hidden", hasTarget ? "false" : "true");
+  }
+
+  function hidePlaceholderActions() {
+    if (!placeholderActions) return;
+    placeholderActions.classList.remove("btfw-visible");
+    placeholderActions.setAttribute("aria-hidden", "true");
   }
 
   function ensureOverlayElements() {
@@ -415,6 +481,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
       placeholder.setAttribute("data-btfw-poll-overlay", "placeholder");
     }
 
+    syncPlaceholderControls();
+
     if (overlayHost) overlayHost.classList.add("btfw-visible");
     document.documentElement.classList.add(ROOT_FLOAT_CLASS);
   }
@@ -436,6 +504,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
       placeholder.classList.remove("btfw-visible");
       placeholder.removeAttribute("data-btfw-poll-overlay");
     }
+
+    hidePlaceholderActions();
 
     if (overlayHost) {
       overlayHost.classList.remove("btfw-visible");
@@ -492,6 +562,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (!pollActive) {
       updateLauncherVisibility(false);
       if (placeholder) placeholder.classList.remove("btfw-visible");
+      hidePlaceholderActions();
+    }
+
+    if (placeholder && placeholder.classList.contains("btfw-visible")) {
+      syncPlaceholderControls();
     }
   }
 
@@ -506,6 +581,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     pollWrap = element;
     rememberOriginal();
     ensurePlaceholder();
+    syncPlaceholderControls();
     observePollChanges();
     raf(() => syncOverlay());
   }
@@ -546,16 +622,36 @@ BTFW.define("feature:poll-overlay", [], async () => {
     });
   }
 
+  function handleSocketPollActive() {
+    raf(() => {
+      pollActive = true;
+      syncOverlay();
+    });
+  }
+
+  function handleSocketPollClosed() {
+    raf(() => {
+      pollActive = false;
+      restorePollToSidebar();
+      if (placeholder) {
+        placeholder.classList.remove("btfw-visible");
+      }
+      hidePlaceholderActions();
+      updateLauncherVisibility(false);
+      syncOverlay();
+    });
+  }
+
   function wireSocket() {
+    if (socketWired) return;
     waitForSocket().then(socket => {
-      if (!socket) return;
-      const markActive = () => raf(() => syncOverlay());
-      const markInactive = () => raf(() => syncOverlay());
-      ["newPoll", "updatePoll", "setPoll"].forEach(evt => {
-        socket.on(evt, markActive);
+      if (!socket || socketWired) return;
+      socketWired = true;
+      ["newPoll", "updatePoll", "setPoll", "openPoll"].forEach(evt => {
+        socket.on(evt, handleSocketPollActive);
       });
       ["closePoll", "clearPoll", "deletePoll"].forEach(evt => {
-        socket.on(evt, markInactive);
+        socket.on(evt, handleSocketPollClosed);
       });
     });
   }
