@@ -300,6 +300,66 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let currentPoll = null;
   let socketEventsWired = false;
   let buttonObserver = null;
+
+  function resolveAdminConfig() {
+    const sources = [
+      () => window.BTFW_THEME_ADMIN,
+      () => window.BTFW_THEME,
+      () => window.BTFW_THEME_CONFIG,
+      () => window.BTFW_THEME_SETTINGS,
+      () => window.BTFW_THEME_STATE,
+      () => window.BTFW_THEME_DATA
+    ];
+
+    for (const getSource of sources) {
+      try {
+        const config = getSource();
+        if (config && typeof config === "object") {
+          return config;
+        }
+      } catch (_) {
+        // ignore and continue to next candidate
+      }
+    }
+
+    return null;
+  }
+
+  function featureEnabled() {
+    const config = resolveAdminConfig();
+    if (config && typeof config === "object") {
+      const features = config.features;
+      if (features && typeof features === "object") {
+        const flag = features.videoOverlayPoll;
+        if (typeof flag === "boolean") {
+          return flag;
+        }
+        if (typeof flag === "string") {
+          return flag !== "0" && flag.toLowerCase() !== "false";
+        }
+        if (typeof flag === "number") {
+          return flag !== 0;
+        }
+      }
+    }
+    return true;
+  }
+
+  if (!featureEnabled()) {
+    console.info("[poll-overlay] Disabled via channel configuration.");
+    return {
+      name: "feature:poll-overlay",
+      openModal: () => {},
+      closeModal: () => {},
+      showOverlay: () => {},
+      hideOverlay: () => {}
+    };
+  }
+
+  const root = document.documentElement;
+  if (root && !root.classList.contains("btfw-poll-overlay-enabled")) {
+    root.classList.add("btfw-poll-overlay-enabled");
+  }
   let buttonObserverTarget = null;
   let buttonObserverBootstrap = null;
 
