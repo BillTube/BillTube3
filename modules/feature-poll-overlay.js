@@ -257,9 +257,24 @@ BTFW.define("feature:poll-overlay", [], async () => {
         btn.addEventListener("click", () => {
           if (window.socket && window.socket.emit) {
             try {
-              // CyTube voting - try different formats to match the original
-              // Format 1: Just the index number
+              // Method 1: Try to find and trigger the original poll button for this option
+              const originalPollButtons = document.querySelectorAll('#pollwrap .well .option button');
+              if (originalPollButtons[index]) {
+                console.log("Triggering original poll button", index);
+                originalPollButtons[index].click();
+                return;
+              }
+
+              // Method 2: Try different socket emit formats
+              console.log("Trying socket emit methods for option", index);
+              
+              // Try the most common formats
               window.socket.emit("votePoll", index);
+              
+              // Also try as object (fallback)
+              setTimeout(() => {
+                window.socket.emit("votePoll", { option: index });
+              }, 50);
               
               // Track user vote for visual feedback
               if (poll.multi) {
@@ -281,7 +296,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
                 btn.classList.add("active");
               }
               
-              console.log("Vote sent for option", index); // Debug log
+              console.log("Vote attempted for option", index);
             } catch (e) {
               console.error("Failed to vote:", e);
             }
