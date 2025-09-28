@@ -220,6 +220,8 @@
 }
 .btfw-chat-actions #usercount{
   margin-left:auto;
+  order: 100;
+  flex-shrink: 0;
 }
 .button.btfw-chatbtn{ display:inline-flex; align-items:center; gap:6px; }
 

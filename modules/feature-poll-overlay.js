@@ -16,6 +16,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
       display: none;
     }
 
+    :root.btfw-poll-overlay-disabled #btfw-poll-video-overlay {
+      display: none !important;
+    }
+
     #btfw-poll-video-overlay.btfw-poll-active {
       display: block;
     }
