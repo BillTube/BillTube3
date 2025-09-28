@@ -168,25 +168,40 @@ const CHAT_ACTION_ORDER = [
 function orderChatActions(actions){
   if (!actions) return;
 
-  let anchor = null;
+  const orderedNodes = [];
   CHAT_ACTION_ORDER.forEach((sel) => {
     const el = actions.querySelector(sel);
-    if (!el || el.parentElement !== actions) return;
+    if (el && el.parentElement === actions && !orderedNodes.includes(el)) {
+      orderedNodes.push(el);
+    }
+  });
 
-    if (!anchor) {
-      if (actions.firstElementChild !== el) {
-        actions.insertBefore(el, actions.firstElementChild);
-      }
-    } else {
-      const afterAnchor = anchor.nextElementSibling;
-      if (afterAnchor !== el) {
-        actions.insertBefore(el, afterAnchor);
+  if (orderedNodes.length <= 1) return;
+
+  let alreadyOrdered = true;
+  outer: for (let i = 0; i < orderedNodes.length - 1; i += 1) {
+    for (let j = i + 1; j < orderedNodes.length; j += 1) {
+      const rel = orderedNodes[i].compareDocumentPosition(orderedNodes[j]);
+      if (rel & Node.DOCUMENT_POSITION_PRECEDING) {
+        alreadyOrdered = false;
+        break outer;
       }
     }
+  }
 
-    anchor = el;
+  if (alreadyOrdered) return;
+
+  const anchor = document.createElement("span");
+  anchor.style.display = "none";
+  actions.insertBefore(anchor, actions.firstChild);
+  orderedNodes.forEach((node) => {
+    if (node.parentElement === actions) {
+      actions.insertBefore(node, anchor);
+    }
   });
+  anchor.remove();
 }
+
 
 const scheduleNormalizeChatActions = (() => {
   let pending = false;
@@ -205,8 +220,50 @@ const scheduleNormalizeChatActions = (() => {
 function watchForStrayButtons(){
   if (document._btfw_btn_watch) return;
   document._btfw_btn_watch = true;
-  const obs = new MutationObserver(() => scheduleNormalizeChatActions());
-  obs.observe(document.documentElement, { childList:true, subtree:true });
+  const body = document.body || document.documentElement;
+  if (!body) return;
+
+  const watchedIds = new Set([
+    "btfw-btn-emotes",
+    "btfw-btn-gif",
+    "btfw-chatcmds-btn",
+    "btfw-users-toggle",
+    "usercount"
+  ]);
+
+  const obs = new MutationObserver((mutations) => {
+    let relevant = false;
+    for (const mutation of mutations) {
+      if (mutation.target && mutation.target.id === "btfw-chat-actions") {
+        relevant = true;
+        break;
+      }
+      for (const node of mutation.addedNodes) {
+        if (!(node instanceof HTMLElement)) continue;
+        if (watchedIds.has(node.id)) {
+          relevant = true;
+          break;
+        }
+        for (const id of watchedIds) {
+          if (node.id !== id && node.querySelector && node.querySelector(`#${id}`)) {
+            relevant = true;
+            break;
+          }
+        }
+        if (relevant) break;
+      }
+      if (relevant) break;
+    }
+    if (relevant) scheduleNormalizeChatActions();
+  });
+
+  try {
+    obs.observe(body, { childList:true, subtree:true });
+  } catch (_) {
+    // If we cannot observe, fall back to a one-shot normalization so buttons aren't lost.
+    scheduleNormalizeChatActions();
+  }
+
 }
 
   /* ---------------- Auto-scroll management ---------------- */
@@ -710,7 +767,7 @@ function watchForStrayButtons(){
       controls.classList.add("btfw-controls-row");
       composerMain.appendChild(controls);
     }
-    normalizeChatActionButtons();
+    scheduleNormalizeChatActions();
     wireChatUsernameContextMenu();
     adoptNewMessageIndicator();
 
@@ -722,6 +779,27 @@ function watchForStrayButtons(){
       }
     }));
   }
+
+  function refreshChatDom(){
+    ensureBars();
+    adoptUserlistIntoPopover();
+    adoptNewMessageIndicator();
+    ensureScrollManagement();
+    restyleExistingTrivia();
+  }
+
+  const scheduleChatDomRefresh = (() => {
+    let pending = false;
+    const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
+    return () => {
+      if (pending) return;
+      pending = true;
+      raf(() => {
+        pending = false;
+        refreshChatDom();
+      });
+    };
+  })();
 
   /* ---------------- Usercount to bottom-right & remove #chatheader ---------------- */
   function ensureUsercountInBar(){
@@ -807,11 +885,7 @@ function watchForStrayButtons(){
     cw._btfw_chat_obs = true;
 
     new MutationObserver(()=>{
-      ensureBars();
-      adoptUserlistIntoPopover();
-      adoptNewMessageIndicator();
-      ensureScrollManagement();
-      restyleExistingTrivia();
+      scheduleChatDomRefresh();
     }).observe(cw,{childList:true,subtree:true});
 
     const buf = $("#messagebuffer");
@@ -911,12 +985,10 @@ function watchForStrayButtons(){
 
   /* ---------------- Boot ---------------- */
   function boot(){
-    ensureBars();
-    ensureScrollManagement();
+    refreshChatDom();
     ensureUsercountInBar();
     ensureUserlistPopover();
     observeChatDom();
-    restyleExistingTrivia();
     wireDelegatedClicks();
     watchForStrayButtons();
 
