@@ -198,7 +198,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
         top: clamp(8px, 4vw, 20px);
         right: clamp(8px, 4vw, 20px);
         left: clamp(8px, 4vw, 20px);
-        transform: none;
+
         width: auto;
         max-width: none;
       }
@@ -213,6 +213,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
         top: clamp(8px, 4vw, 20px);
         right: clamp(8px, 4vw, 20px);
         transform: none;
+
       }
 
       #pollwrap.btfw-poll-overlay__panel {
@@ -320,7 +321,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
     inner.setAttribute("aria-live", "polite");
     inner.setAttribute("aria-label", "Current poll");
     overlayHost.appendChild(inner);
-
     const toggle = document.createElement("button");
     toggle.type = "button";
     toggle.className = "btfw-poll-overlay__toggle";
@@ -385,6 +385,12 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (placeholderToggle) {
       placeholderToggle.addEventListener("click", () => setOverlayEnabled(true));
     }
+    wrap.classList.add("btfw-poll-overlay__panel");
+    startPollObserver();
+    startMaintainLoop();
+    syncVisibility();
+    return true;
+  }
 
     if (originalNextSibling && originalNextSibling.parentElement === originalParent) {
       originalParent.insertBefore(placeholder, originalNextSibling);
@@ -461,7 +467,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (placeholder) {
       placeholder.removeAttribute("hidden");
     }
-
     if (overlayHost) {
       overlayHost.classList.remove("btfw-visible");
       overlayHost.setAttribute("aria-hidden", "true");
@@ -506,6 +511,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       overlayLauncher.classList.toggle("btfw-visible", visible);
       overlayLauncher.hidden = !visible;
       overlayLauncher.setAttribute("aria-hidden", visible ? "false" : "true");
+
     }
   }
 
@@ -634,6 +640,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const active = detectActiveFromDOM();
     pollActiveState = active;
     if (overlayEnabled && active) adoptPollWrap();
+
     else restorePollWrap();
     updateControls();
     scheduleFrame(syncVisibility);
