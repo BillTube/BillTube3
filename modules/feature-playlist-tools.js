@@ -166,6 +166,65 @@ BTFW.define("feature:playlist-tools", [], async () => {
     }, true);
   }
 
+  /* ---------- Add-from-URL title sanitiser ---------- */
+  const scrubTokens = ["720p", "brrip", "x264", "yify", "mp4"];
+  const scrubPattern = new RegExp(`\\b(?:${scrubTokens.join("|")})\\b`, "gi");
+  function sanitiseTitleInput(value){
+    if (!value) return "";
+
+    let title = String(value);
+
+    // Replace dot groups with spaces so words separate naturally
+    title = title.replace(/\.+/g, " ");
+
+    // Remove known metadata tokens (case-insensitive)
+    scrubPattern.lastIndex = 0;
+    title = title.replace(scrubPattern, " ");
+
+    // Surround years with parentheses if not already wrapped
+    title = title.replace(/\b(19|20)\d{2}\b/g, (match, _prefix, offset, src) => {
+      const before = src[offset - 1];
+      const after = src[offset + match.length];
+      if (before === "(" && after === ")") return match;
+      return `(${match})`;
+    });
+
+    // Collapse whitespace and trim edges
+    return title.replace(/\s+/g, " ").trim();
+  }
+
+  function ensureAddFromUrlTitleFilter(){
+    const input = document.getElementById("addfromurl-title-val");
+    if (!input) return false;
+    if (input._btfwTitleFilterBound) return true;
+
+    const apply = () => {
+      const raw = input.value || "";
+      const cleaned = sanitiseTitleInput(raw);
+      if (cleaned === raw) return;
+
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+
+      input.value = cleaned;
+
+      if (typeof start === "number" && typeof end === "number") {
+        const delta = cleaned.length - raw.length;
+        const newStart = Math.max(0, start + delta);
+        const newEnd = Math.max(0, end + delta);
+        try { input.setSelectionRange(newStart, newEnd); } catch(_){}
+      }
+    };
+
+    input.addEventListener("input", apply);
+    input.addEventListener("change", apply);
+    input._btfwTitleFilterBound = true;
+
+    // Normalise any pre-filled value immediately
+    apply();
+    return true;
+  }
+
   /* ---------- Utils ---------- */
   function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
   function toast(msg, kind="info"){
@@ -206,6 +265,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     injectToolbar();
     ensureQueuePollButtons();
     wireQueuePollCopy();
+    ensureAddFromUrlTitleFilter();
 
     // Re-ensure toolbar when playlist re-renders
     const container = $("#queuecontainer") || $("#playlistwrap") || document.body;
