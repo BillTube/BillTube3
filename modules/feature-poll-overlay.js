@@ -699,6 +699,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
         ? pollCardOriginalNextSibling
         : null;
       if (card.parentElement !== preferredParent) {
+
         if (anchor) {
           preferredParent.insertBefore(card, anchor);
         } else {
@@ -728,6 +729,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (text && INACTIVE_TEXT.test(text)) return false;
 
     if (ACTIVE_SELECTORS.some(sel => card.matches(sel) || card.querySelector(sel))) return true;
+
 
     const domData = extractDomPollData();
     if (domData && Array.isArray(domData.options) && domData.options.length > 0) {
@@ -774,6 +776,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     pollCardOriginalParent = null;
     pollCardOriginalNextSibling = null;
     return null;
+
   }
 
   function setOverlayPreferred(value) {
