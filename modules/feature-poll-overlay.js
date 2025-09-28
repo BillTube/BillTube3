@@ -463,6 +463,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
     return false;
   }
 
+  function wireSocketEvents() {
+    if (socketEventsWired || !window.socket) return;
+
   function startPollSync() {
     // Periodically sync vote counts with the original poll
     if (pollSyncInterval) clearInterval(pollSyncInterval);
