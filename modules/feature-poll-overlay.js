@@ -646,6 +646,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
         openPollModal();
       };
 
+
       try {
         btn.addEventListener("click", handleClick, { capture: true });
       } catch (e) {
@@ -677,6 +678,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
     let debounceTimer = null;
     buttonObserver = new MutationObserver((mutations) => {
+
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         // Prefer scanning within the container that actually changed.
@@ -725,6 +727,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
     const body = document.body || document.documentElement;
     if (!body) {
+
       console.warn('[poll-overlay] Unable to observe poll buttons: no document body yet');
       return;
     }
@@ -762,6 +765,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     // Fallback: mark anything already on the page and watch for actions container later.
     markPollButtons(document);
     ensureBootstrapObserver();
+
   }
 
   function waitForSocket() {
