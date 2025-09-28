@@ -364,6 +364,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
           ? originalNextSibling
           : null);
 
+
       if (target) {
         originalParent.insertBefore(wrap, target);
       } else {
