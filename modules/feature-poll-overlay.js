@@ -678,7 +678,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     ensureStackHosts();
     rememberOriginal();
 
-    const shouldShowInStack = pollActive && !overlayPreferred;
+    const shouldShowInStack = !overlayPreferred || !pollActive;
     const target = shouldShowInStack
       ? (stackHost || originalParent)
       : (parkingHost || stackHost || originalParent);
