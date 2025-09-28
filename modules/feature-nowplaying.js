@@ -1,6 +1,11 @@
 BTFW.define("feature:nowplaying", [], async () => {
   const $ = (s, r = document) => r.querySelector(s);
 
+  const state = {
+    lastCleanTitle: null,
+    lastMediaKey: null
+  };
+
   function stripPrefix(t) {
     return String(t || "")
       .replace(/^\s*(?:currently|now)\s*playing\s*[:\-]\s*/i, "")
@@ -59,7 +64,7 @@ BTFW.define("feature:nowplaying", [], async () => {
     return active && active.textContent ? active.textContent.trim() : "";
   }
 
-  function setTitle(newTitle) {
+  function setTitle(newTitle, options = {}) {
     let ct = findCurrentTitle();
     if (!ct) {
       ct = createCurrentTitle();
@@ -71,18 +76,60 @@ BTFW.define("feature:nowplaying", [], async () => {
 
     const title = newTitle || getQueueActiveTitle();
     const cleanTitle = stripPrefix(title);
-    
+
+    const currentText = ct.textContent || "";
+    const nextText = cleanTitle || "";
+    const needsDomUpdate = currentText !== nextText || ct.title !== nextText;
+    const titleChanged = state.lastCleanTitle !== cleanTitle;
+
+    if (!needsDomUpdate && !titleChanged && !options.force) {
+      return false;
+    }
+
     ct.textContent = cleanTitle || "";
     ct.title = cleanTitle || "";
     ct.style.setProperty("--length", (cleanTitle || "").length);
-    
-    console.log('[nowplaying] Set title:', cleanTitle);
+
+    state.lastCleanTitle = cleanTitle;
+
+    if (titleChanged || options.forceLog) {
+      console.log('[nowplaying] Set title:', cleanTitle);
+    }
+
+    return true;
   }
 
   function handleMediaChange(data) {
-    console.log('[nowplaying] Media changed:', data);
-    setTitle(data?.title || "");
-    mountTitleIntoSlot();
+    const mediaKey = mediaIdentity(data);
+    const forceUpdate = mediaKey && mediaKey !== state.lastMediaKey;
+    const didUpdate = setTitle(data?.title || "", { force: forceUpdate, forceLog: forceUpdate });
+    if (didUpdate) {
+      mountTitleIntoSlot();
+      if (mediaKey) {
+        state.lastMediaKey = mediaKey;
+      }
+    }
+  }
+
+  function mediaIdentity(media) {
+    if (!media) return "";
+
+    const parts = [
+      media.uid,
+      media.queue?.uid,
+      media.qe?.uid,
+      media.temp?.uid,
+      media.uniqueID,
+      media.id && media.type ? `${media.type}:${media.id}` : null,
+      media.id,
+      media.title ? stripPrefix(media.title) : null
+    ]
+      .map(value => (value === undefined || value === null) ? null : String(value))
+      .filter(value => value);
+
+    if (!parts.length) return "";
+
+    return `m:${parts.join('|')}`;
   }
 
   function boot() {
@@ -97,9 +144,11 @@ BTFW.define("feature:nowplaying", [], async () => {
       if (window.socket && socket.on) {
         socket.on("changeMedia", handleMediaChange);
         socket.on("setCurrent", handleMediaChange);
-        socket.on("mediaUpdate", () => {
-          setTitle();
-          mountTitleIntoSlot();
+        socket.on("mediaUpdate", data => {
+          const didUpdate = setTitle(data?.title, { force: false });
+          if (didUpdate) {
+            mountTitleIntoSlot();
+          }
         });
       }
     } catch (e) {
@@ -111,8 +160,7 @@ BTFW.define("feature:nowplaying", [], async () => {
         const originalChangeMedia = Callbacks.changeMedia;
         Callbacks.changeMedia = function(data) {
           originalChangeMedia(data);
-          setTitle(data.title);
-          mountTitleIntoSlot();
+          handleMediaChange(data);
         };
       }
     } catch (e) {
@@ -125,8 +173,8 @@ BTFW.define("feature:nowplaying", [], async () => {
         const queueTitle = getQueueActiveTitle();
         if (queueTitle) {
           setTitle(queueTitle);
-          mountTitleIntoSlot();
         }
+        mountTitleIntoSlot();
       });
       mo.observe(q, { 
         childList: true, 
