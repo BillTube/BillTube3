@@ -5,15 +5,12 @@ BTFW.define("feature:poll-overlay", [], async () => {
   const CSS_ID = "btfw-poll-overlay-css";
   const LS_KEY = "btfw:poll-overlay:preferred";
   const ROOT_FLOAT_CLASS = "btfw-poll-overlay-active";
-  const PLACEHOLDER_ID = "btfw-poll-overlay-placeholder";
   const OVERLAY_ID = "btfw-poll-overlay";
-  const LAUNCHER_ID = "btfw-poll-overlay-launcher";
+  const PARKING_ID = "btfw-poll-parking";
+  const HISTORY_ID = "btfw-poll-history";
+  const HISTORY_LIST_CLASS = "btfw-poll-history__list";
 
   const ACTIVE_SELECTORS = [
-    ".poll-answers",
-    ".poll-entry",
-    ".poll-options",
-    ".poll-votes",
     "button[data-option]",
     "input[type=radio][name^=poll]",
     "input[type=checkbox][name^=poll]"
@@ -43,15 +40,17 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let overlayHost = null;
   let overlayInner = null;
   let overlayClose = null;
-  let launcher = null;
-  let placeholder = null;
-  let placeholderButton = null;
   let pollObserver = null;
   let videoMountObserver = null;
   let overlayPreferred = readPreference();
   let pollActive = false;
-  let placeholderActions = null;
-  let placeholderNewButton = null;
+  let stackHost = null;
+  let parkingHost = null;
+  let historySection = null;
+  let historyList = null;
+  let clearHistoryButton = null;
+  let currentPollSignature = null;
+  let lastArchivedSignature = null;
   let socketWired = false;
 
 
@@ -202,93 +201,125 @@ BTFW.define("feature:poll-overlay", [], async () => {
         margin-left: 0;
       }
 
-      #${LAUNCHER_ID} {
-        position: absolute;
-        top: 50%;
-        right: clamp(12px, 4vw, 40px);
-        transform: translateY(-50%);
-        z-index: 1595;
+      #${PARKING_ID} {
         display: none;
-        pointer-events: auto;
       }
 
-      #${LAUNCHER_ID}.btfw-visible {
-        display: inline-flex;
+      #${HISTORY_ID} {
+        margin-top: 16px;
+        padding: 16px;
+        border-radius: 16px;
+        background: color-mix(in srgb, var(--btfw-color-panel, #202333) 88%, transparent 12%);
+        border: 1px solid color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 32%, transparent 68%);
+        box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
       }
 
-      #${LAUNCHER_ID} .btfw-poll-launcher__btn {
-        display: inline-flex;
+      #${HISTORY_ID}[hidden] {
+        display: none;
+      }
+
+      #${HISTORY_ID} .btfw-poll-history__header {
+        display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 8px 14px;
-        border-radius: 999px;
-        border: 0;
-        background: rgba(16, 18, 26, 0.74);
-        color: #fff;
-        font-size: 0.85rem;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      #${HISTORY_ID} .btfw-poll-history__title {
+        font-size: 0.95rem;
         font-weight: 600;
-        letter-spacing: 0.02em;
+        letter-spacing: 0.01em;
+      }
+
+      #${HISTORY_ID} .btfw-poll-history__clear {
+        border: 0;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--btfw-color-surface, #1c1f2a) 82%, transparent 18%);
+        color: var(--btfw-color-text, #f1f2fb);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 6px 12px;
         cursor: pointer;
         transition: background 0.2s ease, transform 0.2s ease;
       }
 
-      #${LAUNCHER_ID} .btfw-poll-launcher__btn:hover {
-        background: rgba(109, 77, 246, 0.9);
+      #${HISTORY_ID} .btfw-poll-history__clear:hover {
+        background: color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 36%, transparent 64%);
         transform: translateY(-1px);
       }
 
-      #${LAUNCHER_ID} .btfw-poll-launcher__btn:focus-visible {
-        outline: 2px solid var(--btfw-color-accent, #6d4df6);
-        outline-offset: 2px;
+      #${HISTORY_ID} .${HISTORY_LIST_CLASS} {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
       }
 
-      #${PLACEHOLDER_ID} {
-        display: none;
-        padding: 16px;
+      #${HISTORY_ID} .btfw-poll-history__entry {
+        background: color-mix(in srgb, var(--btfw-color-surface, #1c1f2a) 86%, transparent 14%);
+        border: 1px solid color-mix(in srgb, var(--btfw-color-border, rgba(109, 77, 246, 0.6)) 40%, transparent 60%);
         border-radius: 14px;
-        border: 1px dashed color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 42%, transparent 58%);
-        background: color-mix(in srgb, var(--btfw-color-panel, #202333) 90%, transparent 10%);
-        color: var(--btfw-color-text, #e8eafd);
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
 
-      #${PLACEHOLDER_ID}.btfw-visible {
-        display: block;
+      #${HISTORY_ID} .btfw-poll-history__entry-header {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
       }
 
-      #${PLACEHOLDER_ID} .btfw-poll-placeholder__title {
+      #${HISTORY_ID} .btfw-poll-history__entry-title {
         font-size: 0.95rem;
         font-weight: 600;
-        letter-spacing: 0.01em;
-        margin-bottom: 6px;
       }
 
-      #${PLACEHOLDER_ID} .btfw-poll-placeholder__text {
-        margin-bottom: 10px;
-        font-size: 0.85rem;
-        opacity: 0.85;
+      #${HISTORY_ID} .btfw-poll-history__entry-meta {
+        font-size: 0.78rem;
+        opacity: 0.7;
       }
 
-      #${PLACEHOLDER_ID} .btfw-poll-placeholder__btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      #${PLACEHOLDER_ID} .btfw-poll-placeholder__actions {
-        display: none;
-        margin-top: 12px;
+      #${HISTORY_ID} .btfw-poll-history__options {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
         gap: 8px;
       }
 
-      #${PLACEHOLDER_ID} .btfw-poll-placeholder__actions.btfw-visible {
+      #${HISTORY_ID} .btfw-poll-history__option {
         display: flex;
-        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--btfw-color-panel, #202333) 82%, transparent 18%);
       }
 
-      #${PLACEHOLDER_ID} .btfw-poll-placeholder__new {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
+      #${HISTORY_ID} .btfw-poll-history__option-label {
+        flex: 1;
+      }
+
+      #${HISTORY_ID} .btfw-poll-history__option-count {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+      }
+
+      #${HISTORY_ID} .btfw-poll-history__option--winner {
+        background: color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 28%, transparent 72%);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 46%, transparent 54%);
+      }
+
+      #${HISTORY_ID} .btfw-poll-history__option--winner .btfw-poll-history__option-label {
+        font-weight: 600;
       }
 
       @media (max-width: 768px) {
@@ -299,12 +330,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
           transform: none;
           width: auto;
           max-height: calc(100% - clamp(96px, 22vh, 240px));
-        }
-
-        #${LAUNCHER_ID} {
-          top: auto;
-          bottom: clamp(12px, 6vw, 30px);
-          transform: none;
         }
       }
     `;
@@ -318,82 +343,257 @@ BTFW.define("feature:poll-overlay", [], async () => {
     originalNextSibling = pollWrap.nextSibling;
   }
 
-  function ensurePlaceholder() {
-    if (placeholder) return placeholder;
-    placeholder = document.createElement("div");
-    placeholder.id = PLACEHOLDER_ID;
-    placeholder.className = "well well-sm btfw-poll-placeholder";
-    placeholder.innerHTML = `
-      <div class="btfw-poll-placeholder__title">Poll overlay</div>
-      <p class="btfw-poll-placeholder__text">The active poll is floating over the video.</p>
-      <button type="button" class="btn btn-sm btn-default btfw-poll-placeholder__btn">Return poll to sidebar</button>
-      <div class="btfw-poll-placeholder__actions" aria-hidden="true"></div>
-    `;
-    placeholderButton = placeholder.querySelector(".btfw-poll-placeholder__btn");
-    if (placeholderButton) {
-      placeholderButton.addEventListener("click", () => setOverlayPreferred(false));
-    }
-    placeholderActions = placeholder.querySelector(".btfw-poll-placeholder__actions");
-    return placeholder;
-  }
+  function ensureStackHosts() {
+    const stackBody = document.querySelector(`#btfw-stack .btfw-stack-item[data-bind="poll-group"] .btfw-stack-item__body`);
+    if (stackBody) {
+      stackHost = stackBody;
+      if (!parkingHost) {
+        parkingHost = document.createElement("div");
+        parkingHost.id = PARKING_ID;
+        parkingHost.className = "btfw-poll-parking";
+        parkingHost.setAttribute("hidden", "hidden");
+      }
+      if (parkingHost.parentElement !== stackBody) {
+        stackBody.insertBefore(parkingHost, stackBody.firstChild);
+      }
 
-  function placePlaceholder() {
-    if (!placeholder || !originalParent) return;
-    if (placeholder.parentElement === originalParent) return;
-    const anchor = originalNextSibling && originalNextSibling.parentElement === originalParent
-      ? originalNextSibling
-      : null;
-    if (anchor) {
-      originalParent.insertBefore(placeholder, anchor);
-    } else {
-      originalParent.appendChild(placeholder);
-    }
-  }
-
-  function findNewPollButton() {
-    if (pollWrap) {
-      const button = pollWrap.querySelector("#newpollbtn, button[data-action=\"newpoll\"], button[data-action=\"newPoll\"], .newpollbtn, .poll-new-btn");
-      if (button) return button;
-    }
-    return document.getElementById("newpollbtn");
-  }
-
-  function ensurePlaceholderNewButton() {
-    if (!placeholderActions) return;
-    if (!placeholderNewButton) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "btn btn-sm btn-primary btfw-poll-placeholder__new";
-      btn.innerHTML = "<span aria-hidden=\"true\">➕</span><span>New poll</span>";
-      btn.addEventListener("click", () => {
-        const target = findNewPollButton();
-        if (target && typeof target.click === "function") {
-          target.click();
+      if (!historySection) {
+        historySection = document.createElement("section");
+        historySection.id = HISTORY_ID;
+        historySection.className = "btfw-poll-history";
+        historySection.setAttribute("hidden", "hidden");
+        historySection.setAttribute("aria-hidden", "true");
+        historySection.innerHTML = `
+          <header class="btfw-poll-history__header">
+            <span class="btfw-poll-history__title">Poll history</span>
+            <button type="button" class="btfw-poll-history__clear">Clear</button>
+          </header>
+          <div class="${HISTORY_LIST_CLASS}" role="list"></div>
+        `;
+        historyList = historySection.querySelector(`.${HISTORY_LIST_CLASS}`);
+        clearHistoryButton = historySection.querySelector(".btfw-poll-history__clear");
+        if (clearHistoryButton && !clearHistoryButton._btfwBound) {
+          clearHistoryButton.addEventListener("click", () => {
+            clearHistoryEntries();
+            clearHistoryButton.blur();
+          });
+          clearHistoryButton._btfwBound = true;
         }
-        btn.blur();
+      } else {
+        historyList = historySection.querySelector(`.${HISTORY_LIST_CLASS}`);
+        clearHistoryButton = historySection.querySelector(".btfw-poll-history__clear");
+        if (clearHistoryButton && !clearHistoryButton._btfwBound) {
+          clearHistoryButton.addEventListener("click", () => {
+            clearHistoryEntries();
+            clearHistoryButton.blur();
+          });
+          clearHistoryButton._btfwBound = true;
+        }
+      }
+
+      if (historySection.parentElement !== stackBody) {
+        stackBody.appendChild(historySection);
+      }
+      syncHistoryVisibility();
+    } else {
+      stackHost = null;
+    }
+    return stackHost;
+  }
+
+  function syncHistoryVisibility() {
+    if (!historySection) return;
+    const hasItems = !!(historyList && historyList.children.length);
+    if (hasItems) {
+      historySection.removeAttribute("hidden");
+      historySection.setAttribute("aria-hidden", "false");
+    } else {
+      historySection.setAttribute("hidden", "hidden");
+      historySection.setAttribute("aria-hidden", "true");
+    }
+  }
+
+  function clearHistoryEntries() {
+    if (!historyList) return;
+    while (historyList.firstChild) {
+      historyList.removeChild(historyList.firstChild);
+    }
+    lastArchivedSignature = null;
+    syncHistoryVisibility();
+  }
+
+  function appendHistoryEntry(entry, signature) {
+    if (!entry) return;
+    ensureStackHosts();
+    if (!historyList) return;
+    entry.classList.add("btfw-poll-history__entry");
+    if (signature) {
+      entry.dataset.signature = signature;
+    }
+    historyList.insertBefore(entry, historyList.firstChild);
+    syncHistoryVisibility();
+  }
+
+  function normalisePollOption(option, index, counts) {
+    if (option == null) {
+      return { text: `Option ${index + 1}`, count: typeof counts?.[index] === "number" ? counts[index] : 0 };
+    }
+    if (typeof option === "string" || typeof option === "number") {
+      return {
+        text: String(option),
+        count: typeof counts?.[index] === "number" ? counts[index] : 0
+      };
+    }
+    if (typeof option === "object") {
+      const text = option.option || option.title || option.text || option.name || option.label || `Option ${index + 1}`;
+      const count = typeof option.count === "number"
+        ? option.count
+        : typeof option.votes === "number"
+          ? option.votes
+          : typeof option.voteCount === "number"
+            ? option.voteCount
+            : typeof counts?.[index] === "number"
+              ? counts[index]
+              : 0;
+      return { text: String(text), count };
+    }
+    return {
+      text: `Option ${index + 1}`,
+      count: typeof counts?.[index] === "number" ? counts[index] : 0
+    };
+  }
+
+  function normalisePollData(raw) {
+    if (!raw) return null;
+    const poll = raw.poll ? normalisePollData(raw.poll) : raw;
+    if (poll && poll !== raw && poll.signature) return poll;
+
+    const title = poll && poll.title ? String(poll.title) : "Poll";
+    const optionsSource = Array.isArray(poll?.options)
+      ? poll.options
+      : Array.isArray(poll?.opts)
+        ? poll.opts
+        : Array.isArray(poll?.answers)
+          ? poll.answers
+          : [];
+    const counts = Array.isArray(poll?.counts)
+      ? poll.counts
+      : Array.isArray(poll?.votes)
+        ? poll.votes
+        : null;
+
+    const options = optionsSource.map((opt, idx) => normalisePollOption(opt, idx, counts));
+    const total = options.reduce((sum, opt) => sum + (typeof opt.count === "number" ? opt.count : 0), 0);
+
+    const idValue = poll && (poll.id ?? poll.key ?? poll.uuid ?? poll.guid ?? poll.ts ?? poll.timestamp);
+    const id = idValue != null ? String(idValue) : null;
+    const signatureCore = `${title}::${options.map(opt => `${opt.text}|${opt.count ?? 0}`).join("::")}`;
+    const signature = id ? `id:${id}` : `${signatureCore}::${Date.now()}`;
+
+    return { title, options, total, signature, id, normalised: true };
+  }
+
+  function createHistoryEntryFromData(data) {
+    if (!data) return null;
+    const { title, options, total } = data;
+    const entry = document.createElement("article");
+
+    const header = document.createElement("header");
+    header.className = "btfw-poll-history__entry-header";
+
+    const titleEl = document.createElement("span");
+    titleEl.className = "btfw-poll-history__entry-title";
+    titleEl.textContent = title || "Poll";
+    header.appendChild(titleEl);
+
+    const meta = document.createElement("span");
+    meta.className = "btfw-poll-history__entry-meta";
+    meta.textContent = new Date().toLocaleString();
+    header.appendChild(meta);
+
+    entry.appendChild(header);
+
+    if (Array.isArray(options) && options.length) {
+      const list = document.createElement("ol");
+      list.className = "btfw-poll-history__options";
+      let bestCount = -Infinity;
+      options.forEach(opt => {
+        const count = typeof opt.count === "number" ? opt.count : 0;
+        if (count > bestCount) bestCount = count;
       });
-      placeholderActions.appendChild(btn);
-      placeholderNewButton = btn;
+
+      options.forEach(opt => {
+        const item = document.createElement("li");
+        item.className = "btfw-poll-history__option";
+        const count = typeof opt.count === "number" ? opt.count : 0;
+        if (count === bestCount && bestCount > 0) {
+          item.classList.add("btfw-poll-history__option--winner");
+        }
+
+        const label = document.createElement("span");
+        label.className = "btfw-poll-history__option-label";
+        label.textContent = opt.text || "Option";
+        item.appendChild(label);
+
+        const countEl = document.createElement("span");
+        countEl.className = "btfw-poll-history__option-count";
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        countEl.textContent = `${count}${total > 0 ? ` (${pct}%)` : ""}`;
+        item.appendChild(countEl);
+
+        list.appendChild(item);
+      });
+      entry.appendChild(list);
     }
+
+    return entry;
   }
 
-  function syncPlaceholderControls() {
-    if (!placeholder) return;
-    ensurePlaceholderNewButton();
-    if (!placeholderActions) return;
-    const target = findNewPollButton();
-    const hasTarget = !!(target && typeof target.click === "function");
-    if (placeholderNewButton) {
-      placeholderNewButton.disabled = !hasTarget;
-    }
-    placeholderActions.classList.toggle("btfw-visible", hasTarget);
-    placeholderActions.setAttribute("aria-hidden", hasTarget ? "false" : "true");
+  function extractDomPollData() {
+    if (!pollWrap) return null;
+    const titleEl = pollWrap.querySelector(".poll-title, .poll-question, h3, legend, header strong");
+    const title = titleEl && titleEl.textContent ? titleEl.textContent.trim() : "Poll";
+    const optionNodes = pollWrap.querySelectorAll(".poll-option, .poll-entry, .poll-row, .poll-answers li, .poll-options li");
+    const options = [];
+    optionNodes.forEach(node => {
+      if (!node || !node.textContent) return;
+      const textEl = node.querySelector(".poll-option-label, label, .option, .poll-answer, .poll-option-text");
+      const countEl = node.querySelector(".poll-votes, .poll-option-count, .count, .votes");
+      const text = textEl && textEl.textContent ? textEl.textContent.trim() : node.textContent.trim();
+      let count = 0;
+      if (countEl && countEl.textContent) {
+        const match = countEl.textContent.match(/(\d+)/);
+        if (match) {
+          count = parseInt(match[1], 10) || 0;
+        }
+      }
+      options.push({ text, count });
+    });
+    if (!options.length) return { title, options: [], total: 0, signature: currentPollSignature || `${title}::${Date.now()}`, normalised: true };
+    const total = options.reduce((sum, opt) => sum + (typeof opt.count === "number" ? opt.count : 0), 0);
+    const signature = currentPollSignature || `${title}::${options.map(opt => `${opt.text}|${opt.count ?? 0}`).join("::")}::${Date.now()}`;
+    return { title, options, total, signature, normalised: true };
   }
 
-  function hidePlaceholderActions() {
-    if (!placeholderActions) return;
-    placeholderActions.classList.remove("btfw-visible");
-    placeholderActions.setAttribute("aria-hidden", "true");
+  function archivePollFromDom() {
+    const data = extractDomPollData();
+    if (!data) return;
+    if (data.signature && data.signature === lastArchivedSignature) return;
+    const entry = createHistoryEntryFromData(data);
+    appendHistoryEntry(entry, data.signature);
+    lastArchivedSignature = data.signature;
+  }
+
+  function archivePollData(raw) {
+    const data = raw && raw.normalised ? raw : normalisePollData(raw);
+    if (!data) return;
+    if (data.signature && data.signature === lastArchivedSignature) return;
+    if (data.signature) {
+      currentPollSignature = data.signature;
+    }
+    const entry = createHistoryEntryFromData(data);
+    appendHistoryEntry(entry, data.signature);
+    lastArchivedSignature = data.signature;
   }
 
   function ensureOverlayElements() {
@@ -410,21 +610,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
       overlayClose = document.createElement("button");
       overlayClose.type = "button";
       overlayClose.className = "btfw-poll-overlay__close";
-      overlayClose.setAttribute("aria-label", "Return poll to sidebar");
+      overlayClose.setAttribute("aria-label", "Hide poll overlay");
       overlayClose.innerHTML = "<span aria-hidden=\"true\">&times;</span>";
       overlayClose.addEventListener("click", () => setOverlayPreferred(false));
       overlayHost.appendChild(overlayClose);
-    }
-
-    if (!launcher) {
-      launcher = document.createElement("div");
-      launcher.id = LAUNCHER_ID;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "btfw-poll-launcher__btn";
-      btn.innerHTML = "<span aria-hidden=\"true\">📊</span><span>Show poll overlay</span>";
-      btn.addEventListener("click", () => setOverlayPreferred(true));
-      launcher.appendChild(btn);
     }
   }
 
@@ -457,67 +646,79 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (overlayHost && overlayHost.parentElement !== videoWrap) {
       videoWrap.appendChild(overlayHost);
     }
-    if (launcher && launcher.parentElement !== videoWrap) {
-      videoWrap.appendChild(launcher);
-    }
     return true;
   }
 
   function adoptPollToOverlay() {
     if (!pollWrap) return;
     attachOverlayToVideo();
-    ensurePlaceholder();
-    placePlaceholder();
+    ensureStackHosts();
     rememberOriginal();
 
     if (overlayInner && pollWrap.parentElement !== overlayInner) {
       overlayInner.appendChild(pollWrap);
     }
 
+    pollWrap.hidden = false;
     pollWrap.classList.add("btfw-poll-overlay__panel");
     pollWrap.setAttribute("data-btfw-poll-overlay", "video");
-    if (placeholder) {
-      placeholder.classList.add("btfw-visible");
-      placeholder.setAttribute("data-btfw-poll-overlay", "placeholder");
-    }
-
-    syncPlaceholderControls();
 
     if (overlayHost) overlayHost.classList.add("btfw-visible");
     document.documentElement.classList.add(ROOT_FLOAT_CLASS);
   }
 
-  function restorePollToSidebar() {
-    if (!pollWrap || !originalParent) return;
+  function parkPollInStack() {
+    if (!pollWrap) return;
+
+    ensureStackHosts();
+    rememberOriginal();
+
+    const shouldShowInStack = pollActive && !overlayPreferred;
+    const target = shouldShowInStack
+      ? (stackHost || originalParent)
+      : (parkingHost || stackHost || originalParent);
+
+    if (target) {
+      if (target === stackHost && stackHost) {
+        const reference = historySection && historySection.parentElement === stackHost ? historySection : null;
+        if (reference) {
+          if (pollWrap.parentElement !== stackHost || pollWrap.nextSibling !== reference) {
+            stackHost.insertBefore(pollWrap, reference);
+          }
+        } else if (pollWrap.parentElement !== stackHost) {
+          stackHost.appendChild(pollWrap);
+        }
+      } else if (target === parkingHost && parkingHost) {
+        if (pollWrap.parentElement !== parkingHost) {
+          parkingHost.appendChild(pollWrap);
+        }
+      } else if (target === originalParent && originalParent) {
+        const anchor = originalNextSibling && originalNextSibling.parentElement === originalParent
+          ? originalNextSibling
+          : null;
+        if (anchor) {
+          originalParent.insertBefore(pollWrap, anchor);
+        } else if (pollWrap.parentElement !== originalParent) {
+          originalParent.appendChild(pollWrap);
+        }
+      } else if (pollWrap.parentElement !== target) {
+        target.appendChild(pollWrap);
+      }
+    }
 
     pollWrap.classList.remove("btfw-poll-overlay__panel");
-    pollWrap.removeAttribute("data-btfw-poll-overlay");
+    pollWrap.setAttribute("data-btfw-poll-overlay", shouldShowInStack ? "stack" : "parked");
+    pollWrap.hidden = shouldShowInStack ? false : !pollActive;
 
-    const anchor = placeholder && placeholder.parentElement === originalParent ? placeholder : originalNextSibling;
-    if (anchor && anchor.parentElement === originalParent) {
-      originalParent.insertBefore(pollWrap, anchor);
-    } else {
-      originalParent.appendChild(pollWrap);
+    if (parkingHost) {
+      parkingHost.setAttribute("hidden", "hidden");
     }
-
-    if (placeholder) {
-      placeholder.classList.remove("btfw-visible");
-      placeholder.removeAttribute("data-btfw-poll-overlay");
-    }
-
-    hidePlaceholderActions();
 
     if (overlayHost) {
       overlayHost.classList.remove("btfw-visible");
     }
 
     document.documentElement.classList.remove(ROOT_FLOAT_CLASS);
-  }
-
-  function updateLauncherVisibility(show) {
-    attachOverlayToVideo();
-    if (!launcher) return;
-    launcher.classList.toggle("btfw-visible", !!show);
   }
 
   function pollHasActiveContent() {
@@ -543,30 +744,36 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function syncOverlay() {
     if (!pollWrap) return;
 
+    ensureStackHosts();
     rememberOriginal();
+    const wasActive = pollActive;
     const active = pollHasActiveContent();
-    if (active !== pollActive) {
-      pollActive = active;
+    pollActive = active;
+
+    if (pollActive) {
+      const domData = extractDomPollData();
+      if (domData && domData.signature) {
+        currentPollSignature = domData.signature;
+      }
     }
 
     const shouldFloat = overlayPreferred && pollActive;
-
     if (shouldFloat) {
       adoptPollToOverlay();
-      updateLauncherVisibility(false);
     } else {
-      restorePollToSidebar();
-      updateLauncherVisibility(pollActive && !overlayPreferred);
+      parkPollInStack();
     }
 
-    if (!pollActive) {
-      updateLauncherVisibility(false);
-      if (placeholder) placeholder.classList.remove("btfw-visible");
-      hidePlaceholderActions();
-    }
-
-    if (placeholder && placeholder.classList.contains("btfw-visible")) {
-      syncPlaceholderControls();
+    if (!pollActive && wasActive) {
+      archivePollFromDom();
+      currentPollSignature = null;
+    } else if (!pollActive && !wasActive) {
+      const domData = extractDomPollData();
+      if (domData && Array.isArray(domData.options) && domData.options.length) {
+        currentPollSignature = domData.signature;
+        archivePollData(domData);
+        currentPollSignature = null;
+      }
     }
   }
 
@@ -580,8 +787,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function handlePollWrapFound(element) {
     pollWrap = element;
     rememberOriginal();
-    ensurePlaceholder();
-    syncPlaceholderControls();
+    ensureStackHosts();
     observePollChanges();
     raf(() => syncOverlay());
   }
@@ -622,22 +828,27 @@ BTFW.define("feature:poll-overlay", [], async () => {
     });
   }
 
-  function handleSocketPollActive() {
+  function handleSocketPollActive(data) {
     raf(() => {
+      const info = normalisePollData(data);
+      if (info) {
+        currentPollSignature = info.signature;
+      }
       pollActive = true;
       syncOverlay();
     });
   }
 
-  function handleSocketPollClosed() {
+  function handleSocketPollClosed(data) {
     raf(() => {
-      pollActive = false;
-      restorePollToSidebar();
-      if (placeholder) {
-        placeholder.classList.remove("btfw-visible");
+      const info = normalisePollData(data);
+      if (info) {
+        currentPollSignature = info.signature;
+        archivePollData(info);
+      } else {
+        archivePollData(data);
       }
-      hidePlaceholderActions();
-      updateLauncherVisibility(false);
+      pollActive = false;
       syncOverlay();
     });
   }
@@ -659,6 +870,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function init() {
     injectCSS();
     attachOverlayToVideo();
+    ensureStackHosts();
     waitForPollWrap();
     wireSocket();
   }
