@@ -173,7 +173,7 @@ function normalizeChatActionButtons() {
     b.id = "btfw-btn-gif";
     b.className = "button is-dark is-small btfw-chatbtn";
     b.title = "GIFs";
-    b.innerHTML = '<i class="fa-light fa-gif"></i>';
+    b.innerHTML = '<i class="fa-solid fa-video"></i>';
     actions.appendChild(b);
   }
 
@@ -189,9 +189,9 @@ function normalizeChatActionButtons() {
     gifBtn.classList.add("button", "is-dark", "is-small");
     gifBtn.title = gifBtn.title || "GIFs";
 
-    const hasIcon = gifBtn.querySelector("i.fa-light.fa-gif");
+    const hasIcon = gifBtn.querySelector("i.fa-solid.fa-video");
     if (!hasIcon) {
-      gifBtn.innerHTML = '<i class="fa-light fa-gif"></i>';
+      gifBtn.innerHTML = '<i class="fa-solid fa-video"></i>';
     }
   }
 
