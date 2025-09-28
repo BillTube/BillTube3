@@ -25,7 +25,7 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     {
       id: "poll-group",
       title: "Polls & Voting",
-      selectors: ["#pollwrap", "#btfw-poll-overlay-placeholder"],
+      selectors: ["#pollwrap", "#btfw-poll-parking", "#btfw-poll-history"],
       priority: 4
     }
   ];
