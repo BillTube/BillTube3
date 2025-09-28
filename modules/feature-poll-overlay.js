@@ -198,7 +198,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
         top: clamp(8px, 4vw, 20px);
         right: clamp(8px, 4vw, 20px);
         left: clamp(8px, 4vw, 20px);
-
+        transform: none;
         width: auto;
         max-width: none;
       }
@@ -213,7 +213,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
         top: clamp(8px, 4vw, 20px);
         right: clamp(8px, 4vw, 20px);
         transform: none;
-
       }
 
       #pollwrap.btfw-poll-overlay__panel {
@@ -307,6 +306,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function ensureOverlayHost() {
     if (overlayHost && overlayInner) return overlayHost;
 
+
     const videoWrap = document.getElementById("videowrap");
     if (!videoWrap) return null;
 
@@ -321,6 +321,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     inner.setAttribute("aria-live", "polite");
     inner.setAttribute("aria-label", "Current poll");
     overlayHost.appendChild(inner);
+
     const toggle = document.createElement("button");
     toggle.type = "button";
     toggle.className = "btfw-poll-overlay__toggle";
@@ -384,6 +385,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     placeholderToggle = placeholder.querySelector(".btfw-poll-overlay-placeholder__btn");
     if (placeholderToggle) {
       placeholderToggle.addEventListener("click", () => setOverlayEnabled(true));
+
     }
     wrap.classList.add("btfw-poll-overlay__panel");
     startPollObserver();
@@ -425,6 +427,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
       overlayInner.appendChild(wrap);
     }
     wrap.classList.add("btfw-poll-overlay__panel");
+    try {
+      wrap.dataset.btfwPollOverlay = "video";
+    } catch (_) {}
     startPollObserver();
     startMaintainLoop();
     syncVisibility();
@@ -441,6 +446,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (!wrap) return false;
     pollWrap = wrap;
     wrap.classList.remove("btfw-poll-overlay__panel");
+    try {
+      delete wrap.dataset.btfwPollOverlay;
+    } catch (_) {
+      wrap.removeAttribute("data-btfw-poll-overlay");
+    }
 
     if (originalParent) {
       if (placeholder && placeholder.parentElement !== originalParent) {
@@ -467,6 +477,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (placeholder) {
       placeholder.removeAttribute("hidden");
     }
+
     if (overlayHost) {
       overlayHost.classList.remove("btfw-visible");
       overlayHost.setAttribute("aria-hidden", "true");
@@ -511,7 +522,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
       overlayLauncher.classList.toggle("btfw-visible", visible);
       overlayLauncher.hidden = !visible;
       overlayLauncher.setAttribute("aria-hidden", visible ? "false" : "true");
-
     }
   }
 
@@ -519,7 +529,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (!pollWrap) return false;
     for (const selector of ACTIVE_SELECTORS) {
       if (pollWrap.querySelector(selector)) return true;
+
     }
+  }
 
     const text = (pollWrap.textContent || "").trim();
     if (!text) return false;
@@ -560,8 +572,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (!overlayHost) return;
 
     const active = overlayEnabled && pollWrap && getCurrentActiveState();
-    overlayHost.classList.toggle("btfw-visible", !!active);
-    overlayHost.setAttribute("aria-hidden", active ? "false" : "true");
+    const visible = !!active;
+    overlayHost.classList.toggle("btfw-visible", visible);
+    overlayHost.setAttribute("aria-hidden", visible ? "false" : "true");
+    document.documentElement.classList.toggle("btfw-poll-overlay-active", visible);
+
   }
 
   function startPollObserver() {
@@ -640,7 +655,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const active = detectActiveFromDOM();
     pollActiveState = active;
     if (overlayEnabled && active) adoptPollWrap();
-
     else restorePollWrap();
     updateControls();
     scheduleFrame(syncVisibility);
