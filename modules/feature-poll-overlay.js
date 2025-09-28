@@ -160,6 +160,20 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let userVotes = new Set(); // Track which options user voted for
   let pollSyncInterval = null;
 
+  const ENTITY_DECODER = document.createElement("textarea");
+
+  function decodeHtmlEntities(value) {
+    if (typeof value !== "string") {
+      if (value == null) return "";
+      return String(value);
+    }
+    if (value.length === 0) {
+      return "";
+    }
+    ENTITY_DECODER.innerHTML = value;
+    return ENTITY_DECODER.value;
+  }
+
   function injectCSS() {
     if (document.getElementById(CSS_ID)) return;
     const style = document.createElement("style");
@@ -234,7 +248,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const votesSpan = overlay.querySelector(".btfw-poll-votes");
     const endBtn = overlay.querySelector(".btfw-poll-end-btn");
 
-    if (title) title.textContent = poll.title || "Poll";
+    if (title) title.textContent = decodeHtmlEntities(poll.title || "Poll");
     
     // Show/hide end poll button based on permissions
     if (endBtn) {
@@ -253,7 +267,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
         
         const optionText = document.createElement("span");
         optionText.className = "btfw-poll-option-text";
-        optionText.textContent = option;
+        optionText.textContent = decodeHtmlEntities(option);
         
         // Set initial vote count
         const voteCount = poll.votes && poll.votes[index] ? poll.votes[index] : 0;
