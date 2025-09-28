@@ -53,6 +53,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let overlayPreferred = readPreference();
   let pollActive = false;
 
+
   if (!featureEnabled()) {
     console.info("[poll-overlay] Disabled via channel configuration.");
     return {
@@ -76,7 +77,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
           return cfg;
         }
       } catch (_) {
-        // ignore this candidate and continue
       }
     }
     return null;
@@ -110,6 +110,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       localStorage.setItem(LS_KEY, value ? "1" : "0");
     } catch (_) {}
   }
+
 
   function injectCSS() {
     if (document.getElementById(CSS_ID)) return;
@@ -359,6 +360,14 @@ BTFW.define("feature:poll-overlay", [], async () => {
       btn.addEventListener("click", () => setOverlayPreferred(true));
       launcher.appendChild(btn);
     }
+    wrap.classList.add("btfw-poll-overlay__panel");
+    try {
+      wrap.dataset.btfwPollOverlay = "video";
+    } catch (_) {}
+    startPollObserver();
+    startMaintainLoop();
+    syncVisibility();
+    return true;
   }
 
   function attachOverlayToVideo() {
@@ -438,7 +447,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
     if (overlayHost) {
       overlayHost.classList.remove("btfw-visible");
+
     }
+  }
 
     document.documentElement.classList.remove(ROOT_FLOAT_CLASS);
   }
@@ -511,7 +522,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
       observePollChanges();
       raf(() => syncOverlay(true));
       return;
+
     }
+    if (attempt > 40) return Promise.resolve(null);
+    return new Promise(resolve => {
+      setTimeout(() => resolve(waitForSocket(attempt + 1)), 150);
+    });
+  }
 
     const observer = new MutationObserver(() => {
       const found = document.getElementById("pollwrap");
@@ -538,7 +555,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
       setTimeout(() => {
         waitForSocket(attempt + 1).then(resolve);
       }, 500);
+
     });
+    observer.observe(target, { childList: true, subtree: true });
   }
 
   function wireSocket() {
@@ -562,6 +581,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     wireSocket();
   }
 
+
   init();
 
   return {
@@ -569,5 +589,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
     show: () => setOverlayPreferred(true),
     hide: () => setOverlayPreferred(false),
     sync: () => syncOverlay(true)
+
   };
 });
