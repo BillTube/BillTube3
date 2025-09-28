@@ -102,7 +102,44 @@ document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopi
     if (!body || !ul) return;
     if (ul.parentElement !== body) {
       ul.classList.add("btfw-userlist-overlay");
+      ul.classList.remove("btfw-userlist-overlay--open");
+      ul.style.removeProperty("display");
+      ul.style.removeProperty("position");
       body.appendChild(ul);
+    }
+  }
+
+  function ensureUserlistWatch(){
+    if (document._btfw_userlist_watch) return;
+    const root = document.body || document.documentElement;
+    if (!root) return;
+
+    const observer = new MutationObserver((mutations) => {
+      let relevant = false;
+      for (const mutation of mutations) {
+        if (mutation.type === "childList") {
+          for (const node of mutation.addedNodes) {
+            if (!(node instanceof HTMLElement)) continue;
+            if (node.id === "userlist" || node.querySelector?.("#userlist")) {
+              relevant = true;
+              break;
+            }
+          }
+        }
+        if (relevant) break;
+        if (mutation.target && mutation.target.id === "userlist") {
+          relevant = true;
+          break;
+        }
+      }
+      if (relevant) adoptUserlistIntoPopover();
+    });
+
+    try {
+      observer.observe(root, { childList: true, subtree: true });
+      document._btfw_userlist_watch = observer;
+    } catch (_) {
+      adoptUserlistIntoPopover();
     }
   }
 function actionsNode(){
@@ -136,23 +173,143 @@ function normalizeChatActionButtons() {
     b.id = "btfw-btn-gif";
     b.className = "button is-dark is-small btfw-chatbtn";
     b.title = "GIFs";
-    b.innerHTML = '<span class="gif-badge">GIF</span>';
+    b.innerHTML = '<i class="fa fa-light fa-gif"></i>';
     actions.appendChild(b);
   }
 
   // if some other module created them elsewhere, adopt them
-  ["btfw-btn-emotes", "btfw-btn-gif", "btfw-chatcmds-btn", "btfw-users-toggle"].forEach(id=>{
+  ["btfw-btn-emotes", "btfw-btn-gif", "btfw-chatcmds-btn", "btfw-users-toggle", "usercount"].forEach(id=>{
     const el = document.getElementById(id);
     if (el && el.parentElement !== actions) actions.appendChild(el);
   });
+
+  const gifBtn = actions.querySelector("#btfw-btn-gif");
+  if (gifBtn) {
+    gifBtn.classList.add("btfw-chatbtn");
+    gifBtn.classList.add("button", "is-dark", "is-small");
+    gifBtn.title = gifBtn.title || "GIFs";
+
+    const icon = gifBtn.querySelector("i");
+    if (!icon || !icon.classList.contains("fa-gif")) {
+      gifBtn.innerHTML = '<i class="fa fa-light fa-gif"></i>';
+    } else {
+      icon.classList.add("fa");
+      icon.classList.add("fa-light");
+      icon.classList.add("fa-gif");
+    }
+  }
+
+  orderChatActions(actions);
 }
+
+const CHAT_ACTION_ORDER = [
+  "#btfw-btn-emotes",
+  "#btfw-btn-gif",
+  "#btfw-chattools-btn",
+  "#btfw-ct-open",
+  "#btfw-chatcmds-btn",
+  "#btfw-users-toggle",
+  "#usercount"
+];
+
+function orderChatActions(actions){
+  if (!actions) return;
+
+  const orderedNodes = [];
+  CHAT_ACTION_ORDER.forEach((sel) => {
+    const el = actions.querySelector(sel);
+    if (el && el.parentElement === actions && !orderedNodes.includes(el)) {
+      orderedNodes.push(el);
+    }
+  });
+
+  if (orderedNodes.length <= 1) return;
+
+  let alreadyOrdered = true;
+  outer: for (let i = 0; i < orderedNodes.length - 1; i += 1) {
+    for (let j = i + 1; j < orderedNodes.length; j += 1) {
+      const rel = orderedNodes[i].compareDocumentPosition(orderedNodes[j]);
+      if (rel & Node.DOCUMENT_POSITION_PRECEDING) {
+        alreadyOrdered = false;
+        break outer;
+      }
+    }
+  }
+
+  if (alreadyOrdered) return;
+
+  const anchor = document.createElement("span");
+  anchor.style.display = "none";
+  actions.insertBefore(anchor, actions.firstChild);
+  orderedNodes.forEach((node) => {
+    if (node.parentElement === actions) {
+      actions.insertBefore(node, anchor);
+    }
+  });
+  anchor.remove();
+}
+
+const scheduleNormalizeChatActions = (() => {
+  let pending = false;
+  const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
+  return () => {
+    if (pending) return;
+    pending = true;
+    raf(() => {
+      pending = false;
+      normalizeChatActionButtons();
+    });
+  };
+})();
 
 /* Watch the whole document for late/stray button injections and normalize */
 function watchForStrayButtons(){
   if (document._btfw_btn_watch) return;
   document._btfw_btn_watch = true;
-  const obs = new MutationObserver(() => normalizeChatActionButtons());
-  obs.observe(document.documentElement, { childList:true, subtree:true });
+
+  const body = document.body || document.documentElement;
+  if (!body) return;
+
+  const watchedIds = new Set([
+    "btfw-btn-emotes",
+    "btfw-btn-gif",
+    "btfw-chatcmds-btn",
+    "btfw-users-toggle",
+    "usercount"
+  ]);
+
+  const obs = new MutationObserver((mutations) => {
+    let relevant = false;
+    for (const mutation of mutations) {
+      if (mutation.target && mutation.target.id === "btfw-chat-actions") {
+        relevant = true;
+        break;
+      }
+      for (const node of mutation.addedNodes) {
+        if (!(node instanceof HTMLElement)) continue;
+        if (watchedIds.has(node.id)) {
+          relevant = true;
+          break;
+        }
+        for (const id of watchedIds) {
+          if (node.id !== id && node.querySelector && node.querySelector(`#${id}`)) {
+            relevant = true;
+            break;
+          }
+        }
+        if (relevant) break;
+      }
+      if (relevant) break;
+    }
+    if (relevant) scheduleNormalizeChatActions();
+  });
+
+  try {
+    obs.observe(body, { childList:true, subtree:true });
+  } catch (_) {
+    // If we cannot observe, fall back to a one-shot normalization so buttons aren't lost.
+    scheduleNormalizeChatActions();
+  }
 }
 
   /* ---------------- Auto-scroll management ---------------- */
@@ -575,10 +732,34 @@ function watchForStrayButtons(){
     if (!bottom) {
       bottom = document.createElement("div");
       bottom.className = "btfw-chat-bottombar";
-      bottom.innerHTML = '<div class="btfw-chat-actions" id="btfw-chat-actions"></div>';
       cw.appendChild(bottom);
     }
-    const actions = bottom.querySelector("#btfw-chat-actions");
+
+    let composer = bottom.querySelector(".btfw-chat-composer");
+    if (!composer) {
+      composer = document.createElement("div");
+      composer.className = "btfw-chat-composer";
+      bottom.prepend(composer);
+    }
+
+    let composerMain = composer.querySelector("#btfw-chat-composer-main");
+    if (!composerMain) {
+      composerMain = document.createElement("div");
+      composerMain.id = "btfw-chat-composer-main";
+      composerMain.className = "btfw-chat-composer-main";
+      composer.prepend(composerMain);
+    }
+
+    let actions = composer.querySelector("#btfw-chat-actions") || bottom.querySelector("#btfw-chat-actions");
+    if (actions && actions.parentElement !== composer) {
+      composer.appendChild(actions);
+    }
+    if (!actions) {
+      actions = document.createElement("div");
+      actions.id = "btfw-chat-actions";
+      composer.appendChild(actions);
+    }
+    actions.classList.add("btfw-chat-actions");
 
     // 🔹 Remove deprecated/duplicate buttons from previous versions
     const oldGif = $("#btfw-gif-btn");            if (oldGif) oldGif.remove();
@@ -604,7 +785,7 @@ function watchForStrayButtons(){
       b.id = "btfw-btn-gif";
       b.className = "button is-dark is-small btfw-chatbtn";
       b.title = "GIFs";
-      b.innerHTML = '<span class="gif-badge">GIF</span>';
+      b.innerHTML = '<i class="fa fa-file-video-o"></i>';
       actions.appendChild(b);
     }
 
@@ -628,11 +809,11 @@ function watchForStrayButtons(){
     // Buffer & controls layout
     const msg = $("#messagebuffer"); if (msg) msg.classList.add("btfw-messagebuffer");
     const controls = $("#chatcontrols,#chat-controls") || ($("#chatline") && $("#chatline").parentElement);
-    if (controls && controls.previousElementSibling !== bottom) {
+    if (controls && controls.parentElement !== composerMain) {
       controls.classList.add("btfw-controls-row");
-      bottom.after(controls);
+      composerMain.appendChild(controls);
     }
-    normalizeChatActionButtons();
+    scheduleNormalizeChatActions();
     wireChatUsernameContextMenu();
     adoptNewMessageIndicator();
 
@@ -645,31 +826,51 @@ function watchForStrayButtons(){
     }));
   }
 
+  function refreshChatDom(){
+    ensureBars();
+    adoptUserlistIntoPopover();
+    adoptNewMessageIndicator();
+    ensureScrollManagement();
+    restyleExistingTrivia();
+  }
+
+  const scheduleChatDomRefresh = (() => {
+    let pending = false;
+    const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
+    return () => {
+      if (pending) return;
+      pending = true;
+      raf(() => {
+        pending = false;
+        refreshChatDom();
+      });
+    };
+  })();
+
   /* ---------------- Usercount to bottom-right & remove #chatheader ---------------- */
   function ensureUsercountInBar(){
     const cw  = $("#chatwrap"); if (!cw) return;
     const bar = cw.querySelector(".btfw-chat-bottombar"); if (!bar) return;
 
-    let right = bar.querySelector(".btfw-chat-right");
-    if (!right) {
-      right = document.createElement("div");
-      right.className = "btfw-chat-right";
-      bar.appendChild(right);
-    }
+    const actions = bar.querySelector("#btfw-chat-actions"); if (!actions) return;
 
     let uc = $("#usercount");
     if (!uc) uc = Object.assign(document.createElement("div"), { id:"usercount" });
     uc.classList.add("btfw-usercount");
 
-    if (!uc.querySelector(".btfw-usercount-num")) {
-      uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
-                      <span class="btfw-usercount-num">0</span>`;
-    } else {
-      const num = uc.textContent.match(/\d+/);
-      uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
-                      <span class="btfw-usercount-num">${num ? num[0] : "0"}</span>`;
-    }
-    right.appendChild(uc);
+    const existingText = uc.querySelector(".btfw-usercount-num")
+      ? uc.querySelector(".btfw-usercount-num").textContent
+      : uc.textContent;
+    const existingNum = (existingText && existingText.match(/\d+/))
+      ? existingText.match(/\d+/)[0]
+      : "0";
+
+    uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
+                    <span class="btfw-usercount-num">${existingNum}</span>`;
+
+    if (uc.parentElement !== actions) actions.appendChild(uc);
+
+    orderChatActions(actions);
 
     const ch = $("#chatheader");
     if (ch) ch.remove();
@@ -730,11 +931,7 @@ function watchForStrayButtons(){
     cw._btfw_chat_obs = true;
 
     new MutationObserver(()=>{
-      ensureBars();
-      adoptUserlistIntoPopover();
-      adoptNewMessageIndicator();
-      ensureScrollManagement();
-      restyleExistingTrivia();
+      scheduleChatDomRefresh();
     }).observe(cw,{childList:true,subtree:true});
 
     const buf = $("#messagebuffer");
@@ -834,12 +1031,11 @@ function watchForStrayButtons(){
 
   /* ---------------- Boot ---------------- */
   function boot(){
-    ensureBars();
-    ensureScrollManagement();
+    refreshChatDom();
+    ensureUserlistWatch();
     ensureUsercountInBar();
     ensureUserlistPopover();
     observeChatDom();
-    restyleExistingTrivia();
     wireDelegatedClicks();
     watchForStrayButtons();
 
