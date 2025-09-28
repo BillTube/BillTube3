@@ -102,7 +102,44 @@ document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopi
     if (!body || !ul) return;
     if (ul.parentElement !== body) {
       ul.classList.add("btfw-userlist-overlay");
+      ul.classList.remove("btfw-userlist-overlay--open");
+      ul.style.removeProperty("display");
+      ul.style.removeProperty("position");
       body.appendChild(ul);
+    }
+  }
+
+  function ensureUserlistWatch(){
+    if (document._btfw_userlist_watch) return;
+    const root = document.body || document.documentElement;
+    if (!root) return;
+
+    const observer = new MutationObserver((mutations) => {
+      let relevant = false;
+      for (const mutation of mutations) {
+        if (mutation.type === "childList") {
+          for (const node of mutation.addedNodes) {
+            if (!(node instanceof HTMLElement)) continue;
+            if (node.id === "userlist" || node.querySelector?.("#userlist")) {
+              relevant = true;
+              break;
+            }
+          }
+        }
+        if (relevant) break;
+        if (mutation.target && mutation.target.id === "userlist") {
+          relevant = true;
+          break;
+        }
+      }
+      if (relevant) adoptUserlistIntoPopover();
+    });
+
+    try {
+      observer.observe(root, { childList: true, subtree: true });
+      document._btfw_userlist_watch = observer;
+    } catch (_) {
+      adoptUserlistIntoPopover();
     }
   }
 function actionsNode(){
@@ -136,7 +173,7 @@ function normalizeChatActionButtons() {
     b.id = "btfw-btn-gif";
     b.className = "button is-dark is-small btfw-chatbtn";
     b.title = "GIFs";
-    b.innerHTML = '<i class="fa fa-file-video-o"></i>';
+    b.innerHTML = '<i class="fa-light fa-gif"></i>';
     actions.appendChild(b);
   }
 
@@ -148,8 +185,14 @@ function normalizeChatActionButtons() {
 
   const gifBtn = actions.querySelector("#btfw-btn-gif");
   if (gifBtn) {
-    gifBtn.innerHTML = '<i class="fa fa-file-video-o"></i>';
+    gifBtn.classList.add("btfw-chatbtn");
+    gifBtn.classList.add("button", "is-dark", "is-small");
     gifBtn.title = gifBtn.title || "GIFs";
+
+    const hasIcon = gifBtn.querySelector("i.fa-light.fa-gif");
+    if (!hasIcon) {
+      gifBtn.innerHTML = '<i class="fa-light fa-gif"></i>';
+    }
   }
 
   orderChatActions(actions);
@@ -220,6 +263,7 @@ const scheduleNormalizeChatActions = (() => {
 function watchForStrayButtons(){
   if (document._btfw_btn_watch) return;
   document._btfw_btn_watch = true;
+
   const body = document.body || document.documentElement;
   if (!body) return;
 
@@ -263,7 +307,6 @@ function watchForStrayButtons(){
     // If we cannot observe, fall back to a one-shot normalization so buttons aren't lost.
     scheduleNormalizeChatActions();
   }
-
 }
 
   /* ---------------- Auto-scroll management ---------------- */
@@ -986,12 +1029,12 @@ function watchForStrayButtons(){
   /* ---------------- Boot ---------------- */
   function boot(){
     refreshChatDom();
+    ensureUserlistWatch();
     ensureUsercountInBar();
     ensureUserlistPopover();
     observeChatDom();
     wireDelegatedClicks();
     watchForStrayButtons();
-
   }
 
   document.addEventListener("btfw:layoutReady", ()=> setTimeout(boot, 50));
