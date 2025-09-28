@@ -4,6 +4,19 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
   const DEFAULT_SKIN_CLASS = "vjs-default-skin";
   const CITY_THEME_CLASS = "vjs-theme-city";
   const BIG_PLAY_CLASS = "vjs-big-play-centered";
+  const INLINE_VIDEO_SELECTORS = [
+    "#videowrap video",
+    "#ytapiplayer video",
+    "#videowrap .video-js video",
+    "#videowrap .video-js .vjs-tech"
+  ].join(",");
+  const INLINE_VIDEO_ATTRIBUTES = {
+    playsinline: "",
+    "webkit-playsinline": "",
+    "x5-video-player-type": "h5",
+    "x5-video-player-fullscreen": "false",
+    "x5-video-orientation": "portrait"
+  };
   const BASE_STYLES_LINK_ID = "btfw-videojs-base-css";
   const CITY_STYLES_LINK_ID = "btfw-videojs-city-css";
   const BASE_STYLES_URLS = ["https://vjs.zencdn.net/7.20.3/video-js.css"];
@@ -91,6 +104,23 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     });
   }
 
+  function ensureInlinePlayback() {
+    const nodes = document.querySelectorAll(INLINE_VIDEO_SELECTORS);
+    nodes.forEach((node) => {
+      if (!(node instanceof HTMLVideoElement)) return;
+      if (typeof node.playsInline === "boolean") {
+        node.playsInline = true;
+      }
+      Object.entries(INLINE_VIDEO_ATTRIBUTES).forEach(([attr, value]) => {
+        try {
+          node.setAttribute(attr, value);
+        } catch (_) {
+          /* no-op */
+        }
+      });
+    });
+  }
+
   /* ===== Guard: block context menu + surface click-to-pause ===== */
   const GUARD_MARK = "_btfwGuarded";
 
@@ -157,6 +187,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
       applyCityTheme();
 
       attachGuards();
+      ensureInlinePlayback();
     });
     mo.observe(target, { childList: true, subtree: true });
     watchPlayerMount._mo = mo;
@@ -177,8 +208,20 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
   function boot() {
     applyCityTheme();
     attachGuards();
+    ensureInlinePlayback();
     watchPlayerMount();
     watchHead();
+
+    if (typeof window !== "undefined" && window.socket && typeof socket.on === "function") {
+      try {
+        if (typeof socket.off === "function") {
+          socket.off("changeMedia", ensureInlinePlayback);
+        }
+        socket.on("changeMedia", () => setTimeout(ensureInlinePlayback, 0));
+      } catch (err) {
+        console.warn("[feature:player] Unable to bind changeMedia inline handler", err);
+      }
+    }
   }
 
   if (document.readyState === "loading") {
@@ -192,6 +235,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
   return {
     name: "feature:player",
     applyCityTheme,
-    attachGuards
+    attachGuards,
+    ensureInlinePlayback
   };
 });
