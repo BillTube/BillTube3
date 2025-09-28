@@ -51,7 +51,27 @@
   padding: 12px 10px 16px;
   margin: 0;
 }
+.btfw-ts-control--radios {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
+.btfw-ts-control--radios .radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.btfw-ts-control--radios .radio input[type="radio"] {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.btfw-ts-control--radios .radio span {
+  line-height: 1.2;
+}
 #btfw-userlist-pop .btfw-popbody #userlist{
   max-height: none !important;
   height: auto !important;
@@ -1028,6 +1048,7 @@ html[data-btfw-theme="dark"] .panel {
   #btfw-ct-modal .btfw-ct-card { width: min(92vw, 640px); }
   #btfw-emotes-pop { width: min(92vw, 720px); }
 }
+
 
 
 
