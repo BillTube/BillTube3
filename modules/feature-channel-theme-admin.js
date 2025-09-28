@@ -1067,6 +1067,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         (typeof pollFlag === "string" && pollFlag.toLowerCase() === "false")
       );
       root.classList.toggle("btfw-poll-overlay-enabled", enabled);
+      root.classList.toggle("btfw-poll-overlay-disabled", !enabled);
+      document.dispatchEvent(new CustomEvent("btfw:pollOverlay:toggle", {
+        detail: { enabled }
+      }));
     }
     const modules = normalizeModuleUrls(cfg?.resources?.modules || []);
     renderModuleInputs(panel, modules);

@@ -10,6 +10,43 @@ html, body {
   color: var(--btfw-color-text);
 }
 
+:root {
+  --btfw-scrollbar-track: color-mix(in srgb, var(--btfw-color-bg) 88%, black 12%);
+  --btfw-scrollbar-thumb: color-mix(in srgb, var(--btfw-color-panel) 78%, black 22%);
+  --btfw-scrollbar-thumb-hover: color-mix(in srgb, var(--btfw-color-accent) 32%, var(--btfw-color-panel) 68%);
+  --btfw-scrollbar-thumb-active: color-mix(in srgb, var(--btfw-color-accent) 38%, var(--btfw-color-panel) 62%);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--btfw-scrollbar-thumb) var(--btfw-scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--btfw-scrollbar-track);
+  border-radius: 999px;
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.25);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--btfw-scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--btfw-scrollbar-track) 65%, transparent 35%);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--btfw-scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: var(--btfw-scrollbar-thumb-active);
+}
+
 body {
   margin: 0;
   font-family: var(--btfw-font-body);

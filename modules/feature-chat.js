@@ -851,21 +851,29 @@ function watchForStrayButtons(){
 
     const actions = bar.querySelector("#btfw-chat-actions"); if (!actions) return;
 
-    let uc = $("#usercount");
-    if (!uc) uc = Object.assign(document.createElement("div"), { id:"usercount" });
+    const previous = $("#usercount");
+    let existingNum = "0";
+    if (previous) {
+      const text = previous.querySelector(".btfw-usercount-num")
+        ? previous.querySelector(".btfw-usercount-num").textContent
+        : previous.textContent;
+      const match = text && text.match(/\d+/);
+      if (match) existingNum = match[0];
+      previous.remove();
+    }
+
+    const uc = document.createElement("div");
+    uc.id = "usercount";
     uc.classList.add("btfw-usercount");
-
-    const existingText = uc.querySelector(".btfw-usercount-num")
-      ? uc.querySelector(".btfw-usercount-num").textContent
-      : uc.textContent;
-    const existingNum = (existingText && existingText.match(/\d+/))
-      ? existingText.match(/\d+/)[0]
-      : "0";
-
+    uc.setAttribute("role", "status");
+    uc.setAttribute("aria-live", "polite");
     uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
                     <span class="btfw-usercount-num">${existingNum}</span>`;
+    uc.addEventListener("contextmenu", (ev) => {
+      ev.preventDefault();
+    });
 
-    if (uc.parentElement !== actions) actions.appendChild(uc);
+    actions.appendChild(uc);
 
     orderChatActions(actions);
 
