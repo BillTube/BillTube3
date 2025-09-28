@@ -360,14 +360,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
       btn.addEventListener("click", () => setOverlayPreferred(true));
       launcher.appendChild(btn);
     }
-    wrap.classList.add("btfw-poll-overlay__panel");
-    try {
-      wrap.dataset.btfwPollOverlay = "video";
-    } catch (_) {}
-    startPollObserver();
-    startMaintainLoop();
-    syncVisibility();
-    return true;
   }
 
   function attachOverlayToVideo() {
@@ -447,9 +439,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
     if (overlayHost) {
       overlayHost.classList.remove("btfw-visible");
-
     }
-  }
 
     document.documentElement.classList.remove(ROOT_FLOAT_CLASS);
   }
@@ -480,14 +470,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
     syncOverlay();
   }
 
-  function syncOverlay(force) {
+  function syncOverlay() {
     if (!pollWrap) return;
 
     rememberOriginal();
     const active = pollHasActiveContent();
     if (active !== pollActive) {
       pollActive = active;
-      force = true;
     }
 
     const shouldFloat = overlayPreferred && pollActive;
@@ -509,39 +498,38 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function observePollChanges() {
     if (!pollWrap) return;
     if (pollObserver) pollObserver.disconnect();
-    pollObserver = new MutationObserver(() => syncOverlay(false));
+    pollObserver = new MutationObserver(() => syncOverlay());
     pollObserver.observe(pollWrap, { childList: true, subtree: true, characterData: true });
+  }
+
+  function handlePollWrapFound(element) {
+    pollWrap = element;
+    rememberOriginal();
+    ensurePlaceholder();
+    observePollChanges();
+    raf(() => syncOverlay());
   }
 
   function waitForPollWrap() {
     const existing = document.getElementById("pollwrap");
     if (existing) {
-      pollWrap = existing;
-      rememberOriginal();
-      ensurePlaceholder();
-      observePollChanges();
-      raf(() => syncOverlay(true));
+      handlePollWrapFound(existing);
       return;
-
     }
-    if (attempt > 40) return Promise.resolve(null);
-    return new Promise(resolve => {
-      setTimeout(() => resolve(waitForSocket(attempt + 1)), 150);
-    });
-  }
+
+    if (typeof MutationObserver === "undefined") return;
+
+    const target = document.body || document.documentElement;
+    if (!target) return;
 
     const observer = new MutationObserver(() => {
       const found = document.getElementById("pollwrap");
       if (!found) return;
       observer.disconnect();
-      pollWrap = found;
-      rememberOriginal();
-      ensurePlaceholder();
-      observePollChanges();
-      raf(() => syncOverlay(true));
+      handlePollWrapFound(found);
     });
 
-    observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+    observer.observe(target, { childList: true, subtree: true });
   }
 
   function waitForSocket(attempt = 0) {
@@ -555,16 +543,14 @@ BTFW.define("feature:poll-overlay", [], async () => {
       setTimeout(() => {
         waitForSocket(attempt + 1).then(resolve);
       }, 500);
-
     });
-    observer.observe(target, { childList: true, subtree: true });
   }
 
   function wireSocket() {
     waitForSocket().then(socket => {
       if (!socket) return;
-      const markActive = () => raf(() => syncOverlay(true));
-      const markInactive = () => raf(() => syncOverlay(true));
+      const markActive = () => raf(() => syncOverlay());
+      const markInactive = () => raf(() => syncOverlay());
       ["newPoll", "updatePoll", "setPoll"].forEach(evt => {
         socket.on(evt, markActive);
       });
@@ -588,7 +574,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
     name: "feature:poll-overlay",
     show: () => setOverlayPreferred(true),
     hide: () => setOverlayPreferred(false),
-    sync: () => syncOverlay(true)
-
+    sync: () => syncOverlay()
   };
 });
