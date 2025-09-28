@@ -268,6 +268,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let overlayDismissed = false;
   let overlayRefreshTimer = null;
 
+
   function resolveAdminConfig() {
     const sources = [
       () => window.BTFW_THEME_ADMIN,
