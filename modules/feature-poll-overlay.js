@@ -13,10 +13,15 @@ BTFW.define("feature:poll-overlay", [], async () => {
   const ACTIVE_SELECTORS = [
     "button[data-option]",
     "input[type=radio][name^=poll]",
-    "input[type=checkbox][name^=poll]"
+    "input[type=checkbox][name^=poll]",
+    ".poll-option",
+    ".poll-options li",
+    ".poll-answers li",
+    ".poll-results",
+    ".poll-chart"
   ];
 
-  const INACTIVE_TEXT = /there is no active poll|no current poll|no poll active|poll closed|the poll has closed/i;
+  const INACTIVE_TEXT = /there is no active poll|there are no active polls|no current poll|no poll active|no polls? running|no poll running|no poll open|poll closed|the poll has closed/i;
 
   const raf = (fn) => {
     if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
@@ -673,7 +678,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     ensureStackHosts();
     rememberOriginal();
 
-    const shouldShowInStack = pollActive && !overlayPreferred;
+    const shouldShowInStack = !overlayPreferred || !pollActive;
     const target = shouldShowInStack
       ? (stackHost || originalParent)
       : (parkingHost || stackHost || originalParent);
@@ -724,10 +729,17 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function pollHasActiveContent() {
     if (!pollWrap) return false;
     if (!pollWrap.isConnected) return false;
-    if (ACTIVE_SELECTORS.some(sel => pollWrap.querySelector(sel))) return true;
     const text = (pollWrap.textContent || "").trim();
-    if (!text) return false;
-    return !INACTIVE_TEXT.test(text);
+    if (text && INACTIVE_TEXT.test(text)) return false;
+
+    if (ACTIVE_SELECTORS.some(sel => pollWrap.querySelector(sel))) return true;
+
+    const domData = extractDomPollData();
+    if (domData && Array.isArray(domData.options) && domData.options.length > 0) {
+      return true;
+    }
+
+    return false;
   }
 
   function setOverlayPreferred(value) {
