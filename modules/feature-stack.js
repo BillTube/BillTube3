@@ -25,7 +25,7 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     {
       id: "poll-group",
       title: "Polls & Voting",
-      selectors: ["#pollwrap"],
+      selectors: ["#pollwrap", "#btfw-poll-overlay-placeholder"],
       priority: 4
     }
   ];
@@ -630,12 +630,17 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       const elements = [];
       group.selectors.forEach(sel => {
         const el = document.querySelector(sel);
-        if (el && 
-            !list.contains(el) && 
-            !el.contains(list) &&
-            !SKIP_SELECTORS.includes(sel)) {
-          elements.push(el);
+        if (!el) return;
+        if (list.contains(el) || el.contains(list)) return;
+        if (SKIP_SELECTORS.includes(sel)) return;
+        if (sel === "#pollwrap") {
+          const overlayState = el.dataset && el.dataset.btfwPollOverlay;
+          const attrState = el.getAttribute && el.getAttribute("data-btfw-poll-overlay");
+          if (overlayState === "video" || attrState === "video") {
+            return;
+          }
         }
+        elements.push(el);
       });
       if (elements.length > 0) {
         groupedElements.set(group.id, { group, elements });
