@@ -291,11 +291,17 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
   `;
 
+  const scheduleFrame = (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function")
+    ? window.requestAnimationFrame.bind(window)
+    : (cb => setTimeout(cb, 16));
+
   let pollModal = null;
   let videoOverlay = null;
   let currentPoll = null;
   let socketEventsWired = false;
   let buttonObserver = null;
+  let buttonObserverTarget = null;
+  let buttonObserverBootstrap = null;
 
   function injectCSS() {
     if (document.getElementById(CSS_ID)) return;
@@ -612,75 +618,154 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
   }
 
-  function hijackPollButtons() {
-    if (buttonObserver) return; // Already watching
+  const pollButtonSelector = [
+    "button[onclick*='poll']",
+    "button[title*='Poll']",
+    "button[title*='poll']",
+    "#newpollbtn",
+    ".poll-btn"
+  ].join(", ");
 
-    const pollButtonSelector = [
-      "button[onclick*='poll']",
-      "button[title*='Poll']",
-      "button[title*='poll']",
-      "#newpollbtn",
-      ".poll-btn"
-    ].join(", ");
+  function markPollButtons(root = document) {
+    let pollButtons;
+    try {
+      pollButtons = root.querySelectorAll ? root.querySelectorAll(pollButtonSelector) : [];
+    } catch (e) {
+      console.warn('[poll-overlay] Failed to query poll buttons:', e);
+      return;
+    }
+
+    pollButtons.forEach(btn => {
+      if (btn.dataset.btfwHijacked) return;
+      btn.dataset.btfwHijacked = "true";
+
+      const handleClick = (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        openPollModal();
+      };
 
 
-    const processButtons = () => {
-      let pollButtons;
       try {
-        pollButtons = document.querySelectorAll(pollButtonSelector);
+        btn.addEventListener("click", handleClick, { capture: true });
       } catch (e) {
-        console.warn('[poll-overlay] Failed to query poll buttons:', e);
-        return;
+        btn.addEventListener("click", handleClick, true);
       }
+    });
+  }
 
-      pollButtons.forEach(btn => {
-        if (btn.dataset.btfwHijacked) return;
-        btn.dataset.btfwHijacked = "true";
+  function disconnectButtonObserver() {
+    if (buttonObserver) {
+      buttonObserver.disconnect();
+      buttonObserver = null;
+    }
+    buttonObserverTarget = null;
+  }
 
-        const handleClick = (event) => {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          event.stopPropagation();
-          openPollModal();
-        };
+  function observePollButtons(target) {
+    const validTarget = target && (
+      (typeof Node === "function" && target instanceof Node) ||
+      (target && typeof target === "object" && "nodeType" in target)
+    );
+    if (!validTarget) return false;
 
-        // Intercept clicks in the capture phase so inline handlers never run.
-        try {
-          btn.addEventListener("click", handleClick, { capture: true });
-        } catch (e) {
-          // Older browsers may not support options object; fall back gracefully.
-          btn.addEventListener("click", handleClick, true);
-        }
-      });
-    };
+    if (buttonObserver && buttonObserverTarget === target) {
+      return true; // Already watching the correct container
+    }
 
-    // Initial processing
-    processButtons();
+    disconnectButtonObserver();
 
-    // Watch for new buttons with debouncing to prevent infinite loops
     let debounceTimer = null;
-    const observer = new MutationObserver(() => {
+    buttonObserver = new MutationObserver((mutations) => {
+
       if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(processButtons, 100);
+      debounceTimer = setTimeout(() => {
+        // Prefer scanning within the container that actually changed.
+        const uniqueRoots = new Set();
+        mutations.forEach(record => {
+          record.addedNodes && record.addedNodes.forEach(node => {
+            if (node.nodeType === 1) {
+              uniqueRoots.add(node);
+            }
+          });
+        });
+
+        if (uniqueRoots.size) {
+          uniqueRoots.forEach(node => {
+            if (node.matches && node.matches(pollButtonSelector)) {
+              markPollButtons(node.parentElement || target);
+            } else {
+              markPollButtons(node);
+            }
+          });
+        } else {
+          markPollButtons(target);
+        }
+      }, 60);
     });
 
-    const targetNode = document.querySelector("#btfw-chat-actions")
-      || document.querySelector("#chatwrap")
-      || document.body
-      || document.documentElement;
+    try {
+      buttonObserver.observe(target, { childList: true, subtree: true });
+    } catch (e) {
+      console.warn('[poll-overlay] Failed to observe poll buttons:', e);
+      disconnectButtonObserver();
+      return false;
+    }
 
-    if (!targetNode) {
+    buttonObserverTarget = target;
+    markPollButtons(target);
+    if (buttonObserverBootstrap) {
+      buttonObserverBootstrap.disconnect();
+      buttonObserverBootstrap = null;
+    }
+    return true;
+  }
+
+  function ensureBootstrapObserver() {
+    if (buttonObserverBootstrap || buttonObserverTarget) return;
+
+    const body = document.body || document.documentElement;
+    if (!body) {
+
       console.warn('[poll-overlay] Unable to observe poll buttons: no document body yet');
       return;
     }
 
-    observer.observe(targetNode, {
-      childList: true,
-      subtree: true,
-      attributes: false // Only watch for DOM changes, not attribute changes
+    let scheduled = null;
+    let bootstrapChecks = 0;
+    const maxBootstrapChecks = 300; // ~5s worth of animation frames
+    buttonObserverBootstrap = new MutationObserver(() => {
+      if (scheduled) return;
+      scheduled = scheduleFrame(() => {
+        scheduled = null;
+        bootstrapChecks += 1;
+        const actions = document.querySelector('#btfw-chat-actions');
+        if (actions && observePollButtons(actions)) {
+          buttonObserverBootstrap.disconnect();
+          buttonObserverBootstrap = null;
+        } else if (bootstrapChecks >= maxBootstrapChecks) {
+          // Give up to avoid watching the whole document indefinitely.
+          buttonObserverBootstrap.disconnect();
+          buttonObserverBootstrap = null;
+        }
+      });
     });
 
-    buttonObserver = observer;
+    buttonObserverBootstrap.observe(body, { childList: true, subtree: true });
+  }
+
+  function hijackPollButtons() {
+    const actions = document.querySelector('#btfw-chat-actions');
+
+    if (actions && observePollButtons(actions)) {
+      return;
+    }
+
+    // Fallback: mark anything already on the page and watch for actions container later.
+    markPollButtons(document);
+    ensureBootstrapObserver();
+
   }
 
   function waitForSocket() {
