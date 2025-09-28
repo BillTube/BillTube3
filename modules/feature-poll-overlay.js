@@ -1,3 +1,4 @@
+/* BTFW — feature:poll-overlay (video overlay display for CyTube polls) */
 BTFW.define("feature:poll-overlay", [], async () => {
   "use strict";
 
@@ -256,8 +257,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
         btn.addEventListener("click", () => {
           if (window.socket && window.socket.emit) {
             try {
-              // CyTube voting uses the option index
-              window.socket.emit("votePoll", { option: index });
+              // CyTube voting - try different formats to match the original
+              // Format 1: Just the index number
+              window.socket.emit("votePoll", index);
               
               // Track user vote for visual feedback
               if (poll.multi) {
@@ -278,6 +280,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
                 userVotes.add(index);
                 btn.classList.add("active");
               }
+              
+              console.log("Vote sent for option", index); // Debug log
             } catch (e) {
               console.error("Failed to vote:", e);
             }
