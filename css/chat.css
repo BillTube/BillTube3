@@ -732,4 +732,8 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
 }
 
 #usercount .fa-users{ font-size:14px; opacity:.75; }
+.server-msg-reconnect {
+  border: 0px solid #009900!important;
+  border-radius: 10px;
+}
 
