@@ -249,6 +249,7 @@ function orderChatActions(actions){
   anchor.remove();
 }
 
+
 const scheduleNormalizeChatActions = (() => {
   let pending = false;
   const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
@@ -1038,7 +1039,6 @@ function watchForStrayButtons(){
     observeChatDom();
     wireDelegatedClicks();
     watchForStrayButtons();
-
   }
 
   document.addEventListener("btfw:layoutReady", ()=> setTimeout(boot, 50));
