@@ -169,6 +169,8 @@ BTFW.define("feature:playlist-tools", [], async () => {
   /* ---------- Add-from-URL title sanitiser ---------- */
   const scrubTokens = ["720p", "brrip", "x264", "yify", "mp4"];
   const scrubPattern = new RegExp(`\\b(?:${scrubTokens.join("|")})\\b`, "gi");
+  const titleInputSelectors = ["#addfromurl-title-val", "#mediaurl-title", ".media-title-input"]; // support legacy variants
+
   function sanitiseTitleInput(value){
     if (!value) return "";
 
@@ -193,35 +195,78 @@ BTFW.define("feature:playlist-tools", [], async () => {
     return title.replace(/\s+/g, " ").trim();
   }
 
+  let titleFilterObserver = null;
   function ensureAddFromUrlTitleFilter(){
-    const input = document.getElementById("addfromurl-title-val");
-    if (!input) return false;
-    if (input._btfwTitleFilterBound) return true;
+    let anyBound = false;
+    titleInputSelectors
+      .flatMap(sel => Array.from(document.querySelectorAll(sel)))
+      .forEach(input => {
+        if (!(input instanceof HTMLInputElement)) return;
+        if (input._btfwTitleFilterBound) { anyBound = true; return; }
 
-    const apply = () => {
-      const raw = input.value || "";
-      const cleaned = sanitiseTitleInput(raw);
-      if (cleaned === raw) return;
+        const apply = () => {
+          const raw = input.value || "";
+          const cleaned = sanitiseTitleInput(raw);
+          if (cleaned === raw) return;
 
-      const start = input.selectionStart;
-      const end = input.selectionEnd;
+          const start = input.selectionStart;
+          const end = input.selectionEnd;
 
-      input.value = cleaned;
+          input.value = cleaned;
 
-      if (typeof start === "number" && typeof end === "number") {
-        const delta = cleaned.length - raw.length;
-        const newStart = Math.max(0, start + delta);
-        const newEnd = Math.max(0, end + delta);
-        try { input.setSelectionRange(newStart, newEnd); } catch(_){}
+          if (typeof start === "number" && typeof end === "number") {
+            const delta = cleaned.length - raw.length;
+            const newStart = Math.max(0, start + delta);
+            const newEnd = Math.max(0, end + delta);
+            try { input.setSelectionRange(newStart, newEnd); } catch(_){}
+          }
+        };
+
+        input.addEventListener("input", apply);
+        input.addEventListener("change", apply);
+        input.addEventListener("paste", () => requestAnimationFrame(apply));
+        input._btfwTitleFilterBound = true;
+
+        // Normalise any pre-filled value immediately
+        apply();
+        anyBound = true;
+      });
+
+    if (!titleFilterObserver) {
+      const target = document.getElementById("addfromurl") || document.body;
+      titleFilterObserver = new MutationObserver(() => ensureAddFromUrlTitleFilter());
+      titleFilterObserver.observe(target, { childList: true, subtree: true });
+    }
+
+    return anyBound;
+  }
+
+  const tempCheckboxKey = "btfw:addfromurl:addTemp";
+  let addTempObserver = null;
+  function ensureAddTempPreference(){
+    const checkbox = document.querySelector("#addfromurl input.add-temp");
+    if (!(checkbox instanceof HTMLInputElement)) {
+      if (!addTempObserver) {
+        const target = document.getElementById("addfromurl") || document.body;
+        addTempObserver = new MutationObserver(() => ensureAddTempPreference());
+        addTempObserver.observe(target, { childList: true, subtree: true });
       }
-    };
+      return false;
+    }
+    if (checkbox._btfwTempPersistBound) return true;
 
-    input.addEventListener("input", apply);
-    input.addEventListener("change", apply);
-    input._btfwTitleFilterBound = true;
+    try {
+      const stored = localStorage.getItem(tempCheckboxKey);
+      if (stored != null) checkbox.checked = stored === "true";
+    } catch(_){}
 
-    // Normalise any pre-filled value immediately
-    apply();
+    checkbox.addEventListener("change", () => {
+      try { localStorage.setItem(tempCheckboxKey, checkbox.checked ? "true" : "false"); }
+      catch(_){}
+    });
+
+    checkbox._btfwTempPersistBound = true;
+
     return true;
   }
 
@@ -266,19 +311,21 @@ BTFW.define("feature:playlist-tools", [], async () => {
     ensureQueuePollButtons();
     wireQueuePollCopy();
     ensureAddFromUrlTitleFilter();
+    ensureAddTempPreference();
+
 
     // Re-ensure toolbar when playlist re-renders
     const container = $("#queuecontainer") || $("#playlistwrap") || document.body;
     if (container && !container._btfw_pl_obs) {
       container._btfw_pl_obs = true;
-      new MutationObserver(()=> { injectToolbar(); ensureQueuePollButtons(); }).observe(container, { childList:true, subtree:true });
+      new MutationObserver(()=> { injectToolbar(); ensureQueuePollButtons(); ensureAddFromUrlTitleFilter(); ensureAddTempPreference(); }).observe(container, { childList:true, subtree:true });
     }
 
     // Keep count roughly up-to-date as entries change
     const queue = $("#queue");
     if (queue && !queue._btfw_pl_count_obs) {
       queue._btfw_pl_count_obs = true;
-      new MutationObserver(()=> { updateCount(); ensureQueuePollButtons(); }).observe(queue, { childList:true, subtree:true });
+      new MutationObserver(()=> { updateCount(); ensureQueuePollButtons(); ensureAddFromUrlTitleFilter(); ensureAddTempPreference(); }).observe(queue, { childList:true, subtree:true });
     }
   }
 
