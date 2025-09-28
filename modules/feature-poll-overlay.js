@@ -1,936 +1,714 @@
-/* BTFW — feature:poll-overlay (rehome the native CyTube poll UI over the video) */
+/* BTFW — feature:poll-overlay (poll creation modal + video overlay display) */
 BTFW.define("feature:poll-overlay", [], async () => {
   "use strict";
 
-  const CSS_ID = "btfw-poll-overlay-css";
-  const LS_KEY = "btfw:poll-overlay:preferred";
-  const ROOT_FLOAT_CLASS = "btfw-poll-overlay-active";
-  const OVERLAY_ID = "btfw-poll-overlay";
-  const HISTORY_ID = "btfw-poll-history";
-  const HISTORY_LIST_CLASS = "btfw-poll-history__list";
-
-  const ACTIVE_SELECTORS = [
-    "button[data-option]",
-    "input[type=radio][name^=poll]",
-    "input[type=checkbox][name^=poll]",
-    ".poll-option",
-    ".poll-options li",
-    ".poll-answers li",
-    ".poll-results",
-    ".poll-chart"
-  ];
-
-  const POLL_CARD_SELECTORS = [
-    ".well.active",
-    ".poll-active",
-    ".poll-current",
-    ".poll-card",
-    ".pollbox.active",
-    ".poll",
-    ".poll-panel"
-  ];
-
-  const INACTIVE_TEXT = /there is no active poll|there are no active polls|no current poll|no poll active|no polls? running|no poll running|no poll open|poll closed|the poll has closed/i;
-
-  const raf = (fn) => {
-    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
-      return window.requestAnimationFrame(fn);
+  const CSS_ID = "btfw-poll-overlay-styles";
+  const POLL_OVERLAY_CSS = `
+    /* Poll Creation Modal Overlay */
+    #btfw-poll-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 3000;
+      display: none;
+      align-items: center;
+      justify-content: center;
     }
-    return setTimeout(fn, 16);
-  };
 
-  const ADMIN_SOURCES = [
-    () => window.BTFW_THEME_ADMIN,
-    () => window.BTFW_THEME,
-    () => window.BTFW_THEME_CONFIG,
-    () => window.BTFW_THEME_SETTINGS,
-    () => window.BTFW_THEME_STATE,
-    () => window.BTFW_THEME_DATA
-  ];
+    #btfw-poll-modal.btfw-poll-modal--open {
+      display: flex;
+    }
 
-  let pollWrap = null;
-  let originalParent = null;
-  let originalNextSibling = null;
-  let overlayHost = null;
-  let overlayInner = null;
-  let overlayClose = null;
-  let pollObserver = null;
-  let videoMountObserver = null;
-  let overlayPreferred = readPreference();
-  let pollActive = false;
-  let stackHost = null;
-  let historySection = null;
-  let historyList = null;
-  let clearHistoryButton = null;
-  let currentPollSignature = null;
-  let lastArchivedSignature = null;
-  let socketWired = false;
-  let activePollCard = null;
-  let pollCardOriginalParent = null;
-  let pollCardOriginalNextSibling = null;
+    .btfw-poll-modal-content {
+      background: var(--btfw-overlay-elevated);
+      border: 1px solid var(--btfw-overlay-border);
+      border-radius: calc(var(--btfw-radius) + 4px);
+      padding: 24px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: var(--btfw-overlay-shadow);
+      color: var(--btfw-color-text);
+    }
 
+    .btfw-poll-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
 
-  if (!featureEnabled()) {
-    console.info("[poll-overlay] Disabled via channel configuration.");
-    return {
-      name: "feature:poll-overlay",
-      show: () => {},
-      hide: () => {},
-      sync: () => {}
-    };
-  }
+    .btfw-poll-modal-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--btfw-color-text);
+      margin: 0;
+    }
 
-  const root = document.documentElement;
-  if (root && !root.classList.contains("btfw-poll-overlay-enabled")) {
-    root.classList.add("btfw-poll-overlay-enabled");
-  }
+    .btfw-poll-modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--btfw-color-text);
+      cursor: pointer;
+      padding: 5px;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
 
-  function resolveAdminConfig() {
-    for (const getSource of ADMIN_SOURCES) {
-      try {
-        const cfg = getSource();
-        if (cfg && typeof cfg === "object") {
-          return cfg;
-        }
-      } catch (_) {
+    .btfw-poll-modal-close:hover {
+      opacity: 1;
+    }
+
+    .btfw-poll-form-group {
+      margin-bottom: 16px;
+    }
+
+    .btfw-poll-form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: var(--btfw-color-text);
+    }
+
+    .btfw-poll-form-group input,
+    .btfw-poll-form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--btfw-border);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);
+      color: var(--btfw-color-text);
+      font-size: 14px;
+    }
+
+    .btfw-poll-form-group input:focus,
+    .btfw-poll-form-group textarea:focus {
+      outline: none;
+      border-color: var(--btfw-color-accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%);
+    }
+
+    .btfw-poll-options {
+      margin-bottom: 20px;
+    }
+
+    .btfw-poll-option {
+      display: flex;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+
+    .btfw-poll-option input {
+      flex: 1;
+    }
+
+    .btfw-poll-remove-option {
+      background: var(--btfw-color-error, #e74c3c);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .btfw-poll-add-option {
+      background: var(--btfw-color-accent);
+      color: var(--btfw-color-on-accent);
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+
+    .btfw-poll-form-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .btfw-poll-button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btfw-poll-button--primary {
+      background: var(--btfw-color-accent);
+      color: var(--btfw-color-on-accent);
+    }
+
+    .btfw-poll-button--secondary {
+      background: color-mix(in srgb, var(--btfw-color-bg) 78%, transparent 22%);
+      color: var(--btfw-color-text);
+      border: 1px solid var(--btfw-border);
+    }
+
+    .btfw-poll-checkbox-group {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .btfw-poll-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btfw-poll-checkbox input[type="checkbox"] {
+      width: auto;
+    }
+
+    /* Poll Display Overlay on Video */
+    #btfw-poll-video-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1500;
+      pointer-events: none;
+      display: none;
+    }
+
+    #btfw-poll-video-overlay.btfw-poll-active {
+      display: block;
+    }
+
+    .btfw-poll-video-content {
+      position: absolute;
+      top: 30px;
+      left: 20px;
+      right: 20px;
+      pointer-events: auto;
+      background: var(--btfw-overlay-bg);
+      backdrop-filter: saturate(130%) blur(6px);
+      border: 1px solid var(--btfw-overlay-border);
+      border-radius: calc(var(--btfw-radius) + 6px);
+      padding: 20px;
+      box-shadow: var(--btfw-overlay-shadow);
+      color: var(--btfw-color-text);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .btfw-poll-video-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .btfw-poll-video-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--btfw-color-text);
+      margin: 0;
+      flex: 1;
+    }
+
+    .btfw-poll-video-close {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      color: var(--btfw-color-text);
+      cursor: pointer;
+      padding: 4px;
+      opacity: 0.7;
+      margin-left: 12px;
+    }
+
+    .btfw-poll-video-close:hover {
+      opacity: 1;
+    }
+
+    .btfw-poll-options-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .btfw-poll-option-btn {
+      background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);
+      border: 2px solid var(--btfw-border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--btfw-color-text);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+      flex: 1;
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .btfw-poll-option-btn:hover {
+      background: color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%);
+      border-color: var(--btfw-color-accent);
+    }
+
+    .btfw-poll-option-btn.voted {
+      background: color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
+      border-color: var(--btfw-color-accent);
+      color: var(--btfw-color-on-accent);
+    }
+
+    .btfw-poll-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+      color: color-mix(in srgb, var(--btfw-color-text) 70%, transparent 30%);
+      margin-top: 12px;
+    }
+
+    @media (max-width: 768px) {
+      .btfw-poll-video-content {
+        left: 12px;
+        right: 12px;
+        top: 20px;
+        padding: 16px;
+      }
+      
+      .btfw-poll-options-grid {
+        flex-direction: column;
+      }
+      
+      .btfw-poll-option-btn {
+        min-width: auto;
       }
     }
-    return null;
-  }
+  `;
 
-  function featureEnabled() {
-    const config = resolveAdminConfig();
-    if (config && typeof config === "object") {
-      const features = config.features;
-      if (features && typeof features === "object") {
-        const flag = features.videoOverlayPoll;
-        if (typeof flag === "boolean") return flag;
-        if (typeof flag === "string") return flag !== "0" && flag.toLowerCase() !== "false";
-        if (typeof flag === "number") return flag !== 0;
-      }
-    }
-    return true;
-  }
-
-  function readPreference() {
-    try {
-      const stored = localStorage.getItem(LS_KEY);
-      if (stored === "0") return false;
-      if (stored === "1") return true;
-    } catch (_) {}
-    return true;
-  }
-
-  function writePreference(value) {
-    try {
-      localStorage.setItem(LS_KEY, value ? "1" : "0");
-    } catch (_) {}
-  }
-
+  let pollModal = null;
+  let videoOverlay = null;
+  let currentPoll = null;
+  let socketEventsWired = false;
+  let buttonObserver = null;
 
   function injectCSS() {
     if (document.getElementById(CSS_ID)) return;
     const style = document.createElement("style");
     style.id = CSS_ID;
-    style.textContent = `
-      :root.${ROOT_FLOAT_CLASS} {
-        --btfw-poll-overlay-shadow: 0 28px 64px rgba(6, 8, 20, 0.55);
-        --btfw-poll-overlay-bg: color-mix(in srgb, var(--btfw-color-surface, #1c1f2a) 82%, transparent 18%);
-        --btfw-poll-overlay-border: color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 52%, transparent 48%);
-      }
-
-      #${OVERLAY_ID} {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        display: none;
-        z-index: 1600;
-      }
-
-      #${OVERLAY_ID}.btfw-visible {
-        display: block;
-      }
-
-      #${OVERLAY_ID} .btfw-poll-overlay__card {
-        position: absolute;
-        top: 50%;
-        right: clamp(12px, 4vw, 40px);
-        transform: translateY(-50%);
-        width: min(520px, calc(100% - clamp(48px, 12vw, 180px)));
-        max-height: calc(100% - clamp(60px, 18vh, 220px));
-        overflow-y: auto;
-        padding: clamp(16px, 4vw, 22px);
-        border-radius: 18px;
-        background: var(--btfw-poll-overlay-bg, rgba(16, 18, 26, 0.82));
-        backdrop-filter: saturate(135%) blur(14px);
-        border: 1px solid var(--btfw-poll-overlay-border, rgba(109, 77, 246, 0.6));
-        box-shadow: var(--btfw-poll-overlay-shadow, 0 28px 64px rgba(6, 8, 20, 0.55));
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        color: var(--btfw-color-text, #f7f8ff);
-        pointer-events: auto;
-      }
-
-      #${OVERLAY_ID} .btfw-poll-overlay__close {
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        border: 0;
-        background: rgba(10, 12, 20, 0.6);
-        color: inherit;
-        cursor: pointer;
-        display: grid;
-        place-items: center;
-        font-size: 18px;
-        transition: background 0.2s ease, transform 0.2s ease;
-      }
-
-      #${OVERLAY_ID} .btfw-poll-overlay__close:hover {
-        background: rgba(109, 77, 246, 0.85);
-        transform: translateY(-1px);
-      }
-
-      #${OVERLAY_ID} .btfw-poll-overlay__close:focus-visible {
-        outline: 2px solid var(--btfw-color-accent, #6d4df6);
-        outline-offset: 2px;
-      }
-
-      .btfw-poll-overlay__panel {
-        margin: 0;
-        border: 0;
-        background: transparent;
-        box-shadow: none;
-        width: 100%;
-      }
-
-      .btfw-poll-overlay__panel .poll-menu {
-        background: transparent;
-        border: 0;
-        box-shadow: none;
-      }
-
-      .btfw-poll-overlay__panel .poll-menu .btn {
-        margin-left: 0;
-      }
-
-      #${HISTORY_ID} {
-        margin-top: 16px;
-        padding: 16px;
-        border-radius: 16px;
-        background: color-mix(in srgb, var(--btfw-color-panel, #202333) 88%, transparent 12%);
-        border: 1px solid color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 32%, transparent 68%);
-        box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-      }
-
-      #${HISTORY_ID}[hidden] {
-        display: none;
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__title {
-        font-size: 0.95rem;
-        font-weight: 600;
-        letter-spacing: 0.01em;
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__clear {
-        border: 0;
-        border-radius: 999px;
-        background: color-mix(in srgb, var(--btfw-color-surface, #1c1f2a) 82%, transparent 18%);
-        color: var(--btfw-color-text, #f1f2fb);
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        padding: 6px 12px;
-        cursor: pointer;
-        transition: background 0.2s ease, transform 0.2s ease;
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__clear:hover {
-        background: color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 36%, transparent 64%);
-        transform: translateY(-1px);
-      }
-
-      #${HISTORY_ID} .${HISTORY_LIST_CLASS} {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__entry {
-        background: color-mix(in srgb, var(--btfw-color-surface, #1c1f2a) 86%, transparent 14%);
-        border: 1px solid color-mix(in srgb, var(--btfw-color-border, rgba(109, 77, 246, 0.6)) 40%, transparent 60%);
-        border-radius: 14px;
-        padding: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__entry-header {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__entry-title {
-        font-size: 0.95rem;
-        font-weight: 600;
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__entry-meta {
-        font-size: 0.78rem;
-        opacity: 0.7;
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__options {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__option {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 8px 10px;
-        border-radius: 10px;
-        background: color-mix(in srgb, var(--btfw-color-panel, #202333) 82%, transparent 18%);
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__option-label {
-        flex: 1;
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__option-count {
-        font-variant-numeric: tabular-nums;
-        font-weight: 600;
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__option--winner {
-        background: color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 28%, transparent 72%);
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 46%, transparent 54%);
-      }
-
-      #${HISTORY_ID} .btfw-poll-history__option--winner .btfw-poll-history__option-label {
-        font-weight: 600;
-      }
-
-      @media (max-width: 768px) {
-        #${OVERLAY_ID} .btfw-poll-overlay__card {
-          top: clamp(8px, 6vw, 20px);
-          right: clamp(8px, 5vw, 16px);
-          left: clamp(8px, 5vw, 16px);
-          transform: none;
-          width: auto;
-          max-height: calc(100% - clamp(96px, 22vh, 240px));
-        }
-      }
-    `;
+    style.textContent = POLL_OVERLAY_CSS;
     document.head.appendChild(style);
   }
 
-  function rememberOriginal() {
-    if (!pollWrap || originalParent) return;
-    if (!pollWrap.parentElement) return;
-    originalParent = pollWrap.parentElement;
-    originalNextSibling = pollWrap.nextSibling;
-  }
-
-  function ensureStackHosts() {
-    const stackBody = document.querySelector(`#btfw-stack .btfw-stack-item[data-bind="poll-group"] .btfw-stack-item__body`);
-    if (stackBody) {
-      stackHost = stackBody;
-      if (!historySection) {
-        historySection = document.createElement("section");
-        historySection.id = HISTORY_ID;
-        historySection.className = "btfw-poll-history";
-        historySection.setAttribute("hidden", "hidden");
-        historySection.setAttribute("aria-hidden", "true");
-        historySection.innerHTML = `
-          <header class="btfw-poll-history__header">
-            <span class="btfw-poll-history__title">Poll history</span>
-            <button type="button" class="btfw-poll-history__clear">Clear</button>
-          </header>
-          <div class="${HISTORY_LIST_CLASS}" role="list"></div>
-        `;
-        historyList = historySection.querySelector(`.${HISTORY_LIST_CLASS}`);
-        clearHistoryButton = historySection.querySelector(".btfw-poll-history__clear");
-        if (clearHistoryButton && !clearHistoryButton._btfwBound) {
-          clearHistoryButton.addEventListener("click", () => {
-            clearHistoryEntries();
-            clearHistoryButton.blur();
-          });
-          clearHistoryButton._btfwBound = true;
-        }
-      } else {
-        historyList = historySection.querySelector(`.${HISTORY_LIST_CLASS}`);
-        clearHistoryButton = historySection.querySelector(".btfw-poll-history__clear");
-        if (clearHistoryButton && !clearHistoryButton._btfwBound) {
-          clearHistoryButton.addEventListener("click", () => {
-            clearHistoryEntries();
-            clearHistoryButton.blur();
-          });
-          clearHistoryButton._btfwBound = true;
-        }
-      }
-
-      if (historySection.parentElement !== stackBody) {
-        stackBody.appendChild(historySection);
-      }
-      syncHistoryVisibility();
-    } else {
-      stackHost = null;
-    }
-    return stackHost;
-  }
-
-  function syncHistoryVisibility() {
-    if (!historySection) return;
-    const hasItems = !!(historyList && historyList.children.length);
-    if (hasItems) {
-      historySection.removeAttribute("hidden");
-      historySection.setAttribute("aria-hidden", "false");
-    } else {
-      historySection.setAttribute("hidden", "hidden");
-      historySection.setAttribute("aria-hidden", "true");
-    }
-  }
-
-  function clearHistoryEntries() {
-    if (!historyList) return;
-    while (historyList.firstChild) {
-      historyList.removeChild(historyList.firstChild);
-    }
-    lastArchivedSignature = null;
-    syncHistoryVisibility();
-  }
-
-  function appendHistoryEntry(entry, signature) {
-    if (!entry) return;
-    ensureStackHosts();
-    if (!historyList) return;
-    entry.classList.add("btfw-poll-history__entry");
-    if (signature) {
-      entry.dataset.signature = signature;
-    }
-    historyList.insertBefore(entry, historyList.firstChild);
-    syncHistoryVisibility();
-  }
-
-  function normalisePollOption(option, index, counts) {
-    if (option == null) {
-      return { text: `Option ${index + 1}`, count: typeof counts?.[index] === "number" ? counts[index] : 0 };
-    }
-    if (typeof option === "string" || typeof option === "number") {
-      return {
-        text: String(option),
-        count: typeof counts?.[index] === "number" ? counts[index] : 0
-      };
-    }
-    if (typeof option === "object") {
-      const text = option.option || option.title || option.text || option.name || option.label || `Option ${index + 1}`;
-      const count = typeof option.count === "number"
-        ? option.count
-        : typeof option.votes === "number"
-          ? option.votes
-          : typeof option.voteCount === "number"
-            ? option.voteCount
-            : typeof counts?.[index] === "number"
-              ? counts[index]
-              : 0;
-      return { text: String(text), count };
-    }
-    return {
-      text: `Option ${index + 1}`,
-      count: typeof counts?.[index] === "number" ? counts[index] : 0
-    };
-  }
-
-  function normalisePollData(raw) {
-    if (!raw) return null;
-    const poll = raw.poll ? normalisePollData(raw.poll) : raw;
-    if (poll && poll !== raw && poll.signature) return poll;
-
-    const title = poll && poll.title ? String(poll.title) : "Poll";
-    const optionsSource = Array.isArray(poll?.options)
-      ? poll.options
-      : Array.isArray(poll?.opts)
-        ? poll.opts
-        : Array.isArray(poll?.answers)
-          ? poll.answers
-          : [];
-    const counts = Array.isArray(poll?.counts)
-      ? poll.counts
-      : Array.isArray(poll?.votes)
-        ? poll.votes
-        : null;
-
-    const options = optionsSource.map((opt, idx) => normalisePollOption(opt, idx, counts));
-    const total = options.reduce((sum, opt) => sum + (typeof opt.count === "number" ? opt.count : 0), 0);
-
-    const idValue = poll && (poll.id ?? poll.key ?? poll.uuid ?? poll.guid ?? poll.ts ?? poll.timestamp);
-    const id = idValue != null ? String(idValue) : null;
-    const signatureCore = `${title}::${options.map(opt => `${opt.text}|${opt.count ?? 0}`).join("::")}`;
-    const signature = id ? `id:${id}` : `${signatureCore}::${Date.now()}`;
-
-    return { title, options, total, signature, id, normalised: true };
-  }
-
-  function createHistoryEntryFromData(data) {
-    if (!data) return null;
-    const { title, options, total } = data;
-    const entry = document.createElement("article");
-
-    const header = document.createElement("header");
-    header.className = "btfw-poll-history__entry-header";
-
-    const titleEl = document.createElement("span");
-    titleEl.className = "btfw-poll-history__entry-title";
-    titleEl.textContent = title || "Poll";
-    header.appendChild(titleEl);
-
-    const meta = document.createElement("span");
-    meta.className = "btfw-poll-history__entry-meta";
-    meta.textContent = new Date().toLocaleString();
-    header.appendChild(meta);
-
-    entry.appendChild(header);
-
-    if (Array.isArray(options) && options.length) {
-      const list = document.createElement("ol");
-      list.className = "btfw-poll-history__options";
-      let bestCount = -Infinity;
-      options.forEach(opt => {
-        const count = typeof opt.count === "number" ? opt.count : 0;
-        if (count > bestCount) bestCount = count;
-      });
-
-      options.forEach(opt => {
-        const item = document.createElement("li");
-        item.className = "btfw-poll-history__option";
-        const count = typeof opt.count === "number" ? opt.count : 0;
-        if (count === bestCount && bestCount > 0) {
-          item.classList.add("btfw-poll-history__option--winner");
-        }
-
-        const label = document.createElement("span");
-        label.className = "btfw-poll-history__option-label";
-        label.textContent = opt.text || "Option";
-        item.appendChild(label);
-
-        const countEl = document.createElement("span");
-        countEl.className = "btfw-poll-history__option-count";
-        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-        countEl.textContent = `${count}${total > 0 ? ` (${pct}%)` : ""}`;
-        item.appendChild(countEl);
-
-        list.appendChild(item);
-      });
-      entry.appendChild(list);
-    }
-
-    return entry;
-  }
-
-  function extractDomPollData() {
-    const card = resolveActivePollCard();
-    const rootNode = card || pollWrap;
-    if (!rootNode) return null;
-    if (!card) {
-      const hasActiveHint = ACTIVE_SELECTORS.some(sel => rootNode.matches(sel) || rootNode.querySelector(sel));
-      if (!hasActiveHint) return null;
-    }
-    const titleEl = rootNode.querySelector(".poll-title, .poll-question, h3, legend, header strong");
-    const title = titleEl && titleEl.textContent ? titleEl.textContent.trim() : "Poll";
-    const optionNodes = rootNode.querySelectorAll(".poll-option, .poll-entry, .poll-row, .poll-answers li, .poll-options li, .option");
-    const options = [];
-    optionNodes.forEach(node => {
-      if (!node || !node.textContent) return;
-      const textEl = node.querySelector(".poll-option-label, label, .poll-answer, .poll-option-text");
-      let countEl = node.querySelector(".poll-votes, .poll-option-count, .count, .votes, button");
-      let text = textEl && textEl.textContent ? textEl.textContent.trim() : node.textContent.trim();
-      if ((!textEl || !text) && node.matches(".option")) {
-        const clone = node.cloneNode(true);
-        clone.querySelectorAll("button, input").forEach(el => el.remove());
-        const fallback = clone.textContent ? clone.textContent.trim() : "";
-        if (fallback) {
-          text = fallback;
-        }
-        if (!countEl) {
-          countEl = node.querySelector("button, input");
-        }
-      }
-      let count = 0;
-      if (countEl && countEl.textContent) {
-        const match = countEl.textContent.match(/(\d+)/);
-        if (match) {
-          count = parseInt(match[1], 10) || 0;
-        }
-      }
-      options.push({ text, count });
-    });
-    if (!options.length) return { title, options: [], total: 0, signature: currentPollSignature || `${title}::${Date.now()}`, normalised: true };
-    const total = options.reduce((sum, opt) => sum + (typeof opt.count === "number" ? opt.count : 0), 0);
-    const signature = currentPollSignature || `${title}::${options.map(opt => `${opt.text}|${opt.count ?? 0}`).join("::")}::${Date.now()}`;
-    return { title, options, total, signature, normalised: true };
-  }
-
-  function archivePollFromDom() {
-    const data = extractDomPollData();
-    if (!data) return;
-    if (data.signature && data.signature === lastArchivedSignature) return;
-    const entry = createHistoryEntryFromData(data);
-    appendHistoryEntry(entry, data.signature);
-    lastArchivedSignature = data.signature;
-  }
-
-  function archivePollData(raw) {
-    const data = raw && raw.normalised ? raw : normalisePollData(raw);
-    if (!data) return;
-    if (data.signature && data.signature === lastArchivedSignature) return;
-    if (data.signature) {
-      currentPollSignature = data.signature;
-    }
-    const entry = createHistoryEntryFromData(data);
-    appendHistoryEntry(entry, data.signature);
-    lastArchivedSignature = data.signature;
-  }
-
-  function ensureOverlayElements() {
-    if (!overlayHost) {
-      overlayHost = document.createElement("div");
-      overlayHost.id = OVERLAY_ID;
-      overlayHost.setAttribute("role", "region");
-      overlayHost.setAttribute("aria-label", "Poll overlay");
-
-      overlayInner = document.createElement("div");
-      overlayInner.className = "btfw-poll-overlay__card";
-      overlayHost.appendChild(overlayInner);
-
-      overlayClose = document.createElement("button");
-      overlayClose.type = "button";
-      overlayClose.className = "btfw-poll-overlay__close";
-      overlayClose.setAttribute("aria-label", "Hide poll overlay");
-      overlayClose.innerHTML = "<span aria-hidden=\"true\">&times;</span>";
-      overlayClose.addEventListener("click", () => setOverlayPreferred(false));
-      overlayHost.appendChild(overlayClose);
-    }
-  }
-
-  function attachOverlayToVideo() {
-    const videoWrap = document.querySelector("#videowrap, #mainvideowrap, .video-wrap");
-    if (!videoWrap) {
-      if (!videoMountObserver && typeof MutationObserver !== "undefined") {
-        videoMountObserver = new MutationObserver(() => {
-          const found = document.querySelector("#videowrap, #mainvideowrap, .video-wrap");
-          if (!found) return;
-          if (videoMountObserver) {
-            videoMountObserver.disconnect();
-            videoMountObserver = null;
-          }
-          attachOverlayToVideo();
-        });
-        const target = document.body || document.documentElement;
-        if (target) {
-          videoMountObserver.observe(target, { childList: true, subtree: true });
-        }
-      }
-      return false;
-    }
-
-    if (videoMountObserver) {
-      videoMountObserver.disconnect();
-      videoMountObserver = null;
-    }
-    ensureOverlayElements();
-    if (overlayHost && overlayHost.parentElement !== videoWrap) {
-      videoWrap.appendChild(overlayHost);
-    }
-    return true;
-  }
-
-  function adoptPollToOverlay() {
-    const card = resolveActivePollCard();
-    if (!card) return;
-
-    attachOverlayToVideo();
-    ensureStackHosts();
-
-    if (overlayInner && card.parentElement !== overlayInner) {
-      overlayInner.appendChild(card);
-    }
-
-    card.classList.add("btfw-poll-overlay__panel");
-    card.setAttribute("data-btfw-poll-overlay", "video");
-
-    if (overlayHost) overlayHost.classList.add("btfw-visible");
-    document.documentElement.classList.add(ROOT_FLOAT_CLASS);
-  }
-
-  function parkPollInStack() {
-    const card = resolveActivePollCard();
-    ensureStackHosts();
-
-    const preferredParent = pollCardOriginalParent && pollCardOriginalParent.isConnected
-      ? pollCardOriginalParent
-      : pollWrap;
-
-    if (card && preferredParent) {
-      const anchor = pollCardOriginalNextSibling && pollCardOriginalNextSibling.parentElement === preferredParent
-        ? pollCardOriginalNextSibling
-        : null;
-      if (card.parentElement !== preferredParent) {
-
-        if (anchor) {
-          preferredParent.insertBefore(card, anchor);
-        } else {
-          preferredParent.appendChild(card);
-        }
-      }
-      card.classList.remove("btfw-poll-overlay__panel");
-      card.setAttribute("data-btfw-poll-overlay", "stack");
-    }
-
-    if (overlayInner && overlayInner.firstChild && overlayInner.firstChild !== card) {
-      overlayInner.removeChild(overlayInner.firstChild);
-    }
-
-    if (overlayHost) {
-      overlayHost.classList.remove("btfw-visible");
-    }
-
-    document.documentElement.classList.remove(ROOT_FLOAT_CLASS);
-  }
-
-  function pollHasActiveContent() {
-    const card = resolveActivePollCard();
-    if (!card) return false;
-    if (!card.isConnected) return false;
-    const text = (card.textContent || "").trim();
-    if (text && INACTIVE_TEXT.test(text)) return false;
-
-    if (ACTIVE_SELECTORS.some(sel => card.matches(sel) || card.querySelector(sel))) return true;
-
-
-    const domData = extractDomPollData();
-    if (domData && Array.isArray(domData.options) && domData.options.length > 0) {
-      return true;
-    }
-
-    return false;
-  }
-
-  function isValidPollCard(node) {
-    if (!node || typeof node.querySelector !== "function") return false;
-    if (node === overlayHost || node === overlayInner) return false;
-    const text = (node.textContent || "").trim();
-    if (!text || INACTIVE_TEXT.test(text)) return false;
-    if (ACTIVE_SELECTORS.some(sel => node.matches(sel) || node.querySelector(sel))) return true;
-    return !!node.querySelector(".option, .poll-option, button[data-option]");
-  }
-
-  function resolveActivePollCard() {
-    if (activePollCard && activePollCard.isConnected && isValidPollCard(activePollCard)) {
-      return activePollCard;
-    }
-
-    const searchRoots = [];
-    if (overlayInner) searchRoots.push(overlayInner);
-    if (pollWrap) searchRoots.push(pollWrap);
-
-    for (const root of searchRoots) {
-      if (!root) continue;
-      for (const selector of POLL_CARD_SELECTORS) {
-        const candidate = root.querySelector(selector);
-        if (candidate && isValidPollCard(candidate)) {
-          activePollCard = candidate;
-          if (!pollCardOriginalParent && candidate.parentElement) {
-            pollCardOriginalParent = candidate.parentElement;
-            pollCardOriginalNextSibling = candidate.nextSibling;
-          }
-          return activePollCard;
-        }
-      }
-    }
-
-    activePollCard = null;
-    pollCardOriginalParent = null;
-    pollCardOriginalNextSibling = null;
-    return null;
-
-  }
-
-  function setOverlayPreferred(value) {
-    const next = !!value;
-    if (overlayPreferred === next) {
-      syncOverlay();
-      return;
-    }
-    overlayPreferred = next;
-    writePreference(next);
-    syncOverlay();
-  }
-
-  function syncOverlay() {
-    if (!pollWrap) return;
-
-    ensureStackHosts();
-    rememberOriginal();
-    const wasActive = pollActive;
-    const active = pollHasActiveContent();
-    pollActive = active;
-
-    if (pollActive) {
-      const domData = extractDomPollData();
-      if (domData && domData.signature) {
-        currentPollSignature = domData.signature;
-      }
-    }
-
-    const shouldFloat = overlayPreferred && pollActive;
-    if (shouldFloat) {
-      adoptPollToOverlay();
-    } else {
-      parkPollInStack();
-    }
-
-    if (!pollActive && wasActive) {
-      archivePollFromDom();
-      currentPollSignature = null;
-    } else if (!pollActive && !wasActive) {
-      const domData = extractDomPollData();
-      if (domData && Array.isArray(domData.options) && domData.options.length) {
-        currentPollSignature = domData.signature;
-        archivePollData(domData);
-        currentPollSignature = null;
-      }
-    }
-  }
-
-  function observePollChanges() {
-    if (!pollWrap) return;
-    if (pollObserver) pollObserver.disconnect();
-    pollObserver = new MutationObserver(() => syncOverlay());
-    pollObserver.observe(pollWrap, { childList: true, subtree: true, characterData: true });
-  }
-
-  function handlePollWrapFound(element) {
-    pollWrap = element;
-    rememberOriginal();
-    ensureStackHosts();
-    observePollChanges();
-    raf(() => syncOverlay());
-  }
-
-  function waitForPollWrap() {
-    const existing = document.getElementById("pollwrap");
-    if (existing) {
-      handlePollWrapFound(existing);
-      return;
-    }
-
-    if (typeof MutationObserver === "undefined") return;
-
-    const target = document.body || document.documentElement;
-    if (!target) return;
-
-    const observer = new MutationObserver(() => {
-      const found = document.getElementById("pollwrap");
-      if (!found) return;
-      observer.disconnect();
-      handlePollWrapFound(found);
+  function createPollModal() {
+    if (pollModal) return pollModal;
+
+    const modal = document.createElement("div");
+    modal.id = "btfw-poll-modal";
+    modal.innerHTML = `
+      <div class="btfw-poll-modal-content">
+        <div class="btfw-poll-modal-header">
+          <h2 class="btfw-poll-modal-title">Create Poll</h2>
+          <button class="btfw-poll-modal-close" type="button">&times;</button>
+        </div>
+        <form class="btfw-poll-form">
+          <div class="btfw-poll-form-group">
+            <label for="poll-title">Poll Title</label>
+            <input type="text" id="poll-title" placeholder="Enter poll question...">
+          </div>
+          
+          <div class="btfw-poll-form-group">
+            <label>Options</label>
+            <div class="btfw-poll-options">
+              <div class="btfw-poll-option">
+                <input type="text" placeholder="Option 1" required>
+              </div>
+              <div class="btfw-poll-option">
+                <input type="text" placeholder="Option 2" required>
+              </div>
+            </div>
+            <button type="button" class="btfw-poll-add-option">Add Option</button>
+          </div>
+
+          <div class="btfw-poll-checkbox-group">
+            <div class="btfw-poll-checkbox">
+              <input type="checkbox" id="poll-obscured">
+              <label for="poll-obscured">Hidden results</label>
+            </div>
+            <div class="btfw-poll-checkbox">
+              <input type="checkbox" id="poll-multi">
+              <label for="poll-multi">Multiple choice</label>
+            </div>
+          </div>
+
+          <div class="btfw-poll-form-actions">
+            <button type="button" class="btfw-poll-button btfw-poll-button--secondary btfw-poll-cancel">Cancel</button>
+            <button type="submit" class="btfw-poll-button btfw-poll-button--primary">Create Poll</button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    pollModal = modal;
+
+    // Wire up modal events
+    const closeBtn = modal.querySelector(".btfw-poll-modal-close");
+    const cancelBtn = modal.querySelector(".btfw-poll-cancel");
+    const addOptionBtn = modal.querySelector(".btfw-poll-add-option");
+    const form = modal.querySelector(".btfw-poll-form");
+    const optionsContainer = modal.querySelector(".btfw-poll-options");
+
+    closeBtn.addEventListener("click", closePollModal);
+    cancelBtn.addEventListener("click", closePollModal);
+    
+    // Close on backdrop click
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closePollModal();
     });
 
-    observer.observe(target, { childList: true, subtree: true });
+    addOptionBtn.addEventListener("click", () => {
+      const optionCount = optionsContainer.children.length + 1;
+      const optionDiv = document.createElement("div");
+      optionDiv.className = "btfw-poll-option";
+      optionDiv.innerHTML = `
+        <input type="text" placeholder="Option ${optionCount}" required>
+        <button type="button" class="btfw-poll-remove-option">Remove</button>
+      `;
+      
+      const removeBtn = optionDiv.querySelector(".btfw-poll-remove-option");
+      removeBtn.addEventListener("click", () => {
+        if (optionsContainer.children.length > 2) {
+          optionDiv.remove();
+        }
+      });
+
+      optionsContainer.appendChild(optionDiv);
+    });
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      handlePollSubmit();
+    });
+
+    return modal;
   }
 
-  function waitForSocket(attempt = 0) {
-    if (window.socket && typeof window.socket.on === "function") {
-      return Promise.resolve(window.socket);
-    }
-    if (attempt > 60) {
-      return Promise.resolve(null);
-    }
-    return new Promise(resolve => {
+  function createVideoOverlay() {
+    if (videoOverlay) return videoOverlay;
+
+    const videowrap = document.getElementById("videowrap");
+    if (!videowrap) return null;
+
+    const overlay = document.createElement("div");
+    overlay.id = "btfw-poll-video-overlay";
+    overlay.innerHTML = `
+      <div class="btfw-poll-video-content">
+        <div class="btfw-poll-video-header">
+          <h3 class="btfw-poll-video-title">Poll Title</h3>
+          <button class="btfw-poll-video-close" type="button">&times;</button>
+        </div>
+        <div class="btfw-poll-options-grid">
+          <!-- Options populated by JS -->
+        </div>
+        <div class="btfw-poll-info">
+          <span class="btfw-poll-votes">0 votes</span>
+          <span class="btfw-poll-status">Active</span>
+        </div>
+      </div>
+    `;
+
+    videowrap.appendChild(overlay);
+    videoOverlay = overlay;
+
+    // Wire up close button
+    const closeBtn = overlay.querySelector(".btfw-poll-video-close");
+    closeBtn.addEventListener("click", hideVideoOverlay);
+
+    return overlay;
+  }
+
+  function openPollModal() {
+    const modal = createPollModal();
+    if (modal) {
+      modal.classList.add("btfw-poll-modal--open");
+      // Focus the title input
       setTimeout(() => {
-        waitForSocket(attempt + 1).then(resolve);
-      }, 500);
-    });
+        const titleInput = modal.querySelector("#poll-title");
+        if (titleInput) titleInput.focus();
+      }, 100);
+    }
   }
 
-  function handleSocketPollActive(data) {
-    raf(() => {
-      const info = normalisePollData(data);
-      if (info) {
-        currentPollSignature = info.signature;
+  function closePollModal() {
+    if (pollModal) {
+      pollModal.classList.remove("btfw-poll-modal--open");
+      // Reset form
+      const form = pollModal.querySelector(".btfw-poll-form");
+      if (form) form.reset();
+      // Reset to 2 options
+      const optionsContainer = pollModal.querySelector(".btfw-poll-options");
+      if (optionsContainer) {
+        optionsContainer.innerHTML = `
+          <div class="btfw-poll-option">
+            <input type="text" placeholder="Option 1" required>
+          </div>
+          <div class="btfw-poll-option">
+            <input type="text" placeholder="Option 2" required>
+          </div>
+        `;
       }
-      pollActive = true;
-      syncOverlay();
-    });
+    }
   }
 
-  function handleSocketPollClosed(data) {
-    raf(() => {
-      const info = normalisePollData(data);
-      if (info) {
-        currentPollSignature = info.signature;
-        archivePollData(info);
-      } else {
-        archivePollData(data);
+  function handlePollSubmit() {
+    const form = pollModal.querySelector(".btfw-poll-form");
+    const titleInput = form.querySelector("#poll-title");
+    const optionInputs = form.querySelectorAll(".btfw-poll-option input");
+    const obscuredCheck = form.querySelector("#poll-obscured");
+    const multiCheck = form.querySelector("#poll-multi");
+
+    const title = titleInput.value.trim();
+    const options = Array.from(optionInputs)
+      .map(input => input.value.trim())
+      .filter(opt => opt.length > 0);
+
+    if (!title || options.length < 2) {
+      alert("Please provide a title and at least 2 options");
+      return;
+    }
+
+    // Send poll to server using CyTube's socket
+    if (window.socket && window.socket.emit) {
+      try {
+        window.socket.emit("newPoll", {
+          title: title,
+          opts: options,
+          obscured: obscuredCheck.checked,
+          timeout: 0,
+          multi: multiCheck.checked
+        });
+        
+        closePollModal();
+        
+        // Show notification if available
+        if (window.BTFW_notify) {
+          window.BTFW_notify.success({ 
+            title: "Poll Created", 
+            html: `Poll "<strong>${title}</strong>" has been created`,
+            timeout: 3000 
+          });
+        }
+      } catch (e) {
+        console.error("Failed to create poll:", e);
+        alert("Failed to create poll. Please try again.");
       }
-      pollActive = false;
-      syncOverlay();
+    } else {
+      alert("Unable to connect to server. Please refresh and try again.");
+    }
+  }
+
+  function showVideoOverlay(poll) {
+    const overlay = createVideoOverlay();
+    if (!overlay || !poll) return;
+
+    currentPoll = poll;
+    
+    // Update overlay content
+    const title = overlay.querySelector(".btfw-poll-video-title");
+    const optionsGrid = overlay.querySelector(".btfw-poll-options-grid");
+    const votesSpan = overlay.querySelector(".btfw-poll-votes");
+
+    if (title) title.textContent = poll.title || "Poll";
+    
+    if (optionsGrid && poll.options) {
+      optionsGrid.innerHTML = "";
+      poll.options.forEach((option, index) => {
+        const btn = document.createElement("button");
+        btn.className = "btfw-poll-option-btn";
+        btn.textContent = option;
+        btn.dataset.optionIndex = index;
+        
+        btn.addEventListener("click", () => {
+          if (window.socket && window.socket.emit) {
+            try {
+              window.socket.emit("votePoll", { option: index });
+              btn.classList.add("voted");
+              
+              // Disable all options after voting (unless multi-choice)
+              if (!poll.multi) {
+                optionsGrid.querySelectorAll(".btfw-poll-option-btn").forEach(b => {
+                  b.style.pointerEvents = "none";
+                  b.style.opacity = "0.7";
+                });
+                btn.style.opacity = "1";
+              }
+            } catch (e) {
+              console.error("Failed to vote:", e);
+            }
+          }
+        });
+        
+        optionsGrid.appendChild(btn);
+      });
+    }
+
+    if (votesSpan && poll.votes) {
+      const totalVotes = poll.votes.reduce((sum, count) => sum + count, 0);
+      votesSpan.textContent = `${totalVotes} vote${totalVotes !== 1 ? 's' : ''}`;
+    }
+
+    overlay.classList.add("btfw-poll-active");
+  }
+
+  function hideVideoOverlay() {
+    if (videoOverlay) {
+      videoOverlay.classList.remove("btfw-poll-active");
+      currentPoll = null;
+    }
+  }
+
+  function updatePollResults(poll) {
+    if (!videoOverlay || !currentPoll || !poll) return;
+    
+    const votesSpan = videoOverlay.querySelector(".btfw-poll-votes");
+    if (votesSpan && poll.votes) {
+      const totalVotes = poll.votes.reduce((sum, count) => sum + count, 0);
+      votesSpan.textContent = `${totalVotes} vote${totalVotes !== 1 ? 's' : ''}`;
+    }
+  }
+
+  function wireSocketEvents() {
+    if (socketEventsWired || !window.socket) return;
+    
+    try {
+      // Listen for new polls
+      window.socket.on("newPoll", (poll) => {
+        if (poll && poll.title) {
+          showVideoOverlay(poll);
+        }
+      });
+
+      // Listen for poll updates
+      window.socket.on("updatePoll", (poll) => {
+        if (poll && currentPoll) {
+          updatePollResults(poll);
+        }
+      });
+
+      // Listen for poll closure
+      window.socket.on("closePoll", () => {
+        hideVideoOverlay();
+      });
+
+      socketEventsWired = true;
+    } catch (e) {
+      console.warn("[poll-overlay] Socket event wiring failed:", e);
+    }
+  }
+
+  function hijackPollButtons() {
+    if (buttonObserver) return; // Already watching
+
+    const processButtons = () => {
+      const pollButtons = document.querySelectorAll('button[onclick*="poll"], button[title*="Poll"], button[title*="poll"], #newpollbtn, .poll-btn');
+      
+      pollButtons.forEach(btn => {
+        if (btn.dataset.btfwHijacked) return;
+        btn.dataset.btfwHijacked = "true";
+        
+        // Remove existing onclick handlers
+        btn.removeAttribute("onclick");
+        
+        // Add our handler
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openPollModal();
+        });
+      });
+    };
+
+    // Initial processing
+    processButtons();
+
+    // Watch for new buttons with debouncing to prevent infinite loops
+    let debounceTimer = null;
+    buttonObserver = new MutationObserver(() => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(processButtons, 100);
+    });
+
+    buttonObserver.observe(document.body, { 
+      childList: true, 
+      subtree: true,
+      attributes: false // Only watch for DOM changes, not attribute changes
     });
   }
 
-  function wireSocket() {
-    if (socketWired) return;
-    waitForSocket().then(socket => {
-      if (!socket || socketWired) return;
-      socketWired = true;
-      ["newPoll", "updatePoll", "setPoll", "openPoll"].forEach(evt => {
-        socket.on(evt, handleSocketPollActive);
-      });
-      ["closePoll", "clearPoll", "deletePoll"].forEach(evt => {
-        socket.on(evt, handleSocketPollClosed);
-      });
+  function waitForSocket() {
+    return new Promise((resolve) => {
+      if (window.socket && window.socket.on) {
+        resolve();
+        return;
+      }
+
+      let attempts = 0;
+      const maxAttempts = 50; // 5 seconds max
+      const checkSocket = () => {
+        attempts++;
+        if (window.socket && window.socket.on) {
+          resolve();
+        } else if (attempts < maxAttempts) {
+          setTimeout(checkSocket, 100);
+        } else {
+          console.warn("[poll-overlay] Socket not available after 5 seconds");
+          resolve(); // Continue anyway
+        }
+      };
+
+      setTimeout(checkSocket, 100);
     });
   }
 
-  function init() {
-    injectCSS();
-    attachOverlayToVideo();
-    ensureStackHosts();
-    waitForPollWrap();
-    wireSocket();
+  async function boot() {
+    try {
+      injectCSS();
+      
+      // Wait for socket to be available before wiring events
+      await waitForSocket();
+      wireSocketEvents();
+      
+      // Set up button hijacking
+      hijackPollButtons();
+      
+    } catch (e) {
+      console.error("[poll-overlay] Boot failed:", e);
+    }
   }
 
+  // Boot when DOM is ready
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    setTimeout(boot, 0); // Async to avoid blocking
+  }
 
-  init();
+  // Also boot on layout ready event (with delay to ensure everything is settled)
+  document.addEventListener("btfw:layoutReady", () => {
+    setTimeout(boot, 200);
+  });
 
   return {
     name: "feature:poll-overlay",
-    show: () => setOverlayPreferred(true),
-    hide: () => setOverlayPreferred(false),
-    sync: () => syncOverlay()
+    openModal: openPollModal,
+    closeModal: closePollModal,
+    showOverlay: showVideoOverlay,
+    hideOverlay: hideVideoOverlay
   };
 });
