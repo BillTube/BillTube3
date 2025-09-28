@@ -170,6 +170,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
   const scrubTokens = ["720p", "brrip", "x264", "yify", "mp4"];
   const scrubPattern = new RegExp(`\\b(?:${scrubTokens.join("|")})\\b`, "gi");
   const titleInputSelectors = ["#addfromurl-title-val", "#mediaurl-title", ".media-title-input"]; // support legacy variants
+
   function sanitiseTitleInput(value){
     if (!value) return "";
 
@@ -265,6 +266,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     });
 
     checkbox._btfwTempPersistBound = true;
+
     return true;
   }
 
@@ -310,6 +312,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     wireQueuePollCopy();
     ensureAddFromUrlTitleFilter();
     ensureAddTempPreference();
+
 
     // Re-ensure toolbar when playlist re-renders
     const container = $("#queuecontainer") || $("#playlistwrap") || document.body;
