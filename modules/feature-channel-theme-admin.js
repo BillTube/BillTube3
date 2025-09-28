@@ -54,9 +54,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         apiKey: ""
       }
     },
-    features: {
-      videoOverlayPoll: true
-    },
     resources: {
       scripts: [],
       styles: [],
@@ -551,16 +548,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       normalized.integrations.enabled = true;
     }
 
-    if (!normalized.features || typeof normalized.features !== "object") {
-      normalized.features = cloneDefaults().features;
+    if (normalized.features && typeof normalized.features === "object") {
+      delete normalized.features.videoOverlayPoll;
+      if (Object.keys(normalized.features).length === 0) {
+        delete normalized.features;
+      }
     }
-    const featureFlag = normalized.features?.videoOverlayPoll;
-    normalized.features.videoOverlayPoll = !(
-      featureFlag === false ||
-      featureFlag === 0 ||
-      featureFlag === "0" ||
-      (typeof featureFlag === "string" && featureFlag.toLowerCase() === "false")
-    );
 
     if (!normalized.resources || typeof normalized.resources !== "object") {
       normalized.resources = cloneDefaults().resources;
@@ -795,13 +788,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
               <label for="btfw-theme-slider-json">Featured slider JSON</label>
               <input type="url" id="btfw-theme-slider-json" data-btfw-bind="slider.feedUrl" placeholder="https://example.com/featured.json">
               <p class="help">Paste the URL to the JSON feed used by the channel slider.</p>
-            </div>
-            <div class="field">
-              <label class="btfw-checkbox" for="btfw-theme-feature-poll-overlay">
-                <input type="checkbox" id="btfw-theme-feature-poll-overlay" data-btfw-bind="features.videoOverlayPoll">
-                <span>Enable video poll overlay</span>
-              </label>
-              <p class="help">Shows active polls as an overlay above the video player and replaces the legacy poll creation dialog.</p>
             </div>
             <div class="field">
               <label for="btfw-theme-css-urls">Additional CSS URLs</label>
@@ -1059,18 +1045,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     });
     const root = document.documentElement;
     if (root) {
-      const pollFlag = cfg?.features?.videoOverlayPoll;
-      const enabled = !(
-        pollFlag === false ||
-        pollFlag === 0 ||
-        pollFlag === "0" ||
-        (typeof pollFlag === "string" && pollFlag.toLowerCase() === "false")
-      );
-      root.classList.toggle("btfw-poll-overlay-enabled", enabled);
-      root.classList.toggle("btfw-poll-overlay-disabled", !enabled);
-      document.dispatchEvent(new CustomEvent("btfw:pollOverlay:toggle", {
-        detail: { enabled }
-      }));
+      root.classList.add("btfw-poll-overlay-enabled");
+      root.classList.remove("btfw-poll-overlay-disabled");
     }
     const modules = normalizeModuleUrls(cfg?.resources?.modules || []);
     renderModuleInputs(panel, modules);
@@ -1129,16 +1105,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       updated.integrations.tmdb = { apiKey: "" };
     }
     updated.integrations.tmdb.apiKey = (updated.integrations.tmdb.apiKey || "").trim();
-    if (!updated.features || typeof updated.features !== "object") {
-      updated.features = cloneDefaults().features;
+    if (updated.features && typeof updated.features === "object") {
+      delete updated.features.videoOverlayPoll;
+      if (Object.keys(updated.features).length === 0) {
+        delete updated.features;
+      }
     }
-    const updatedFeatureFlag = updated.features?.videoOverlayPoll;
-    updated.features.videoOverlayPoll = !(
-      updatedFeatureFlag === false ||
-      updatedFeatureFlag === 0 ||
-      updatedFeatureFlag === "0" ||
-      (typeof updatedFeatureFlag === "string" && updatedFeatureFlag.toLowerCase() === "false")
-    );
     if (!updated.typography || typeof updated.typography !== "object") {
       updated.typography = cloneDefaults().typography;
     }
