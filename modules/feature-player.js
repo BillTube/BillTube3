@@ -288,7 +288,6 @@ function watchHead() {
     ensureInlinePlayback();
     ensureTextContentPatch();
     watchPlayerMount();
-    watchHead();
 
     if (typeof window !== "undefined" && window.socket && typeof socket.on === "function") {
       try {
