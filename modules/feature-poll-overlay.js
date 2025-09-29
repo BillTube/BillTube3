@@ -158,6 +158,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let currentPoll = null;
   let socketEventsWired = false;
   let userVotes = new Set(); // Track which options user voted for
+  let pollDomObserver = null;
+  let observedPollElement = null;
+
 
   const ENTITY_DECODER = document.createElement("textarea");
 
@@ -236,6 +239,57 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   function getOriginalPollButtons() {
     return document.querySelectorAll("#pollwrap .well .option button");
+  }
+
+  function stopPollDomObserver() {
+    if (pollDomObserver) {
+      pollDomObserver.disconnect();
+      pollDomObserver = null;
+      observedPollElement = null;
+    }
+  }
+
+  function startPollDomObserver() {
+    stopPollDomObserver();
+
+    if (!videoOverlay || !videoOverlay.classList.contains("btfw-poll-active")) {
+      return;
+    }
+
+    const pollWell = document.querySelector("#pollwrap .well.active");
+    if (!pollWell) {
+      setTimeout(() => {
+        if (!pollDomObserver) {
+          startPollDomObserver();
+        }
+      }, 150);
+      return;
+    }
+
+    observedPollElement = pollWell;
+    pollDomObserver = new MutationObserver(() => {
+      if (observedPollElement && !document.contains(observedPollElement)) {
+        stopPollDomObserver();
+        setTimeout(() => {
+          if (!pollDomObserver) {
+            startPollDomObserver();
+          }
+        }, 120);
+        return;
+      }
+
+      syncOverlayFromDom();
+    });
+
+    pollDomObserver.observe(pollWell, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true
+    });
+
+    // Sync immediately in case the poll was updated before we attached
+    syncOverlayFromDom();
   }
 
   function syncOverlayFromDom() {
@@ -420,6 +474,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
     // Ensure overlay stays in sync with the native poll controls once they mount
     setTimeout(() => {
       syncOverlayFromDom();
+      startPollDomObserver();
+
     }, 200);
   }
 
@@ -428,6 +484,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
       videoOverlay.classList.remove("btfw-poll-active");
       currentPoll = null;
       userVotes.clear();
+      stopPollDomObserver();
+
     }
   }
 
@@ -484,6 +542,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (votesSpan && poll.votes) {
       const totalVotes = poll.votes.reduce((sum, count) => sum + (count || 0), 0);
       votesSpan.textContent = `${totalVotes} vote${totalVotes !== 1 ? 's' : ''}`;
+    }
+
+    if (!pollDomObserver && videoOverlay && videoOverlay.classList.contains("btfw-poll-active")) {
+      startPollDomObserver();
     }
   }
 
