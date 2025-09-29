@@ -109,38 +109,118 @@ document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopi
     }
   }
 
-  function ensureUserlistWatch(){
-    if (document._btfw_userlist_watch) return;
-    const root = document.body || document.documentElement;
-    if (!root) return;
+  const scheduleAdoptUserlist = (() => {
+    let pending = false;
+    const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
+    return () => {
+      if (pending) return;
+      pending = true;
+      raf(() => {
+        pending = false;
+        adoptUserlistIntoPopover();
+      });
+    };
+  })();
 
-    const observer = new MutationObserver((mutations) => {
-      let relevant = false;
-      for (const mutation of mutations) {
-        if (mutation.type === "childList") {
-          for (const node of mutation.addedNodes) {
-            if (!(node instanceof HTMLElement)) continue;
-            if (node.id === "userlist" || node.querySelector?.("#userlist")) {
-              relevant = true;
-              break;
-            }
-          }
-        }
-        if (relevant) break;
-        if (mutation.target && mutation.target.id === "userlist") {
-          relevant = true;
-          break;
-        }
+  const userlistSocketState = {
+    wired: false,
+    socketRef: null,
+    teardown: null,
+    retryTimer: null
+  };
+
+  function wireUserlistSocketWatchers(){
+    const sock = window.socket;
+
+    if (userlistSocketState.wired && userlistSocketState.socketRef && userlistSocketState.socketRef !== sock) {
+      if (typeof userlistSocketState.teardown === "function") {
+        try { userlistSocketState.teardown(); } catch (_) {}
       }
-      if (relevant) adoptUserlistIntoPopover();
-    });
+      userlistSocketState.teardown = null;
+      userlistSocketState.wired = false;
+      userlistSocketState.socketRef = null;
+    }
+
+    if (userlistSocketState.retryTimer) {
+      clearTimeout(userlistSocketState.retryTimer);
+      userlistSocketState.retryTimer = null;
+    }
+
+    if (userlistSocketState.wired) return;
+
+    if (!sock || typeof sock.on !== "function") {
+      if (!userlistSocketState.retryTimer) {
+        userlistSocketState.retryTimer = setTimeout(() => {
+          userlistSocketState.retryTimer = null;
+          wireUserlistSocketWatchers();
+        }, 1000);
+      }
+      return;
+    }
+
+    const events = ["userlist", "addUser", "userLeave"];
+    const handler = () => {
+      wireUserlistSocketWatchers();
+      scheduleAdoptUserlist();
+    };
 
     try {
-      observer.observe(root, { childList: true, subtree: true });
-      document._btfw_userlist_watch = observer;
+      events.forEach((evt) => sock.on(evt, handler));
+      userlistSocketState.teardown = () => {
+        events.forEach((evt) => {
+          if (typeof sock.off === "function") {
+            try { sock.off(evt, handler); } catch (_) {}
+          } else if (typeof sock.removeListener === "function") {
+            try { sock.removeListener(evt, handler); } catch (_) {}
+          }
+        });
+      };
+      userlistSocketState.wired = true;
+      userlistSocketState.socketRef = sock;
+      scheduleAdoptUserlist();
     } catch (_) {
-      adoptUserlistIntoPopover();
+      userlistSocketState.wired = false;
+      userlistSocketState.socketRef = null;
+      if (typeof userlistSocketState.teardown === "function") {
+        try { userlistSocketState.teardown(); } catch (_) {}
+      }
+      userlistSocketState.teardown = null;
+      if (!userlistSocketState.retryTimer) {
+        userlistSocketState.retryTimer = setTimeout(() => {
+          userlistSocketState.retryTimer = null;
+          wireUserlistSocketWatchers();
+        }, 1500);
+      }
     }
+  }
+
+  const ensureUserlistDomTriggers = (() => {
+    let wired = false;
+    const handler = () => {
+      wireUserlistSocketWatchers();
+      scheduleAdoptUserlist();
+    };
+    return () => {
+      if (wired) return;
+      wired = true;
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", handler, { once: true });
+      } else {
+        setTimeout(handler, 0);
+      }
+      document.addEventListener("btfw:layoutReady", handler);
+      document.addEventListener("btfw:chat:barsReady", handler);
+    };
+  })();
+
+  function ensureUserlistWatch(){
+    if (document._btfw_userlist_watch?.disconnect) {
+      try { document._btfw_userlist_watch.disconnect(); } catch (_) {}
+    }
+    document._btfw_userlist_watch = true;
+    ensureUserlistDomTriggers();
+    scheduleAdoptUserlist();
+    wireUserlistSocketWatchers();
   }
 function actionsNode(){
   const bar = document.querySelector("#chatwrap .btfw-chat-bottombar");
@@ -260,54 +340,133 @@ const scheduleNormalizeChatActions = (() => {
 })();
 
 /* Watch the whole document for late/stray button injections and normalize */
-function watchForStrayButtons(){
-  if (document._btfw_btn_watch) return;
-  document._btfw_btn_watch = true;
+  const buttonSocketState = {
+    wired: false,
+    socketRef: null,
+    teardown: null,
+    retryTimer: null
+  };
 
-  const body = document.body || document.documentElement;
-  if (!body) return;
+  function ensureChatActionsObserver(){
+    const actions = actionsNode();
+    if (!actions) return;
 
-  const watchedIds = new Set([
-    "btfw-btn-emotes",
-    "btfw-btn-gif",
-    "btfw-chatcmds-btn",
-    "btfw-users-toggle",
-    "usercount"
-  ]);
-
-  const obs = new MutationObserver((mutations) => {
-    let relevant = false;
-    for (const mutation of mutations) {
-      if (mutation.target && mutation.target.id === "btfw-chat-actions") {
-        relevant = true;
-        break;
+    const prev = document._btfw_btn_obsTarget;
+    if (prev && prev !== actions) {
+      const prevObserver = prev._btfwNormalizeObserver;
+      if (prevObserver && typeof prevObserver.disconnect === "function") {
+        try { prevObserver.disconnect(); } catch (_) {}
       }
-      for (const node of mutation.addedNodes) {
-        if (!(node instanceof HTMLElement)) continue;
-        if (watchedIds.has(node.id)) {
-          relevant = true;
-          break;
-        }
-        for (const id of watchedIds) {
-          if (node.id !== id && node.querySelector && node.querySelector(`#${id}`)) {
-            relevant = true;
-            break;
-          }
-        }
-        if (relevant) break;
-      }
-      if (relevant) break;
+      prev._btfwNormalizeObserver = null;
+      document._btfw_btn_obsTarget = null;
     }
-    if (relevant) scheduleNormalizeChatActions();
-  });
 
-  try {
-    obs.observe(body, { childList:true, subtree:true });
-  } catch (_) {
-    // If we cannot observe, fall back to a one-shot normalization so buttons aren't lost.
-    scheduleNormalizeChatActions();
+    if (actions._btfwNormalizeObserver) return;
+
+    const observer = new MutationObserver(() => scheduleNormalizeChatActions());
+    try {
+      observer.observe(actions, { childList: true });
+      actions._btfwNormalizeObserver = observer;
+      document._btfw_btn_obsTarget = actions;
+    } catch (_) {
+      scheduleNormalizeChatActions();
+    }
   }
-}
+
+  function wireButtonSocketListeners(){
+    const sock = window.socket;
+
+    if (buttonSocketState.wired && buttonSocketState.socketRef && buttonSocketState.socketRef !== sock) {
+      if (typeof buttonSocketState.teardown === "function") {
+        try { buttonSocketState.teardown(); } catch (_) {}
+      }
+      buttonSocketState.teardown = null;
+      buttonSocketState.wired = false;
+      buttonSocketState.socketRef = null;
+    }
+
+    if (buttonSocketState.retryTimer) {
+      clearTimeout(buttonSocketState.retryTimer);
+      buttonSocketState.retryTimer = null;
+    }
+
+    if (buttonSocketState.wired) return;
+
+    if (!sock || typeof sock.on !== "function") {
+      if (!buttonSocketState.retryTimer) {
+        buttonSocketState.retryTimer = setTimeout(() => {
+          buttonSocketState.retryTimer = null;
+          wireButtonSocketListeners();
+        }, 1000);
+      }
+      return;
+    }
+
+    const events = ["changeMedia", "queue", "setUserMeta", "setAFK"];
+    const handler = () => {
+      wireButtonSocketListeners();
+      ensureChatActionsObserver();
+      scheduleNormalizeChatActions();
+    };
+
+    try {
+      events.forEach((evt) => sock.on(evt, handler));
+      buttonSocketState.teardown = () => {
+        events.forEach((evt) => {
+          if (typeof sock.off === "function") {
+            try { sock.off(evt, handler); } catch (_) {}
+          } else if (typeof sock.removeListener === "function") {
+            try { sock.removeListener(evt, handler); } catch (_) {}
+          }
+        });
+      };
+      buttonSocketState.wired = true;
+      buttonSocketState.socketRef = sock;
+    } catch (_) {
+      buttonSocketState.wired = false;
+      buttonSocketState.socketRef = null;
+      if (typeof buttonSocketState.teardown === "function") {
+        try { buttonSocketState.teardown(); } catch (_) {}
+      }
+      buttonSocketState.teardown = null;
+      if (!buttonSocketState.retryTimer) {
+        buttonSocketState.retryTimer = setTimeout(() => {
+          buttonSocketState.retryTimer = null;
+          wireButtonSocketListeners();
+        }, 1500);
+      }
+    }
+  }
+
+  const ensureButtonDomTriggers = (() => {
+    let wired = false;
+      const handler = () => {
+        wireButtonSocketListeners();
+        ensureChatActionsObserver();
+        scheduleNormalizeChatActions();
+      };
+    return () => {
+      if (wired) return;
+      wired = true;
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", handler, { once: true });
+      } else {
+        setTimeout(handler, 0);
+      }
+      document.addEventListener("btfw:layoutReady", handler);
+      document.addEventListener("btfw:chat:barsReady", handler);
+    };
+  })();
+
+  function watchForStrayButtons(){
+    if (document._btfw_btn_watch) return;
+    document._btfw_btn_watch = true;
+
+    ensureButtonDomTriggers();
+    ensureChatActionsObserver();
+    scheduleNormalizeChatActions();
+    wireButtonSocketListeners();
+  }
 
   /* ---------------- Auto-scroll management ---------------- */
   const scrollState = {
