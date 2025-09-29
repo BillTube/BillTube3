@@ -132,11 +132,15 @@ BTFW.define("feature:themeSettings", [], async () => {
                     <p>Adjust density and readability for the chat column.</p>
                   </header>
                   <div class="btfw-ts-card__body">
-                    <div class="btfw-ts-control btfw-ts-control--radios">
-                      <span class="btfw-input__label">Avatar size</span>
-                      <label class="radio"><input type="radio" name="btfw-avatars-mode" value="off"> <span>Off</span></label>
-                      <label class="radio"><input type="radio" name="btfw-avatars-mode" value="small"> <span>Small</span></label>
-                      <label class="radio"><input type="radio" name="btfw-avatars-mode" value="big"> <span>Big</span></label>
+                    <div class="btfw-ts-control">
+                      <label class="btfw-input__label" for="btfw-avatars-mode">Avatar size</label>
+                      <div class="select is-small">
+                        <select id="btfw-avatars-mode">
+                          <option value="off">Off</option>
+                          <option value="small">Small</option>
+                          <option value="big">Big</option>
+                        </select>
+                      </div>
                     </div>
                     <div class="btfw-ts-control">
                       <span class="btfw-input__label">Chat text size</span>
@@ -183,13 +187,14 @@ BTFW.define("feature:themeSettings", [], async () => {
                     <p>Choose how the desktop layout positions chat and video.</p>
                   </header>
                   <div class="btfw-ts-card__body">
-                    <div class="btfw-ts-control btfw-ts-control--radios">
-                      <label class="radio">
-                        <input type="radio" name="btfw-chat-side" value="right"> <span>Video left, chat right</span>
-                      </label>
-                      <label class="radio">
-                        <input type="radio" name="btfw-chat-side" value="left"> <span>Chat left, video right</span>
-                      </label>
+                    <div class="btfw-ts-control">
+                      <label class="btfw-input__label" for="btfw-chat-side">Layout mode</label>
+                      <div class="select is-small">
+                        <select id="btfw-chat-side">
+                          <option value="right">Video left, chat right</option>
+                          <option value="left">Chat left, video right</option>
+                        </select>
+                      </div>
                     </div>
                     <p class="btfw-help">Mobile screens automatically collapse into a stacked layout.</p>
                   </div>
@@ -276,7 +281,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     const m = $("#btfw-theme-modal"); if (!m) return;
 
     // gather current values
-    const avatarsMode = ($$('input[name="btfw-avatars-mode"]:checked', m)[0]?.value) || "big";
+    const avatarsMode = $("#btfw-avatars-mode", m)?.value || "big";
     const chatTextPx  = $("#btfw-chat-textsize", m)?.value || "14";
     const emoteSize   = $("#btfw-emote-size", m)?.value   || "medium";
     const gifAutoOn   = $("#btfw-gif-autoplay", m)?.checked;
@@ -284,7 +289,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     const compactOn   = compactBtn ? compactBtn.getAttribute("aria-pressed") === "true" : true;
     const localSubsOn = $("#btfw-localsubs-toggle", m)?.checked;
     const billcastOn  = $("#btfw-billcast-toggle", m)?.checked;
-    const chatSide    = ($$('input[name="btfw-chat-side"]:checked', m)[0]?.value) || "right";
+    const chatSide    = $("#btfw-chat-side", m)?.value || "right";
 
     // persist
     set(TS_KEYS.avatarsMode, avatarsMode);
@@ -323,13 +328,16 @@ BTFW.define("feature:themeSettings", [], async () => {
   function open(){
     const m = ensureModal();
 
+    const avatarSelect = $("#btfw-avatars-mode", m);
     const storedAv = get(TS_KEYS.avatarsMode,"big");
     const avNow = avatarsModule?.getMode ? avatarsModule.getMode() : storedAv;
-    $$('input[name="btfw-avatars-mode"]').forEach(i => i.checked = (i.value === avNow));
+    if (avatarSelect) {
+      avatarSelect.value = ["off","small","big"].includes(avNow) ? avNow : "big";
+    }
     resolveAvatars().then(mod => {
-      if (mod?.getMode) {
+      if (mod?.getMode && avatarSelect) {
         const live = mod.getMode();
-        $$('input[name="btfw-avatars-mode"]').forEach(i => i.checked = (i.value === live));
+        avatarSelect.value = ["off","small","big"].includes(live) ? live : avatarSelect.value;
       }
     });
 
@@ -350,8 +358,9 @@ BTFW.define("feature:themeSettings", [], async () => {
       const status = compactBtn.querySelector(".btfw-compact-stack-status");
       if (status) status.textContent = compactStored ? "On" : "Off";
     }
+    const layoutSelect = $("#btfw-chat-side", m);
     const sideNow = get(TS_KEYS.layoutSide, "right");
-    $$('input[name="btfw-chat-side"]').forEach(i => i.checked = (i.value === sideNow));
+    if (layoutSelect) layoutSelect.value = ["left","right"].includes(sideNow) ? sideNow : "right";
 
     m.classList.add("is-active");
     document.dispatchEvent(new CustomEvent("btfw:themeSettings:open"));
