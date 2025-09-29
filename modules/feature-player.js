@@ -246,17 +246,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     watchPlayerMount._mo = mo;
   }
 
-  function watchHead() {
-    const head = document.head;
-    if (!head || watchHead._mo) return;
-    const mo = new MutationObserver(() => {
-      ensureBaseStylesheet();
-      ensureCityStylesheet();
-
-    });
-    mo.observe(head, { childList: true });
-    watchHead._mo = mo;
-  }
+ 
 
   function boot() {
     applyCityTheme();
