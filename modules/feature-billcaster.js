@@ -39,15 +39,43 @@ $(document).ready(function () {
           position: 'absolute',
           top: '8px',
           right: '8px',
+          left: '8px',
           display: 'flex',
+          'justify-content': 'space-between',
           gap: '6px',
-          'pointer-events': 'auto',
+          'pointer-events': 'none',
           'z-index': 1000
         })
         .appendTo($ov);
       return $b;
     }
     return $(); // overlay not there yet
+  }
+
+  function $voSection(side) {
+    var id = side === 'left' ? 'btfw-vo-left' : 'btfw-vo-right';
+    var cls = 'btfw-vo-section btfw-vo-section--' + side;
+    var $section = $('#' + id);
+    if ($section.length) return $section;
+
+    var $bar = $voBar();
+    if (!$bar.length) return $();
+
+    $section = $('<div></div>')
+      .attr('id', id)
+      .addClass(cls)
+      .css({ display: 'flex', 'pointer-events': 'auto', gap: '6px', 'flex-wrap': 'wrap' });
+
+    if (side === 'left') {
+      $bar.prepend($section);
+    } else {
+      $bar.append($section);
+    }
+
+    $bar.attr('data-left-section', '#btfw-vo-left');
+    $bar.attr('data-right-section', '#btfw-vo-right');
+
+    return $section;
   }
 
   function whenVoBarReady(fn) {
@@ -161,8 +189,8 @@ $(document).ready(function () {
   }
 
   function initializeCastButton() {
-    var $bar = $voBar();
-    if (!$bar.length) { whenVoBarReady(initializeCastButton); return; }
+    var $left = $voSection('left');
+    if (!$left.length) { whenVoBarReady(initializeCastButton); return; }
 
     // Remove any previous instance to avoid duplicates when re-running
     $('#btfw-vo-cast, #btfw-vo-cast-fallback').remove();
@@ -170,7 +198,7 @@ $(document).ready(function () {
     var $btn = castAvailable ? createCastButton() : createFallbackButton();
     if (!$btn || !$btn.length) return;
 
-    $bar.append($btn);
+    $left.append($btn);
     updateCastButtonVisibility();
   }
 
