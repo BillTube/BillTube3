@@ -123,23 +123,6 @@
 
   BootOverlay.show();
 
-  function removeLegacyFooter() {
-    const nuke = () => {
-      const legacy = document.getElementById("footer");
-      if (legacy) {
-        legacy.remove();
-      }
-    };
-
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", nuke, { once: true });
-    } else {
-      nuke();
-    }
-  }
-
-  removeLegacyFooter();
-
 function qparam(u, kv){ return u + (u.indexOf('?')>=0?'&':'?') + kv; }
 
 var BTFW_VERSION = (function(){
