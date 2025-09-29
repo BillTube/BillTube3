@@ -157,9 +157,16 @@ body:not(.btfw-mobile-stack-enabled) #btfw-mobile-stack{ display:none !important
   #videowrap .btfw-video-overlay .btfw-vo-section{
     gap: 6px;
   }
-  #videowrap .btfw-video-overlay .btfw-vo-btn{
-    padding: 6px 8px;
-    border-radius: 10px;
+  #videowrap .btfw-video-overlay .btfw-vo-btn,
+  #videowrap .btfw-video-overlay .btfw-vo-adopted{
+    min-width: 40px;
+    height: 40px;
+    border-radius: 20px;
+  }
+
+  #videowrap .btfw-video-overlay .btfw-vo-btn i,
+  #videowrap .btfw-video-overlay .btfw-vo-adopted i{
+    font-size: 15px;
   }
 
   /* Give the video breathing room + a slightly wider aspect on phones */
