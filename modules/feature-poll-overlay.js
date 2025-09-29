@@ -421,6 +421,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     setTimeout(() => {
       syncOverlayFromDom();
     }, 200);
+
   }
 
   function hideVideoOverlay() {
