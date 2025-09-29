@@ -57,32 +57,8 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       }
 
       #btfw-video-overlay .btfw-vo-bar{
-        position:absolute;
-        top:12px;
-        left:12px;
-        right:12px;
-        display:flex;
-        align-items:flex-start;
-        justify-content:space-between;
-        pointer-events:none;
-        gap:12px;
+        position:absolute; right:12px; top:12px; display:flex; gap:8px; pointer-events:auto;
         background:transparent;
-      }
-
-      #btfw-video-overlay .btfw-vo-section{
-        display:flex;
-        flex-wrap:wrap;
-        gap:8px;
-        pointer-events:auto;
-      }
-
-      #btfw-video-overlay .btfw-vo-section--left{
-        justify-content:flex-start;
-      }
-
-      #btfw-video-overlay .btfw-vo-section--right{
-        margin-left:auto;
-        justify-content:flex-end;
       }
 
       #btfw-video-overlay .btfw-vo-btn{
@@ -179,12 +155,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       @media (max-width: 768px) {
         #btfw-video-overlay .btfw-vo-bar {
           top: 8px;
-          left: 8px;
           right: 8px;
-          gap: 8px;
-        }
-
-        #btfw-video-overlay .btfw-vo-section{
           gap: 6px;
         }
 
@@ -198,94 +169,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       }
     `;
     document.head.appendChild(st);
-  }
-
-  const LEFT_ALIGN_IDS = new Set(["btfw-vo-cast", "btfw-vo-cast-fallback", "castbutton", "fallbackbutton"]);
-
-
-  function getBarSections(bar) {
-    if (!bar) return null;
-    if (bar._btfwSections) return bar._btfwSections;
-
-    let left = bar.querySelector(".btfw-vo-section--left");
-    let right = bar.querySelector(".btfw-vo-section--right");
-
-    if (!left) {
-      left = document.createElement("div");
-      left.className = "btfw-vo-section btfw-vo-section--left";
-      left.dataset.align = "left";
-      bar.appendChild(left);
-    }
-
-    if (!right) {
-      right = document.createElement("div");
-      right.className = "btfw-vo-section btfw-vo-section--right";
-      right.dataset.align = "right";
-      bar.appendChild(right);
-    }
-
-    const sections = { left, right };
-    bar._btfwSections = sections;
-
-    const initialChildren = Array.from(bar.children).filter(
-      (child) => child !== left && child !== right
-    );
-    if (initialChildren.length) {
-      initialChildren.forEach((child) => routeNodeToSection(bar, child));
-    }
-
-    if (!bar._btfwObserver) {
-      const observer = new MutationObserver((mutations) => {
-        if (bar._btfwRouting) return;
-        for (let m = 0; m < mutations.length; m++) {
-          const mutation = mutations[m];
-          if (!mutation || !mutation.addedNodes) continue;
-          for (let i = 0; i < mutation.addedNodes.length; i++) {
-            routeNodeToSection(bar, mutation.addedNodes[i]);
-          }
-        }
-
-      });
-      observer.observe(bar, { childList: true });
-      bar._btfwObserver = observer;
-    }
-
-    return sections;
-  }
-
-  function determineAlignment(node) {
-    if (!node || !(node instanceof HTMLElement)) return "right";
-    const explicit = (node.dataset && node.dataset.btfwVoAlign) || node.getAttribute("data-btfw-vo-align");
-    if (explicit && /^(left|right)$/i.test(explicit)) {
-      return explicit.toLowerCase();
-    }
-    const id = (node.id || "").toLowerCase();
-    return LEFT_ALIGN_IDS.has(id) ? "left" : "right";
-  }
-
-  function placeNodeInBar(bar, node, align = null, { prepend = false } = {}) {
-    if (!bar || !node) return;
-    const sections = getBarSections(bar);
-    if (!sections) return;
-    const targetAlign = (align || determineAlignment(node)) === "left" ? "left" : "right";
-    const target = targetAlign === "left" ? sections.left : sections.right;
-    bar._btfwRouting = true;
-    try {
-      if (prepend) {
-        target.insertBefore(node, target.firstChild || null);
-      } else {
-        target.appendChild(node);
-      }
-      node.setAttribute("data-btfw-vo-align", targetAlign);
-    } finally {
-      bar._btfwRouting = false;
-    }
-  }
-
-  function routeNodeToSection(bar, node) {
-    if (!node || !(node instanceof HTMLElement)) return;
-    if (node.classList && node.classList.contains("btfw-vo-section")) return;
-    placeNodeInBar(bar, node);
   }
 
   function ensureOverlay() {
@@ -306,8 +189,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       bar.id = "btfw-vo-bar";
       overlay.appendChild(bar);
     }
-
-    getBarSections(bar);
 
     setupHoverEffects(wrap, overlay);
     ensureLocalSubsButton(bar);
@@ -451,12 +332,12 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     const customButtons = [];
 
     if (!document.querySelector("#fullscreenbtn")) {
-      customButtons.push({ id: "btfw-fullscreen", icon: "fas fa-expand", tooltip: "Fullscreen", action: toggleFullscreen, align: "right" });
+      customButtons.push({ id: "btfw-fullscreen", icon: "fas fa-expand", tooltip: "Fullscreen", action: toggleFullscreen });
     }
 
     customButtons.push(
-      { id: "btfw-ambient", icon: "fas fa-sun", tooltip: "Ambient Mode", action: toggleAmbient, align: "right" },
-      { id: "btfw-airplay", icon: "fas fa-cast", tooltip: "AirPlay", action: enableAirplay, align: "right" }
+      { id: "btfw-ambient", icon: "fas fa-sun", tooltip: "Ambient Mode", action: toggleAmbient },
+      { id: "btfw-airplay", icon: "fas fa-cast", tooltip: "AirPlay", action: enableAirplay }
     );
 
     customButtons.forEach((btnConfig) => {
@@ -468,8 +349,8 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
         btn.innerHTML = `<i class="${btnConfig.icon}"></i>`;
         btn.title = btnConfig.tooltip;
         btn.addEventListener("click", btnConfig.action);
+        bar.appendChild(btn);
       }
-      placeNodeInBar(bar, btn, btnConfig.align);
     });
 
     syncAmbientButton();
@@ -482,7 +363,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       if (!el) return;
 
       if (el.dataset.btfwOverlay === "1") {
-        placeNodeInBar(bar, el);
+        if (el.parentElement !== bar) bar.appendChild(el);
         return;
       }
 
@@ -514,7 +395,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
         };
       }
 
-      placeNodeInBar(bar, el);
+      bar.appendChild(el);
     });
   }
 
@@ -782,8 +663,8 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
         e.preventDefault();
         pickLocalSubs();
       });
+      bar.prepend(btn);
     }
-    placeNodeInBar(bar, btn, "right", { prepend: true });
     btn.style.display = localSubsEnabled() ? "" : "none";
   }
 
