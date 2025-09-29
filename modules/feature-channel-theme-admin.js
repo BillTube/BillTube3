@@ -574,7 +574,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
 
     const json = JSON.stringify(normalized, null, 2);
-    return `\n${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n(function(cfg){\n  if (!cfg) return;\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelTheme = cfg;\n  const FONT_PRESETS = {"inter":{"name":"Inter","family":"'Inter', 'Segoe UI', sans-serif","google":"Inter:wght@300;400;600;700"},"roboto":{"name":"Roboto","family":"'Roboto', 'Segoe UI', sans-serif","google":"Roboto:wght@300;400;500;700"},"poppins":{"name":"Poppins","family":"'Poppins', 'Segoe UI', sans-serif","google":"Poppins:wght@300;400;600;700"},"montserrat":{"name":"Montserrat","family":"'Montserrat', 'Segoe UI', sans-serif","google":"Montserrat:wght@300;400;600;700"},"opensans":{"name":"Open Sans","family":"'Open Sans', 'Segoe UI', sans-serif","google":"Open+Sans:wght@300;400;600;700"},"lato":{"name":"Lato","family":"'Lato', 'Segoe UI', sans-serif","google":"Lato:wght@300;400;700;900"},"nunito":{"name":"Nunito","family":"'Nunito', 'Segoe UI', sans-serif","google":"Nunito:wght@300;400;600;700"},"manrope":{"name":"Manrope","family":"'Manrope', 'Segoe UI', sans-serif","google":"Manrope:wght@300;400;600;700"},"outfit":{"name":"Outfit","family":"'Outfit', 'Segoe UI', sans-serif","google":"Outfit:wght@300;400;600;700"},"urbanist":{"name":"Urbanist","family":"'Urbanist', 'Segoe UI', sans-serif","google":"Urbanist:wght@300;400;600;700"}};\n  const FONT_FALLBACK = "'Inter', 'Segoe UI', sans-serif";\n  function ensureAsset(id, url, kind){\n    if (!url) return;\n    var existing = document.getElementById(id);\n    if (existing) return;\n    if (kind === 'style'){\n      var link = document.createElement('link');\n      link.rel = 'stylesheet';\n      link.href = url;\n      link.id = id;\n      document.head.appendChild(link);\n    } else {\n      var script = document.createElement('script');\n      script.src = url;\n      script.async = true;\n      script.defer = true;\n      script.id = id;\n      document.head.appendChild(script);\n    }\n  }\n  function applyResources(resources){\n    resources = (resources && typeof resources === 'object') ? resources : {};\n    if (Array.isArray(resources.styles)) {\n      resources.styles.forEach(function(url, idx){ ensureAsset('btfw-theme-style-'+idx, url, 'style'); });\n    }\n    if (Array.isArray(resources.scripts)) {\n      resources.scripts.forEach(function(url, idx){ ensureAsset('btfw-theme-script-'+idx, url, 'script'); });\n    }\n    var moduleList = [];\n    if (Array.isArray(resources.modules)) {\n      resources.modules.forEach(function(url){\n        if (typeof url !== 'string') return;\n        var trimmed = url.trim();\n        if (!trimmed) return;\n        if (moduleList.indexOf(trimmed) !== -1) return;\n        ensureAsset('btfw-theme-module-' + moduleList.length, trimmed, 'script');\n        moduleList.push(trimmed);\n      });\n    }\n    resources.modules = moduleList;\n    cfg.resources = cfg.resources || {};\n    cfg.resources.modules = moduleList;\n    window.BTFW.channelThemeModules = moduleList.slice();\n  }\n  function applySlider(sliderCfg){\n    sliderCfg = sliderCfg || {};\n    if (typeof sliderCfg.enabled === 'undefined' && typeof cfg.sliderEnabled !== 'undefined') {\n      sliderCfg.enabled = cfg.sliderEnabled;\n    }\n    if (!sliderCfg.feedUrl && cfg.sliderJson) {\n      sliderCfg.feedUrl = cfg.sliderJson;\n    }\n    var enabled = Boolean(sliderCfg.enabled);\n    var feed = sliderCfg.feedUrl || sliderCfg.url || '';\n    cfg.slider = cfg.slider || {};\n    cfg.slider.enabled = enabled;\n    cfg.slider.feedUrl = feed;\n    cfg.sliderEnabled = enabled;\n    cfg.sliderJson = feed;\n    window.BTFW.channelSlider = { enabled: enabled, feedUrl: feed };\n    window.BTFW.channelSliderEnabled = enabled;\n    window.BTFW.channelSliderJSON = feed;\n    window.UI_ChannelList = enabled ? 1 : 0;\n    window.Channel_JSON = feed || '';\n  }\n  function applyBranding(branding){\n    branding = branding || {};\n    var name = typeof branding.headerName === 'string' ? branding.headerName.trim() : '';\n    if (!name && typeof cfg.branding?.headerName === 'string') {\n      name = cfg.branding.headerName.trim();\n    }\n    if (!name && typeof cfg.headerName === 'string') {\n      name = cfg.headerName.trim();\n    }\n    if (!name) name = 'CyTube';\n    cfg.branding = cfg.branding || {};\n    cfg.branding.headerName = name;\n    var brandSelectors = [\n      '#nav-collapsible .navbar-brand',\n      '.navbar .navbar-brand',\n      '.navbar-brand',\n      '#navbrand'\n    ];\n    brandSelectors.forEach(function(sel){\n      var anchor = document.querySelector(sel);\n      if (!anchor) return;\n      var holder = anchor.querySelector('[data-btfw-brand-text]');\n      if (holder) {\n        holder.textContent = name;\n      } else {\n        var replaced = false;\n        var nodes = Array.prototype.slice.call(anchor.childNodes || []);\n        nodes.forEach(function(node){\n          if (node && node.nodeType === 3) {\n            var text = (node.textContent || '').trim();\n            if (!text) return;\n            if (!replaced) {\n              node.textContent = name;\n              replaced = true;\n            } else {\n              node.textContent = '';\n            }\n          }\n        });\n        if (!replaced) {\n          holder = document.createElement('span');\n          holder.dataset.btfwBrandText = '1';\n          if (anchor.childNodes.length > 0) {\n            anchor.appendChild(document.createTextNode(' '));\n          }\n          holder.textContent = name;\n          anchor.appendChild(holder);\n        }\n      }\n      anchor.setAttribute('title', name);\n      anchor.setAttribute('aria-label', name);\n    });\n\n    var faviconUrl = typeof branding.faviconUrl === 'string' ? branding.faviconUrl.trim() : '';\n    if (!faviconUrl && typeof cfg.branding?.faviconUrl === 'string') {\n      faviconUrl = cfg.branding.faviconUrl.trim();\n    }\n    if (!faviconUrl && typeof cfg.branding?.favicon === 'string') {\n      faviconUrl = cfg.branding.favicon.trim();\n    }\n    cfg.branding.faviconUrl = faviconUrl || '';\n    cfg.branding.favicon = cfg.branding.faviconUrl;\n    if (faviconUrl) {\n      var linkSelectors = 'link[rel*="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]';\n      var links = Array.prototype.slice.call(document.querySelectorAll(linkSelectors));\n      if (!links.length) {\n        var created = document.createElement('link');\n        created.rel = 'icon';\n        document.head.appendChild(created);\n        links.push(created);\n      }\n      links.forEach(function(link){\n        try { link.href = faviconUrl; } catch (_) {}\n      });\n    }\n\n    var poster = typeof branding.posterUrl === 'string' ? branding.posterUrl.trim() : '';\n    if (!poster && typeof cfg.branding?.posterUrl === 'string') {\n      poster = cfg.branding.posterUrl.trim();\n    }\n    cfg.branding.posterUrl = poster || '';\n    window.BTFW.channelPosterUrl = poster || '';\n  }\n  function applyIntegrations(integrations){\n    integrations = integrations || {};\n    cfg.integrations = cfg.integrations || {};\n    if (typeof integrations.enabled === 'boolean') {\n      cfg.integrations.enabled = integrations.enabled;\n    } else if (typeof cfg.integrations.enabled !== 'boolean') {\n      cfg.integrations.enabled = true;\n    }\n    if (!cfg.integrations.tmdb || typeof cfg.integrations.tmdb !== 'object') {\n      cfg.integrations.tmdb = { apiKey: '' };\n    }\n    var tmdb = integrations.tmdb || cfg.integrations.tmdb || {};\n    var key = typeof tmdb.apiKey === 'string' ? tmdb.apiKey.trim() : '';\n    cfg.integrations.tmdb.apiKey = key;\n    window.BTFW_CONFIG = window.BTFW_CONFIG || {};\n    if (typeof window.BTFW_CONFIG.tmdb !== 'object') window.BTFW_CONFIG.tmdb = {};\n    window.BTFW_CONFIG.tmdb.apiKey = key;\n    window.BTFW_CONFIG.tmdbKey = key;\n    window.BTFW_CONFIG.integrationsEnabled = cfg.integrations.enabled;\n    try { if (document.body && document.body.dataset.tmdbKey !== key) document.body.dataset.tmdbKey = key; } catch (_) {}\n  }\n  function applyColors(colors){\n    colors = colors || {};\n    var root = document.documentElement;\n    if (!root) return;\n    var bg = colors.background || '#05060d';\n    var surface = colors.surface || colors.panel || '#0b111d';\n    var panel = colors.panel || '#141f36';\n    var text = colors.text || '#e8ecfb';\n    var chatText = colors.chatText || text;\n    var accent = colors.accent || '#6d4df6';\n    cfg.colors = cfg.colors || {};\n    cfg.colors.background = bg;\n    cfg.colors.surface = surface;\n    cfg.colors.panel = panel;\n    cfg.colors.text = text;\n    cfg.colors.chatText = chatText;\n    cfg.colors.accent = accent;\n    var map = {\n      '--btfw-theme-bg': bg,\n      '--btfw-theme-surface': surface,\n      '--btfw-theme-panel': panel,\n      '--btfw-theme-text': text,\n      '--btfw-theme-chat-text': chatText,\n      '--btfw-theme-accent': accent\n    };\n    Object.keys(map).forEach(function(key){\n      if (map[key]) {\n        root.style.setProperty(key, map[key]);\n      }\n    });\n    root.setAttribute('data-btfw-theme-tint', cfg.tint || 'custom');\n    try {\n      document.dispatchEvent(new CustomEvent('btfw:channelThemeTint', {\n        detail: { tint: cfg.tint || 'custom', colors: { bg: bg, surface: surface, panel: panel, text: text, chat: chatText, accent: accent }, config: cfg }\n      }));\n    } catch (_) {}\n  }\n\n  function resolveFont(typography){\n    typography = typography || {};\n    var preset = (typography.preset || 'inter').toLowerCase();\n    if (preset === 'custom') {\n      var name = (typography.customFamily || '').trim();\n      var family = name ? "'" + name.replace(/'/g, "\\'") + "', " + FONT_FALLBACK : FONT_FALLBACK;\n      var url = name ? 'https://fonts.googleapis.com/css2?family=' + name.replace(/\s+/g, '+') + ':wght@300;400;600;700&display=swap' : '';\n      return { family: family, url: url, label: name || 'Custom' };\n    }\n    var meta = FONT_PRESETS[preset] || FONT_PRESETS['inter'];\n    var family = meta ? meta.family : FONT_FALLBACK;\n    var url = meta && meta.google ? 'https://fonts.googleapis.com/css2?family=' + meta.google + '&display=swap' : '';\n    return { family: family, url: url, label: (meta && meta.name) || 'Inter' };\n  }\n  function applyTypography(typography){\n    var resolved = resolveFont(typography);\n    var root = document.documentElement;\n    if (root && resolved.family) {\n      root.style.setProperty('--btfw-theme-font-family', resolved.family);\n    }\n    var existing = document.getElementById('btfw-theme-font');\n    if (resolved.url) {\n      if (existing && existing.tagName === 'LINK') {\n        if (existing.href !== resolved.url) existing.href = resolved.url;\n      } else {\n        ensureAsset('btfw-theme-font', resolved.url, 'style');\n      }\n    } else if (existing && existing.parentNode) {\n      existing.parentNode.removeChild(existing);\n    }\n    cfg.typography = cfg.typography || {};\n    cfg.typography.resolvedFamily = resolved.family;\n  }\n  applyResources(cfg.resources);\n  applySlider(cfg.slider || {});\n  applyBranding(cfg.branding || {});\n  applyColors(cfg.colors || {});\n  applyIntegrations(cfg.integrations || {});\n  applyTypography(cfg.typography || {});\n})(window.BTFW_THEME_ADMIN);\n${JS_BLOCK_END}`;
+    return `\n${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n(function(cfg){\n  if (!cfg) return;\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelTheme = cfg;\n  const FONT_PRESETS = {"inter":{"name":"Inter","family":"'Inter', 'Segoe UI', sans-serif","google":"Inter:wght@300;400;600;700"},"roboto":{"name":"Roboto","family":"'Roboto', 'Segoe UI', sans-serif","google":"Roboto:wght@300;400;500;700"},"poppins":{"name":"Poppins","family":"'Poppins', 'Segoe UI', sans-serif","google":"Poppins:wght@300;400;600;700"},"montserrat":{"name":"Montserrat","family":"'Montserrat', 'Segoe UI', sans-serif","google":"Montserrat:wght@300;400;600;700"},"opensans":{"name":"Open Sans","family":"'Open Sans', 'Segoe UI', sans-serif","google":"Open+Sans:wght@300;400;600;700"},"lato":{"name":"Lato","family":"'Lato', 'Segoe UI', sans-serif","google":"Lato:wght@300;400;700;900"},"nunito":{"name":"Nunito","family":"'Nunito', 'Segoe UI', sans-serif","google":"Nunito:wght@300;400;600;700"},"manrope":{"name":"Manrope","family":"'Manrope', 'Segoe UI', sans-serif","google":"Manrope:wght@300;400;600;700"},"outfit":{"name":"Outfit","family":"'Outfit', 'Segoe UI', sans-serif","google":"Outfit:wght@300;400;600;700"},"urbanist":{"name":"Urbanist","family":"'Urbanist', 'Segoe UI', sans-serif","google":"Urbanist:wght@300;400;600;700"}};\n  const FONT_FALLBACK = "'Inter', 'Segoe UI', sans-serif";\n  function ensureAsset(id, url, kind){\n    if (!url) return;\n    var existing = document.getElementById(id);\n    if (existing) return;\n    if (kind === 'style'){\n      var link = document.createElement('link');\n      link.rel = 'stylesheet';\n      link.href = url;\n      link.id = id;\n      document.head.appendChild(link);\n    } else {\n      var script = document.createElement('script');\n      script.src = url;\n      script.async = true;\n      script.defer = true;\n      script.id = id;\n      document.head.appendChild(script);\n    }\n  }\n  function applyResources(resources){\n    resources = (resources && typeof resources === 'object') ? resources : {};\n    if (Array.isArray(resources.styles)) {\n      resources.styles.forEach(function(url, idx){ ensureAsset('btfw-theme-style-'+idx, url, 'style'); });\n    }\n    if (Array.isArray(resources.scripts)) {\n      resources.scripts.forEach(function(url, idx){ ensureAsset('btfw-theme-script-'+idx, url, 'script'); });\n    }\n    var moduleList = [];\n    if (Array.isArray(resources.modules)) {\n      resources.modules.forEach(function(url){\n        if (typeof url !== 'string') return;\n        var trimmed = url.trim();\n        if (!trimmed) return;\n        if (moduleList.indexOf(trimmed) !== -1) return;\n        ensureAsset('btfw-theme-module-' + moduleList.length, trimmed, 'script');\n        moduleList.push(trimmed);\n      });\n    }\n    resources.modules = moduleList;\n    cfg.resources = cfg.resources || {};\n    cfg.resources.modules = moduleList;\n    window.BTFW.channelThemeModules = moduleList.slice();\n  }\n  function applySlider(sliderCfg){\n    sliderCfg = sliderCfg || {};\n    if (typeof sliderCfg.enabled === 'undefined' && typeof cfg.sliderEnabled !== 'undefined') {\n      sliderCfg.enabled = cfg.sliderEnabled;\n    }\n    if (!sliderCfg.feedUrl && cfg.sliderJson) {\n      sliderCfg.feedUrl = cfg.sliderJson;\n    }\n    var enabled = Boolean(sliderCfg.enabled);\n    var feed = sliderCfg.feedUrl || sliderCfg.url || '';\n    cfg.slider = cfg.slider || {};\n    cfg.slider.enabled = enabled;\n    cfg.slider.feedUrl = feed;\n    cfg.sliderEnabled = enabled;\n    cfg.sliderJson = feed;\n    window.BTFW.channelSlider = { enabled: enabled, feedUrl: feed };\n    window.BTFW.channelSliderEnabled = enabled;\n    window.BTFW.channelSliderJSON = feed;\n  }\n  function applyBranding(branding){\n    branding = branding || {};\n    var name = typeof branding.headerName === 'string' ? branding.headerName.trim() : '';\n    if (!name && typeof cfg.branding?.headerName === 'string') {\n      name = cfg.branding.headerName.trim();\n    }\n    if (!name && typeof cfg.headerName === 'string') {\n      name = cfg.headerName.trim();\n    }\n    if (!name) name = 'CyTube';\n    cfg.branding = cfg.branding || {};\n    cfg.branding.headerName = name;\n    var brandSelectors = [\n      '#nav-collapsible .navbar-brand',\n      '.navbar .navbar-brand',\n      '.navbar-brand',\n      '#navbrand'\n    ];\n    brandSelectors.forEach(function(sel){\n      var anchor = document.querySelector(sel);\n      if (!anchor) return;\n      var holder = anchor.querySelector('[data-btfw-brand-text]');\n      if (holder) {\n        holder.textContent = name;\n      } else {\n        var replaced = false;\n        var nodes = Array.prototype.slice.call(anchor.childNodes || []);\n        nodes.forEach(function(node){\n          if (node && node.nodeType === 3) {\n            var text = (node.textContent || '').trim();\n            if (!text) return;\n            if (!replaced) {\n              node.textContent = name;\n              replaced = true;\n            } else {\n              node.textContent = '';\n            }\n          }\n        });\n        if (!replaced) {\n          holder = document.createElement('span');\n          holder.dataset.btfwBrandText = '1';\n          if (anchor.childNodes.length > 0) {\n            anchor.appendChild(document.createTextNode(' '));\n          }\n          holder.textContent = name;\n          anchor.appendChild(holder);\n        }\n      }\n      anchor.setAttribute('title', name);\n      anchor.setAttribute('aria-label', name);\n    });\n\n    var faviconUrl = typeof branding.faviconUrl === 'string' ? branding.faviconUrl.trim() : '';\n    if (!faviconUrl && typeof cfg.branding?.faviconUrl === 'string') {\n      faviconUrl = cfg.branding.faviconUrl.trim();\n    }\n    if (!faviconUrl && typeof cfg.branding?.favicon === 'string') {\n      faviconUrl = cfg.branding.favicon.trim();\n    }\n    cfg.branding.faviconUrl = faviconUrl || '';\n    cfg.branding.favicon = cfg.branding.faviconUrl;\n    if (faviconUrl) {\n      var linkSelectors = 'link[rel*="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]';\n      var links = Array.prototype.slice.call(document.querySelectorAll(linkSelectors));\n      if (!links.length) {\n        var created = document.createElement('link');\n        created.rel = 'icon';\n        document.head.appendChild(created);\n        links.push(created);\n      }\n      links.forEach(function(link){\n        try { link.href = faviconUrl; } catch (_) {}\n      });\n    }\n\n    var poster = typeof branding.posterUrl === 'string' ? branding.posterUrl.trim() : '';\n    if (!poster && typeof cfg.branding?.posterUrl === 'string') {\n      poster = cfg.branding.posterUrl.trim();\n    }\n    cfg.branding.posterUrl = poster || '';\n    window.BTFW.channelPosterUrl = poster || '';\n  }\n  function applyIntegrations(integrations){\n    integrations = integrations || {};\n    cfg.integrations = cfg.integrations || {};\n    if (typeof integrations.enabled === 'boolean') {\n      cfg.integrations.enabled = integrations.enabled;\n    } else if (typeof cfg.integrations.enabled !== 'boolean') {\n      cfg.integrations.enabled = true;\n    }\n    if (!cfg.integrations.tmdb || typeof cfg.integrations.tmdb !== 'object') {\n      cfg.integrations.tmdb = { apiKey: '' };\n    }\n    var tmdb = integrations.tmdb || cfg.integrations.tmdb || {};\n    var key = typeof tmdb.apiKey === 'string' ? tmdb.apiKey.trim() : '';\n    cfg.integrations.tmdb.apiKey = key;\n    window.BTFW_CONFIG = window.BTFW_CONFIG || {};\n    if (typeof window.BTFW_CONFIG.tmdb !== 'object') window.BTFW_CONFIG.tmdb = {};\n    window.BTFW_CONFIG.tmdb.apiKey = key;\n    window.BTFW_CONFIG.tmdbKey = key;\n    window.BTFW_CONFIG.integrationsEnabled = cfg.integrations.enabled;\n    try { if (document.body && document.body.dataset.tmdbKey !== key) document.body.dataset.tmdbKey = key; } catch (_) {}\n  }\n  function applyColors(colors){\n    colors = colors || {};\n    var root = document.documentElement;\n    if (!root) return;\n    var bg = colors.background || '#05060d';\n    var surface = colors.surface || colors.panel || '#0b111d';\n    var panel = colors.panel || '#141f36';\n    var text = colors.text || '#e8ecfb';\n    var chatText = colors.chatText || text;\n    var accent = colors.accent || '#6d4df6';\n    cfg.colors = cfg.colors || {};\n    cfg.colors.background = bg;\n    cfg.colors.surface = surface;\n    cfg.colors.panel = panel;\n    cfg.colors.text = text;\n    cfg.colors.chatText = chatText;\n    cfg.colors.accent = accent;\n    var map = {\n      '--btfw-theme-bg': bg,\n      '--btfw-theme-surface': surface,\n      '--btfw-theme-panel': panel,\n      '--btfw-theme-text': text,\n      '--btfw-theme-chat-text': chatText,\n      '--btfw-theme-accent': accent\n    };\n    Object.keys(map).forEach(function(key){\n      if (map[key]) {\n        root.style.setProperty(key, map[key]);\n      }\n    });\n    root.setAttribute('data-btfw-theme-tint', cfg.tint || 'custom');\n    try {\n      document.dispatchEvent(new CustomEvent('btfw:channelThemeTint', {\n        detail: { tint: cfg.tint || 'custom', colors: { bg: bg, surface: surface, panel: panel, text: text, chat: chatText, accent: accent }, config: cfg }\n      }));\n    } catch (_) {}\n  }\n\n  function resolveFont(typography){\n    typography = typography || {};\n    var preset = (typography.preset || 'inter').toLowerCase();\n    if (preset === 'custom') {\n      var name = (typography.customFamily || '').trim();\n      var family = name ? "'" + name.replace(/'/g, "\\'") + "', " + FONT_FALLBACK : FONT_FALLBACK;\n      var url = name ? 'https://fonts.googleapis.com/css2?family=' + name.replace(/\s+/g, '+') + ':wght@300;400;600;700&display=swap' : '';\n      return { family: family, url: url, label: name || 'Custom' };\n    }\n    var meta = FONT_PRESETS[preset] || FONT_PRESETS['inter'];\n    var family = meta ? meta.family : FONT_FALLBACK;\n    var url = meta && meta.google ? 'https://fonts.googleapis.com/css2?family=' + meta.google + '&display=swap' : '';\n    return { family: family, url: url, label: (meta && meta.name) || 'Inter' };\n  }\n  function applyTypography(typography){\n    var resolved = resolveFont(typography);\n    var root = document.documentElement;\n    if (root && resolved.family) {\n      root.style.setProperty('--btfw-theme-font-family', resolved.family);\n    }\n    var existing = document.getElementById('btfw-theme-font');\n    if (resolved.url) {\n      if (existing && existing.tagName === 'LINK') {\n        if (existing.href !== resolved.url) existing.href = resolved.url;\n      } else {\n        ensureAsset('btfw-theme-font', resolved.url, 'style');\n      }\n    } else if (existing && existing.parentNode) {\n      existing.parentNode.removeChild(existing);\n    }\n    cfg.typography = cfg.typography || {};\n    cfg.typography.resolvedFamily = resolved.family;\n  }\n  applyResources(cfg.resources);\n  applySlider(cfg.slider || {});\n  applyBranding(cfg.branding || {});\n  applyColors(cfg.colors || {});\n  applyIntegrations(cfg.integrations || {});\n  applyTypography(cfg.typography || {});\n})(window.BTFW_THEME_ADMIN);\n${JS_BLOCK_END}`;
   }
 
   function buildCssBlock(cfg){
@@ -597,8 +597,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     if (start !== -1 && end !== -1 && end > start) {
       return original.slice(0, start) + block + original.slice(end + endMarker.length);
     }
-    if (!original || !original.trim()) return block.trimStart();
-    return `${original.trim()}\n\n${block.trimStart()}`;
+    const trimmedBlock = block.trimStart();
+    if (!original || !original.trim()) return trimmedBlock;
+    const trimmedOriginal = original.trim();
+    return `${trimmedBlock}\n\n${trimmedOriginal}`;
   }
 
   function canManageChannel(){
@@ -1188,64 +1190,68 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   function extractSliderSettings(jsText){
     if (!jsText) return {};
     const settings = {};
-    const enabledMatch = jsText.match(/UI_ChannelList\s*=\s*(['"]?)([01])\1/);
-    if (enabledMatch) {
-      settings.enabled = enabledMatch[2] === '1';
+
+    const parsed = parseConfig(jsText);
+    if (parsed && typeof parsed === "object") {
+      const slider = parsed.slider || {};
+      if (typeof slider.enabled === "boolean") {
+        settings.enabled = slider.enabled;
+      } else if (typeof parsed.sliderEnabled === "boolean") {
+        settings.enabled = parsed.sliderEnabled;
+      }
+
+      let rawUrl = slider.feedUrl || slider.url || slider.json || '';
+      if (!rawUrl) {
+        rawUrl = parsed.sliderJson || parsed.sliderJSON || '';
+      }
+      if (typeof rawUrl !== "undefined") {
+        if (typeof rawUrl !== "string") {
+          rawUrl = String(rawUrl);
+        }
+        settings.url = rawUrl.trim();
+      }
     }
-    const urlMatch = jsText.match(/Channel_JSON\s*=\s*(['"`])([^'"`]*?)\1/);
-    if (urlMatch) {
-      settings.url = urlMatch[2].trim();
+
+    if (typeof settings.enabled === "undefined" || typeof settings.url === "undefined") {
+      const enabledMatch = jsText.match(/UI_ChannelList\s*=\s*(['"]?)([01])\1/);
+      if (typeof settings.enabled === "undefined" && enabledMatch) {
+        settings.enabled = enabledMatch[2] === '1';
+      }
+      const urlMatch = jsText.match(/Channel_JSON\s*=\s*(['"`])([^'"`]*?)\1/);
+      if (typeof settings.url === "undefined" && urlMatch) {
+        settings.url = urlMatch[2].trim();
+      }
     }
+
     return settings;
   }
 
-  function ensureSliderVariables(jsText, cfg){
-    const sliderCfg = cfg.slider || {};
-    const enabledValue = (typeof sliderCfg.enabled === 'boolean' ? sliderCfg.enabled : cfg.sliderEnabled) ? '1' : '0';
-    const rawUrl = sliderCfg.feedUrl || cfg.sliderJson || '';
-    const sliderUrl = typeof rawUrl === 'string' ? rawUrl : String(rawUrl || '');
-    const escapedUrl = sliderUrl.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    let updated = jsText || '';
+  function stripLegacySliderGlobals(jsText){
+    const source = typeof jsText === 'string' ? jsText : '';
+    if (!source) return '';
 
-    let sliderUpdated = false;
-    updated = updated.replace(/(UI_ChannelList\s*=\s*)(['"]?)([01])\2/g, (match, prefix, quote) => {
-      sliderUpdated = true;
-      const q = quote || '';
-      return `${prefix}${q}${enabledValue}${q}`;
-    });
-    updated = updated.replace(/(window\.UI_ChannelList\s*=\s*)(['"]?)([01])\2/g, (match, prefix, quote) => {
-      sliderUpdated = true;
-      const q = quote || '';
-      return `${prefix}${q}${enabledValue}${q}`;
-    });
-
-    let jsonUpdated = false;
-    updated = updated.replace(/(Channel_JSON\s*=\s*)(['"`])([^'"`]*?)\2/g, (match, prefix) => {
-      jsonUpdated = true;
-      return `${prefix}'${escapedUrl}'`;
-    });
-    updated = updated.replace(/(window\.Channel_JSON\s*=\s*)(['"`])([^'"`]*?)\2/g, (match, prefix) => {
-      jsonUpdated = true;
-      return `${prefix}'${escapedUrl}'`;
-    });
-
-    if (!sliderUpdated || !jsonUpdated) {
-      const leadingMatch = updated.match(/^\s*/);
-      const leading = leadingMatch ? leadingMatch[0] : '';
-      let body = updated.slice(leading.length);
-      body = body.replace(/^\s*\n/, '');
-      const lines = [];
-      if (!sliderUpdated) {
-        lines.push(`var UI_ChannelList = ${enabledValue};`);
-      }
-      if (!jsonUpdated) {
-        lines.push(`var Channel_JSON = '${escapedUrl}';`);
-      }
-      const prefixBlock = lines.length ? lines.join('\n') + '\n' : '';
-      updated = leading + prefixBlock + body;
+    const lines = source.split(/\r?\n/);
+    const cleaned = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      if (/^(?:var|let|const)?\s*UI_ChannelList\s*=/.test(trimmed)) continue;
+      if (/^window\.UI_ChannelList\s*=/.test(trimmed)) continue;
+      if (/^(?:var|let|const)?\s*Channel_JSON\s*=/.test(trimmed)) continue;
+      if (/^window\.Channel_JSON\s*=/.test(trimmed)) continue;
+      cleaned.push(line);
     }
 
-    return updated;
+    while (cleaned.length && cleaned[0].trim() === '') {
+      cleaned.shift();
+    }
+    for (let i = cleaned.length - 1; i > 0; i--) {
+      if (cleaned[i].trim() === '' && cleaned[i - 1].trim() === '') {
+        cleaned.splice(i, 1);
+      }
+    }
+
+    return cleaned.join('\n');
   }
 
   function ensureTab(modal){
@@ -1318,8 +1324,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const jsBlock = buildConfigBlock(mergedConfig);
     const cssBlock = buildCssBlock(mergedConfig);
 
-    const jsWithSlider = ensureSliderVariables(existingJs, mergedConfig);
-    jsField.value = replaceBlock(jsWithSlider, JS_BLOCK_START, JS_BLOCK_END, jsBlock);
+    const cleanedJs = stripLegacySliderGlobals(existingJs);
+    jsField.value = replaceBlock(cleanedJs, JS_BLOCK_START, JS_BLOCK_END, jsBlock);
 
     cssField.value = replaceBlock(existingCss, CSS_BLOCK_START, CSS_BLOCK_END, cssBlock);
 
