@@ -171,10 +171,7 @@
       color-mix(in srgb, var(--btfw-vjs-surface) 86%, transparent 14%),
       color-mix(in srgb, var(--btfw-vjs-surface-strong) 92%, transparent 8%));
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
-  box-shadow: 0 18px 40px color-mix(in srgb, var(--btfw-color-bg) 48%, transparent 52%),
-    0 8px 20px color-mix(in srgb, black 20%, transparent 80%);
-
-  backdrop-filter: blur(18px);
+ will-change: opacity, transform; 
   transition: opacity 0.2s ease, transform 0.24s ease;
   pointer-events: auto;
 }
@@ -912,4 +909,5 @@
     justify-content: flex-start;
   }
 }
+
 
