@@ -1,5 +1,16 @@
 BTFW.define("feature:notify", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
+  const ENTITY_DECODER = document.createElement("textarea");
+
+  function decodeHtmlEntities(value) {
+    if (typeof value !== "string") {
+      if (value == null) return "";
+      return String(value);
+    }
+    if (value === "") return "";
+    ENTITY_DECODER.innerHTML = value;
+    return ENTITY_DECODER.value;
+  }
 
   const LS_ENABLED     = "btfw:notify:enabled";   // "1"|"0"
   const MAX_VISIBLE    = 3;
@@ -326,13 +337,13 @@ function startAutoclose(o){
     try {
       socket.on("changeMedia", (d)=>{
         postOnce("np", 1500, () => {
-          const t = titleFromAnywhere(d);
+          const t = decodeHtmlEntities(titleFromAnywhere(d));
           api.info({ title: "Now playing", html: `<div class="np-title">${escapeHtml(t)}</div>`, icon:"▶️" });
         });
       });
       socket.on("setCurrent", (d)=>{
         postOnce("np", 1500, () => {
-          const t = titleFromAnywhere(d);
+          const t = decodeHtmlEntities(titleFromAnywhere(d));
           if (t) api.info({ title: "Now playing", html: `<div class="np-title">${escapeHtml(t)}</div>`, icon:"▶️" });
         });
       });
@@ -343,10 +354,15 @@ function startAutoclose(o){
       socket.on("newPoll", (p)=>{
         const title = (p && p.title) ? String(p.title) : "A new poll started";
         postOnce("poll:"+title, 2000, ()=>{
-          const items = Array.isArray(p?.options) ? p.options.slice(0,4).map(x=>`<li>${escapeHtml(String(x))}</li>`).join("") : "";
+          const items = Array.isArray(p?.options)
+            ? p.options
+                .slice(0,4)
+                .map(x=>`<li>${escapeHtml(decodeHtmlEntities(String(x)))}</li>`)
+                .join("")
+            : "";
           api.info({
             title: "Poll started",
-            html: `<div class="poll-title">${escapeHtml(title)}</div>${items?`<ul class="poll-opts">${items}</ul>`:""}`,
+            html: `<div class="poll-title">${escapeHtml(decodeHtmlEntities(title))}</div>${items?`<ul class="poll-opts">${items}</ul>`:""}`,
             icon: "📊"
           });
         });
@@ -358,7 +374,7 @@ function startAutoclose(o){
       socket.on("addUser", (u)=>{
         const name = (u && (u.name || u.un)) ? (u.name || u.un) : "Someone";
         postOnce("join:"+name, 4000, ()=>{
-          api.success({ title: "Joined", html: `<b>${escapeHtml(name)}</b> entered the channel`, icon:"👋", timeout: 4500 });
+          api.success({ title: "Joined", html: `<b>${escapeHtml(decodeHtmlEntities(name))}</b> entered the channel`, icon:"👋", timeout: 4500 });
         });
       });
     } catch(_){}

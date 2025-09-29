@@ -50,7 +50,6 @@ function positionAboveChatBar(el, opts){
   const availableHeight = Math.max(0, barRect.top - safeMargin);
   const maxHeight = Math.min(maxHpx, maxHeightViewport, availableHeight || maxHpx);
 
-  // Make it a fixed overlay and tuck it into the chat’s right edge
   el.style.position  = "fixed";
   el.style.left      = `${Math.round(left)}px`;
   el.style.right     = "auto";
@@ -64,11 +63,24 @@ function positionAboveChatBar(el, opts){
   }
   el.style.zIndex    = el.style.zIndex || "6002"; // keep above chat, below navbar modals
 }
-/* expose so other modules can use it */
 window.BTFW_positionPopoverAboveChatBar = positionAboveChatBar;
 
-/* Reposition any open pop-ins on resize/scroll/layout changes */
-/* Reposition any open pop-ins on resize/scroll/layout changes */
+let scrolling = false;
+let scrollTimeout;
+
+window.addEventListener('scroll', () => {
+  if (!scrolling) {
+    document.body.classList.add('is-scrolling');
+    scrolling = true;
+  }
+  
+  clearTimeout(scrollTimeout);
+  scrollTimeout = setTimeout(() => {
+    document.body.classList.remove('is-scrolling');
+    scrolling = false;
+  }, 150);
+}, { passive: true });
+  
 function repositionOpenPopins(){
   const helper = (el, opts) => window.BTFW_positionPopoverAboveChatBar && window.BTFW_positionPopoverAboveChatBar(el, opts);
 
