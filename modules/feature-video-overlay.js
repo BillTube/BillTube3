@@ -72,46 +72,55 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
         margin-left:auto;
       }
 
-      #btfw-video-overlay .btfw-vo-btn{
-        display:inline-grid; place-items:center; min-width:44px; height:44px; padding:0;
-        border:0; border-radius:22px; background:rgba(0, 0, 0, 0.4); color:#fff; cursor:pointer;
-        font:14px/1 system-ui,Segoe UI,Arial;
+      #btfw-video-overlay .btfw-vo-btn,
+      #btfw-video-overlay .btfw-vo-adopted{
+        all: unset;
+        box-sizing: border-box;
+        display:inline-grid;
+        place-items:center;
+        min-width:44px;
+        height:44px;
+        padding:0;
+        border-radius:22px;
+        border:0;
+        background:rgba(0, 0, 0, 0.42);
+        color:#fff;
+        cursor:pointer;
+        font:600 14px/1.05 "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        letter-spacing: 0.01em;
         backdrop-filter: blur(12px) saturate(120%);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration:none;
       }
 
-      #btfw-video-overlay .btfw-vo-btn:hover{
-        background: rgba(109, 77, 246, 0.8);
+      #btfw-video-overlay .btfw-vo-btn i,
+      #btfw-video-overlay .btfw-vo-adopted i {
+        transition: transform 0.2s ease;
+        font-size: 16px;
+      }
+
+      #btfw-video-overlay .btfw-vo-btn:hover,
+      #btfw-video-overlay .btfw-vo-adopted:hover{
+        background: rgba(109, 77, 246, 0.82);
         transform: translateY(-1px);
-        box-shadow: 0 4px 16px rgba(109, 77, 246, 0.3);
+        box-shadow: 0 4px 16px rgba(109, 77, 246, 0.36);
       }
 
-      #btfw-video-overlay .btfw-vo-btn:active {
+      #btfw-video-overlay .btfw-vo-btn:hover i,
+      #btfw-video-overlay .btfw-vo-adopted:hover i {
+        transform: scale(1.08);
+      }
+
+      #btfw-video-overlay .btfw-vo-btn:active,
+      #btfw-video-overlay .btfw-vo-adopted:active {
         transform: translateY(0);
       }
 
-      #btfw-video-overlay .btfw-vo-btn i {
-        transition: transform 0.2s ease;
-      }
-
-      #btfw-video-overlay .btfw-vo-btn:hover i {
-        transform: scale(1.1);
-      }
-
-      #btfw-video-overlay .btfw-vo-adopted{
-        all: unset; display:inline-grid; place-items:center; min-width:44px; height:44px;
-        padding:0; border-radius:22px; background:rgba(0, 0, 0, 0.4); color:#fff; cursor:pointer;
-        backdrop-filter: blur(12px) saturate(120%);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        font-size: 14px;
-      }
-
-      #btfw-video-overlay .btfw-vo-adopted:hover {
-        background: rgba(109, 77, 246, 0.8);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 16px rgba(109, 77, 246, 0.3);
+      #btfw-video-overlay .btfw-vo-btn:focus-visible,
+      #btfw-video-overlay .btfw-vo-adopted:focus-visible {
+        outline: 2px solid rgba(109, 77, 246, 0.95);
+        outline-offset: 2px;
       }
 
       #btfw-ambient.active {
@@ -214,8 +223,20 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     ensureLocalSubsButton(sections.left);
     ensureCustomButtons(sections);
     adoptNativeControls(sections);
+    restyleOverlayButtons(overlay);
 
     return overlay;
+  }
+
+  function restyleOverlayButtons(overlay) {
+    if (!overlay) return;
+    overlay
+      .querySelectorAll("button")
+      .forEach((btn) => {
+        if (!btn.classList.contains("btfw-vo-btn")) {
+          btn.classList.add("btfw-vo-btn");
+        }
+      });
   }
 
   function ensureOverlaySections(overlay, bar) {
