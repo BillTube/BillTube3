@@ -158,7 +158,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let currentPoll = null;
   let socketEventsWired = false;
   let userVotes = new Set(); // Track which options user voted for
-  let pollSyncInterval = null;
 
   const ENTITY_DECODER = document.createElement("textarea");
 
@@ -344,9 +343,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
     updateVoteDisplay(poll);
 
     overlay.classList.add("btfw-poll-active");
-    
-    // Start syncing vote counts with original poll
-    startPollSync();
   }
 
   function hideVideoOverlay() {
@@ -354,12 +350,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
       videoOverlay.classList.remove("btfw-poll-active");
       currentPoll = null;
       userVotes.clear();
-      
-      // Stop syncing when poll is hidden
-      if (pollSyncInterval) {
-        clearInterval(pollSyncInterval);
-        pollSyncInterval = null;
-      }
     }
   }
 
@@ -390,60 +380,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
       const totalVotes = poll.votes.reduce((sum, count) => sum + (count || 0), 0);
       votesSpan.textContent = `${totalVotes} vote${totalVotes !== 1 ? 's' : ''}`;
     }
-  }
-
-  function startPollSync() {
-    // Periodically sync vote counts with the original poll
-    if (pollSyncInterval) clearInterval(pollSyncInterval);
-    
-    pollSyncInterval = setInterval(() => {
-      if (!currentPoll || !videoOverlay || !videoOverlay.classList.contains('btfw-poll-active')) {
-        clearInterval(pollSyncInterval);
-        pollSyncInterval = null;
-        return;
-      }
-      
-      // Sync vote counts from original poll DOM
-      const originalPollButtons = document.querySelectorAll('#pollwrap .well .option button');
-      const overlayButtons = videoOverlay.querySelectorAll('.btfw-poll-option-btn');
-      
-      if (originalPollButtons.length === overlayButtons.length) {
-        let votesChanged = false;
-        const newVotes = [];
-        
-        originalPollButtons.forEach((originalBtn, index) => {
-          const voteCount = parseInt(originalBtn.textContent) || 0;
-          newVotes.push(voteCount);
-          
-          if (overlayButtons[index]) {
-            const currentDisplayed = parseInt(overlayButtons[index].textContent) || 0;
-            if (currentDisplayed !== voteCount) {
-              overlayButtons[index].textContent = voteCount.toString();
-              votesChanged = true;
-            }
-            
-            // Sync active state
-            if (originalBtn.classList.contains('active')) {
-              overlayButtons[index].classList.add("active");
-              userVotes.add(index);
-            } else {
-              overlayButtons[index].classList.remove("active");
-              userVotes.delete(index);
-            }
-          }
-        });
-        
-        // Update total vote count if changed
-        if (votesChanged) {
-          currentPoll.votes = newVotes;
-          const votesSpan = videoOverlay.querySelector(".btfw-poll-votes");
-          if (votesSpan) {
-            const totalVotes = newVotes.reduce((sum, count) => sum + count, 0);
-            votesSpan.textContent = `${totalVotes} vote${totalVotes !== 1 ? 's' : ''}`;
-          }
-        }
-      }
-    }, 500); // Check every 500ms for vote updates
   }
 
   function checkForExistingPoll() {
@@ -484,60 +420,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function wireSocketEvents() {
     if (socketEventsWired || !window.socket) return;
 
-  function startPollSync() {
-    // Periodically sync vote counts with the original poll
-    if (pollSyncInterval) clearInterval(pollSyncInterval);
-    
-    pollSyncInterval = setInterval(() => {
-      if (!currentPoll || !videoOverlay || !videoOverlay.classList.contains('btfw-poll-active')) {
-        clearInterval(pollSyncInterval);
-        pollSyncInterval = null;
-        return;
-      }
-      
-      // Sync vote counts from original poll DOM
-      const originalPollButtons = document.querySelectorAll('#pollwrap .well .option button');
-      const overlayButtons = videoOverlay.querySelectorAll('.btfw-poll-option-btn');
-      
-      if (originalPollButtons.length === overlayButtons.length) {
-        let votesChanged = false;
-        const newVotes = [];
-        
-        originalPollButtons.forEach((originalBtn, index) => {
-          const voteCount = parseInt(originalBtn.textContent) || 0;
-          newVotes.push(voteCount);
-          
-          if (overlayButtons[index]) {
-            const currentDisplayed = parseInt(overlayButtons[index].textContent) || 0;
-            if (currentDisplayed !== voteCount) {
-              overlayButtons[index].textContent = voteCount.toString();
-              votesChanged = true;
-            }
-            
-            // Sync active state
-            if (originalBtn.classList.contains('active')) {
-              overlayButtons[index].classList.add("active");
-              userVotes.add(index);
-            } else {
-              overlayButtons[index].classList.remove("active");
-              userVotes.delete(index);
-            }
-          }
-        });
-        
-        // Update total vote count if changed
-        if (votesChanged) {
-          currentPoll.votes = newVotes;
-          const votesSpan = videoOverlay.querySelector(".btfw-poll-votes");
-          if (votesSpan) {
-            const totalVotes = newVotes.reduce((sum, count) => sum + count, 0);
-            votesSpan.textContent = `${totalVotes} vote${totalVotes !== 1 ? 's' : ''}`;
-          }
-        }
-      }
-    }, 500); // Check every 500ms for vote updates
-  }
-    
     try {
       // Listen for new polls
       window.socket.on("newPoll", (poll) => {
