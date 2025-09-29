@@ -202,6 +202,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
 
   const LEFT_ALIGN_IDS = new Set(["btfw-vo-cast", "btfw-vo-cast-fallback", "castbutton", "fallbackbutton"]);
 
+
   function getBarSections(bar) {
     if (!bar) return null;
     if (bar._btfwSections) return bar._btfwSections;
@@ -243,6 +244,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
             routeNodeToSection(bar, mutation.addedNodes[i]);
           }
         }
+
       });
       observer.observe(bar, { childList: true });
       bar._btfwObserver = observer;
