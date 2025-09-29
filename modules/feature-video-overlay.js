@@ -180,6 +180,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       overlay = document.createElement("div");
       overlay.id = "btfw-video-overlay";
     }
+    overlay.classList.add("btfw-video-overlay");
     if (overlay.parentElement !== wrap) wrap.appendChild(overlay);
 
     let bar = overlay.querySelector("#btfw-vo-bar");
@@ -190,12 +191,47 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       overlay.appendChild(bar);
     }
 
+    const sections = ensureOverlaySections(overlay, bar);
+
     setupHoverEffects(wrap, overlay);
-    ensureLocalSubsButton(bar);
-    ensureCustomButtons(bar);
-    adoptNativeControls(bar);
+    ensureLocalSubsButton(sections.left);
+    ensureCustomButtons(sections);
+    adoptNativeControls(sections);
 
     return overlay;
+  }
+
+  function ensureOverlaySections(overlay, bar) {
+    const leftId = "btfw-vo-left";
+    const rightId = "btfw-vo-right";
+
+    let left = bar.querySelector(`#${leftId}`);
+    if (!left) {
+      left = document.createElement("div");
+      left.id = leftId;
+      left.className = "btfw-vo-section btfw-vo-section--left";
+      bar.insertBefore(left, bar.firstChild);
+    }
+
+    let right = bar.querySelector(`#${rightId}`);
+    if (!right) {
+      right = document.createElement("div");
+      right.id = rightId;
+      right.className = "btfw-vo-section btfw-vo-section--right";
+      bar.appendChild(right);
+    }
+
+    Array.from(bar.children).forEach((child) => {
+      if (child === left || child === right) return;
+      right.appendChild(child);
+    });
+
+    overlay.dataset.leftSection = `#${leftId}`;
+    overlay.dataset.rightSection = `#${rightId}`;
+    bar.dataset.leftSection = `#${leftId}`;
+    bar.dataset.rightSection = `#${rightId}`;
+
+    return { left, right };
   }
 
   function ensureAmbientModule() {
@@ -328,20 +364,22 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     overlay.addEventListener("mouseleave", scheduleHide);
   }
 
-  function ensureCustomButtons(bar) {
+  function ensureCustomButtons(sections) {
+    if (!sections?.right || !sections?.left) return;
     const customButtons = [];
 
     if (!document.querySelector("#fullscreenbtn")) {
-      customButtons.push({ id: "btfw-fullscreen", icon: "fas fa-expand", tooltip: "Fullscreen", action: toggleFullscreen });
+      customButtons.push({ id: "btfw-fullscreen", icon: "fas fa-expand", tooltip: "Fullscreen", action: toggleFullscreen, section: "right" });
     }
 
     customButtons.push(
-      { id: "btfw-ambient", icon: "fas fa-sun", tooltip: "Ambient Mode", action: toggleAmbient },
-      { id: "btfw-airplay", icon: "fas fa-cast", tooltip: "AirPlay", action: enableAirplay }
+      { id: "btfw-ambient", icon: "fas fa-sun", tooltip: "Ambient Mode", action: toggleAmbient, section: "right" },
+      { id: "btfw-airplay", icon: "fas fa-cast", tooltip: "AirPlay", action: enableAirplay, section: "right" }
     );
 
     customButtons.forEach((btnConfig) => {
-      let btn = bar.querySelector(`#${btnConfig.id}`);
+      let btn = document.querySelector(`#${btnConfig.id}`);
+      const target = btnConfig.section === "left" ? sections.left : sections.right;
       if (!btn) {
         btn = document.createElement("button");
         btn.id = btnConfig.id;
@@ -349,7 +387,9 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
         btn.innerHTML = `<i class="${btnConfig.icon}"></i>`;
         btn.title = btnConfig.tooltip;
         btn.addEventListener("click", btnConfig.action);
-        bar.appendChild(btn);
+        (target || sections.right).appendChild(btn);
+      } else if (target && btn.parentElement !== target) {
+        target.appendChild(btn);
       }
     });
 
@@ -357,13 +397,15 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     updateAirplayButtonVisibility();
   }
 
-  function adoptNativeControls(bar) {
+  function adoptNativeControls(sections) {
+    const targetSection = sections?.right;
+    if (!targetSection) return;
     CONTROL_SELECTORS.forEach((selector) => {
       const el = document.querySelector(selector);
       if (!el) return;
 
       if (el.dataset.btfwOverlay === "1") {
-        if (el.parentElement !== bar) bar.appendChild(el);
+        if (el.parentElement !== targetSection) targetSection.appendChild(el);
         return;
       }
 
@@ -395,7 +437,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
         };
       }
 
-      bar.appendChild(el);
+      targetSection.appendChild(el);
     });
   }
 
@@ -651,8 +693,9 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     t._hid = setTimeout(() => (t.style.opacity = "0"), 1400);
   }
 
-  function ensureLocalSubsButton(bar) {
-    let btn = bar.querySelector("#btfw-vo-subs");
+  function ensureLocalSubsButton(section) {
+    if (!section) return;
+    let btn = document.querySelector("#btfw-vo-subs");
     if (!btn) {
       btn = document.createElement("button");
       btn.id = "btfw-vo-subs";
@@ -663,7 +706,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
         e.preventDefault();
         pickLocalSubs();
       });
-      bar.prepend(btn);
+      section.insertBefore(btn, section.firstChild || null);
     }
     btn.style.display = localSubsEnabled() ? "" : "none";
   }
