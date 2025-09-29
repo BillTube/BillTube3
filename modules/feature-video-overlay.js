@@ -57,8 +57,19 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       }
 
       #btfw-video-overlay .btfw-vo-bar{
-        position:absolute; right:12px; top:12px; display:flex; gap:8px; pointer-events:auto;
+        position:absolute; right:12px; top:12px; left:12px; display:flex; gap:8px; pointer-events:auto;
         background:transparent;
+      }
+
+      #btfw-video-overlay .btfw-vo-section {
+        display:flex;
+        align-items:center;
+        gap:8px;
+        pointer-events:auto;
+      }
+
+      #btfw-video-overlay .btfw-vo-section--right {
+        margin-left:auto;
       }
 
       #btfw-video-overlay .btfw-vo-btn{
@@ -156,7 +167,13 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
         #btfw-video-overlay .btfw-vo-bar {
           top: 8px;
           right: 8px;
+          left: 8px;
           gap: 6px;
+        }
+
+        #btfw-video-overlay .btfw-vo-section {
+          gap: 6px;
+          flex-wrap: wrap;
         }
 
         #btfw-video-overlay .btfw-vo-btn,
@@ -373,7 +390,8 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     }
 
     customButtons.push(
-      { id: "btfw-ambient", icon: "fas fa-sun", tooltip: "Ambient Mode", action: toggleAmbient, section: "right" },
+      { id: "btfw-ambient", icon: "fas fa-sun", tooltip: "Ambient Mode", action: toggleAmbient, section: "left" },
+
       { id: "btfw-airplay", icon: "fas fa-cast", tooltip: "AirPlay", action: enableAirplay, section: "right" }
     );
 
