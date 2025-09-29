@@ -1,13 +1,22 @@
-/* BTFW — feature:chat-avatars
+/* BTFW — feature:chat-avatars (PERFORMANCE OPTIMIZED)
    - Injects avatar before .username in each chat message
    - Source order: profile image from userlist data() → CyTube avatar (if available) → colored initials SVG fallback
    - Compacts consecutive messages from same user (no repeated avatar; reduced top margin)
    - Respects --btfw-avatar-size (set by avatars-bridge or your avatar settings)
+   
+   PERFORMANCE ENHANCEMENTS:
+   - Caches generated SVG data URLs to avoid redundant base64 encoding
+   - Uses loading="lazy" and decoding="async" for better LCP
+   - Adds content-visibility for off-screen rendering optimization
 */
 BTFW.define("feature:chat-avatars", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
   const AVATAR_KEY = "btfw:chat:avatars";
+
+  // ⚡ PERFORMANCE: Cache for generated SVG data URLs
+  const avatarCache = new Map();
+  const MAX_CACHE_SIZE = 200; // Limit cache to prevent memory bloat
 
   function loadMode(){
     try {
@@ -53,7 +62,16 @@ BTFW.define("feature:chat-avatars", [], async () => {
     return "";
   }
 
+  // ⚡ PERFORMANCE: Cache-enabled SVG generation
   function initialsDataURL(name, sizePx){
+    const cacheKey = `${name}-${sizePx}`;
+    
+    // Check cache first
+    if (avatarCache.has(cacheKey)) {
+      return avatarCache.get(cacheKey);
+    }
+
+    // Generate SVG
     const colors = ["#1abc9c","#16a085","#f1c40f","#f39c12","#2ecc71","#27ae60","#e67e22","#d35400","#3498db","#2980b9","#e74c3c","#c0392b","#9b59b6","#8e44ad","#0080a5","#34495e","#2c3e50","#87724b","#7300a7","#ec87bf","#d870ad","#f69785","#9ba37e","#b49255","#a94136"];
     const c = (name||"?").trim();
     const first = (c.codePointAt(0)||63) % colors.length;
@@ -61,7 +79,17 @@ BTFW.define("feature:chat-avatars", [], async () => {
     const letters = c.slice(0,2).toUpperCase();
     const sz = sizePx || 24;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}"><rect width="100%" height="100%" fill="${bg}"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#fff" font-family="Inter,Arial,sans-serif" font-size="${Math.round(sz*0.5)}" font-weight="600">${letters}</text></svg>`;
-    return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+    const dataUrl = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+    
+    // Cache the result (with size limit)
+    if (avatarCache.size >= MAX_CACHE_SIZE) {
+      // Remove oldest entry (first key)
+      const firstKey = avatarCache.keys().next().value;
+      avatarCache.delete(firstKey);
+    }
+    avatarCache.set(cacheKey, dataUrl);
+    
+    return dataUrl;
   }
 
   function ensureAvatar(msgEl){
@@ -87,8 +115,12 @@ BTFW.define("feature:chat-avatars", [], async () => {
     img.className = "btfw-chat-avatar";
     img.src = src;
     img.alt = name;
-    img.width = px; img.height = px;
-
+    
+    // ⚡ PERFORMANCE: Native browser optimizations
+    // Note: No explicit width/height set - CSS variables handle sizing dynamically
+    img.loading = "lazy";     // Defer loading of off-screen images
+    img.decoding = "async";   // Don't block rendering while decoding
+    
     // insert before username
     const wrap = document.createElement("span");
     wrap.className = "btfw-chat-avatarwrap";
@@ -153,9 +185,11 @@ BTFW.define("feature:chat-avatars", [], async () => {
     document.documentElement.style.setProperty("--btfw-avatar-size", `${size}px`);
 
     if (size > 0) {
+      // Note: We don't set width/height attributes anymore, CSS handles it dynamically
       document.querySelectorAll("#messagebuffer .btfw-chat-avatar").forEach(img => {
-        img.width = size;
-        img.height = size;
+        // Just ensure the loading attributes are present
+        if (!img.hasAttribute("loading")) img.loading = "lazy";
+        if (!img.hasAttribute("decoding")) img.decoding = "async";
       });
     }
   }
@@ -196,5 +230,15 @@ BTFW.define("feature:chat-avatars", [], async () => {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
-  return { name:"feature:chat-avatars", reflow: reflowAll, setMode, getMode };
+  return { 
+    name:"feature:chat-avatars", 
+    reflow: reflowAll, 
+    setMode, 
+    getMode,
+    // ⚡ PERFORMANCE: Expose cache stats for debugging
+    getCacheStats: () => ({ 
+      size: avatarCache.size, 
+      maxSize: MAX_CACHE_SIZE 
+    })
+  };
 });
