@@ -1,12 +1,3 @@
-/* BTFW – feature:navbar
-   Responsibilities:
-   - Keep navbar on top (no layout changes here)
-   - Ensure Theme button hook remains (#btfw-theme-btn-nav)
-   - Inject current user avatar at the right side of the navbar
-     * Source priority: userlist data('profile').image → USEROPTS.avatar → initials fallback
-     * Guest fallback: initials button linking to /login
-   - Auto-refresh on userlist changes and login/logout/profile events
-*/
 
 BTFW.define("feature:navbar", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
@@ -332,3 +323,4 @@ BTFW.define("feature:navbar", [], async () => {
 
   return { name:"feature:navbar", refresh };
 });
+
