@@ -200,8 +200,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     document.head.appendChild(st);
   }
 
-  const LEFT_ALIGN_IDS = new Set(["btfw-vo-cast", "btfw-vo-cast-fallback", "castbutton", "fallbackbutton"]);
-
+  const LEFT_ALIGN_IDS = new Set(["btfw-vo-cast", "btfw-vo-cast-fallback", "castButton", "fallbackButton"]);
 
   function getBarSections(bar) {
     if (!bar) return null;
@@ -237,14 +236,9 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     if (!bar._btfwObserver) {
       const observer = new MutationObserver((mutations) => {
         if (bar._btfwRouting) return;
-        for (let m = 0; m < mutations.length; m++) {
-          const mutation = mutations[m];
-          if (!mutation || !mutation.addedNodes) continue;
-          for (let i = 0; i < mutation.addedNodes.length; i++) {
-            routeNodeToSection(bar, mutation.addedNodes[i]);
-          }
-        }
-
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => routeNodeToSection(bar, node));
+        });
       });
       observer.observe(bar, { childList: true });
       bar._btfwObserver = observer;
