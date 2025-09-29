@@ -391,6 +391,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
 
     customButtons.push(
       { id: "btfw-ambient", icon: "fas fa-sun", tooltip: "Ambient Mode", action: toggleAmbient, section: "left" },
+
       { id: "btfw-airplay", icon: "fas fa-cast", tooltip: "AirPlay", action: enableAirplay, section: "right" }
     );
 
