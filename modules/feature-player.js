@@ -230,33 +230,67 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     candidates.forEach(attachGuardsTo);
   }
 
-  function watchPlayerMount() {
-    const target = document.getElementById("videowrap") || document.body;
-    if (!target) return;
-    if (watchPlayerMount._mo) {
-      try { watchPlayerMount._mo.disconnect(); } catch (_) {}
+ function watchPlayerMount() {
+  const target = document.getElementById("videowrap") || document.body;
+  if (!target) return;
+  if (watchPlayerMount._mo) {
+    try { watchPlayerMount._mo.disconnect(); } catch (_) {}
+  }
+  
+  const mo = new MutationObserver((mutations) => {
+    // ✅ FIX: Only react to significant changes, not Video.js time updates
+    let shouldReact = false;
+    
+    for (const mutation of mutations) {
+      // Ignore textContent changes (Video.js time displays)
+      if (mutation.type === 'characterData') {
+        continue;
+      }
+      
+      // Only care about added/removed elements that are significant
+      if (mutation.type === 'childList') {
+        for (const node of mutation.addedNodes) {
+          // React to new video players, but not internal Video.js elements
+          if (node.nodeType === 1 && 
+              (node.classList?.contains('video-js') || 
+               node.classList?.contains('embed-responsive') ||
+               node.tagName === 'VIDEO' ||
+               node.tagName === 'IFRAME')) {
+            shouldReact = true;
+            break;
+          }
+        }
+        
+        for (const node of mutation.removedNodes) {
+          // React to removed video players
+          if (node.nodeType === 1 && 
+              (node.classList?.contains('video-js') || 
+               node.tagName === 'VIDEO' ||
+               node.tagName === 'IFRAME')) {
+            shouldReact = true;
+            break;
+          }
+        }
+      }
+      
+      if (shouldReact) break;
     }
-    const mo = new MutationObserver(() => {
+    
+    if (shouldReact) {
       applyCityTheme();
-
       attachGuards();
       ensureInlinePlayback();
-    });
-    mo.observe(target, { childList: true, subtree: true });
-    watchPlayerMount._mo = mo;
-  }
+    }
+  });
+  
+  mo.observe(target, { 
+    childList: true, 
+    subtree: true,
+    characterData: false  // ✅ Don't watch text changes
+  });
+  watchPlayerMount._mo = mo;
+}
 
-  function watchHead() {
-    const head = document.head;
-    if (!head || watchHead._mo) return;
-    const mo = new MutationObserver(() => {
-      ensureBaseStylesheet();
-      ensureCityStylesheet();
-
-    });
-    mo.observe(head, { childList: true });
-    watchHead._mo = mo;
-  }
 
   function boot() {
     applyCityTheme();
@@ -264,7 +298,6 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     ensureInlinePlayback();
     ensureTextContentPatch();
     watchPlayerMount();
-    watchHead();
 
     if (typeof window !== "undefined" && window.socket && typeof socket.on === "function") {
       try {

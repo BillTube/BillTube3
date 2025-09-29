@@ -161,6 +161,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let pollDomObserver = null;
   let observedPollElement = null;
 
+
   const ENTITY_DECODER = document.createElement("textarea");
 
   function decodeHtmlEntities(value) {
@@ -474,6 +475,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     setTimeout(() => {
       syncOverlayFromDom();
       startPollDomObserver();
+
     }, 200);
   }
 
@@ -483,6 +485,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       currentPoll = null;
       userVotes.clear();
       stopPollDomObserver();
+
     }
   }
 
