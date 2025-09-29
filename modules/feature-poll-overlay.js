@@ -421,7 +421,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
     setTimeout(() => {
       syncOverlayFromDom();
     }, 200);
-
   }
 
   function hideVideoOverlay() {
@@ -449,17 +448,36 @@ BTFW.define("feature:poll-overlay", [], async () => {
     // Update vote counts on buttons to match original poll
     if (optionsGrid && poll.votes) {
       const buttons = optionsGrid.querySelectorAll(".btfw-poll-option-btn");
+      const originalPollButtons = getOriginalPollButtons();
+      let mirroredActiveState = false;
+
       buttons.forEach((btn, index) => {
         const voteCount = poll.votes[index] || 0;
         btn.textContent = voteCount.toString();
-        
-        // Also check if original poll button is active and mirror that state
-        const originalPollButtons = document.querySelectorAll('#pollwrap .well .option button');
-        if (originalPollButtons[index] && originalPollButtons[index].classList.contains('active')) {
-          btn.classList.add("active");
-          userVotes.add(index);
-        }
+        btn.classList.remove("active");
       });
+
+      if (originalPollButtons.length === buttons.length) {
+        buttons.forEach((btn, index) => {
+          const originalBtn = originalPollButtons[index];
+          if (originalBtn && originalBtn.classList.contains("active")) {
+            btn.classList.add("active");
+            userVotes.add(index);
+            mirroredActiveState = true;
+          } else {
+            userVotes.delete(index);
+          }
+        });
+      }
+
+      if (!mirroredActiveState && userVotes.size) {
+        userVotes.forEach((voteIndex) => {
+          const btn = buttons[voteIndex];
+          if (btn) {
+            btn.classList.add("active");
+          }
+        });
+      }
     }
     
     // Update total vote count
