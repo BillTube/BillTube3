@@ -1289,11 +1289,12 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 }
 
 #btfw-theme-modal .btfw-checkbox{
-  display: inline-flex;
+  display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
   font-weight: 600;
   color: color-mix(in srgb, var(--btfw-color-text) 82%, transparent 18%);
+  line-height: 1.45;
 }
 
 #btfw-theme-modal .btfw-checkbox input{
@@ -1301,6 +1302,19 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   height: 18px;
   accent-color: var(--btfw-color-accent);
   margin-top: 2px;
+  flex-shrink: 0;
+}
+
+#btfw-theme-modal .btfw-checkbox span{
+  display: block;
+  flex: 1 1 auto;
+  margin-top: 1px;
+}
+
+#btfw-theme-modal .btfw-ts-control--radios .radio span{
+  display: inline-block;
+  line-height: 1.4;
+  flex: 1 1 auto;
 }
 
 #btfw-theme-modal .select select{
