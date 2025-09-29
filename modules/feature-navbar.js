@@ -1,4 +1,4 @@
-/* BTFW — feature:navbar
+/* BTFW – feature:navbar
    Responsibilities:
    - Keep navbar on top (no layout changes here)
    - Ensure Theme button hook remains (#btfw-theme-btn-nav)
@@ -230,11 +230,29 @@ BTFW.define("feature:navbar", [], async () => {
     const host = document.getElementById("btfw-navhost");
     if (!host || !navToggleButton) return;
     const isOpen = host.getAttribute("data-mobile-open") === "true";
-    navToggleButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
-    navToggleButton.setAttribute("aria-label", isOpen ? "Close navigation" : "Open navigation");
+    
+    // ✅ FIX: Only update attributes if they changed
+    const currentExpanded = navToggleButton.getAttribute("aria-expanded");
+    if (currentExpanded !== (isOpen ? "true" : "false")) {
+      navToggleButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    }
+    
+    const currentLabel = navToggleButton.getAttribute("aria-label");
+    const newLabel = isOpen ? "Close navigation" : "Open navigation";
+    if (currentLabel !== newLabel) {
+      navToggleButton.setAttribute("aria-label", newLabel);
+    }
+    
     navToggleButton.classList.toggle("btfw-nav-toggle--open", isOpen);
+    
     const label = navToggleButton.querySelector(".btfw-nav-toggle__label");
-    if (label) label.textContent = isOpen ? "Close" : "Menu";
+    if (label) {
+      const newText = isOpen ? "Close" : "Menu";
+      // ✅ FIX: ONLY UPDATE IF CHANGED
+      if (label.textContent !== newText) {
+        label.textContent = newText;
+      }
+    }
   }
 
   function updateMobileNavState(){
