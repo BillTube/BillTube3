@@ -1,4 +1,32 @@
 
+#messagebuffer > div {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 60px; /* Estimated height for layout calculations */
+}
+
+#messagebuffer .btfw-chat-avatar {
+  /* Existing CSS remains the same */
+  width: var(--btfw-avatar-size);
+  height: var(--btfw-avatar-size);
+  border-radius: 6px;
+  object-fit: cover;
+  display: block;
+  
+  /* ⚡ NEW: Prevent layout shift during image decode */
+  image-rendering: auto;
+  will-change: auto; /* Don't force layer promotion unless needed */
+}
+
+/* Optional: Add a subtle loading state for avatars */
+#messagebuffer .btfw-chat-avatar[loading="lazy"]:not([src*="data:image"]) {
+  background: color-mix(in srgb, var(--btfw-color-panel) 70%, transparent 30%);
+}
+
+/* Ensure consecutive messages render efficiently */
+#messagebuffer > div.btfw-compact {
+  margin-top: 2px !important;
+  /* content-visibility inherited from parent */
+}
 
 #chatwrap{
   display:flex;
@@ -895,4 +923,5 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
     0%, 100% { text-shadow: 0 0 10px #922fff, 0 0 20px #922fff, 0 0 30px #922fff; }
     50% { text-shadow: 0 0 5px #922fff, 0 0 10px #922fff, 0 0 15px #922fff; }
 }
+
 
