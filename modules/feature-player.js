@@ -245,7 +245,41 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     mo.observe(target, { childList: true, subtree: true });
     watchPlayerMount._mo = mo;
   }
-
+function watchHead() {
+  const head = document.head;
+  if (!head || watchHead._mo) return;
+  
+  let checkScheduled = false;
+  const mo = new MutationObserver((mutations) => {
+    // ✅ FIX: Only check if stylesheets were actually REMOVED
+    let stylesheetRemoved = false;
+    for (const mutation of mutations) {
+      for (const node of mutation.removedNodes) {
+        if (node.nodeType === 1 && 
+            (node.tagName === 'LINK' || node.tagName === 'STYLE') &&
+            (node.id === BASE_STYLES_LINK_ID || node.id === CITY_STYLES_LINK_ID ||
+             node.href?.includes('video-js') || node.href?.includes('videojs'))) {
+          stylesheetRemoved = true;
+          break;
+        }
+      }
+      if (stylesheetRemoved) break;
+    }
+    
+    // Only re-check if stylesheets were removed, and debounce it
+    if (stylesheetRemoved && !checkScheduled) {
+      checkScheduled = true;
+      setTimeout(() => {
+        checkScheduled = false;
+        ensureBaseStylesheet();
+        ensureCityStylesheet();
+      }, 200);
+    }
+  });
+  
+  mo.observe(head, { childList: true });
+  watchHead._mo = mo;
+}
  
 
   function boot() {
