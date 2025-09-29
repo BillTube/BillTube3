@@ -312,11 +312,12 @@ function watchForStrayButtons(){
   /* ---------------- Auto-scroll management ---------------- */
   const scrollState = {
     buffer: null,
-    observer: null,
     isUserScrolledUp: false,
     lastScrollTop: 0,
     timeout: null
   };
+
+  const processedMessages = new WeakSet();
 
   function getChatBuffer(){
     return document.getElementById("messagebuffer") ||
@@ -443,33 +444,102 @@ function watchForStrayButtons(){
     msgEl.dataset.btfwTriviaStyled = "1";
   }
 
-  function processChatNode(node){
-    if (!node || node.nodeType !== 1) return false;
-    const targets = [];
-    if (node.matches?.(MESSAGE_SELECTOR)) targets.push(node);
-    node.querySelectorAll?.(MESSAGE_SELECTOR).forEach((el) => {
-      if (!targets.includes(el)) targets.push(el);
+  function processPendingChatMessages(){
+    const buffer = getChatBuffer();
+    if (!buffer) return;
+    let sawMessage = false;
+    buffer.querySelectorAll(MESSAGE_SELECTOR).forEach((el) => {
+      if (processedMessages.has(el)) return;
+      restyleTriviaMessage(el);
+      processedMessages.add(el);
+      sawMessage = true;
     });
-    if (!targets.length) return false;
-    targets.forEach(restyleTriviaMessage);
-    return true;
+    if (sawMessage) handleNewMessage();
   }
 
-  function handleMutations(mutations){
-    let sawMessage = false;
-    for (const mutation of mutations) {
-      if (mutation.type !== "childList" || mutation.addedNodes.length === 0) continue;
-      for (const node of mutation.addedNodes) {
-        if (processChatNode(node)) sawMessage = true;
+  const scheduleProcessPendingChatMessages = (() => {
+    let pending = false;
+    const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
+    return () => {
+      if (pending) return;
+      pending = true;
+      raf(() => {
+        pending = false;
+        processPendingChatMessages();
+      });
+    };
+  })();
+
+  function onSocketChatMessage(){
+    scheduleProcessPendingChatMessages();
+    setTimeout(() => processPendingChatMessages(), 80);
+  }
+
+  const chatSocketState = {
+    wired: false,
+    retryTimer: null,
+    socketRef: null,
+    teardown: null
+  };
+
+  function wireChatSocketWatcher(){
+    const sock = window.socket;
+    if (chatSocketState.wired && chatSocketState.socketRef && chatSocketState.socketRef !== sock) {
+      if (typeof chatSocketState.teardown === "function") {
+        try { chatSocketState.teardown(); } catch(_) {}
+      }
+      chatSocketState.wired = false;
+      chatSocketState.socketRef = null;
+      chatSocketState.teardown = null;
+    }
+    if (chatSocketState.wired) return;
+    if (!sock || typeof sock.on !== "function") {
+      if (!chatSocketState.retryTimer) {
+        chatSocketState.retryTimer = setTimeout(() => {
+          chatSocketState.retryTimer = null;
+          wireChatSocketWatcher();
+        }, 1000);
+      }
+      return;
+    }
+    try {
+      sock.on("chatMsg", onSocketChatMessage);
+      chatSocketState.wired = true;
+      chatSocketState.socketRef = sock;
+      if (typeof sock.off === "function") {
+        chatSocketState.teardown = () => {
+          try { sock.off("chatMsg", onSocketChatMessage); } catch(_) {}
+        };
+      } else if (typeof sock.removeListener === "function") {
+        chatSocketState.teardown = () => {
+          try { sock.removeListener("chatMsg", onSocketChatMessage); } catch(_) {}
+        };
+      } else {
+        chatSocketState.teardown = null;
+      }
+      if (chatSocketState.retryTimer) {
+        clearTimeout(chatSocketState.retryTimer);
+        chatSocketState.retryTimer = null;
+      }
+      scheduleProcessPendingChatMessages();
+    } catch (err) {
+      chatSocketState.wired = false;
+      if (!chatSocketState.retryTimer) {
+        chatSocketState.retryTimer = setTimeout(() => {
+          chatSocketState.retryTimer = null;
+          wireChatSocketWatcher();
+        }, 1500);
       }
     }
-    if (sawMessage) handleNewMessage();
   }
 
   function restyleExistingTrivia(){
     const buffer = getChatBuffer();
     if (!buffer) return;
-    buffer.querySelectorAll(MESSAGE_SELECTOR).forEach(restyleTriviaMessage);
+    buffer.querySelectorAll(MESSAGE_SELECTOR).forEach((el) => {
+      restyleTriviaMessage(el);
+      processedMessages.add(el);
+    });
   }
 
   function bindChatBuffer(buffer){
@@ -478,10 +548,6 @@ function watchForStrayButtons(){
 
     if (scrollState.buffer) {
       scrollState.buffer.removeEventListener("scroll", handleScroll);
-    }
-    if (scrollState.observer) {
-      scrollState.observer.disconnect();
-      scrollState.observer = null;
     }
     if (scrollState.timeout) {
       clearTimeout(scrollState.timeout);
@@ -494,10 +560,7 @@ function watchForStrayButtons(){
 
     buffer.addEventListener("scroll", handleScroll, { passive: true });
 
-    const observer = new MutationObserver(handleMutations);
-    observer.observe(buffer, { childList: true, subtree: true });
-    scrollState.observer = observer;
-
+    processPendingChatMessages();
     setTimeout(() => scrollBufferToBottom(buffer, false), 80);
   }
 
@@ -829,6 +892,7 @@ function watchForStrayButtons(){
     adoptNewMessageIndicator();
     ensureScrollManagement();
     restyleExistingTrivia();
+    scheduleProcessPendingChatMessages();
   }
 
   const scheduleChatDomRefresh = (() => {
@@ -1037,6 +1101,7 @@ function watchForStrayButtons(){
   /* ---------------- Boot ---------------- */
   function boot(){
     refreshChatDom();
+    wireChatSocketWatcher();
     ensureUserlistWatch();
     ensureUsercountInBar();
     ensureUserlistPopover();
