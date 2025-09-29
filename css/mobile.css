@@ -151,8 +151,11 @@ body:not(.btfw-mobile-stack-enabled) #btfw-mobile-stack{ display:none !important
   }
 
   /* Video overlay buttons: keep accessible spacing */
-  #videowrap .btfw-video-overlay .btfw-vo-right{
-    top: 8px; right: 8px; gap: 6px;
+  #videowrap .btfw-video-overlay .btfw-vo-bar{
+    top: 8px; left: 8px; right: 8px; gap: 8px;
+  }
+  #videowrap .btfw-video-overlay .btfw-vo-section{
+    gap: 6px;
   }
   #videowrap .btfw-video-overlay .btfw-vo-btn{
     padding: 6px 8px;

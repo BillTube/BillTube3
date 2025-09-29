@@ -458,7 +458,7 @@
   pointer-events: none;
   grid-area: 1 / 1;
 }
-#videowrap .btfw-video-overlay .btfw-vo-right{ pointer-events: auto; }
+#videowrap .btfw-video-overlay .btfw-vo-section{ pointer-events: auto; }
 
 /* Space for modules stacked under the player */
 
