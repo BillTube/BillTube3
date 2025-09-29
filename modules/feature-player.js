@@ -230,57 +230,67 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     candidates.forEach(attachGuardsTo);
   }
 
-  function watchPlayerMount() {
-    const target = document.getElementById("videowrap") || document.body;
-    if (!target) return;
-    if (watchPlayerMount._mo) {
-      try { watchPlayerMount._mo.disconnect(); } catch (_) {}
-    }
-    const mo = new MutationObserver(() => {
-      applyCityTheme();
-
-      attachGuards();
-      ensureInlinePlayback();
-    });
-    mo.observe(target, { childList: true, subtree: true });
-    watchPlayerMount._mo = mo;
+ function watchPlayerMount() {
+  const target = document.getElementById("videowrap") || document.body;
+  if (!target) return;
+  if (watchPlayerMount._mo) {
+    try { watchPlayerMount._mo.disconnect(); } catch (_) {}
   }
-function watchHead() {
-  const head = document.head;
-  if (!head || watchHead._mo) return;
   
-  let checkScheduled = false;
   const mo = new MutationObserver((mutations) => {
-    // ✅ FIX: Only check if stylesheets were actually REMOVED
-    let stylesheetRemoved = false;
+    // ✅ FIX: Only react to significant changes, not Video.js time updates
+    let shouldReact = false;
+    
     for (const mutation of mutations) {
-      for (const node of mutation.removedNodes) {
-        if (node.nodeType === 1 && 
-            (node.tagName === 'LINK' || node.tagName === 'STYLE') &&
-            (node.id === BASE_STYLES_LINK_ID || node.id === CITY_STYLES_LINK_ID ||
-             node.href?.includes('video-js') || node.href?.includes('videojs'))) {
-          stylesheetRemoved = true;
-          break;
+      // Ignore textContent changes (Video.js time displays)
+      if (mutation.type === 'characterData') {
+        continue;
+      }
+      
+      // Only care about added/removed elements that are significant
+      if (mutation.type === 'childList') {
+        for (const node of mutation.addedNodes) {
+          // React to new video players, but not internal Video.js elements
+          if (node.nodeType === 1 && 
+              (node.classList?.contains('video-js') || 
+               node.classList?.contains('embed-responsive') ||
+               node.tagName === 'VIDEO' ||
+               node.tagName === 'IFRAME')) {
+            shouldReact = true;
+            break;
+          }
+        }
+        
+        for (const node of mutation.removedNodes) {
+          // React to removed video players
+          if (node.nodeType === 1 && 
+              (node.classList?.contains('video-js') || 
+               node.tagName === 'VIDEO' ||
+               node.tagName === 'IFRAME')) {
+            shouldReact = true;
+            break;
+          }
         }
       }
-      if (stylesheetRemoved) break;
+      
+      if (shouldReact) break;
     }
     
-    // Only re-check if stylesheets were removed, and debounce it
-    if (stylesheetRemoved && !checkScheduled) {
-      checkScheduled = true;
-      setTimeout(() => {
-        checkScheduled = false;
-        ensureBaseStylesheet();
-        ensureCityStylesheet();
-      }, 200);
+    if (shouldReact) {
+      applyCityTheme();
+      attachGuards();
+      ensureInlinePlayback();
     }
   });
   
-  mo.observe(head, { childList: true });
-  watchHead._mo = mo;
+  mo.observe(target, { 
+    childList: true, 
+    subtree: true,
+    characterData: false  // ✅ Don't watch text changes
+  });
+  watchPlayerMount._mo = mo;
 }
- 
+
 
   function boot() {
     applyCityTheme();
