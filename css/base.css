@@ -82,7 +82,11 @@ body::after {
 body, button, input, select, textarea, .btn {
   font-family: var(--btfw-font-body);
 }
-
+body.is-scrolling [style*="backdrop-filter"],
+body.is-scrolling .btfw-notice,
+body.is-scrolling #btfw-emotes-pop {
+  backdrop-filter: none !important;
+}
 #mainpage,
 #wrap,
 #main,
