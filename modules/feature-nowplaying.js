@@ -3,7 +3,8 @@ BTFW.define("feature:nowplaying", [], async () => {
 
   const state = {
     lastCleanTitle: null,
-    lastMediaKey: null
+    lastMediaKey: null,
+    pendingUpdate: null  // ← Add debounce state
   };
 
   function stripPrefix(t) {
@@ -79,35 +80,74 @@ BTFW.define("feature:nowplaying", [], async () => {
 
     const currentText = ct.textContent || "";
     const nextText = cleanTitle || "";
-    const needsDomUpdate = currentText !== nextText || ct.title !== nextText;
-    const titleChanged = state.lastCleanTitle !== cleanTitle;
+    
+    // ✅ FIX: More strict check - only update if ACTUALLY different
+    const textChanged = currentText !== nextText;
+    const titleAttrChanged = ct.title !== nextText;
+    const titleStateChanged = state.lastCleanTitle !== cleanTitle;
+    
+    const needsUpdate = textChanged || titleAttrChanged || options.force;
 
-    if (!needsDomUpdate && !titleChanged && !options.force) {
+    if (!needsUpdate && !titleStateChanged) {
       return false;
     }
 
-    ct.textContent = cleanTitle || "";
-    ct.title = cleanTitle || "";
-    ct.style.setProperty("--length", (cleanTitle || "").length);
+    // ✅ FIX: Only update DOM if actually changed
+    if (textChanged || options.force) {
+      ct.textContent = cleanTitle || "";
+    }
+    
+    if (titleAttrChanged || options.force) {
+      ct.title = cleanTitle || "";
+    }
+    
+    const currentLength = ct.style.getPropertyValue("--length");
+    const newLength = String((cleanTitle || "").length);
+    if (currentLength !== newLength) {
+      ct.style.setProperty("--length", newLength);
+    }
 
     state.lastCleanTitle = cleanTitle;
 
-    if (titleChanged || options.forceLog) {
+    if (titleStateChanged || options.forceLog) {
       console.log('[nowplaying] Set title:', cleanTitle);
     }
 
     return true;
   }
 
+  // ✅ FIX: Add debouncing to handle rapid socket events
+  function debouncedSetTitle(title, options = {}) {
+    if (state.pendingUpdate) {
+      clearTimeout(state.pendingUpdate);
+    }
+    
+    // If it's a force update, do it immediately
+    if (options.force) {
+      setTitle(title, options);
+      return;
+    }
+    
+    // Otherwise debounce
+    state.pendingUpdate = setTimeout(() => {
+      state.pendingUpdate = null;
+      setTitle(title, options);
+    }, 100);
+  }
+
   function handleMediaChange(data) {
     const mediaKey = mediaIdentity(data);
     const forceUpdate = mediaKey && mediaKey !== state.lastMediaKey;
-    const didUpdate = setTitle(data?.title || "", { force: forceUpdate, forceLog: forceUpdate });
-    if (didUpdate) {
+    
+    // ✅ FIX: Use debounced version for non-forced updates
+    if (forceUpdate) {
+      setTitle(data?.title || "", { force: true, forceLog: true });
       mountTitleIntoSlot();
       if (mediaKey) {
         state.lastMediaKey = mediaKey;
       }
+    } else {
+      debouncedSetTitle(data?.title || "");
     }
   }
 
@@ -145,10 +185,9 @@ BTFW.define("feature:nowplaying", [], async () => {
         socket.on("changeMedia", handleMediaChange);
         socket.on("setCurrent", handleMediaChange);
         socket.on("mediaUpdate", data => {
-          const didUpdate = setTitle(data?.title, { force: false });
-          if (didUpdate) {
-            mountTitleIntoSlot();
-          }
+          // ✅ FIX: Use debounced version
+          debouncedSetTitle(data?.title, { force: false });
+          mountTitleIntoSlot();
         });
       }
     } catch (e) {
@@ -172,7 +211,8 @@ BTFW.define("feature:nowplaying", [], async () => {
       const mo = new MutationObserver(() => {
         const queueTitle = getQueueActiveTitle();
         if (queueTitle) {
-          setTitle(queueTitle);
+          // ✅ FIX: Use debounced version
+          debouncedSetTitle(queueTitle);
         }
         mountTitleIntoSlot();
       });
@@ -197,7 +237,8 @@ BTFW.define("feature:nowplaying", [], async () => {
       document._btfwNpMoveObs = obs;
     }
 
-    [200, 500, 1000, 2000].forEach(delay => {
+    // ✅ FIX: Reduce the number of retry attempts
+    [500, 1500].forEach(delay => {
       setTimeout(() => {
         mountTitleIntoSlot();
         const title = getQueueActiveTitle();
