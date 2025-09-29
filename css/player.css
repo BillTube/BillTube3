@@ -38,7 +38,21 @@
   width: 100%;
   height: 100%;
 }
+#videowrap video,
+#videowrap iframe,
+#videowrap #ytapiplayer,
+#videowrap .video-js {
+  transform: translate3d(0, 0, 0);  /* Creates GPU layer */
+  backface-visibility: hidden;       /* Optimization hint */
+  -webkit-backface-visibility: hidden;
+  will-change: transform;            /* Prepare for animations */
+}
 
+/* Remove will-change when not needed */
+#videowrap.vjs-has-started video,
+#videowrap.vjs-playing video {
+  will-change: auto;  /* Don't hold GPU layer when stable */
+}
 /* Support legacy .embed-responsive wrappers if present */
 #videowrap .embed-responsive{
   position: relative;
@@ -909,5 +923,6 @@
     justify-content: flex-start;
   }
 }
+
 
 
