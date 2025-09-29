@@ -126,7 +126,7 @@ $(document).ready(function () {
     var $btn = $(
       '<button id="btfw-vo-cast" ' +
         'class="btn btn-sm btn-default btfw-vo-adopted" ' +
-        'title="Cast to device" data-btfw-overlay="1" data-btfw-vo-align="left">' +
+        'title="Cast to device" data-btfw-overlay="1">' +
         '<span class="glyphicon glyphicon-signal"></span>' +
       '</button>'
     );
@@ -148,7 +148,7 @@ $(document).ready(function () {
     var $btn = $(
       '<button id="btfw-vo-cast-fallback" ' +
         'class="btn btn-sm btn-default btfw-vo-adopted" ' +
-        'title="Casting not available" data-btfw-overlay="1" data-btfw-vo-align="left">' +
+        'title="Casting not available" data-btfw-overlay="1">' +
         '<span class="glyphicon glyphicon-info-sign"></span>' +
       '</button>'
     );
