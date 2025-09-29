@@ -495,7 +495,7 @@ a:hover {
 
 #btfw-grid.btfw-grid--vertical #videowrap iframe,
 #btfw-grid.btfw-grid--vertical #videowrap video{
-  height: auto;
+  height: 100%;
 }
 
 #btfw-grid.btfw-grid--vertical #btfw-chatcol{
