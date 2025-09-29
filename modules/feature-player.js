@@ -121,6 +121,59 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     });
   }
 
+  function patchVideojsTextContent() {
+    if (typeof window === "undefined") return false;
+    const vjs = window.videojs;
+    if (!vjs) return false;
+    const dom = vjs.dom || vjs;
+    if (!dom || typeof dom.textContent !== "function") return false;
+    if (dom.textContent && dom.textContent._btfwOptimized) return true;
+
+    const original = dom.textContent.bind(dom);
+
+    const patched = function patchedTextContent(el, text) {
+      if (!el) return el;
+
+      let currentValue;
+      try {
+        if (typeof el.textContent !== "undefined") {
+          currentValue = el.textContent;
+        } else if (typeof el.innerText !== "undefined") {
+          currentValue = el.innerText;
+        }
+      } catch (_) {
+        currentValue = undefined;
+      }
+
+      if (currentValue !== undefined) {
+        const nextValue = text === null || text === undefined ? "" : String(text);
+        if (currentValue === nextValue) {
+          return el;
+        }
+      }
+
+      return original(el, text);
+    };
+
+    patched._btfwOptimized = true;
+    patched._btfwOriginal = original;
+    dom.textContent = patched;
+
+    return true;
+  }
+
+  function ensureTextContentPatch() {
+    if (patchVideojsTextContent()) {
+      ensureTextContentPatch._tries = 0;
+      return;
+    }
+
+    if (ensureTextContentPatch._tries > 20) return;
+    ensureTextContentPatch._tries = (ensureTextContentPatch._tries || 0) + 1;
+
+    setTimeout(ensureTextContentPatch, 250);
+  }
+
   /* ===== Guard: block context menu + surface click-to-pause ===== */
   const GUARD_MARK = "_btfwGuarded";
 
@@ -209,6 +262,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     applyCityTheme();
     attachGuards();
     ensureInlinePlayback();
+    ensureTextContentPatch();
     watchPlayerMount();
     watchHead();
 
