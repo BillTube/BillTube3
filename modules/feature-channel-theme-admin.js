@@ -1498,18 +1498,23 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return true;
   }
 
-  function boot(){
-    if (!canManageChannel()) return;
-    const modal =
-      document.getElementById('channeloptions') ||
-      document.getElementById('channelsettingsmodal') ||
-      document.getElementById('channeloptionsmodal') ||
-      document.querySelector('.channel-settings-modal');
-    if (modal && !modal.dataset.btfwThemeAdminBound) {
+  const CHANNEL_MODAL_SELECTOR = "#channeloptions, #channelsettingsmodal, #channeloptionsmodal, .channel-settings-modal";
+
+  function ensureModalPanel(modal){
+    if (!modal || !canManageChannel()) return;
+    if (!modal.dataset.btfwThemeAdminBound) {
       if (initPanel(modal)) {
         modal.dataset.btfwThemeAdminBound = "1";
       }
+    } else {
+      initPanel(modal);
     }
+  }
+
+  function boot(){
+    if (!canManageChannel()) return;
+    const modal = document.querySelector(CHANNEL_MODAL_SELECTOR);
+    ensureModalPanel(modal);
   }
 
   if (document.readyState === "loading") {
@@ -1518,21 +1523,22 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     boot();
   }
 
-  const mo = new MutationObserver(() => {
-    const modal =
-      document.getElementById('channeloptions') ||
-      document.getElementById('channelsettingsmodal') ||
-      document.getElementById('channeloptionsmodal') ||
-      document.querySelector('.channel-settings-modal');
-    if (modal && !modal.dataset.btfwThemeAdminBound) {
-      if (initPanel(modal)) {
-        modal.dataset.btfwThemeAdminBound = "1";
-      }
-    } else if (modal) {
-      initPanel(modal);
-    }
-  });
-  mo.observe(document.body, { childList: true, subtree: true });
+  const bindModalEvents = (()=>{
+    let bound = false;
+    return function(){
+      if (bound) return;
+      bound = true;
+      const handler = (event)=>{
+        const modal = event?.target?.closest?.(CHANNEL_MODAL_SELECTOR) ||
+          (event?.target && event.target.matches?.(CHANNEL_MODAL_SELECTOR) ? event.target : null);
+        ensureModalPanel(modal);
+      };
+      document.addEventListener("show.bs.modal", handler, true);
+      document.addEventListener("shown.bs.modal", handler, true);
+    };
+  })();
+
+  bindModalEvents();
 
   return { name: "feature:channelThemeAdmin" };
 });

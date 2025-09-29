@@ -368,18 +368,20 @@ BTFW.define("feature:themeSettings", [], async () => {
   function close(){ $("#btfw-theme-modal")?.classList.remove("is-active"); }
 
   // --- wire openers in DOM (chat/nav buttons) ---
+  const OPEN_SELECTOR = "#btfw-theme-btn-chat, #btfw-theme-btn-nav, .btfw-theme-open";
+  let delegatedOpeners = false;
   function wireOpeners(){
-    ["#btfw-theme-btn-chat", "#btfw-theme-btn-nav", ".btfw-theme-open"].forEach(sel=>{
-      const el = $(sel);
-      if (el && !el._btfwTS) {
-        el._btfwTS = true;
-        el.addEventListener("click", (e)=>{ e.preventDefault(); open(); }, false);
-      }
+    if (delegatedOpeners) return;
+    delegatedOpeners = true;
+    document.addEventListener("click", (event)=>{
+      const trigger = event.target?.closest?.(OPEN_SELECTOR);
+      if (!trigger) return;
+      event.preventDefault();
+      open();
     });
   }
 
-  function decorateUserOptions(){
-    const modal = document.getElementById("useroptions");
+  function decorateUserOptions(modal = document.getElementById("useroptions")){
     if (!modal) return;
     const pane = modal.querySelector("#us-general");
     if (pane && !pane._btfwDecorated) {
@@ -407,11 +409,14 @@ BTFW.define("feature:themeSettings", [], async () => {
     }
   }
 
-  function observeUserOptions(){
-    if (document.body._btfwUserOptionsMO) return;
-    const mo = new MutationObserver(() => decorateUserOptions());
-    mo.observe(document.body, { childList: true, subtree: true });
-    document.body._btfwUserOptionsMO = mo;
+  let userOptionsBound = false;
+  function bindUserOptions(){
+    if (userOptionsBound) return;
+    userOptionsBound = true;
+    document.addEventListener("show.bs.modal", (event)=>{
+      const modal = event?.target?.closest?.("#useroptions") || (event?.target?.id === "useroptions" ? event.target : null);
+      if (modal) decorateUserOptions(modal);
+    }, true);
   }
 
   // --- boot: apply persisted variables even if modal never opened ---
@@ -421,7 +426,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     applyCompactStack(get(TS_KEYS.stackCompact, "1") === "1");
     wireOpeners();
     decorateUserOptions();
-    observeUserOptions();
+    bindUserOptions();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
