@@ -156,16 +156,55 @@
   justify-content: flex-end;
 }
 
-#videowrap .btfw-video-overlay .btfw-vo-btn {
-  border-radius: 10px;
-  border: 1px solid var(--btfw-overlay-border);
-  background: color-mix(in srgb, var(--btfw-color-bg) 78%, transparent 22%);
-  backdrop-filter: saturate(130%) blur(4px);
-  padding: 6px 10px;
-  line-height: 1;
+#videowrap .btfw-video-overlay .btfw-vo-btn,
+#videowrap .btfw-video-overlay .btfw-vo-adopted {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 22px;
+  border: 0;
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff;
+  cursor: pointer;
+  font: 600 14px/1.05 "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(12px) saturate(120%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
 }
-#videowrap .btfw-video-overlay .btfw-vo-btn:hover {
-  background: color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
+
+#videowrap .btfw-video-overlay .btfw-vo-btn i,
+#videowrap .btfw-video-overlay .btfw-vo-adopted i {
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+#videowrap .btfw-video-overlay .btfw-vo-btn:hover,
+#videowrap .btfw-video-overlay .btfw-vo-adopted:hover {
+  background: rgba(109, 77, 246, 0.82);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(109, 77, 246, 0.36);
+}
+
+#videowrap .btfw-video-overlay .btfw-vo-btn:hover i,
+#videowrap .btfw-video-overlay .btfw-vo-adopted:hover i {
+  transform: scale(1.08);
+}
+
+#videowrap .btfw-video-overlay .btfw-vo-btn:active,
+#videowrap .btfw-video-overlay .btfw-vo-adopted:active {
+  transform: translateY(0);
+}
+
+#videowrap .btfw-video-overlay .btfw-vo-btn:focus-visible,
+#videowrap .btfw-video-overlay .btfw-vo-adopted:focus-visible {
+  outline: 2px solid rgba(109, 77, 246, 0.95);
+  outline-offset: 2px;
 }
 
 /* ======================================================================
