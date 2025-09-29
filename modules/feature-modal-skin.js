@@ -79,22 +79,15 @@ BTFW.define("feature:modal-skin", [], async () => {
     // initial pass
     skinAll();
 
-    // observe new modals being added
-    const mo = new MutationObserver(muts=>{
-      for (const m of muts){
-        m.addedNodes && m.addedNodes.forEach(n=>{
-          if (n.nodeType===1) {
-            if (n.classList?.contains("modal")) decorate(n);
-            else n.querySelectorAll?.(".modal").forEach(decorate);
-          }
-        });
-      }
-    });
-    mo.observe(document.body, {childList:true, subtree:true});
+    const handleBootstrapModal = (event)=>{
+      const modal = event?.target && event.target.classList?.contains("modal")
+        ? event.target
+        : event?.target?.closest?.(".modal");
+      if (modal) decorate(modal);
+    };
 
-    // also re-run after CyTube opens common dialogs the first time
-    setTimeout(skinAll, 400);
-    setTimeout(skinAll, 1000);
+    document.addEventListener("show.bs.modal", handleBootstrapModal, true);
+    document.addEventListener("shown.bs.modal", handleBootstrapModal, true);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
