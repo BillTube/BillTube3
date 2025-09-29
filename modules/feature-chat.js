@@ -1106,41 +1106,62 @@ const scheduleNormalizeChatActions = (() => {
     updateUsercount();
     wireUsercountUpdatesOnce();
   }
-  function updateUsercount(explicit){
-    let count = (typeof explicit === "number") ? explicit : 0;
-    if (!count) {
-      const ul = $("#userlist");
-      if (ul) {
-        let els = ul.querySelectorAll("li");
-        if (!els.length) els = ul.querySelectorAll(".userlist_item, .nick, .user");
-        count = els.length || 0;
-      }
-      if (!count) {
-        const uc = $("#usercount");
-        const m  = uc && uc.textContent && uc.textContent.match(/\d+/);
-        if (m) count = parseInt(m[0], 10) || 0;
-      }
+  let trackedUsercount = null;
+  function deriveUsercountFromDom(){
+    const ul = $("#userlist");
+    if (ul) {
+      let els = ul.querySelectorAll("li");
+      if (!els.length) els = ul.querySelectorAll(".userlist_item, .nick, .user");
+      if (els.length) return els.length;
     }
+    const uc = $("#usercount");
+    const m  = uc && uc.textContent && uc.textContent.match(/\d+/);
+    if (m) return parseInt(m[0], 10) || 0;
+    return 0;
+  }
+  function renderUsercount(count){
     const numEl = $("#usercount .btfw-usercount-num");
     if (numEl) numEl.textContent = String(count);
+  }
+  function setTrackedUsercount(next){
+    const sanitized = Math.max(0, Number.isFinite(next) ? Math.floor(next) : 0);
+    trackedUsercount = sanitized;
+    renderUsercount(sanitized);
+  }
+  function currentUsercount(){
+    if (typeof trackedUsercount === "number") return trackedUsercount;
+    const derived = deriveUsercountFromDom();
+    setTrackedUsercount(derived);
+    return derived;
+  }
+  function updateUsercount(explicit){
+    if (typeof explicit === "number" && !Number.isNaN(explicit)) {
+      setTrackedUsercount(explicit);
+      return;
+    }
+    setTrackedUsercount(deriveUsercountFromDom());
+  }
+  function adjustUsercount(delta){
+    const next = currentUsercount() + delta;
+    setTrackedUsercount(next);
   }
   function wireUsercountUpdatesOnce(){
     if (document._btfw_uc_wired) return;
     document._btfw_uc_wired = true;
 
-    const ul = $("#userlist");
-    if (ul) new MutationObserver(()=>updateUsercount()).observe(ul, {childList:true, subtree:true});
-
     if (window.socket && typeof window.socket.on === "function") {
       try {
-        socket.on("addUser",      ()=>updateUsercount());
-        socket.on("userLeave",    ()=>updateUsercount());
-        socket.on("rank",         ()=>updateUsercount());
-        socket.on("setUserCount", (n)=>updateUsercount(n));
-        socket.on("userlist",     ()=>updateUsercount());
-      } catch(_) {}
+        socket.on("addUser",   () => adjustUsercount(1));
+        socket.on("userLeave", () => adjustUsercount(-1));
+        socket.on("userlist",  (list) => {
+          if (Array.isArray(list)) {
+            setTrackedUsercount(list.length);
+          } else {
+            updateUsercount();
+          }
+        });
+      } catch (_) {}
     }
-    window.addEventListener("resize", ()=>updateUsercount());
   }
 
   /* ---------------- Deterministic username colors ---------------- */
