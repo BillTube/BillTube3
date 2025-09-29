@@ -1,6 +1,3 @@
-/* BTFW — feature:notify (overlay toasts inside #messagebuffer, with de-dupe)
-   v1.1: overlay (absolute) + single socket wire + event de-duplication.
-*/
 BTFW.define("feature:notify", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
 
@@ -200,54 +197,61 @@ BTFW.define("feature:notify", [], async () => {
   }
 
   // ---- timers / progress ------------------------------------------------------
-  function startAutoclose(o){
-    const bar = o.el.querySelector(".btfw-notice-progress > div");
-    const timer = o.el.querySelector(".btfw-notice-timer");
-    const label = o.el.querySelector(".btfw-notice-timer-label");
-    const remainingNode = o.el.querySelector(".btfw-notice-timer-remaining");
-    const stopBtn = o.el.querySelector(".btfw-notice-stop");
+function startAutoclose(o){
+  const bar = o.el.querySelector(".btfw-notice-progress > div");
+  const timer = o.el.querySelector(".btfw-notice-timer");
+  const label = o.el.querySelector(".btfw-notice-timer-label");
+  const remainingNode = o.el.querySelector(".btfw-notice-timer-remaining");
+  const stopBtn = o.el.querySelector(".btfw-notice-stop");
 
-    const state = {
-      total: Math.max(0, o.timeout),
-      remaining: Math.max(0, o.timeout),
-      paused: false,
-      manual: false,
-      lastTick: Date.now(),
-      intervalId: 0,
-      bar,
-      label,
-      timer,
-      remainingNode
-    };
+  const state = {
+    total: Math.max(0, o.timeout),
+    remaining: Math.max(0, o.timeout),
+    paused: false,
+    manual: false,
+    lastTick: Date.now(),
+    lastDisplayedSecs: -1,  // ← ADD THIS
+    intervalId: 0,
+    bar,
+    label,
+    timer,
+    remainingNode
+  };
 
-    function render(){
-      if (state.bar) {
-        const pct = state.total > 0 ? Math.max(0, Math.min(1, state.remaining / state.total)) : 0;
-        state.bar.style.transform = `scaleX(${pct})`;
-      }
-      if (state.remainingNode) {
-        const secs = state.total > 0 ? Math.max(0, Math.ceil(state.remaining / 1000)) : 0;
+  function render(){
+    if (state.bar) {
+      const pct = state.total > 0 ? Math.max(0, Math.min(1, state.remaining / state.total)) : 0;
+      state.bar.style.transform = `scaleX(${pct})`;
+    }
+    if (state.remainingNode) {
+      const secs = state.total > 0 ? Math.max(0, Math.ceil(state.remaining / 1000)) : 0;
+      
+      // ← ONLY UPDATE textContent IF THE SECOND ACTUALLY CHANGED
+      if (secs !== state.lastDisplayedSecs) {
         state.remainingNode.textContent = String(secs);
+        state.lastDisplayedSecs = secs;
       }
     }
+  }
 
+  render();
+  state.intervalId = window.setInterval(()=>{
+    if (state.manual || state.paused) {
+      state.lastTick = Date.now();
+      return;
+    }
+    const now = Date.now();
+    const dt = now - state.lastTick;
+    state.lastTick = now;
+    state.remaining = Math.max(0, state.remaining - dt);
     render();
-    state.intervalId = window.setInterval(()=>{
-      if (state.manual || state.paused) {
-        state.lastTick = Date.now();
-        return;
-      }
-      const now = Date.now();
-      const dt = now - state.lastTick;
-      state.lastTick = now;
-      state.remaining = Math.max(0, state.remaining - dt);
-      render();
-      if (state.remaining <= 0) {
-        clearInterval(state.intervalId);
-        state.intervalId = 0;
-        close(o);
-      }
-    }, 140);
+    if (state.remaining <= 0) {
+      clearInterval(state.intervalId);
+      state.intervalId = 0;
+      close(o);
+    }
+  }, 140);
+
 
     o._state = state;
 
@@ -386,3 +390,4 @@ BTFW.define("feature:notify", [], async () => {
   window.BTFW_notify = api;
   return Object.assign({ name:"feature:notify" }, api);
 });
+
