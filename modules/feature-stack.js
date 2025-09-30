@@ -646,11 +646,27 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       
       // ✅ FIX: Always create channels-group if slider is enabled, even if #btfw-channels doesn't exist yet
       if (group.id === "channels-group" && elements.length === 0) {
-        // Check if channel slider is enabled
+        // Check if channel slider is enabled via multiple possible sources
         const btfw = window.BTFW || {};
-        const sliderEnabled = btfw.channelSliderEnabled || 
-                             (btfw.channelSlider && btfw.channelSlider.enabled) ||
-                             (btfw.channelTheme && btfw.channelTheme.slider && btfw.channelTheme.slider.enabled);
+        
+        // Check modern config paths
+        let sliderEnabled = btfw.channelSliderEnabled || 
+                           (btfw.channelSlider && btfw.channelSlider.enabled) ||
+                           (btfw.channelTheme && btfw.channelTheme.slider && btfw.channelTheme.slider.enabled);
+        
+        // Also check legacy global variables (for backwards compatibility)
+        if (typeof sliderEnabled === 'undefined' && typeof window.UI_ChannelList !== 'undefined') {
+          sliderEnabled = window.UI_ChannelList === '1' || window.UI_ChannelList === 1;
+        }
+        
+        // If we found a URL but no explicit enabled flag, assume enabled
+        if (!sliderEnabled) {
+          const hasUrl = btfw.channelSliderJSON || 
+                        (btfw.channelSlider && btfw.channelSlider.feedUrl) ||
+                        (btfw.channelTheme && btfw.channelTheme.slider && btfw.channelTheme.slider.feedUrl) ||
+                        window.Channel_JSON;
+          if (hasUrl) sliderEnabled = true;
+        }
         
         if (sliderEnabled) {
           // Don't skip this group - allow it to be created with zero elements
@@ -738,17 +754,28 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
 
   document.addEventListener("btfw:layoutReady", boot);
   setTimeout(boot, 1200);
+  
+  // ✅ FIX: Re-populate when channel theme config is applied (for channel slider)
+  document.addEventListener("btfw:channelThemeTint", () => {
+    const refs = ensureStack();
+    if (refs) {
+      setTimeout(() => populate(refs), 100);
+    }
+  });
+  
   document.addEventListener("btfw:layout:orientation", () => {
     requestAnimationFrame(() => applyCompactSpacing(compactSpacing));
   });
   document.addEventListener("btfw:stack:compactChanged", (ev) => {
     if (ev && ev.detail && "enabled" in ev.detail) {
       setCompactSpacing(!ev.detail.enabled);
+    } else {
+      applyCompactSpacing(compactSpacing);
     }
   });
 
   return {
-    name: "feature:stack",
+    name:"feature:stack",
     setCompactSpacing,
     getCompactSpacing
   };
