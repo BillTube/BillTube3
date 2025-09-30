@@ -34,6 +34,10 @@ BTFW.define("feature:channels", [], async () => {
         url = window.Channel_JSON || '';
       }
 
+      if (typeof enabled === 'undefined' && url) {
+        enabled = true;
+      }
+
       return { enabled: Boolean(enabled), url: url || '' };
     } catch (_) {
       return { enabled: false, url: '' };
