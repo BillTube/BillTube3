@@ -250,6 +250,7 @@ function load(src){
       BTFW.init("feature:stack"),
       BTFW.init("feature:chat"),
       BTFW.init("feature:chat-tools"),
+      BTFW.init("feature:chat-filters"),
       BTFW.init("feature:chat-username-colors"),
       BTFW.init("feature:emotes"),
       BTFW.init("feature:chatMedia"),
