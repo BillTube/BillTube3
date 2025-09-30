@@ -215,23 +215,71 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return combined;
   }
 
+  function removeRuntimeAsset(id){
+    if (typeof document === "undefined") return;
+    const existing = document.getElementById(id);
+    if (existing?.parentElement) {
+      existing.parentElement.removeChild(existing);
+    } else {
+      existing?.remove?.();
+    }
+  }
+
   function ensureRuntimeAsset(id, url, kind){
-    if (!url || typeof document === "undefined" || !document.head) return;
-    if (document.getElementById(id)) return;
+    if (typeof document === "undefined" || !document.head) return;
+    if (!url) {
+      removeRuntimeAsset(id);
+      return;
+    }
+
+    const attr = kind === "style" ? "href" : "src";
+    const existing = document.getElementById(id);
+
+    if (existing) {
+      const current = existing.getAttribute(attr) || "";
+      if (kind === "style" && existing.tagName === "LINK") {
+        if (current === url) return existing;
+        existing.setAttribute(attr, url);
+        return existing;
+      }
+      if (kind !== "style" && existing.tagName === "SCRIPT" && current === url) {
+        return existing;
+      }
+      removeRuntimeAsset(id);
+    }
+
     if (kind === "style") {
       const link = document.createElement("link");
       link.rel = "stylesheet";
       link.href = url;
       link.id = id;
       document.head.appendChild(link);
-    } else {
-      const script = document.createElement("script");
-      script.src = url;
-      script.async = true;
-      script.defer = true;
-      script.id = id;
-      document.head.appendChild(script);
+      return link;
     }
+
+    const script = document.createElement("script");
+    script.src = url;
+    script.async = true;
+    script.defer = true;
+    script.id = id;
+    document.head.appendChild(script);
+    return script;
+  }
+
+  function pruneRuntimeAssets(prefix, keepCount){
+    if (typeof document === "undefined") return;
+    const nodes = Array.from(document.querySelectorAll(`[id^="${prefix}"]`));
+    nodes.forEach(node => {
+      const match = node.id.match(/(\d+)$/);
+      if (!match) return;
+      const index = Number(match[1]);
+      if (Number.isNaN(index) || index < keepCount) return;
+      if (node.parentElement) {
+        node.parentElement.removeChild(node);
+      } else {
+        node.remove?.();
+      }
+    });
   }
 
   function applyRuntimeResources(theme){
@@ -239,10 +287,15 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const resources = (theme.resources && typeof theme.resources === "object") ? theme.resources : {};
     const styles = Array.isArray(resources.styles) ? resources.styles : [];
     styles.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-style-${idx}`, url, "style"));
+    pruneRuntimeAssets("btfw-theme-style-", styles.length);
+
     const scripts = Array.isArray(resources.scripts) ? resources.scripts : [];
     scripts.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-script-${idx}`, url, "script"));
+    pruneRuntimeAssets("btfw-theme-script-", scripts.length);
+
     const modules = normalizeModuleUrls(Array.isArray(resources.modules) ? resources.modules : []);
     modules.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-module-${idx}`, url, "script"));
+    pruneRuntimeAssets("btfw-theme-module-", modules.length);
     theme.resources = theme.resources || {};
     theme.resources.styles = styles.slice();
     theme.resources.scripts = scripts.slice();
