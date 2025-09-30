@@ -195,6 +195,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
           index = 0;
         }
         return index;
+
       }
     }
     return -1;
@@ -878,6 +879,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return normalized;
   }
 
+
   function buildConfigBlock(cfg){
     const normalized = normalizeConfig(cfg);
     const json = JSON.stringify(normalized, null, 2);
@@ -920,6 +922,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     const after = original.slice(loaderStart);
     return joinSections([before, sanitizedBlock, after], hadTrailingNewline);
   }
+
 
   const trimmed = original.trim();
   if (!trimmed) {
