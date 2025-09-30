@@ -1,9 +1,3 @@
-/* BTFW — feature:channelThemeAdmin
-   Adds an "Admin Theme" tab to the channel settings modal allowing owners
-   to manage BillTube theme resources without editing raw Channel JS / CSS.
-   The module keeps a structured config block inside Channel JS and mirrors
-   it to Channel CSS so the theme always loads with consistent colors.
-*/
 BTFW.define("feature:channelThemeAdmin", [], async () => {
   const $  = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -591,17 +585,50 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return `\n${CSS_BLOCK_START}\n:root {\n  --btfw-theme-bg: ${bg};\n  --btfw-theme-surface: ${surface};\n  --btfw-theme-panel: ${panel};\n  --btfw-theme-text: ${textColor};\n  --btfw-theme-chat-text: ${chatText};\n  --btfw-theme-accent: ${accent};\n  --btfw-theme-font-family: ${fontFamily};\n}\n${CSS_BLOCK_END}`;
   }
 
-  function replaceBlock(original, startMarker, endMarker, block){
-    const start = original.indexOf(startMarker);
-    const end = original.indexOf(endMarker);
-    if (start !== -1 && end !== -1 && end > start) {
-      return original.slice(0, start) + block + original.slice(end + endMarker.length);
-    }
-    const trimmedBlock = block.trimStart();
-    if (!original || !original.trim()) return trimmedBlock;
-    const trimmedOriginal = original.trim();
-    return `${trimmedBlock}\n\n${trimmedOriginal}`;
+// Replace this function in feature-channel-theme-admin.js
+
+function replaceBlock(original, startMarker, endMarker, block){
+  const start = original.indexOf(startMarker);
+  const end = original.indexOf(endMarker);
+  
+  // If markers exist, replace the block in place
+  if (start !== -1 && end !== -1 && end > start) {
+    return original.slice(0, start) + block + original.slice(end + endMarker.length);
   }
+  
+  const loaderPatterns = [
+    /\/\*\s*BillTube.*?loader.*?\*\//i,
+    /\/\/.*?BillTube.*?loader/i,
+    /\(function\s*\(W,\s*D\)\s*\{[\s\S]*?CDN_BASE/,
+    /\(function\s*\(\s*window\s*,\s*document\s*\)\s*\{[\s\S]*?already loaded/,
+    /if\s*\(\s*W\.BTFW\s*&&\s*W\.BTFW\.init\s*\)/,
+  ];
+  
+  let loaderStart = -1;
+  for (const pattern of loaderPatterns) {
+    const match = original.match(pattern);
+    if (match && match.index !== undefined) {
+      loaderStart = match.index;
+      // Back up to find the start of the comment/function if there's a comment before it
+      let searchStart = Math.max(0, loaderStart - 200);
+      let commentStart = original.lastIndexOf('/*', loaderStart);
+      if (commentStart > searchStart && commentStart < loaderStart) {
+        loaderStart = commentStart;
+      }
+      break;
+    }
+  }
+  
+  if (loaderStart > 0) {
+    // Insert theme block BEFORE the loader
+    const before = original.slice(0, loaderStart).trimEnd();
+    const after = original.slice(loaderStart);
+    return before + "\n\n" + block + "\n\n/////////////////////////////////////\n\n\n" + after;
+  }
+  
+  // Fallback: append to end (old behavior)
+  return original + "\n\n" + block;
+}
 
   function canManageChannel(){
     try {
