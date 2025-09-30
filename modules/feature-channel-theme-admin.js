@@ -168,6 +168,298 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   const MODULE_FIELD_MAX = 10;
   const MODULE_INPUT_SELECTOR = '[data-role="module-inputs"]';
 
+  const LOADER_PATTERNS = [
+    /\/\*\s*BillTube[\s\S]*?loader[\s\S]*?\*\//i,
+    /\/\/\s*BillTube[\s\S]*?loader/i,
+    /https?:\/\/billtube\.github\.io\/BillTube3\//i,
+    /billtube-fw\.js/i,
+    /\(function\s*\(\s*(?:W\s*,\s*D|window\s*,\s*document)\s*\)\s*\{[\s\S]*?CDN_BASE/i,
+  ];
+
+  function findLoaderStart(source){
+    if (!source) return -1;
+    for (const pattern of LOADER_PATTERNS) {
+      const match = pattern.exec(source);
+      if (match) {
+        let index = match.index;
+        if (pattern === LOADER_PATTERNS[2] || pattern === LOADER_PATTERNS[3]) {
+          const commentIndex = source.lastIndexOf("/*", index);
+          if (commentIndex !== -1 && commentIndex >= index - 200) {
+            index = commentIndex;
+          }
+        }
+        const lineStart = source.lastIndexOf("\n", index);
+        if (lineStart !== -1) {
+          index = lineStart + 1;
+        } else {
+          index = 0;
+        }
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  function joinSections(parts, ensureTrailingNewline){
+    const filtered = (parts || [])
+      .map(part => typeof part === "string" ? part : "")
+      .filter(part => part.trim().length > 0);
+    if (filtered.length === 0) {
+      return ensureTrailingNewline ? "\n" : "";
+    }
+    let combined = filtered.join("\n\n");
+    if (ensureTrailingNewline && !combined.endsWith("\n")) {
+      combined += "\n";
+    }
+    return combined;
+  }
+
+  function ensureRuntimeAsset(id, url, kind){
+    if (!url || typeof document === "undefined" || !document.head) return;
+    if (document.getElementById(id)) return;
+    if (kind === "style") {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = url;
+      link.id = id;
+      document.head.appendChild(link);
+    } else {
+      const script = document.createElement("script");
+      script.src = url;
+      script.async = true;
+      script.defer = true;
+      script.id = id;
+      document.head.appendChild(script);
+    }
+  }
+
+  function applyRuntimeResources(theme){
+    if (!theme || typeof theme !== "object") return;
+    const resources = (theme.resources && typeof theme.resources === "object") ? theme.resources : {};
+    const styles = Array.isArray(resources.styles) ? resources.styles : [];
+    styles.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-style-${idx}`, url, "style"));
+    const scripts = Array.isArray(resources.scripts) ? resources.scripts : [];
+    scripts.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-script-${idx}`, url, "script"));
+    const modules = normalizeModuleUrls(Array.isArray(resources.modules) ? resources.modules : []);
+    modules.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-module-${idx}`, url, "script"));
+    theme.resources = theme.resources || {};
+    theme.resources.styles = styles.slice();
+    theme.resources.scripts = scripts.slice();
+    theme.resources.modules = modules;
+    if (typeof window !== "undefined") {
+      const global = window.BTFW = window.BTFW || {};
+      global.channelThemeModules = modules.slice();
+    }
+  }
+
+  function applyRuntimeSlider(theme){
+    if (!theme || typeof theme !== "object") return;
+    const slider = (theme.slider && typeof theme.slider === "object") ? theme.slider : (theme.slider = {});
+    let enabled = typeof slider.enabled === "boolean" ? slider.enabled : theme.sliderEnabled;
+    let feed = slider.feedUrl || slider.url || theme.sliderJson || "";
+    enabled = Boolean(enabled);
+    slider.enabled = enabled;
+    slider.feedUrl = feed;
+    theme.sliderEnabled = enabled;
+    theme.sliderJson = feed;
+    if (typeof window !== "undefined") {
+      const global = window.BTFW = window.BTFW || {};
+      global.channelSlider = { enabled, feedUrl: feed };
+      global.channelSliderEnabled = enabled;
+      global.channelSliderJSON = feed;
+    }
+  }
+
+  function applyRuntimeBranding(theme){
+    if (!theme || typeof theme !== "object") return;
+    const branding = (theme.branding && typeof theme.branding === "object") ? theme.branding : (theme.branding = {});
+    let name = typeof branding.headerName === "string" ? branding.headerName.trim() : "";
+    if (!name && typeof theme.headerName === "string") {
+      name = theme.headerName.trim();
+    }
+    if (!name) name = "CyTube";
+    branding.headerName = name;
+
+    const selectors = [
+      "#nav-collapsible .navbar-brand",
+      ".navbar .navbar-brand",
+      ".navbar-brand",
+      "#navbrand"
+    ];
+    selectors.forEach(sel => {
+      const anchor = document?.querySelector?.(sel);
+      if (!anchor) return;
+      let holder = anchor.querySelector('[data-btfw-brand-text]');
+      if (holder) {
+        holder.textContent = name;
+      } else {
+        let replaced = false;
+        Array.from(anchor.childNodes || []).forEach(node => {
+          if (node && node.nodeType === 3) {
+            const text = (node.textContent || "").trim();
+            if (!text) return;
+            if (!replaced) {
+              node.textContent = name;
+              replaced = true;
+            } else {
+              node.textContent = "";
+            }
+          }
+        });
+        if (!replaced) {
+          holder = document.createElement("span");
+          holder.dataset.btfwBrandText = "1";
+          if (anchor.childNodes.length > 0) {
+            anchor.appendChild(document.createTextNode(" "));
+          }
+          holder.textContent = name;
+          anchor.appendChild(holder);
+        }
+      }
+      anchor.setAttribute("title", name);
+      anchor.setAttribute("aria-label", name);
+    });
+
+    let faviconUrl = typeof branding.faviconUrl === "string" ? branding.faviconUrl.trim() : "";
+    if (!faviconUrl && typeof branding.favicon === "string") {
+      faviconUrl = branding.favicon.trim();
+    }
+    branding.faviconUrl = faviconUrl || "";
+    branding.favicon = branding.faviconUrl;
+    if (faviconUrl && typeof document !== "undefined") {
+      const linkSelectors = 'link[rel*="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]';
+      const links = Array.from(document.querySelectorAll(linkSelectors));
+      if (!links.length) {
+        const created = document.createElement("link");
+        created.rel = "icon";
+        document.head?.appendChild(created);
+        links.push(created);
+      }
+      links.forEach(link => {
+        try { link.href = faviconUrl; } catch (_) {}
+      });
+    }
+
+    let poster = typeof branding.posterUrl === "string" ? branding.posterUrl.trim() : "";
+    if (!poster && typeof theme.branding?.posterUrl === "string") {
+      poster = theme.branding.posterUrl.trim();
+    }
+    branding.posterUrl = poster || "";
+    if (typeof window !== "undefined") {
+      const global = window.BTFW = window.BTFW || {};
+      global.channelPosterUrl = poster || "";
+    }
+  }
+
+  function applyRuntimeIntegrations(theme){
+    if (!theme || typeof theme !== "object") return;
+    const integrations = (theme.integrations && typeof theme.integrations === "object") ? theme.integrations : (theme.integrations = {});
+    if (typeof integrations.enabled !== "boolean") {
+      integrations.enabled = true;
+    }
+    if (!integrations.tmdb || typeof integrations.tmdb !== "object") {
+      integrations.tmdb = { apiKey: "" };
+    }
+    const key = typeof integrations.tmdb.apiKey === "string" ? integrations.tmdb.apiKey.trim() : "";
+    integrations.tmdb.apiKey = key;
+    if (typeof window !== "undefined") {
+      window.BTFW_CONFIG = window.BTFW_CONFIG || {};
+      if (typeof window.BTFW_CONFIG.tmdb !== "object") {
+        window.BTFW_CONFIG.tmdb = {};
+      }
+      window.BTFW_CONFIG.tmdb.apiKey = key;
+      window.BTFW_CONFIG.tmdbKey = key;
+      window.BTFW_CONFIG.integrationsEnabled = integrations.enabled;
+      try {
+        if (document?.body && document.body.dataset.tmdbKey !== key) {
+          document.body.dataset.tmdbKey = key;
+        }
+      } catch (_) {}
+    }
+  }
+
+  function applyRuntimeColors(theme){
+    if (!theme || typeof theme !== "object" || typeof document === "undefined") return;
+    const colors = (theme.colors && typeof theme.colors === "object") ? theme.colors : (theme.colors = {});
+    const root = document.documentElement;
+    if (!root) return;
+    const bg = colors.background || "#05060d";
+    const surface = colors.surface || colors.panel || "#0b111d";
+    const panel = colors.panel || "#141f36";
+    const text = colors.text || "#e8ecfb";
+    const chatText = colors.chatText || text;
+    const accent = colors.accent || "#6d4df6";
+    colors.background = bg;
+    colors.surface = surface;
+    colors.panel = panel;
+    colors.text = text;
+    colors.chatText = chatText;
+    colors.accent = accent;
+    const map = {
+      "--btfw-theme-bg": bg,
+      "--btfw-theme-surface": surface,
+      "--btfw-theme-panel": panel,
+      "--btfw-theme-text": text,
+      "--btfw-theme-chat-text": chatText,
+      "--btfw-theme-accent": accent,
+    };
+    Object.keys(map).forEach(key => {
+      if (map[key]) {
+        root.style.setProperty(key, map[key]);
+      }
+    });
+    root.setAttribute("data-btfw-theme-tint", theme.tint || "custom");
+    try {
+      document.dispatchEvent(new CustomEvent("btfw:channelThemeTint", {
+        detail: {
+          tint: theme.tint || "custom",
+          colors: { bg, surface, panel, text, chat: chatText, accent },
+          config: theme,
+        }
+      }));
+    } catch (_) {}
+  }
+
+  function applyRuntimeTypography(theme){
+    if (!theme || typeof theme !== "object") return;
+    const typography = (theme.typography && typeof theme.typography === "object") ? theme.typography : (theme.typography = {});
+    const resolved = applyLiveTypographyAssets(typography);
+    typography.resolvedFamily = resolved.family;
+  }
+
+  function syncRuntimeThemeConfig(source){
+    if (!source || typeof source !== "object" || typeof window === "undefined") return null;
+    const normalized = normalizeConfig(source);
+    const global = window.BTFW = window.BTFW || {};
+    window.BTFW_THEME_ADMIN = normalized;
+    global.channelTheme = normalized;
+    applyRuntimeResources(normalized);
+    applyRuntimeSlider(normalized);
+    applyRuntimeBranding(normalized);
+    applyRuntimeColors(normalized);
+    applyRuntimeIntegrations(normalized);
+    applyRuntimeTypography(normalized);
+    return normalized;
+  }
+
+  function bootstrapRuntimeThemeSync(){
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    const apply = () => {
+      try {
+        const cfg = window.BTFW_THEME_ADMIN;
+        if (cfg && typeof cfg === "object") {
+          syncRuntimeThemeConfig(cfg);
+        }
+      } catch (error) {
+        console.warn("[theme-admin] Failed to sync runtime theme config", error);
+      }
+    };
+    apply();
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", apply, { once: true });
+    }
+  }
+
   function injectLocalStyles(){
     if (document.getElementById(STYLE_ID)) return;
     const style = document.createElement("style");
@@ -525,21 +817,30 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
   }
 
-  function buildConfigBlock(cfg){
+  function normalizeConfig(cfg){
+    const defaults = cloneDefaults();
     const normalized = cloneDefaults();
     deepMerge(normalized, cfg || {});
+
     if (!normalized.slider || typeof normalized.slider !== "object") {
-      normalized.slider = cloneDefaults().slider;
+      normalized.slider = JSON.parse(JSON.stringify(defaults.slider));
     }
     const slider = normalized.slider || {};
     normalized.sliderEnabled = Boolean(slider.enabled);
-    normalized.sliderJson = slider.feedUrl || slider.url || "";
+    normalized.sliderJson = slider.feedUrl || slider.url || normalized.sliderJson || "";
 
     if (!normalized.integrations || typeof normalized.integrations !== "object") {
-      normalized.integrations = cloneDefaults().integrations;
+      normalized.integrations = JSON.parse(JSON.stringify(defaults.integrations));
     }
     if (typeof normalized.integrations.enabled !== "boolean") {
       normalized.integrations.enabled = true;
+    }
+    if (!normalized.integrations.tmdb || typeof normalized.integrations.tmdb !== "object") {
+      normalized.integrations.tmdb = { apiKey: "" };
+    } else if (typeof normalized.integrations.tmdb.apiKey !== "string") {
+      normalized.integrations.tmdb.apiKey = "";
+    } else {
+      normalized.integrations.tmdb.apiKey = normalized.integrations.tmdb.apiKey.trim();
     }
 
     if (normalized.features && typeof normalized.features === "object") {
@@ -550,7 +851,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
 
     if (!normalized.resources || typeof normalized.resources !== "object") {
-      normalized.resources = cloneDefaults().resources;
+      normalized.resources = JSON.parse(JSON.stringify(defaults.resources));
     }
     if (!Array.isArray(normalized.resources.styles)) {
       normalized.resources.styles = [];
@@ -561,14 +862,26 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     normalized.resources.modules = normalizeModuleUrls(normalized.resources.modules || []);
 
     if (!normalized.branding || typeof normalized.branding !== "object") {
-      normalized.branding = cloneDefaults().branding;
+      normalized.branding = JSON.parse(JSON.stringify(defaults.branding));
     }
     if (typeof normalized.branding.favicon === "string" && !normalized.branding.faviconUrl) {
       normalized.branding.faviconUrl = normalized.branding.favicon;
     }
+    if (typeof normalized.branding.posterUrl !== "string") {
+      normalized.branding.posterUrl = "";
+    }
 
+    if (!normalized.typography || typeof normalized.typography !== "object") {
+      normalized.typography = JSON.parse(JSON.stringify(defaults.typography));
+    }
+
+    return normalized;
+  }
+
+  function buildConfigBlock(cfg){
+    const normalized = normalizeConfig(cfg);
     const json = JSON.stringify(normalized, null, 2);
-    return `\n${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n(function(cfg){\n  if (!cfg) return;\n  window.BTFW = window.BTFW || {};\n  window.BTFW.channelTheme = cfg;\n  const FONT_PRESETS = {"inter":{"name":"Inter","family":"'Inter', 'Segoe UI', sans-serif","google":"Inter:wght@300;400;600;700"},"roboto":{"name":"Roboto","family":"'Roboto', 'Segoe UI', sans-serif","google":"Roboto:wght@300;400;500;700"},"poppins":{"name":"Poppins","family":"'Poppins', 'Segoe UI', sans-serif","google":"Poppins:wght@300;400;600;700"},"montserrat":{"name":"Montserrat","family":"'Montserrat', 'Segoe UI', sans-serif","google":"Montserrat:wght@300;400;600;700"},"opensans":{"name":"Open Sans","family":"'Open Sans', 'Segoe UI', sans-serif","google":"Open+Sans:wght@300;400;600;700"},"lato":{"name":"Lato","family":"'Lato', 'Segoe UI', sans-serif","google":"Lato:wght@300;400;700;900"},"nunito":{"name":"Nunito","family":"'Nunito', 'Segoe UI', sans-serif","google":"Nunito:wght@300;400;600;700"},"manrope":{"name":"Manrope","family":"'Manrope', 'Segoe UI', sans-serif","google":"Manrope:wght@300;400;600;700"},"outfit":{"name":"Outfit","family":"'Outfit', 'Segoe UI', sans-serif","google":"Outfit:wght@300;400;600;700"},"urbanist":{"name":"Urbanist","family":"'Urbanist', 'Segoe UI', sans-serif","google":"Urbanist:wght@300;400;600;700"}};\n  const FONT_FALLBACK = "'Inter', 'Segoe UI', sans-serif";\n  function ensureAsset(id, url, kind){\n    if (!url) return;\n    var existing = document.getElementById(id);\n    if (existing) return;\n    if (kind === 'style'){\n      var link = document.createElement('link');\n      link.rel = 'stylesheet';\n      link.href = url;\n      link.id = id;\n      document.head.appendChild(link);\n    } else {\n      var script = document.createElement('script');\n      script.src = url;\n      script.async = true;\n      script.defer = true;\n      script.id = id;\n      document.head.appendChild(script);\n    }\n  }\n  function applyResources(resources){\n    resources = (resources && typeof resources === 'object') ? resources : {};\n    if (Array.isArray(resources.styles)) {\n      resources.styles.forEach(function(url, idx){ ensureAsset('btfw-theme-style-'+idx, url, 'style'); });\n    }\n    if (Array.isArray(resources.scripts)) {\n      resources.scripts.forEach(function(url, idx){ ensureAsset('btfw-theme-script-'+idx, url, 'script'); });\n    }\n    var moduleList = [];\n    if (Array.isArray(resources.modules)) {\n      resources.modules.forEach(function(url){\n        if (typeof url !== 'string') return;\n        var trimmed = url.trim();\n        if (!trimmed) return;\n        if (moduleList.indexOf(trimmed) !== -1) return;\n        ensureAsset('btfw-theme-module-' + moduleList.length, trimmed, 'script');\n        moduleList.push(trimmed);\n      });\n    }\n    resources.modules = moduleList;\n    cfg.resources = cfg.resources || {};\n    cfg.resources.modules = moduleList;\n    window.BTFW.channelThemeModules = moduleList.slice();\n  }\n  function applySlider(sliderCfg){\n    sliderCfg = sliderCfg || {};\n    if (typeof sliderCfg.enabled === 'undefined' && typeof cfg.sliderEnabled !== 'undefined') {\n      sliderCfg.enabled = cfg.sliderEnabled;\n    }\n    if (!sliderCfg.feedUrl && cfg.sliderJson) {\n      sliderCfg.feedUrl = cfg.sliderJson;\n    }\n    var enabled = Boolean(sliderCfg.enabled);\n    var feed = sliderCfg.feedUrl || sliderCfg.url || '';\n    cfg.slider = cfg.slider || {};\n    cfg.slider.enabled = enabled;\n    cfg.slider.feedUrl = feed;\n    cfg.sliderEnabled = enabled;\n    cfg.sliderJson = feed;\n    window.BTFW.channelSlider = { enabled: enabled, feedUrl: feed };\n    window.BTFW.channelSliderEnabled = enabled;\n    window.BTFW.channelSliderJSON = feed;\n  }\n  function applyBranding(branding){\n    branding = branding || {};\n    var name = typeof branding.headerName === 'string' ? branding.headerName.trim() : '';\n    if (!name && typeof cfg.branding?.headerName === 'string') {\n      name = cfg.branding.headerName.trim();\n    }\n    if (!name && typeof cfg.headerName === 'string') {\n      name = cfg.headerName.trim();\n    }\n    if (!name) name = 'CyTube';\n    cfg.branding = cfg.branding || {};\n    cfg.branding.headerName = name;\n    var brandSelectors = [\n      '#nav-collapsible .navbar-brand',\n      '.navbar .navbar-brand',\n      '.navbar-brand',\n      '#navbrand'\n    ];\n    brandSelectors.forEach(function(sel){\n      var anchor = document.querySelector(sel);\n      if (!anchor) return;\n      var holder = anchor.querySelector('[data-btfw-brand-text]');\n      if (holder) {\n        holder.textContent = name;\n      } else {\n        var replaced = false;\n        var nodes = Array.prototype.slice.call(anchor.childNodes || []);\n        nodes.forEach(function(node){\n          if (node && node.nodeType === 3) {\n            var text = (node.textContent || '').trim();\n            if (!text) return;\n            if (!replaced) {\n              node.textContent = name;\n              replaced = true;\n            } else {\n              node.textContent = '';\n            }\n          }\n        });\n        if (!replaced) {\n          holder = document.createElement('span');\n          holder.dataset.btfwBrandText = '1';\n          if (anchor.childNodes.length > 0) {\n            anchor.appendChild(document.createTextNode(' '));\n          }\n          holder.textContent = name;\n          anchor.appendChild(holder);\n        }\n      }\n      anchor.setAttribute('title', name);\n      anchor.setAttribute('aria-label', name);\n    });\n\n    var faviconUrl = typeof branding.faviconUrl === 'string' ? branding.faviconUrl.trim() : '';\n    if (!faviconUrl && typeof cfg.branding?.faviconUrl === 'string') {\n      faviconUrl = cfg.branding.faviconUrl.trim();\n    }\n    if (!faviconUrl && typeof cfg.branding?.favicon === 'string') {\n      faviconUrl = cfg.branding.favicon.trim();\n    }\n    cfg.branding.faviconUrl = faviconUrl || '';\n    cfg.branding.favicon = cfg.branding.faviconUrl;\n    if (faviconUrl) {\n      var linkSelectors = 'link[rel*="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]';\n      var links = Array.prototype.slice.call(document.querySelectorAll(linkSelectors));\n      if (!links.length) {\n        var created = document.createElement('link');\n        created.rel = 'icon';\n        document.head.appendChild(created);\n        links.push(created);\n      }\n      links.forEach(function(link){\n        try { link.href = faviconUrl; } catch (_) {}\n      });\n    }\n\n    var poster = typeof branding.posterUrl === 'string' ? branding.posterUrl.trim() : '';\n    if (!poster && typeof cfg.branding?.posterUrl === 'string') {\n      poster = cfg.branding.posterUrl.trim();\n    }\n    cfg.branding.posterUrl = poster || '';\n    window.BTFW.channelPosterUrl = poster || '';\n  }\n  function applyIntegrations(integrations){\n    integrations = integrations || {};\n    cfg.integrations = cfg.integrations || {};\n    if (typeof integrations.enabled === 'boolean') {\n      cfg.integrations.enabled = integrations.enabled;\n    } else if (typeof cfg.integrations.enabled !== 'boolean') {\n      cfg.integrations.enabled = true;\n    }\n    if (!cfg.integrations.tmdb || typeof cfg.integrations.tmdb !== 'object') {\n      cfg.integrations.tmdb = { apiKey: '' };\n    }\n    var tmdb = integrations.tmdb || cfg.integrations.tmdb || {};\n    var key = typeof tmdb.apiKey === 'string' ? tmdb.apiKey.trim() : '';\n    cfg.integrations.tmdb.apiKey = key;\n    window.BTFW_CONFIG = window.BTFW_CONFIG || {};\n    if (typeof window.BTFW_CONFIG.tmdb !== 'object') window.BTFW_CONFIG.tmdb = {};\n    window.BTFW_CONFIG.tmdb.apiKey = key;\n    window.BTFW_CONFIG.tmdbKey = key;\n    window.BTFW_CONFIG.integrationsEnabled = cfg.integrations.enabled;\n    try { if (document.body && document.body.dataset.tmdbKey !== key) document.body.dataset.tmdbKey = key; } catch (_) {}\n  }\n  function applyColors(colors){\n    colors = colors || {};\n    var root = document.documentElement;\n    if (!root) return;\n    var bg = colors.background || '#05060d';\n    var surface = colors.surface || colors.panel || '#0b111d';\n    var panel = colors.panel || '#141f36';\n    var text = colors.text || '#e8ecfb';\n    var chatText = colors.chatText || text;\n    var accent = colors.accent || '#6d4df6';\n    cfg.colors = cfg.colors || {};\n    cfg.colors.background = bg;\n    cfg.colors.surface = surface;\n    cfg.colors.panel = panel;\n    cfg.colors.text = text;\n    cfg.colors.chatText = chatText;\n    cfg.colors.accent = accent;\n    var map = {\n      '--btfw-theme-bg': bg,\n      '--btfw-theme-surface': surface,\n      '--btfw-theme-panel': panel,\n      '--btfw-theme-text': text,\n      '--btfw-theme-chat-text': chatText,\n      '--btfw-theme-accent': accent\n    };\n    Object.keys(map).forEach(function(key){\n      if (map[key]) {\n        root.style.setProperty(key, map[key]);\n      }\n    });\n    root.setAttribute('data-btfw-theme-tint', cfg.tint || 'custom');\n    try {\n      document.dispatchEvent(new CustomEvent('btfw:channelThemeTint', {\n        detail: { tint: cfg.tint || 'custom', colors: { bg: bg, surface: surface, panel: panel, text: text, chat: chatText, accent: accent }, config: cfg }\n      }));\n    } catch (_) {}\n  }\n\n  function resolveFont(typography){\n    typography = typography || {};\n    var preset = (typography.preset || 'inter').toLowerCase();\n    if (preset === 'custom') {\n      var name = (typography.customFamily || '').trim();\n      var family = name ? "'" + name.replace(/'/g, "\\'") + "', " + FONT_FALLBACK : FONT_FALLBACK;\n      var url = name ? 'https://fonts.googleapis.com/css2?family=' + name.replace(/\s+/g, '+') + ':wght@300;400;600;700&display=swap' : '';\n      return { family: family, url: url, label: name || 'Custom' };\n    }\n    var meta = FONT_PRESETS[preset] || FONT_PRESETS['inter'];\n    var family = meta ? meta.family : FONT_FALLBACK;\n    var url = meta && meta.google ? 'https://fonts.googleapis.com/css2?family=' + meta.google + '&display=swap' : '';\n    return { family: family, url: url, label: (meta && meta.name) || 'Inter' };\n  }\n  function applyTypography(typography){\n    var resolved = resolveFont(typography);\n    var root = document.documentElement;\n    if (root && resolved.family) {\n      root.style.setProperty('--btfw-theme-font-family', resolved.family);\n    }\n    var existing = document.getElementById('btfw-theme-font');\n    if (resolved.url) {\n      if (existing && existing.tagName === 'LINK') {\n        if (existing.href !== resolved.url) existing.href = resolved.url;\n      } else {\n        ensureAsset('btfw-theme-font', resolved.url, 'style');\n      }\n    } else if (existing && existing.parentNode) {\n      existing.parentNode.removeChild(existing);\n    }\n    cfg.typography = cfg.typography || {};\n    cfg.typography.resolvedFamily = resolved.family;\n  }\n  applyResources(cfg.resources);\n  applySlider(cfg.slider || {});\n  applyBranding(cfg.branding || {});\n  applyColors(cfg.colors || {});\n  applyIntegrations(cfg.integrations || {});\n  applyTypography(cfg.typography || {});\n})(window.BTFW_THEME_ADMIN);\n${JS_BLOCK_END}`;
+    return `${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n${JS_BLOCK_END}`;
   }
 
   function buildCssBlock(cfg){
@@ -588,46 +901,31 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 // Replace this function in feature-channel-theme-admin.js
 
 function replaceBlock(original, startMarker, endMarker, block){
+  const sanitizedBlock = (block || "").trim();
+  if (!sanitizedBlock) return original;
+
   const start = original.indexOf(startMarker);
   const end = original.indexOf(endMarker);
-  
-  // If markers exist, replace the block in place
+  const hadTrailingNewline = /\n\s*$/.test(original);
+
   if (start !== -1 && end !== -1 && end > start) {
-    return original.slice(0, start) + block + original.slice(end + endMarker.length);
+    const before = original.slice(0, start).replace(/\s+$/, "");
+    const after = original.slice(end + endMarker.length).replace(/^\s+/, "");
+    return joinSections([before, sanitizedBlock, after], hadTrailingNewline);
   }
-  
-  const loaderPatterns = [
-    /\/\*\s*BillTube.*?loader.*?\*\//i,
-    /\/\/.*?BillTube.*?loader/i,
-    /\(function\s*\(W,\s*D\)\s*\{[\s\S]*?CDN_BASE/,
-    /\(function\s*\(\s*window\s*,\s*document\s*\)\s*\{[\s\S]*?already loaded/,
-    /if\s*\(\s*W\.BTFW\s*&&\s*W\.BTFW\.init\s*\)/,
-  ];
-  
-  let loaderStart = -1;
-  for (const pattern of loaderPatterns) {
-    const match = original.match(pattern);
-    if (match && match.index !== undefined) {
-      loaderStart = match.index;
-      // Back up to find the start of the comment/function if there's a comment before it
-      let searchStart = Math.max(0, loaderStart - 200);
-      let commentStart = original.lastIndexOf('/*', loaderStart);
-      if (commentStart > searchStart && commentStart < loaderStart) {
-        loaderStart = commentStart;
-      }
-      break;
-    }
-  }
-  
-  if (loaderStart > 0) {
-    // Insert theme block BEFORE the loader
-    const before = original.slice(0, loaderStart).trimEnd();
+
+  const loaderStart = findLoaderStart(original);
+  if (loaderStart !== -1) {
+    const before = original.slice(0, loaderStart).replace(/\s+$/, "");
     const after = original.slice(loaderStart);
-    return before + "\n\n" + block + "\n\n/////////////////////////////////////\n\n\n" + after;
+    return joinSections([before, sanitizedBlock, after], hadTrailingNewline);
   }
-  
-  // Fallback: append to end (old behavior)
-  return original + "\n\n" + block;
+
+  const trimmed = original.trim();
+  if (!trimmed) {
+    return sanitizedBlock + "\n";
+  }
+  return joinSections([trimmed, sanitizedBlock], true);
 }
 
   function canManageChannel(){
@@ -1565,6 +1863,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     };
   })();
 
+  bootstrapRuntimeThemeSync();
   bindModalEvents();
 
   return { name: "feature:channelThemeAdmin" };
