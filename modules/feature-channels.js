@@ -588,6 +588,17 @@ BTFW.define("feature:channels", [], async () => {
     document.addEventListener('btfw:layoutReady', () => {
       setTimeout(initializeChannels, 300);
     });
+
+    let themeTimer = null;
+    const scheduleThemeSync = () => {
+      if (themeTimer) clearTimeout(themeTimer);
+      themeTimer = setTimeout(() => {
+        themeTimer = null;
+        initializeChannels();
+      }, 120);
+    };
+
+    document.addEventListener('btfw:channelThemeTint', scheduleThemeSync);
   }
 
   if (document.readyState === 'loading') {
