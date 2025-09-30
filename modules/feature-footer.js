@@ -223,10 +223,19 @@ BTFW.define("feature:footer", [], async () => {
     ensureBrandingBlock();
   }
 
+  function removeLegacyFooter(){
+    document.querySelectorAll("footer#footer").forEach(legacy => {
+      if (legacy && legacy.isConnected) {
+        legacy.remove();
+      }
+    });
+  }
+
   function maintainFooter(){
     ensureStyles();
     moveForms();
     insertBranding();
+    removeLegacyFooter();
   }
 
   function boot(){
@@ -245,9 +254,12 @@ BTFW.define("feature:footer", [], async () => {
     boot();
   }
 
+  document.addEventListener("btfw:ready", () => removeLegacyFooter(), { once: true });
+
   return {
     name: "feature:footer",
     moveForms,
-    insertBranding
+    insertBranding,
+    removeLegacyFooter
   };
 });
