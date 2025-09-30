@@ -81,7 +81,8 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     }
 
     if (panel.parentElement !== mainContainer) {
-      const anchor = controlsBar.parentElement === mainContainer ? controlsBar.nextSibling : null;
+      const anchor = controlsBar.parentElement === mainContainer ?
+        controlsBar.nextSibling : null;
       mainContainer.insertBefore(panel, anchor);
     }
 
@@ -202,7 +203,7 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
   function applyCompactSpacing(enabled){
     const stack = document.getElementById("btfw-stack");
     if (!stack) return;
-    const want = !!enabled;
+    const want = !enabled;
     stack.classList.toggle("btfw-stack--compact", want);
     stack.querySelectorAll(".btfw-stack-list").forEach(list => {
       list.classList.toggle("btfw-stack-list--compact", want);
@@ -487,7 +488,8 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       elements = elements.filter(el => el && el.id !== "rightcontrols"); // rightcontrols is now merged
     }
     
-    if (elements.length === 0) return null;
+    // ✅ FIX: Allow channels-group to be created even with zero elements (slider will be added later)
+    if (group.id !== "channels-group" && elements.length === 0) return null;
     
     // Filter out any elements that are already in the stack to avoid circular references
     const stackList = document.querySelector("#btfw-stack .btfw-stack-list");
@@ -495,8 +497,7 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       elements = elements.filter(el => el && !stackList.contains(el) && !el.contains(stackList));
     }
     
-    if (elements.length === 0) return null;
-    
+    // Continue creating the wrapper even if elements is empty (for channels-group)
     const wrapper = document.createElement("section");
     wrapper.className = "btfw-stack-item btfw-group-item";
     wrapper.dataset.bind = group.id;
@@ -642,6 +643,23 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
         }
         elements.push(el);
       });
+      
+      // ✅ FIX: Always create channels-group if slider is enabled, even if #btfw-channels doesn't exist yet
+      if (group.id === "channels-group" && elements.length === 0) {
+        // Check if channel slider is enabled
+        const btfw = window.BTFW || {};
+        const sliderEnabled = btfw.channelSliderEnabled || 
+                             (btfw.channelSlider && btfw.channelSlider.enabled) ||
+                             (btfw.channelTheme && btfw.channelTheme.slider && btfw.channelTheme.slider.enabled);
+        
+        if (sliderEnabled) {
+          // Don't skip this group - allow it to be created with zero elements
+          // The channel slider will be added to it later via placeSliderInStack()
+          groupedElements.set(group.id, { group, elements: [] });
+          return; // Continue to next group
+        }
+      }
+      
       if (elements.length > 0) {
         groupedElements.set(group.id, { group, elements });
       }
@@ -725,14 +743,12 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
   });
   document.addEventListener("btfw:stack:compactChanged", (ev) => {
     if (ev && ev.detail && "enabled" in ev.detail) {
-      setCompactSpacing(!!ev.detail.enabled);
-    } else {
-      applyCompactSpacing(compactSpacing);
+      setCompactSpacing(!ev.detail.enabled);
     }
   });
 
   return {
-    name:"feature:stack",
+    name: "feature:stack",
     setCompactSpacing,
     getCompactSpacing
   };
