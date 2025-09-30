@@ -203,7 +203,7 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
   function applyCompactSpacing(enabled){
     const stack = document.getElementById("btfw-stack");
     if (!stack) return;
-    const want = !enabled;
+    const want = !!enabled;
     stack.classList.toggle("btfw-stack--compact", want);
     stack.querySelectorAll(".btfw-stack-list").forEach(list => {
       list.classList.toggle("btfw-stack-list--compact", want);
@@ -768,7 +768,7 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
   });
   document.addEventListener("btfw:stack:compactChanged", (ev) => {
     if (ev && ev.detail && "enabled" in ev.detail) {
-      setCompactSpacing(!ev.detail.enabled);
+      setCompactSpacing(!!ev.detail.enabled);
     } else {
       applyCompactSpacing(compactSpacing);
     }
