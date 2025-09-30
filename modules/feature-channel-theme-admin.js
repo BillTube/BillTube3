@@ -181,13 +181,21 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     for (const pattern of LOADER_PATTERNS) {
       const match = pattern.exec(source);
       if (match) {
+        let index = match.index;
         if (pattern === LOADER_PATTERNS[2] || pattern === LOADER_PATTERNS[3]) {
-          const commentIndex = source.lastIndexOf("/*", match.index);
-          if (commentIndex !== -1 && commentIndex >= match.index - 200) {
-            return commentIndex;
+          const commentIndex = source.lastIndexOf("/*", index);
+          if (commentIndex !== -1 && commentIndex >= index - 200) {
+            index = commentIndex;
           }
         }
-        return match.index;
+        const lineStart = source.lastIndexOf("\n", index);
+        if (lineStart !== -1) {
+          index = lineStart + 1;
+        } else {
+          index = 0;
+        }
+        return index;
+
       }
     }
     return -1;
@@ -871,6 +879,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return normalized;
   }
 
+
   function buildConfigBlock(cfg){
     const normalized = normalizeConfig(cfg);
     const json = JSON.stringify(normalized, null, 2);
@@ -910,9 +919,10 @@ function replaceBlock(original, startMarker, endMarker, block){
   const loaderStart = findLoaderStart(original);
   if (loaderStart !== -1) {
     const before = original.slice(0, loaderStart).replace(/\s+$/, "");
-    const after = original.slice(loaderStart).replace(/^\s+/, "");
+    const after = original.slice(loaderStart);
     return joinSections([before, sanitizedBlock, after], hadTrailingNewline);
   }
+
 
   const trimmed = original.trim();
   if (!trimmed) {
