@@ -202,6 +202,7 @@ function load(src){
       "modules/feature-stack.js",
       "modules/feature-chat.js",
       "modules/feature-chat-tools.js",
+      "modules/feature-chat-filters.js",
       "modules/feature-navbar.js",
       "modules/feature-modal-skin.js",
       "modules/feature-nowplaying.js",
