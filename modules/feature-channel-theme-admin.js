@@ -48,21 +48,21 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         apiKey: ""
       }
     },
+    resources: {
+      scripts: [],
+      styles: [],
+      modules: []
+    },
     branding: {
-      headerName: "",
+      headerName: "CyTube",
       faviconUrl: "",
       posterUrl: ""
-    },
-    resources: {
-      styles: [],
-      scripts: [],
-      modules: []
     }
   };
 
   const TINT_PRESETS = {
     midnight: {
-      name: "Midnight",
+      name: "Midnight Pulse",
       colors: {
         background: "#05060d",
         surface: "#0b111d",
@@ -72,53 +72,38 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         accent: "#6d4df6"
       }
     },
-    slate: {
-      name: "Slate",
+    aurora: {
+      name: "Aurora Bloom",
       colors: {
-        background: "#0a0e14",
-        surface: "#141a24",
-        panel: "#1f2937",
-        text: "#e5e7eb",
-        chatText: "#d1d5db",
-        accent: "#3b82f6"
+        background: "#02121c",
+        surface: "#071b28",
+        panel: "#10273b",
+        text: "#e9fbff",
+        chatText: "#d0ebff",
+        accent: "#4dd0f6"
       }
     },
-    ocean: {
-      name: "Ocean",
+    sunset: {
+      name: "Sunset Neon",
       colors: {
-        background: "#051923",
-        surface: "#003554",
-        panel: "#006494",
-        text: "#ffffff",
-        chatText: "#d4f1f4",
-        accent: "#00a8e8"
-      }
-    },
-    forest: {
-      name: "Forest",
-      colors: {
-        background: "#0f1a14",
-        surface: "#1a2f23",
-        panel: "#2d4a3e",
-        text: "#e8f5e9",
-        chatText: "#c8e6c9",
-        accent: "#66bb6a"
+        background: "#13030c",
+        surface: "#1b0813",
+        panel: "#26101d",
+        text: "#ffe7f1",
+        chatText: "#ffcade",
+        accent: "#ff6b9d"
       }
     },
     ember: {
-      name: "Ember",
+      name: "Ember Forge",
       colors: {
-        background: "#1a0a0a",
-        surface: "#2d1414",
-        panel: "#4a2323",
-        text: "#ffe8e8",
-        chatText: "#ffd4d4",
-        accent: "#ff6b6b"
+        background: "#110802",
+        surface: "#190d05",
+        panel: "#24140a",
+        text: "#fbe3c9",
+        chatText: "#f6cea3",
+        accent: "#ff914d"
       }
-    },
-    custom: {
-      name: "Custom",
-      colors: {}
     }
   };
 
@@ -174,10 +159,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       google: "Urbanist:wght@300;400;600;700"
     }
   };
-
   const FONT_DEFAULT_ID = "inter";
   const FONT_FALLBACK_FAMILY = FONT_PRESETS[FONT_DEFAULT_ID].family;
   const THEME_FONT_LINK_ID = "btfw-theme-font";
+
   const STYLE_ID = "btfw-theme-admin-style";
   const MODULE_FIELD_MIN = 3;
   const MODULE_FIELD_MAX = 10;
@@ -210,6 +195,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
           index = 0;
         }
         return index;
+
       }
     }
     return -1;
@@ -222,131 +208,445 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     if (filtered.length === 0) {
       return ensureTrailingNewline ? "\n" : "";
     }
-    let joined = filtered.join("\n\n");
-    if (ensureTrailingNewline && !joined.endsWith("\n")) {
-      joined += "\n";
+    let combined = filtered.join("\n\n");
+    if (ensureTrailingNewline && !combined.endsWith("\n")) {
+      combined += "\n";
     }
-    return joined;
+    return combined;
   }
 
-  function canManageChannel(){
-    try {
-      return Boolean(
-        window.CLIENT && 
-        CLIENT.rank >= 3
-      );
-    } catch (_) {
-      return false;
+  function removeRuntimeAsset(id){
+    if (typeof document === "undefined") return;
+    const existing = document.getElementById(id);
+    if (existing?.parentElement) {
+      existing.parentElement.removeChild(existing);
+    } else {
+      existing?.remove?.();
     }
   }
 
-  function ensureTabSystem(modal){
-    if (!modal) return { tabContainer: null, contentContainer: null };
-    let tabContainer = modal.querySelector('.nav-tabs, ul[role="tablist"], .tabs');
-    let contentContainer = modal.querySelector('.tab-content, [role="tabpanel-container"]');
-    if (!tabContainer) {
-      tabContainer = modal.querySelector('ul');
-    }
-    if (!contentContainer) {
-      contentContainer = modal.querySelector('.modal-body, .settings-body');
-    }
-    return { tabContainer, contentContainer };
-  }
-
-  function ensureField(modal, selectors, fallbackName){
-    if (!modal) return null;
-    for (const sel of selectors) {
-      const field = modal.querySelector(sel);
-      if (field) return field;
-    }
-    const created = document.createElement("textarea");
-    created.name = fallbackName;
-    created.id = fallbackName;
-    created.style.display = "none";
-    const body = modal.querySelector('.modal-body, .settings-body') || modal;
-    body.appendChild(created);
-    return created;
-  }
-
-  function triggerChannelSubmit(modal, jsField, cssField){
-    if (!modal || !jsField || !cssField) return false;
-    const submitBtn = modal.querySelector('button[type="submit"], .btn-primary[form], #submit-channel-settings');
-    if (submitBtn && typeof submitBtn.click === "function") {
-      submitBtn.click();
-      return true;
-    }
-    const form = modal.querySelector('form');
-    if (form && typeof form.requestSubmit === "function") {
-      form.requestSubmit();
-      return true;
-    } else if (form && typeof form.submit === "function") {
-      form.submit();
-      return true;
-    }
-    return false;
-  }
-
-  function extractSliderSettings(jsText){
-    const result = { enabled: undefined, url: undefined };
-    if (!jsText || typeof jsText !== "string") return result;
-    const uiMatch = jsText.match(/(?:var|let|const)?\s*UI_ChannelList\s*=\s*["']?([^"'\s;]+)["']?/);
-    if (uiMatch) {
-      const val = uiMatch[1];
-      result.enabled = (val === "1" || val === "true" || val === 1 || val === true);
-    }
-    const jsonMatch = jsText.match(/(?:var|let|const)?\s*Channel_JSON\s*=\s*["']([^"']+)["']/);
-    if (jsonMatch) {
-      result.url = jsonMatch[1];
-    }
-    return result;
-  }
-
-  function stripLoaderAndAssignments(jsText){
-    const source = jsText ? String(jsText) : '';
-    if (!source) return '';
-
-    const lines = source.split(/\r?\n/);
-    const cleaned = [];
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const trimmed = line.trim();
-      if (/^(?:var|let|const)?\s*UI_ChannelList\s*=/.test(trimmed)) continue;
-      if (/^window\.UI_ChannelList\s*=/.test(trimmed)) continue;
-      if (/^(?:var|let|const)?\s*Channel_JSON\s*=/.test(trimmed)) continue;
-      if (/^window\.Channel_JSON\s*=/.test(trimmed)) continue;
-      cleaned.push(line);
+  function ensureRuntimeAsset(id, url, kind){
+    if (typeof document === "undefined" || !document.head) return;
+    if (!url) {
+      removeRuntimeAsset(id);
+      return;
     }
 
-    while (cleaned.length && cleaned[0].trim() === '') {
-      cleaned.shift();
-    }
-    for (let i = cleaned.length - 1; i > 0; i--) {
-      if (cleaned[i].trim() === '' && cleaned[i - 1].trim() === '') {
-        cleaned.splice(i, 1);
+    const attr = kind === "style" ? "href" : "src";
+    const existing = document.getElementById(id);
+
+    if (existing) {
+      const current = existing.getAttribute(attr) || "";
+      if (kind === "style" && existing.tagName === "LINK") {
+        if (current === url) return existing;
+        existing.setAttribute(attr, url);
+        return existing;
       }
+      if (kind !== "style" && existing.tagName === "SCRIPT" && current === url) {
+        return existing;
+      }
+      removeRuntimeAsset(id);
     }
 
-    return cleaned.join('\n');
+    if (kind === "style") {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = url;
+      link.id = id;
+      document.head.appendChild(link);
+      return link;
+    }
+
+    const script = document.createElement("script");
+    script.src = url;
+    script.async = true;
+    script.defer = true;
+    script.id = id;
+    document.head.appendChild(script);
+    return script;
+  }
+
+  function pruneRuntimeAssets(prefix, keepCount){
+    if (typeof document === "undefined") return;
+    const nodes = Array.from(document.querySelectorAll(`[id^="${prefix}"]`));
+    nodes.forEach(node => {
+      const match = node.id.match(/(\d+)$/);
+      if (!match) return;
+      const index = Number(match[1]);
+      if (Number.isNaN(index) || index < keepCount) return;
+      if (node.parentElement) {
+        node.parentElement.removeChild(node);
+      } else {
+        node.remove?.();
+      }
+    });
+  }
+
+  function applyRuntimeResources(theme){
+    if (!theme || typeof theme !== "object") return;
+    const resources = (theme.resources && typeof theme.resources === "object") ? theme.resources : {};
+    const styles = Array.isArray(resources.styles) ? resources.styles : [];
+    styles.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-style-${idx}`, url, "style"));
+    pruneRuntimeAssets("btfw-theme-style-", styles.length);
+
+    const scripts = Array.isArray(resources.scripts) ? resources.scripts : [];
+    scripts.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-script-${idx}`, url, "script"));
+    pruneRuntimeAssets("btfw-theme-script-", scripts.length);
+
+    const moduleCandidates = resources.modules && resources.modules.length
+      ? resources.modules
+      : (resources.moduleUrls || resources.externalModules || theme.modules || theme.moduleUrls || theme.externalModules || []);
+    const modules = normalizeModuleUrls(moduleCandidates);
+    modules.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-module-${idx}`, url, "script"));
+    pruneRuntimeAssets("btfw-theme-module-", modules.length);
+    theme.resources = theme.resources || {};
+    theme.resources.styles = styles.slice();
+    theme.resources.scripts = scripts.slice();
+    theme.resources.modules = modules;
+    if (typeof window !== "undefined") {
+      const global = window.BTFW = window.BTFW || {};
+      global.channelThemeModules = modules.slice();
+    }
+  }
+
+  function applyRuntimeSlider(theme){
+    if (!theme || typeof theme !== "object") return;
+    const slider = (theme.slider && typeof theme.slider === "object") ? theme.slider : (theme.slider = {});
+    let enabled = typeof slider.enabled === "boolean" ? slider.enabled : theme.sliderEnabled;
+    let feed = slider.feedUrl || slider.url || theme.sliderJson || "";
+    enabled = Boolean(enabled);
+    slider.enabled = enabled;
+    slider.feedUrl = feed;
+    theme.sliderEnabled = enabled;
+    theme.sliderJson = feed;
+    if (typeof window !== "undefined") {
+      const global = window.BTFW = window.BTFW || {};
+      global.channelSlider = { enabled, feedUrl: feed };
+      global.channelSliderEnabled = enabled;
+      global.channelSliderJSON = feed;
+    }
+  }
+
+  function applyRuntimeBranding(theme){
+    if (!theme || typeof theme !== "object") return;
+    const branding = (theme.branding && typeof theme.branding === "object") ? theme.branding : (theme.branding = {});
+    let name = typeof branding.headerName === "string" ? branding.headerName.trim() : "";
+    if (!name && typeof theme.headerName === "string") {
+      name = theme.headerName.trim();
+    }
+    if (!name) name = "CyTube";
+    branding.headerName = name;
+
+    const selectors = [
+      "#nav-collapsible .navbar-brand",
+      ".navbar .navbar-brand",
+      ".navbar-brand",
+      "#navbrand"
+    ];
+    selectors.forEach(sel => {
+      const anchor = document?.querySelector?.(sel);
+      if (!anchor) return;
+      let holder = anchor.querySelector('[data-btfw-brand-text]');
+      if (holder) {
+        holder.textContent = name;
+      } else {
+        let replaced = false;
+        Array.from(anchor.childNodes || []).forEach(node => {
+          if (node && node.nodeType === 3) {
+            const text = (node.textContent || "").trim();
+            if (!text) return;
+            if (!replaced) {
+              node.textContent = name;
+              replaced = true;
+            } else {
+              node.textContent = "";
+            }
+          }
+        });
+        if (!replaced) {
+          holder = document.createElement("span");
+          holder.dataset.btfwBrandText = "1";
+          if (anchor.childNodes.length > 0) {
+            anchor.appendChild(document.createTextNode(" "));
+          }
+          holder.textContent = name;
+          anchor.appendChild(holder);
+        }
+      }
+      anchor.setAttribute("title", name);
+      anchor.setAttribute("aria-label", name);
+    });
+
+    let faviconUrl = typeof branding.faviconUrl === "string" ? branding.faviconUrl.trim() : "";
+    if (!faviconUrl && typeof branding.favicon === "string") {
+      faviconUrl = branding.favicon.trim();
+    }
+    branding.faviconUrl = faviconUrl || "";
+    branding.favicon = branding.faviconUrl;
+    if (faviconUrl && typeof document !== "undefined") {
+      const linkSelectors = 'link[rel*="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]';
+      const links = Array.from(document.querySelectorAll(linkSelectors));
+      if (!links.length) {
+        const created = document.createElement("link");
+        created.rel = "icon";
+        document.head?.appendChild(created);
+        links.push(created);
+      }
+      links.forEach(link => {
+        try { link.href = faviconUrl; } catch (_) {}
+      });
+    }
+
+    let poster = typeof branding.posterUrl === "string" ? branding.posterUrl.trim() : "";
+    if (!poster && typeof theme.branding?.posterUrl === "string") {
+      poster = theme.branding.posterUrl.trim();
+    }
+    branding.posterUrl = poster || "";
+    if (typeof window !== "undefined") {
+      const global = window.BTFW = window.BTFW || {};
+      global.channelPosterUrl = poster || "";
+    }
+  }
+
+  function applyRuntimeIntegrations(theme){
+    if (!theme || typeof theme !== "object") return;
+    const integrations = (theme.integrations && typeof theme.integrations === "object") ? theme.integrations : (theme.integrations = {});
+    if (typeof integrations.enabled !== "boolean") {
+      integrations.enabled = true;
+    }
+    if (!integrations.tmdb || typeof integrations.tmdb !== "object") {
+      integrations.tmdb = { apiKey: "" };
+    }
+    const key = typeof integrations.tmdb.apiKey === "string" ? integrations.tmdb.apiKey.trim() : "";
+    integrations.tmdb.apiKey = key;
+    if (typeof window !== "undefined") {
+      window.BTFW_CONFIG = window.BTFW_CONFIG || {};
+      if (typeof window.BTFW_CONFIG.tmdb !== "object") {
+        window.BTFW_CONFIG.tmdb = {};
+      }
+      window.BTFW_CONFIG.tmdb.apiKey = key;
+      window.BTFW_CONFIG.tmdbKey = key;
+      window.BTFW_CONFIG.integrationsEnabled = integrations.enabled;
+      try {
+        if (document?.body && document.body.dataset.tmdbKey !== key) {
+          document.body.dataset.tmdbKey = key;
+        }
+      } catch (_) {}
+    }
+  }
+
+  function applyRuntimeColors(theme){
+    if (!theme || typeof theme !== "object" || typeof document === "undefined") return;
+    const colors = (theme.colors && typeof theme.colors === "object") ? theme.colors : (theme.colors = {});
+    const root = document.documentElement;
+    if (!root) return;
+    const bg = colors.background || "#05060d";
+    const surface = colors.surface || colors.panel || "#0b111d";
+    const panel = colors.panel || "#141f36";
+    const text = colors.text || "#e8ecfb";
+    const chatText = colors.chatText || text;
+    const accent = colors.accent || "#6d4df6";
+    colors.background = bg;
+    colors.surface = surface;
+    colors.panel = panel;
+    colors.text = text;
+    colors.chatText = chatText;
+    colors.accent = accent;
+    const map = {
+      "--btfw-theme-bg": bg,
+      "--btfw-theme-surface": surface,
+      "--btfw-theme-panel": panel,
+      "--btfw-theme-text": text,
+      "--btfw-theme-chat-text": chatText,
+      "--btfw-theme-accent": accent,
+    };
+    Object.keys(map).forEach(key => {
+      if (map[key]) {
+        root.style.setProperty(key, map[key]);
+      }
+    });
+    root.setAttribute("data-btfw-theme-tint", theme.tint || "custom");
+    try {
+      document.dispatchEvent(new CustomEvent("btfw:channelThemeTint", {
+        detail: {
+          tint: theme.tint || "custom",
+          colors: { bg, surface, panel, text, chat: chatText, accent },
+          config: theme,
+        }
+      }));
+    } catch (_) {}
+  }
+
+  function applyRuntimeTypography(theme){
+    if (!theme || typeof theme !== "object") return;
+    const typography = (theme.typography && typeof theme.typography === "object") ? theme.typography : (theme.typography = {});
+    const resolved = applyLiveTypographyAssets(typography);
+    typography.resolvedFamily = resolved.family;
+  }
+
+  function syncRuntimeThemeConfig(source){
+    if (!source || typeof source !== "object" || typeof window === "undefined") return null;
+    const normalized = normalizeConfig(source);
+    const global = window.BTFW = window.BTFW || {};
+    window.BTFW_THEME_ADMIN = normalized;
+    global.channelTheme = normalized;
+    applyRuntimeResources(normalized);
+    applyRuntimeSlider(normalized);
+    applyRuntimeBranding(normalized);
+    applyRuntimeColors(normalized);
+    applyRuntimeIntegrations(normalized);
+    applyRuntimeTypography(normalized);
+    return normalized;
+  }
+
+  function bootstrapRuntimeThemeSync(){
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    const apply = () => {
+      try {
+        const cfg = window.BTFW_THEME_ADMIN;
+        if (cfg && typeof cfg === "object") {
+          syncRuntimeThemeConfig(cfg);
+        }
+      } catch (error) {
+        console.warn("[theme-admin] Failed to sync runtime theme config", error);
+      }
+    };
+    apply();
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", apply, { once: true });
+    }
+  }
+
+  function injectLocalStyles(){
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `
+      .btfw-theme-admin {
+        --btfw-admin-surface: color-mix(in srgb, var(--btfw-theme-panel, #141f36) 92%, transparent 8%);
+        --btfw-admin-surface-alt: color-mix(in srgb, var(--btfw-theme-surface, #0b111d) 88%, transparent 12%);
+        --btfw-admin-border: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 40%, transparent 60%);
+        --btfw-admin-border-soft: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 26%, transparent 74%);
+        --btfw-admin-shadow: 0 20px 46px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 55%, transparent 45%);
+        --btfw-admin-text: var(--btfw-theme-text, #dce4ff);
+        --btfw-admin-text-soft: color-mix(in srgb, var(--btfw-theme-text, #dce4ff) 72%, transparent 28%);
+        --btfw-admin-chip: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 28%, transparent 72%);
+        padding: 18px 10px 28px;
+        color: var(--btfw-admin-text);
+        font-family: var(--btfw-font-body, 'Inter', sans-serif);
+      }
+      .btfw-theme-admin h3 { font-size: 1.12rem; margin: 0 0 12px; letter-spacing: 0.04em; font-weight: 700; }
+      .btfw-theme-admin p.lead { margin: 0 0 18px; color: var(--btfw-admin-text-soft); max-width: 720px; }
+      .btfw-theme-admin details.section {
+        border-radius: 20px;
+        border: 1px solid var(--btfw-admin-border-soft);
+        margin-bottom: 18px;
+        background: linear-gradient(135deg, color-mix(in srgb, var(--btfw-admin-surface) 94%, transparent 6%), color-mix(in srgb, var(--btfw-admin-surface-alt) 88%, transparent 12%));
+        box-shadow: var(--btfw-admin-shadow);
+        overflow: hidden;
+        transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      }
+      .btfw-theme-admin details.section[open] {
+        border-color: var(--btfw-admin-border);
+        box-shadow: 0 22px 52px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 58%, transparent 42%);
+        background: linear-gradient(135deg, color-mix(in srgb, var(--btfw-admin-surface-alt) 96%, transparent 4%), color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 18%, transparent 82%));
+      }
+      .btfw-theme-admin summary.section__summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; cursor: pointer; list-style: none; }
+      .btfw-theme-admin summary.section__summary::-webkit-details-marker { display: none; }
+      .btfw-theme-admin .section__title { display: flex; flex-direction: column; gap: 4px; }
+      .btfw-theme-admin .section__title h4 { margin: 0; font-size: 0.95rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--btfw-admin-text); }
+      .btfw-theme-admin .section__title span { font-size: 0.84rem; color: var(--btfw-admin-text-soft); letter-spacing: 0.02em; }
+      .btfw-theme-admin .section__chevron { width: 28px; height: 28px; border-radius: 10px; border: 1px solid var(--btfw-admin-border-soft); display: inline-flex; align-items: center; justify-content: center; color: var(--btfw-admin-text-soft); font-size: 0.78rem; transition: transform 0.24s ease, border 0.18s ease, color 0.18s ease, background 0.18s ease; }
+      .btfw-theme-admin details.section[open] .section__chevron { transform: rotate(90deg); color: var(--btfw-admin-text); border-color: var(--btfw-admin-border); background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 14%, transparent 86%); }
+      .btfw-theme-admin .section__body { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+      .btfw-theme-admin .field { display: flex; flex-direction: column; gap: 6px; }
+      .btfw-theme-admin label { font-weight: 600; letter-spacing: 0.03em; color: color-mix(in srgb, var(--btfw-admin-text) 92%, transparent 8%); }
+      .btfw-theme-admin .btfw-checkbox { display: inline-flex; gap: 10px; align-items: center; font-weight: 600; color: color-mix(in srgb, var(--btfw-admin-text) 92%, transparent 8%); }
+      .btfw-theme-admin .btfw-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--btfw-theme-accent, #6d4df6); }
+      .btfw-theme-admin .field.is-disabled label,
+      .btfw-theme-admin .field.is-disabled .help { opacity: 0.55; }
+      .btfw-theme-admin .module-inputs { display: grid; gap: 10px; margin-top: 8px; }
+      .btfw-theme-admin .module-input__row { display: flex; }
+      .btfw-theme-admin .module-input__control { width: 100%; }
+      .btfw-theme-admin input[type="text"],
+      .btfw-theme-admin input[type="url"],
+      .btfw-theme-admin textarea,
+      .btfw-theme-admin select {
+        width: 100%;
+        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 92%, transparent 8%);
+        border: 1px solid var(--btfw-admin-border-soft);
+        border-radius: 12px;
+        padding: 10px 12px;
+        color: color-mix(in srgb, var(--btfw-admin-text) 98%, white 2%);
+        font-size: 0.95rem;
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-theme-bg, #05060d) 14%, transparent 86%);
+        transition: border 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+      }
+      .btfw-theme-admin input[type="text"]:focus,
+      .btfw-theme-admin input[type="url"]:focus,
+      .btfw-theme-admin textarea:focus,
+      .btfw-theme-admin select:focus { border-color: var(--btfw-theme-accent, #6d4df6); box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 22%, transparent 78%); outline: none; }
+      .btfw-theme-admin .field.is-disabled input,
+      .btfw-theme-admin .field.is-disabled textarea,
+      .btfw-theme-admin .field.is-disabled select { opacity: 0.55; }
+      .btfw-theme-admin input[type="color"] { width: 100%; height: 44px; padding: 0; border-radius: 12px; border: 1px solid var(--btfw-admin-border); background: var(--btfw-admin-surface-alt); cursor: pointer; }
+      .btfw-theme-admin .help { font-size: 0.82rem; color: var(--btfw-admin-text-soft); line-height: 1.5; }
+      .btfw-theme-admin .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+      .btfw-theme-admin .preview { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 16px; padding: 18px; border-radius: 16px; background: linear-gradient(135deg, color-mix(in srgb, var(--btfw-admin-surface-alt) 94%, transparent 6%), color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 16%, transparent 84%)); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-border) 20%, transparent 80%); }
+      .btfw-theme-admin .preview__main { display: flex; flex-direction: column; gap: 10px; }
+      .btfw-theme-admin .preview__chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap: 8px; }
+      .btfw-theme-admin .preview__chip { padding: 10px; border-radius: 10px; background: var(--btfw-admin-chip); color: color-mix(in srgb, var(--btfw-admin-text) 96%, white 4%); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+      .btfw-theme-admin .preview__accent { display: inline-flex; align-items: center; justify-content: center; padding: 10px 14px; border-radius: 999px; font-weight: 700; letter-spacing: 0.08em; color: color-mix(in srgb, var(--btfw-admin-text) 98%, white 2%); background: var(--btfw-theme-accent, #6d4df6); box-shadow: 0 10px 24px color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 32%, transparent 68%); }
+      .btfw-theme-admin .preview--font { padding: 18px; border-radius: 14px; background: color-mix(in srgb, var(--btfw-admin-surface) 96%, transparent 4%); border: 1px solid var(--btfw-admin-border-soft); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-theme-bg, #05060d) 18%, transparent 82%); display: flex; flex-direction: column; gap: 8px; }
+      .btfw-theme-admin .preview__font-label { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--btfw-admin-text-soft); }
+      .btfw-theme-admin .preview__font-text { font-size: 1rem; color: var(--btfw-admin-text); }
+      .btfw-theme-admin .buttons { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
+      .btfw-theme-admin .buttons .btn-primary,
+      .btfw-theme-admin .buttons .btn-secondary { padding: 10px 18px; border-radius: 12px; border: 0; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; transition: transform 0.16s ease, filter 0.16s ease; }
+      .btfw-theme-admin .buttons .btn-primary { background: linear-gradient(135deg, color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 90%, white 10%), color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 68%, transparent 32%)); color: color-mix(in srgb, var(--btfw-admin-text) 98%, white 2%); }
+      .btfw-theme-admin .buttons .btn-secondary { background: color-mix(in srgb, var(--btfw-admin-surface-alt) 90%, transparent 10%); color: var(--btfw-admin-text); border: 1px solid var(--btfw-admin-border-soft); }
+      .btfw-theme-admin .buttons .btn-primary:hover,
+      .btfw-theme-admin .buttons .btn-secondary:hover { filter: brightness(1.05); transform: translateY(-1px); }
+      .btfw-theme-admin .buttons .btn-secondary:hover { border-color: var(--btfw-admin-border); }
+      .btfw-theme-admin .status { font-size: 0.82rem; color: var(--btfw-admin-text-soft); }
+      .btfw-theme-admin .integrations-callout { padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--btfw-admin-surface-alt) 94%, transparent 6%); border: 1px dashed var(--btfw-admin-border-soft); display: flex; flex-direction: column; gap: 6px; font-size: 0.86rem; color: var(--btfw-admin-text-soft); }
+      .btfw-theme-admin .integrations-callout strong { color: var(--btfw-admin-text); }
+      @media (max-width: 720px) {
+        .btfw-theme-admin { padding: 14px 6px 24px; }
+        .btfw-theme-admin summary.section__summary { padding: 16px; }
+        .btfw-theme-admin .section__body { padding: 0 16px 16px; }
+        .btfw-theme-admin .grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   function normalizeFontId(id){
-    if (!id || typeof id !== "string") return FONT_DEFAULT_ID;
-    const normalized = id.toLowerCase().replace(/[^a-z0-9]/g, "");
-    return FONT_PRESETS[normalized] ? normalized : FONT_DEFAULT_ID;
+    if (!id) return FONT_DEFAULT_ID;
+    const str = String(id).trim().toLowerCase();
+    if (str === "custom") return "custom";
+    return str.replace(/[^a-z0-9]+/g, "");
   }
 
-  function buildGoogleFontUrl(family){
-    if (!family) return "";
-    const encoded = encodeURIComponent(family.replace(/'/g, ""));
+  function getFontPreset(id){
+    const key = normalizeFontId(id);
+    if (key === "custom") return null;
+    return FONT_PRESETS[key] || null;
+  }
+
+  function buildGoogleFontUrl(name){
+    if (!name) return "";
+    const trimmed = name.trim();
+    if (!trimmed) return "";
+    const encoded = trimmed.replace(/\s+/g, "+");
     return `https://fonts.googleapis.com/css2?family=${encoded}:wght@300;400;600;700&display=swap`;
   }
 
-  function resolveTypographyConfig(typography){
-    const cfg = typography || {};
-    const presetId = cfg.preset || FONT_DEFAULT_ID;
+  function resolveTypographyConfig(typo){
+    const presetId = normalizeFontId(typo?.preset || FONT_DEFAULT_ID);
     const isCustom = presetId === "custom";
-    const preset = isCustom ? null : FONT_PRESETS[normalizeFontId(presetId)];
-    const customName = cfg.customFamily ? String(cfg.customFamily).trim() : "";
+    const preset = getFontPreset(presetId) || getFontPreset(FONT_DEFAULT_ID);
+    const customName = (typo?.customFamily || "").trim();
     const family = isCustom && customName
       ? `'${customName.replace(/'/g, "\\'")}', ${FONT_FALLBACK_FAMILY}`
       : (preset?.family || FONT_FALLBACK_FAMILY);
@@ -535,23 +835,19 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
   }
 
-  function ensureModuleFieldAvailability(panel, skipTrim){
+  function ensureModuleFieldAvailability(panel){
     const container = getModuleContainer(panel);
     if (!container) return;
-    
     container.querySelectorAll('.module-input__row').forEach(row => {
       if (!row.querySelector('input[data-role="module-input"]')) {
         row.remove();
       }
     });
-    
     let inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
-    
     if (!inputs.length) {
       renderModuleInputs(panel, []);
       inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
     }
-    
     if (inputs.length < MODULE_FIELD_MIN) {
       let index = inputs.length;
       while (index < MODULE_FIELD_MIN && index < MODULE_FIELD_MAX) {
@@ -560,45 +856,32 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
       inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
     }
-    
     const hasEmpty = inputs.some(input => !input.value.trim());
     if (!hasEmpty && inputs.length < MODULE_FIELD_MAX) {
       appendModuleInput(container, inputs.length, "");
       inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
     }
-    
-    if (!skipTrim) {
-      trimModuleInputs(panel);
-    }
+    trimModuleInputs(panel);
   }
 
   function bindModuleFieldWatcher(panel, onChange){
     const container = getModuleContainer(panel);
-    if (!container) {
-      console.warn('[theme-admin] Module container not found for binding');
-      return;
-    }
-    
-    if (container._btfwModuleHandlerBound) {
-      return;
-    }
-    
-    const handler = (event) => {
-      if (event?.target?.dataset?.role === 'module-input') {
-        setTimeout(() => {
-          ensureModuleFieldAvailability(panel);
-          if (typeof onChange === "function") onChange();
-        }, 10);
-      }
+    if (!container || container.dataset.btfwModuleWatcher === "1") return;
+    const handler = () => {
+      ensureModuleFieldAvailability(panel);
+      if (typeof onChange === "function") onChange();
     };
-    
-    container.addEventListener('input', handler);
-    container.addEventListener('change', handler);
-    
-    container._btfwModuleHandlerBound = true;
+    container.addEventListener('input', event => {
+      if (event?.target?.dataset?.role === 'module-input') {
+        handler();
+      }
+    });
+    container.addEventListener('change', event => {
+      if (event?.target?.dataset?.role === 'module-input') {
+        handler();
+      }
+    });
     container.dataset.btfwModuleWatcher = "1";
-    
-    console.log('[theme-admin] Module field watcher bound successfully');
   }
 
   function readModuleValues(panel){
@@ -627,7 +910,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     });
     return target;
   }
-function parseConfig(jsText){
+
+  function parseConfig(jsText){
     if (!jsText) return null;
     const start = jsText.indexOf(JS_BLOCK_START);
     const end = jsText.indexOf(JS_BLOCK_END);
@@ -712,6 +996,7 @@ function parseConfig(jsText){
     return normalized;
   }
 
+
   function buildConfigBlock(cfg){
     const normalized = normalizeConfig(cfg);
     const json = JSON.stringify(normalized, null, 2);
@@ -732,381 +1017,144 @@ function parseConfig(jsText){
     return `\n${CSS_BLOCK_START}\n:root {\n  --btfw-theme-bg: ${bg};\n  --btfw-theme-surface: ${surface};\n  --btfw-theme-panel: ${panel};\n  --btfw-theme-text: ${textColor};\n  --btfw-theme-chat-text: ${chatText};\n  --btfw-theme-accent: ${accent};\n  --btfw-theme-font-family: ${fontFamily};\n}\n${CSS_BLOCK_END}`;
   }
 
-  function replaceBlock(original, startMarker, endMarker, block){
-    const sanitizedBlock = (block || "").trim();
-    if (!sanitizedBlock) return original;
+// Replace this function in feature-channel-theme-admin.js
 
-    const start = original.indexOf(startMarker);
-    const end = original.indexOf(endMarker);
-    const hadTrailingNewline = /\n\s*$/.test(original);
+function replaceBlock(original, startMarker, endMarker, block){
+  const sanitizedBlock = (block || "").trim();
+  if (!sanitizedBlock) return original;
 
-    if (start !== -1 && end !== -1 && end > start) {
-      const before = original.slice(0, start).replace(/\s+$/, "");
-      const after = original.slice(end + endMarker.length).replace(/^\s+/, "");
-      return joinSections([before, sanitizedBlock, after], hadTrailingNewline);
-    }
+  const start = original.indexOf(startMarker);
+  const end = original.indexOf(endMarker);
+  const hadTrailingNewline = /\n\s*$/.test(original);
 
-    const loaderStart = findLoaderStart(original);
-    if (loaderStart !== -1) {
-      const before = original.slice(0, loaderStart).replace(/\s+$/, "");
-      return joinSections([before, sanitizedBlock], hadTrailingNewline);
-    }
-
-    return joinSections([sanitizedBlock, original], hadTrailingNewline);
+  if (start !== -1 && end !== -1 && end > start) {
+    const before = original.slice(0, start).replace(/\s+$/, "");
+    const after = original.slice(end + endMarker.length).replace(/^\s+/, "");
+    return joinSections([before, sanitizedBlock, after], hadTrailingNewline);
   }
 
-  function stripLegacySliderGlobals(jsText){
-    const source = jsText ? String(jsText) : '';
-    if (!source) return '';
+  const loaderStart = findLoaderStart(original);
+  if (loaderStart !== -1) {
+    const before = original.slice(0, loaderStart).replace(/\s+$/, "");
+    const after = original.slice(loaderStart);
+    return joinSections([before, sanitizedBlock, after], hadTrailingNewline);
+  }
 
-    const lines = source.split(/\r?\n/);
-    const cleaned = [];
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const trimmed = line.trim();
-      if (/^(?:var|let|const)?\s*UI_ChannelList\s*=/.test(trimmed)) continue;
-      if (/^window\.UI_ChannelList\s*=/.test(trimmed)) continue;
-      if (/^(?:var|let|const)?\s*Channel_JSON\s*=/.test(trimmed)) continue;
-      if (/^window\.Channel_JSON\s*=/.test(trimmed)) continue;
-      cleaned.push(line);
-    }
 
-    while (cleaned.length && cleaned[0].trim() === '') {
-      cleaned.shift();
-    }
-    for (let i = cleaned.length - 1; i > 0; i--) {
-      if (cleaned[i].trim() === '' && cleaned[i - 1].trim() === '') {
-        cleaned.splice(i, 1);
+  const trimmed = original.trim();
+  if (!trimmed) {
+    return sanitizedBlock + "\n";
+  }
+  return joinSections([trimmed, sanitizedBlock], true);
+}
+
+  function canManageChannel(){
+    try {
+      if (typeof window.hasPermission === "function") {
+        if (window.hasPermission("motdedit") || window.hasPermission("seehidden") || window.hasPermission("chanowner")) return true;
       }
-    }
-
-    return cleaned.join('\n');
-  }
-
-function ensureRuntimeAsset(id, url, type){
-    if (!url || !document.head) return;
-    const existing = document.getElementById(id);
-    if (existing) {
-      if (type === "script" && existing.src === url) return;
-      if (type === "style" && existing.href === url) return;
-      existing.remove();
-    }
-    if (type === "script") {
-      const script = document.createElement("script");
-      script.id = id;
-      script.src = url;
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    } else if (type === "style") {
-      const link = document.createElement("link");
-      link.id = id;
-      link.rel = "stylesheet";
-      link.href = url;
-      document.head.appendChild(link);
-    }
-  }
-
-  function pruneRuntimeAssets(prefix, keepCount){
-    if (!document.head) return;
-    let index = keepCount;
-    while (index < 100) {
-      const id = `${prefix}${index}`;
-      const el = document.getElementById(id);
-      if (!el) break;
-      el.remove();
-      index++;
-    }
-  }
-
-  function applyRuntimeResources(theme){
-    if (!theme || typeof theme !== "object") return;
-    const resources = theme.resources && typeof theme.resources === "object"
-      ? theme.resources : {};
-    const styles = Array.isArray(resources.styles) ? resources.styles : [];
-    styles.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-style-${idx}`, url, "style"));
-    pruneRuntimeAssets("btfw-theme-style-", styles.length);
-
-    const scripts = Array.isArray(resources.scripts) ? resources.scripts : [];
-    scripts.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-script-${idx}`, url, "script"));
-    pruneRuntimeAssets("btfw-theme-script-", scripts.length);
-
-    const moduleCandidates = resources.modules && resources.modules.length
-      ? resources.modules
-      : (resources.moduleUrls || resources.externalModules || theme.modules || theme.moduleUrls || theme.externalModules || []);
-    const modules = normalizeModuleUrls(moduleCandidates);
-    modules.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-module-${idx}`, url, "script"));
-    pruneRuntimeAssets("btfw-theme-module-", modules.length);
-    theme.resources = theme.resources || {};
-    theme.resources.styles = styles.slice();
-    theme.resources.scripts = scripts.slice();
-    theme.resources.modules = modules;
-    if (typeof window !== "undefined") {
-      const global = window.BTFW = window.BTFW || {};
-      global.channelThemeModules = modules.slice();
-    }
-  }
-
-  function applyRuntimeSlider(theme){
-    if (!theme || typeof theme !== "object") return;
-    const slider = (theme.slider && typeof theme.slider === "object") ? theme.slider : (theme.slider = {});
-    let enabled = typeof slider.enabled === "boolean" ? slider.enabled : theme.sliderEnabled;
-    let feed = slider.feedUrl || slider.url || theme.sliderJson || "";
-    enabled = Boolean(enabled);
-    slider.enabled = enabled;
-    slider.feedUrl = feed;
-    theme.sliderEnabled = enabled;
-    theme.sliderJson = feed;
-    if (typeof window !== "undefined") {
-      const global = window.BTFW = window.BTFW || {};
-      global.channelSlider = { enabled, feedUrl: feed };
-      global.channelSliderEnabled = enabled;
-      global.channelSliderJSON = feed;
-    }
-  }
-
-  function applyRuntimeBranding(theme){
-    if (!theme || typeof theme !== "object") return;
-    const branding = (theme.branding && typeof theme.branding === "object") ? theme.branding : (theme.branding = {});
-    let name = typeof branding.headerName === "string" ? branding.headerName.trim() : "";
-    if (!name && typeof theme.headerName === "string") {
-      name = theme.headerName.trim();
-    }
-    if (!name) name = "CyTube";
-    branding.headerName = name;
-
-    const selectors = [
-      "#nav-collapsible .navbar-brand",
-      ".navbar .navbar-brand",
-      ".navbar-brand",
-      "#navbrand"
-    ];
-    selectors.forEach(sel => {
-      const anchor = document?.querySelector?.(sel);
-      if (anchor && anchor.textContent !== name) {
-        anchor.textContent = name;
+      const client = window.CLIENT || null;
+      if (client?.hasPermission) {
+        if (client.hasPermission("motdedit") || client.hasPermission("seehidden") || client.hasPermission("chanowner")) return true;
       }
+      if (client && typeof client.rank !== "undefined") {
+        const rank = client.rank | 0;
+        const ranks = window.RANK || window.Ranks || {};
+        const owner = [ranks.owner, ranks.founder, ranks.admin, ranks.administrator].find(v => typeof v === "number");
+        if (typeof owner === "number") return rank >= owner;
+        return rank >= 4;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  function ensureField(modal, selectors, fallbackId){
+    for (const selector of selectors) {
+      const el = modal ? modal.querySelector(selector) : document.querySelector(selector);
+      if (el) return el;
+    }
+    const host = modal?.querySelector("form") || modal?.querySelector(".modal-body") || modal || document.body;
+    const textarea = document.createElement("textarea");
+    textarea.id = fallbackId;
+    textarea.style.display = "none";
+    textarea.dataset.btfwThemeAdmin = "synthetic";
+    host.appendChild(textarea);
+    return textarea;
+  }
+
+  function normalizeTargetId(raw){
+    if (!raw) return null;
+    const str = String(raw).trim();
+    if (!str) return null;
+    if (str.startsWith("#")) return str.slice(1);
+    if (/^[A-Za-z][\w:-]*$/.test(str)) return str;
+    return null;
+  }
+
+  function setActiveTab(tabContainer, contentContainer, panel, trigger){
+    if (!panel || !tabContainer) return;
+    const anchors = Array.from(tabContainer.querySelectorAll("a[href^='#'], a[data-target^='#']"));
+    anchors.forEach(anchor => {
+      const host = anchor.closest("li, [role='tab'], .tab") || anchor;
+      const targetAttr = anchor.getAttribute("data-target") || anchor.getAttribute("href") || "";
+      const targetId = normalizeTargetId(targetAttr);
+      const isActive = trigger ? anchor === trigger : (targetId && targetId === panel.id);
+      host.classList.toggle("active", !!isActive);
+      host.classList.toggle("is-active", !!isActive);
+      if (host.setAttribute) host.setAttribute("aria-selected", isActive ? "true" : "false");
+      anchor.classList.toggle("active", !!isActive);
+      anchor.classList.toggle("is-active", !!isActive);
     });
 
-    let favicon = typeof branding.faviconUrl === "string" ? branding.faviconUrl.trim() : "";
-    if (!favicon && typeof branding.favicon === "string") {
-      favicon = branding.favicon.trim();
-    }
-    branding.faviconUrl = favicon || "";
-    if (favicon && typeof document !== "undefined") {
-      let link = document.querySelector("link[rel='icon'], link[rel='shortcut icon']");
-      if (!link) {
-        link = document.createElement("link");
-        link.rel = "icon";
-        document.head.appendChild(link);
+    const container = contentContainer || panel.parentElement;
+    if (!container) return;
+    const panes = Array.from(container.querySelectorAll(".tab-pane, [role='tabpanel'], .modal-tab, .tab-panel"));
+    panes.forEach(pane => {
+      const active = pane === panel;
+      pane.classList.toggle("active", active);
+      pane.classList.toggle("is-active", active);
+      if (pane.classList.contains("tab-pane")) {
+        pane.classList.toggle("in", active);
       }
-      if (link.href !== favicon) {
-        link.href = favicon;
-      }
-    }
-
-    let poster = typeof branding.posterUrl === "string" ? branding.posterUrl.trim() : "";
-    if (!poster && typeof theme.branding?.posterUrl === "string") {
-      poster = theme.branding.posterUrl.trim();
-    }
-    branding.posterUrl = poster || "";
-    if (typeof window !== "undefined") {
-      const global = window.BTFW = window.BTFW || {};
-      global.channelPosterUrl = poster || "";
-    }
-  }
-
-  function applyRuntimeIntegrations(theme){
-    if (!theme || typeof theme !== "object") return;
-    const integrations = (theme.integrations && typeof theme.integrations === "object") ? theme.integrations : (theme.integrations = {});
-    if (typeof integrations.enabled !== "boolean") {
-      integrations.enabled = true;
-    }
-    if (!integrations.tmdb || typeof integrations.tmdb !== "object") {
-      integrations.tmdb = { apiKey: "" };
-    }
-    const key = typeof integrations.tmdb.apiKey === "string" ? integrations.tmdb.apiKey.trim() : "";
-    integrations.tmdb.apiKey = key;
-    if (typeof window !== "undefined") {
-      window.BTFW_CONFIG = window.BTFW_CONFIG || {};
-      if (typeof window.BTFW_CONFIG.tmdb !== "object") {
-        window.BTFW_CONFIG.tmdb = {};
-      }
-      window.BTFW_CONFIG.tmdb.apiKey = key;
-      window.BTFW_CONFIG.tmdbKey = key;
-      window.BTFW_CONFIG.integrationsEnabled = integrations.enabled;
-      try {
-        if (document?.body && document.body.dataset.tmdbKey !== key) {
-          document.body.dataset.tmdbKey = key;
-        }
-      } catch (_) {}
-    }
-  }
-
-  function applyRuntimeColors(theme){
-    if (!theme || typeof theme !== "object" || typeof document === "undefined") return;
-    const colors = (theme.colors && typeof theme.colors === "object") ? theme.colors : (theme.colors = {});
-    const root = document.documentElement;
-    if (!root) return;
-
-    const colorVars = {
-      "--btfw-theme-bg": colors.background || "#05060d",
-      "--btfw-theme-surface": colors.surface || colors.panel || "#0b111d",
-      "--btfw-theme-panel": colors.panel || "#141f36",
-      "--btfw-theme-text": colors.text || "#e8ecfb",
-      "--btfw-theme-chat-text": colors.chatText || colors.text || "#d4defd",
-      "--btfw-theme-accent": colors.accent || "#6d4df6"
-    };
-
-    Object.entries(colorVars).forEach(([key, value]) => {
-      root.style.setProperty(key, value);
+      pane.style.display = active ? "block" : "none";
+      if (pane.setAttribute) pane.setAttribute("aria-hidden", active ? "false" : "true");
     });
   }
 
-  function applyRuntimeTypography(theme){
-    if (!theme || typeof theme !== "object") return;
-    const typography = theme.typography && typeof theme.typography === "object"
-      ? theme.typography : (theme.typography = {});
-    const resolved = applyLiveTypographyAssets(typography);
-    typography.resolvedFamily = resolved.family;
-  }
+  function ensureTabSystem(modal){
+    if (!modal) return { tabContainer: null, contentContainer: null };
+    const tabContainer = modal.querySelector(".nav-tabs, .modal-tabs, [role='tablist']");
+    const contentContainer = modal.querySelector(".tab-content, .modal-content .modal-body, .modal-body");
 
-  function syncRuntimeThemeConfig(source){
-    if (!source || typeof source !== "object" || typeof window === "undefined") return null;
-    const normalized = normalizeConfig(source);
-    const global = window.BTFW = window.BTFW || {};
-    window.BTFW_THEME_ADMIN = normalized;
-    global.channelTheme = normalized;
-    applyRuntimeResources(normalized);
-    applyRuntimeSlider(normalized);
-    applyRuntimeBranding(normalized);
-    applyRuntimeColors(normalized);
-    applyRuntimeIntegrations(normalized);
-    applyRuntimeTypography(normalized);
-    return normalized;
-  }
-
-  function bootstrapRuntimeThemeSync(){
-    if (typeof window === "undefined" || typeof document === "undefined") return;
-    const apply = () => {
-      try {
-        const cfg = window.BTFW_THEME_ADMIN;
-        if (cfg && typeof cfg === "object") {
-          syncRuntimeThemeConfig(cfg);
-        }
-      } catch (error) {
-        console.warn("[theme-admin] Failed to sync runtime theme config", error);
-      }
-    };
-    apply();
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", apply, { once: true });
+    if (tabContainer && !tabContainer.dataset.btfwTabsWired) {
+      tabContainer.dataset.btfwTabsWired = "1";
+      tabContainer.addEventListener("click", (event) => {
+        const anchor = event.target.closest("a[href^='#'], a[data-target^='#']");
+        if (!anchor) return;
+        const rawTarget = anchor.getAttribute("data-target") || anchor.getAttribute("href") || "";
+        const normalized = normalizeTargetId(rawTarget);
+        if (!normalized) return;
+        let panel = document.getElementById(normalized);
+        if (panel && !modal.contains(panel)) panel = null;
+        if (!panel) return;
+        event.preventDefault();
+        setActiveTab(tabContainer, contentContainer, panel, anchor);
+      }, true);
     }
-  }
 
-function injectLocalStyles(){
-    if (document.getElementById(STYLE_ID)) return;
-    const style = document.createElement("style");
-    style.id = STYLE_ID;
-    style.textContent = `
-      .btfw-theme-admin {
-        --btfw-admin-surface: color-mix(in srgb, var(--btfw-theme-panel, #141f36) 92%, transparent 8%);
-        --btfw-admin-surface-alt: color-mix(in srgb, var(--btfw-theme-surface, #0b111d) 88%, transparent 12%);
-        --btfw-admin-border: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 40%, transparent 60%);
-        --btfw-admin-border-soft: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 26%, transparent 74%);
-        --btfw-admin-shadow: 0 20px 46px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 55%, transparent 45%);
-        --btfw-admin-text: var(--btfw-theme-text, #e8ecfb);
-        --btfw-admin-text-soft: color-mix(in srgb, var(--btfw-theme-text, #e8ecfb) 72%, transparent 28%);
-      }
-      .btfw-theme-admin { max-width: 900px; margin: 0 auto; padding: 20px; font-family: var(--btfw-theme-font-family, 'Inter', sans-serif); color: var(--btfw-admin-text); }
-      .btfw-theme-admin h3 { margin: 0 0 8px; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
-      .btfw-theme-admin .lead { margin: 0 0 24px; font-size: 0.94rem; color: var(--btfw-admin-text-soft); line-height: 1.5; }
-      .btfw-theme-admin .section { background: var(--btfw-admin-surface); border: 1px solid var(--btfw-admin-border-soft); border-radius: 16px; margin-bottom: 16px; overflow: hidden; transition: border 0.2s ease; }
-      .btfw-theme-admin .section:hover { border-color: var(--btfw-admin-border); }
-      .btfw-theme-admin .section__summary { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; cursor: pointer; list-style: none; user-select: none; }
-      .btfw-theme-admin .section__summary::-webkit-details-marker { display: none; }
-      .btfw-theme-admin .section__title { display: flex; flex-direction: column; gap: 4px; }
-      .btfw-theme-admin .section__title h4 { margin: 0; font-size: 1.05rem; font-weight: 600; letter-spacing: 0.01em; }
-      .btfw-theme-admin .section__title span { font-size: 0.84rem; color: var(--btfw-admin-text-soft); letter-spacing: 0.02em; }
-      .btfw-theme-admin .section__chevron { width: 28px; height: 28px; border-radius: 10px; border: 1px solid var(--btfw-admin-border-soft); display: inline-flex; align-items: center; justify-content: center; color: var(--btfw-admin-text-soft); font-size: 0.78rem; transition: transform 0.24s ease, border 0.18s ease, color 0.18s ease, background 0.18s ease; }
-      .btfw-theme-admin details.section[open] .section__chevron { transform: rotate(90deg); color: var(--btfw-admin-text); border-color: var(--btfw-admin-border); background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 14%, transparent 86%); }
-      .btfw-theme-admin .section__body { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 16px; }
-      .btfw-theme-admin .field { display: flex; flex-direction: column; gap: 6px; }
-      .btfw-theme-admin label { font-weight: 600; letter-spacing: 0.03em; color: color-mix(in srgb, var(--btfw-admin-text) 92%, transparent 8%); }
-      .btfw-theme-admin .btfw-checkbox { display: inline-flex; gap: 10px; align-items: center; font-weight: 600; color: color-mix(in srgb, var(--btfw-admin-text) 92%, transparent 8%); }
-      .btfw-theme-admin .btfw-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--btfw-theme-accent, #6d4df6); }
-      .btfw-theme-admin .field.is-disabled label,
-      .btfw-theme-admin .field.is-disabled .help { opacity: 0.55; }
-      .btfw-theme-admin .module-inputs { display: grid; gap: 10px; margin-top: 8px; }
-      .btfw-theme-admin .module-input__row { display: flex; }
-      .btfw-theme-admin .module-input__control { width: 100%; }
-      .btfw-theme-admin input[type="text"],
-      .btfw-theme-admin input[type="url"],
-      .btfw-theme-admin textarea,
-      .btfw-theme-admin select {
-        width: 100%;
-        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 92%, transparent 8%);
-        border: 1px solid var(--btfw-admin-border-soft);
-        border-radius: 12px;
-        padding: 12px 14px;
-        font-family: inherit;
-        font-size: 0.94rem;
-        color: var(--btfw-admin-text);
-        transition: border 0.2s ease, background 0.2s ease;
-      }
-      .btfw-theme-admin input:focus,
-      .btfw-theme-admin textarea:focus,
-      .btfw-theme-admin select:focus {
-        outline: none;
-        border-color: var(--btfw-admin-border);
-        background: var(--btfw-admin-surface-alt);
-      }
-      .btfw-theme-admin input:disabled,
-      .btfw-theme-admin textarea:disabled,
-      .btfw-theme-admin select:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      .btfw-theme-admin textarea { min-height: 80px; resize: vertical; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.88rem; }
-      .btfw-theme-admin input[type="color"] { height: 48px; padding: 6px; cursor: pointer; }
-      .btfw-theme-admin .help { margin: 0; font-size: 0.84rem; color: var(--btfw-admin-text-soft); line-height: 1.4; }
-      .btfw-theme-admin .help code { background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 18%, transparent 82%); color: var(--btfw-theme-accent, #6d4df6); padding: 2px 6px; border-radius: 4px; font-size: 0.88em; }
-      .btfw-theme-admin .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-      .btfw-theme-admin .preview { margin-top: 12px; padding: 16px; background: var(--btfw-admin-surface-alt); border: 1px solid var(--btfw-admin-border-soft); border-radius: 12px; }
-      .btfw-theme-admin .preview__main { display: flex; flex-direction: column; gap: 12px; }
-      .btfw-theme-admin .preview__chips { display: flex; flex-wrap: wrap; gap: 8px; }
-      .btfw-theme-admin .preview__chip { padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; font-weight: 500; color: white; }
-      .btfw-theme-admin .preview__accent { width: 100%; height: 6px; border-radius: 6px; }
-      .btfw-theme-admin .preview--font { display: flex; flex-direction: column; gap: 8px; }
-      .btfw-theme-admin .preview__font-label { font-size: 0.88rem; font-weight: 600; color: var(--btfw-admin-text-soft); }
-      .btfw-theme-admin .preview__font-text { margin: 0; font-size: 1.1rem; line-height: 1.6; color: var(--btfw-admin-text); }
-      .btfw-theme-admin .integrations-callout { display: flex; flex-direction: column; gap: 6px; padding: 14px; background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 12%, transparent 88%); border-radius: 10px; margin-bottom: 8px; }
-      .btfw-theme-admin .integrations-callout strong { font-weight: 600; color: var(--btfw-admin-text); }
-      .btfw-theme-admin .integrations-callout span { font-size: 0.88rem; color: var(--btfw-admin-text-soft); }
-      .btfw-theme-admin .integrations-callout a { color: var(--btfw-theme-accent, #6d4df6); text-decoration: none; font-weight: 500; }
-      .btfw-theme-admin .integrations-callout a:hover { text-decoration: underline; }
-      .btfw-theme-admin .buttons { display: flex; align-items: center; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
-      .btfw-theme-admin button { padding: 12px 20px; border: none; border-radius: 10px; font-family: inherit; font-size: 0.94rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
-      .btfw-theme-admin .btn-primary { background: var(--btfw-theme-accent, #6d4df6); color: white; }
-      .btfw-theme-admin .btn-primary:hover { background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 85%, black 15%); transform: translateY(-1px); }
-      .btfw-theme-admin .btn-secondary { background: var(--btfw-admin-surface); color: var(--btfw-admin-text); border: 1px solid var(--btfw-admin-border-soft); }
-      .btfw-theme-admin .btn-secondary:hover { border-color: var(--btfw-admin-border); background: var(--btfw-admin-surface-alt); }
-      .btfw-theme-admin .status { flex: 1; min-width: 200px; font-size: 0.88rem; padding: 10px 14px; border-radius: 8px; font-weight: 500; }
-      .btfw-theme-admin .status[data-variant="idle"] { background: var(--btfw-admin-surface-alt); color: var(--btfw-admin-text-soft); }
-      .btfw-theme-admin .status[data-variant="pending"] { background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 20%, transparent 80%); color: var(--btfw-theme-accent, #6d4df6); }
-      .btfw-theme-admin .status[data-variant="saved"] { background: color-mix(in srgb, #66bb6a 20%, transparent 80%); color: #66bb6a; }
-      .btfw-theme-admin .status[data-variant="error"] { background: color-mix(in srgb, #ff6b6b 20%, transparent 80%); color: #ff6b6b; }
-    `;
-    document.head.appendChild(style);
+    return { tabContainer, contentContainer };
   }
 
   function renderPreview(panel, cfg){
-    const colors = cfg?.colors || {};
-    const typography = cfg?.typography || {};
     const preview = panel.querySelector(".preview");
     if (!preview) return;
-
-    preview.style.background = `linear-gradient(135deg, ${colors.surface || colors.panel || "#0b111d"}, ${colors.panel || "#141f36"})`;
+    const colors = cfg.colors || {};
+    const typography = applyLiveTypographyAssets(cfg.typography || {});
+    preview.style.setProperty("--bg", colors.background || "#05060d");
+    preview.style.setProperty("--surface", colors.surface || colors.panel || "#0b111d");
+    preview.style.setProperty("--panel", colors.panel || "#141f36");
+    preview.style.setProperty("--accent", colors.accent || "#6d4df6");
+    preview.style.background = `linear-gradient(160deg, ${colors.background || "#05060d"}, ${colors.surface || colors.panel || "#0b111d"})`;
     const accent = panel.querySelector(".preview__accent");
     if (accent) {
       accent.style.background = colors.accent || "#6d4df6";
@@ -1248,12 +1296,11 @@ function injectLocalStyles(){
             <div class="field">
               <label for="btfw-theme-tint">Preset tint</label>
               <select id="btfw-theme-tint" data-btfw-bind="tint">
-                <option value="midnight">Midnight</option>
-                <option value="slate">Slate</option>
-                <option value="ocean">Ocean</option>
-                <option value="forest">Forest</option>
-                <option value="ember">Ember</option>
-                <option value="custom">Custom</option>
+                <option value="midnight">Midnight Pulse</option>
+                <option value="aurora">Aurora Bloom</option>
+                <option value="sunset">Sunset Neon</option>
+                <option value="ember">Ember Forge</option>
+                <option value="custom">Custom mix</option>
               </select>
               <p class="help">Choose a curated palette to start from, then fine-tune any swatch.</p>
             </div>
@@ -1292,17 +1339,17 @@ function injectLocalStyles(){
                   <div class="preview__chip" data-key="text"></div>
                   <div class="preview__chip" data-key="chatText"></div>
                 </div>
-                <div class="preview__accent"></div>
               </div>
+              <div class="preview__accent">Accent</div>
             </div>
           </div>
         </details>
 
-        <details class="section" data-section="typography">
+        <details class="section" data-section="typography" open>
           <summary class="section__summary">
             <div class="section__title">
               <h4>Typography</h4>
-              <span>Select a Google Font or define a custom family.</span>
+              <span>Select the base font used across the theme.</span>
             </div>
             <span class="section__chevron" aria-hidden="true">›</span>
           </summary>
@@ -1320,9 +1367,9 @@ function injectLocalStyles(){
                 <option value="manrope">Manrope</option>
                 <option value="outfit">Outfit</option>
                 <option value="urbanist">Urbanist</option>
-                <option value="custom">Custom</option>
+                <option value="custom">Custom Google Font</option>
               </select>
-              <p class="help">Choose <em>Custom</em> to specify your own.</p>
+              <p class="help">Curated Google Fonts optimized for readability. Choose <em>Custom</em> to specify your own.</p>
             </div>
             <div class="field" id="btfw-theme-font-custom-field">
               <label for="btfw-theme-font-custom">Custom Google font name</label>
@@ -1463,13 +1510,13 @@ function injectLocalStyles(){
       : (cfg?.resources?.moduleUrls || cfg?.resources?.externalModules || cfg?.modules || cfg?.moduleUrls || cfg?.externalModules || []);
     const modules = normalizeModuleUrls(moduleCandidates);
     renderModuleInputs(panel, modules);
-    ensureModuleFieldAvailability(panel, true);
+    ensureModuleFieldAvailability(panel);
     updateTypographyFieldState(panel);
     updateSliderFieldState(panel);
     renderPreview(panel, cfg);
   }
 
-function setValueAtPath(obj, path, value){
+  function setValueAtPath(obj, path, value){
     const parts = path.split('.');
     let cursor = obj;
     for (let i = 0; i < parts.length - 1; i++) {
@@ -1520,63 +1567,153 @@ function setValueAtPath(obj, path, value){
     }
     if (!updated.integrations.tmdb || typeof updated.integrations.tmdb !== "object") {
       updated.integrations.tmdb = { apiKey: "" };
-    } else if (typeof updated.integrations.tmdb.apiKey !== "string") {
-      updated.integrations.tmdb.apiKey = "";
     }
-    if (!updated.branding || typeof updated.branding !== "object") {
-      updated.branding = cloneDefaults().branding;
+    updated.integrations.tmdb.apiKey = (updated.integrations.tmdb.apiKey || "").trim();
+    if (updated.features && typeof updated.features === "object") {
+      delete updated.features.videoOverlayPoll;
+      if (Object.keys(updated.features).length === 0) {
+        delete updated.features;
+      }
     }
     if (!updated.typography || typeof updated.typography !== "object") {
       updated.typography = cloneDefaults().typography;
     }
+    const typo = updated.typography || {};
+    typo.preset = normalizeFontId(typo.preset || FONT_DEFAULT_ID);
+    if (typo.preset !== 'custom') {
+      typo.customFamily = '';
+    } else {
+      typo.customFamily = (typo.customFamily || '').trim();
+    }
+    updated.typography = {
+      preset: typo.preset,
+      customFamily: typo.customFamily || ''
+    };
+    if (!updated.branding || typeof updated.branding !== "object") {
+      updated.branding = cloneDefaults().branding;
+    }
+    if (typeof updated.branding.favicon === "string" && !updated.branding.faviconUrl) {
+      updated.branding.faviconUrl = updated.branding.favicon;
+    }
+    updated.branding.favicon = updated.branding.faviconUrl || '';
+    updated.branding.posterUrl = (updated.branding.posterUrl || '').trim();
+    updated.branding.headerName = (updated.branding.headerName || '').trim();
+    updated.version = DEFAULT_CONFIG.version;
     return updated;
   }
 
-  function applyConfigToFields(panel, cfg, modal, options = {}){
-    const mode = options.mode || 'manual';
-    const status = panel.querySelector('#btfw-theme-status');
-    const jsField = ensureField(modal, JS_FIELD_SELECTORS, "chanjs");
-    const cssField = ensureField(modal, CSS_FIELD_SELECTORS, "chancss");
-    if (!jsField || !cssField) {
-      if (status) {
-        status.textContent = "Could not find Channel JS or CSS fields.";
-        status.dataset.variant = "error";
-      }
-      return;
-    }
+  function triggerChannelSubmit(modal, jsField, cssField){
+    const roots = [];
+    if (modal) roots.push(modal);
+    roots.push(document);
 
-    const existingJs = jsField.value || "";
-    const existingCss = cssField.value || "";
+    const selectors = [
+      '#cs-jssubmit',
+      '#cs-csssubmit',
+      "button[name='save-js']",
+      "button[name='save-css']",
+      "button[data-action='save-js']",
+      "button[data-action='save-css']"
+    ];
 
-    const mergedConfig = collectConfig(panel, cfg);
-    const jsBlock = buildConfigBlock(mergedConfig);
-    const cssBlock = buildCssBlock(mergedConfig);
+    const clicked = new Set();
+    selectors.forEach(sel => {
+      roots.forEach(root => {
+        if (!root) return;
+        const el = root.querySelector(sel);
+        if (!el || clicked.has(el) || typeof el.click !== 'function') return;
+        try {
+          el.click();
+          clicked.add(el);
+        } catch (_) {}
+      });
+    });
 
-    const cleanedJs = stripLegacySliderGlobals(existingJs);
-    jsField.value = replaceBlock(cleanedJs, JS_BLOCK_START, JS_BLOCK_END, jsBlock);
-
-    cssField.value = replaceBlock(existingCss, CSS_BLOCK_START, CSS_BLOCK_END, cssBlock);
-
-    ['input', 'change'].forEach(type => {
+    let submitted = clicked.size > 0;
+    const formSet = new Set();
+    if (jsField && jsField.form) formSet.add(jsField.form);
+    if (cssField && cssField.form) formSet.add(cssField.form);
+    formSet.forEach(form => {
+      if (!form) return;
       try {
-        jsField.dispatchEvent(new Event(type, { bubbles: true }));
-      } catch (_) {}
-      try {
-        cssField.dispatchEvent(new Event(type, { bubbles: true }));
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit();
+          submitted = true;
+        } else if (typeof form.submit === 'function') {
+          form.submit();
+          submitted = true;
+        }
       } catch (_) {}
     });
 
-    if (status) {
-      if (mode === 'manual') {
-        status.textContent = "Theme JS & CSS applied. Submitting changes...";
-        status.dataset.variant = "pending";
-      } else if (mode === 'init') {
-        status.textContent = "BillTube theme prepared. Click apply to submit changes.";
-        status.dataset.variant = "idle";
+    return submitted;
+  }
+
+  function extractSliderSettings(jsText){
+    if (!jsText) return {};
+    const settings = {};
+
+    const parsed = parseConfig(jsText);
+    if (parsed && typeof parsed === "object") {
+      const slider = parsed.slider || {};
+      if (typeof slider.enabled === "boolean") {
+        settings.enabled = slider.enabled;
+      } else if (typeof parsed.sliderEnabled === "boolean") {
+        settings.enabled = parsed.sliderEnabled;
+      }
+
+      let rawUrl = slider.feedUrl || slider.url || slider.json || '';
+      if (!rawUrl) {
+        rawUrl = parsed.sliderJson || parsed.sliderJSON || '';
+      }
+      if (typeof rawUrl !== "undefined") {
+        if (typeof rawUrl !== "string") {
+          rawUrl = String(rawUrl);
+        }
+        settings.url = rawUrl.trim();
       }
     }
-    renderPreview(panel, mergedConfig);
-    return { config: mergedConfig, jsField, cssField };
+
+    if (typeof settings.enabled === "undefined" || typeof settings.url === "undefined") {
+      const enabledMatch = jsText.match(/UI_ChannelList\s*=\s*(['"]?)([01])\1/);
+      if (typeof settings.enabled === "undefined" && enabledMatch) {
+        settings.enabled = enabledMatch[2] === '1';
+      }
+      const urlMatch = jsText.match(/Channel_JSON\s*=\s*(['"`])([^'"`]*?)\1/);
+      if (typeof settings.url === "undefined" && urlMatch) {
+        settings.url = urlMatch[2].trim();
+      }
+    }
+
+    return settings;
+  }
+
+  function stripLegacySliderGlobals(jsText){
+    const source = typeof jsText === 'string' ? jsText : '';
+    if (!source) return '';
+
+    const lines = source.split(/\r?\n/);
+    const cleaned = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      if (/^(?:var|let|const)?\s*UI_ChannelList\s*=/.test(trimmed)) continue;
+      if (/^window\.UI_ChannelList\s*=/.test(trimmed)) continue;
+      if (/^(?:var|let|const)?\s*Channel_JSON\s*=/.test(trimmed)) continue;
+      if (/^window\.Channel_JSON\s*=/.test(trimmed)) continue;
+      cleaned.push(line);
+    }
+
+    while (cleaned.length && cleaned[0].trim() === '') {
+      cleaned.shift();
+    }
+    for (let i = cleaned.length - 1; i > 0; i--) {
+      if (cleaned[i].trim() === '' && cleaned[i - 1].trim() === '') {
+        cleaned.splice(i, 1);
+      }
+    }
+
+    return cleaned.join('\n');
   }
 
   function ensureTab(modal){
@@ -1627,6 +1764,53 @@ function setValueAtPath(obj, path, value){
     panelHost.appendChild(panel);
 
     return panel;
+  }
+
+  function applyConfigToFields(panel, cfg, modal, options = {}){
+    const mode = options.mode || 'manual';
+    const status = panel.querySelector('#btfw-theme-status');
+    const jsField = ensureField(modal, JS_FIELD_SELECTORS, "chanjs");
+    const cssField = ensureField(modal, CSS_FIELD_SELECTORS, "chancss");
+    if (!jsField || !cssField) {
+      if (status) {
+        status.textContent = "Could not find Channel JS or CSS fields.";
+        status.dataset.variant = "error";
+      }
+      return;
+    }
+
+    const existingJs = jsField.value || "";
+    const existingCss = cssField.value || "";
+
+    const mergedConfig = collectConfig(panel, cfg);
+    const jsBlock = buildConfigBlock(mergedConfig);
+    const cssBlock = buildCssBlock(mergedConfig);
+
+    const cleanedJs = stripLegacySliderGlobals(existingJs);
+    jsField.value = replaceBlock(cleanedJs, JS_BLOCK_START, JS_BLOCK_END, jsBlock);
+
+    cssField.value = replaceBlock(existingCss, CSS_BLOCK_START, CSS_BLOCK_END, cssBlock);
+
+    ['input', 'change'].forEach(type => {
+      try {
+        jsField.dispatchEvent(new Event(type, { bubbles: true }));
+      } catch (_) {}
+      try {
+        cssField.dispatchEvent(new Event(type, { bubbles: true }));
+      } catch (_) {}
+    });
+
+    if (status) {
+      if (mode === 'manual') {
+        status.textContent = "Theme JS & CSS applied. Submitting changes...";
+        status.dataset.variant = "pending";
+      } else if (mode === 'init') {
+        status.textContent = "BillTube theme prepared. Click apply to submit changes.";
+        status.dataset.variant = "idle";
+      }
+    }
+    renderPreview(panel, mergedConfig);
+    return { config: mergedConfig, jsField, cssField };
   }
 
   function initPanel(modal){
