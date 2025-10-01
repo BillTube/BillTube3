@@ -293,7 +293,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     scripts.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-script-${idx}`, url, "script"));
     pruneRuntimeAssets("btfw-theme-script-", scripts.length);
 
-    const modules = normalizeModuleUrls(Array.isArray(resources.modules) ? resources.modules : []);
+    const moduleCandidates = resources.modules && resources.modules.length
+      ? resources.modules
+      : (resources.moduleUrls || resources.externalModules || theme.modules || theme.moduleUrls || theme.externalModules || []);
+    const modules = normalizeModuleUrls(moduleCandidates);
     modules.forEach((url, idx) => ensureRuntimeAsset(`btfw-theme-module-${idx}`, url, "script"));
     pruneRuntimeAssets("btfw-theme-module-", modules.length);
     theme.resources = theme.resources || {};
@@ -706,17 +709,45 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return target;
   }
 
+  function coerceModuleValue(value){
+    if (typeof value === "string") {
+      return value.trim();
+    }
+    if (!value || typeof value !== "object") return "";
+
+    if (Array.isArray(value)) {
+      if (!value.length) return "";
+      return coerceModuleValue(value[0]);
+    }
+
+    for (const key of ["url", "href", "src", "value"]) {
+      if (typeof value[key] === "string") {
+        return value[key].trim();
+      }
+    }
+
+    return "";
+  }
+
   function normalizeModuleUrls(values){
-    if (!Array.isArray(values)) return [];
+    let list = values;
+    if (typeof list === "string") {
+      list = list.split(/\r?\n|[,\s]+/).filter(Boolean);
+    } else if (!Array.isArray(list) && list && typeof list === "object") {
+      list = Object.values(list);
+    }
+
+    if (!Array.isArray(list)) return [];
+
     const seen = new Set();
-    return values
-      .map(value => typeof value === "string" ? value.trim() : "")
-      .filter(value => {
-        if (!value) return false;
-        if (seen.has(value)) return false;
-        seen.add(value);
-        return true;
-      });
+    const normalized = [];
+    list.forEach(item => {
+      const url = coerceModuleValue(item);
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      normalized.push(url);
+    });
+    return normalized;
   }
 
   function getModuleContainer(panel){
@@ -923,7 +954,15 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     if (!Array.isArray(normalized.resources.scripts)) {
       normalized.resources.scripts = [];
     }
-    normalized.resources.modules = normalizeModuleUrls(normalized.resources.modules || []);
+    const resourceModuleCandidates = (normalized.resources.modules && normalized.resources.modules.length)
+      ? normalized.resources.modules
+      : (normalized.resources.moduleUrls || normalized.resources.externalModules || normalized.moduleUrls || normalized.externalModules || normalized.modules || []);
+    normalized.resources.modules = normalizeModuleUrls(resourceModuleCandidates);
+    delete normalized.resources.moduleUrls;
+    delete normalized.resources.externalModules;
+    delete normalized.moduleUrls;
+    delete normalized.externalModules;
+    delete normalized.modules;
 
     if (!normalized.branding || typeof normalized.branding !== "object") {
       normalized.branding = JSON.parse(JSON.stringify(defaults.branding));
@@ -1451,7 +1490,10 @@ function replaceBlock(original, startMarker, endMarker, block){
       root.classList.add("btfw-poll-overlay-enabled");
       root.classList.remove("btfw-poll-overlay-disabled");
     }
-    const modules = normalizeModuleUrls(cfg?.resources?.modules || []);
+    const moduleCandidates = (cfg?.resources?.modules && cfg.resources.modules.length)
+      ? cfg.resources.modules
+      : (cfg?.resources?.moduleUrls || cfg?.resources?.externalModules || cfg?.modules || cfg?.moduleUrls || cfg?.externalModules || []);
+    const modules = normalizeModuleUrls(moduleCandidates);
     renderModuleInputs(panel, modules);
     ensureModuleFieldAvailability(panel);
     updateTypographyFieldState(panel);
@@ -1493,6 +1535,10 @@ function replaceBlock(original, startMarker, endMarker, block){
       updated.resources = cloneDefaults().resources;
     }
     updated.resources.modules = normalizeModuleUrls(readModuleValues(panel));
+    delete updated.resources.moduleUrls;
+    delete updated.resources.externalModules;
+    delete updated.moduleUrls;
+    delete updated.externalModules;
     if (!updated.slider || typeof updated.slider !== "object") {
       updated.slider = cloneDefaults().slider;
     }
@@ -1805,11 +1851,15 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (!Array.isArray(cfg.resources.scripts)) {
       cfg.resources.scripts = [];
     }
-    if (!Array.isArray(cfg.resources.modules)) {
-      cfg.resources.modules = [];
-    } else {
-      cfg.resources.modules = normalizeModuleUrls(cfg.resources.modules);
-    }
+    const resourceModules = (cfg.resources.modules && cfg.resources.modules.length)
+      ? cfg.resources.modules
+      : (cfg.resources.moduleUrls || cfg.resources.externalModules || cfg.moduleUrls || cfg.externalModules || cfg.modules || []);
+    cfg.resources.modules = normalizeModuleUrls(resourceModules);
+    delete cfg.resources.moduleUrls;
+    delete cfg.resources.externalModules;
+    delete cfg.moduleUrls;
+    delete cfg.externalModules;
+    delete cfg.modules;
 
     const sliderState = extractSliderSettings(jsField?.value || "");
     if (typeof sliderState.enabled === "boolean") {
