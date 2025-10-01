@@ -755,8 +755,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return panel.querySelector(MODULE_INPUT_SELECTOR);
   }
 
-  function appendModuleInput(container, index, value){
-    if (!container) return null;
+  function createModuleInput(index, value){
     const wrapper = document.createElement("div");
     wrapper.className = "module-input__row";
     const input = document.createElement("input");
@@ -768,6 +767,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     input.dataset.role = "module-input";
     input.value = value || "";
     wrapper.appendChild(input);
+    return { wrapper, input };
+  }
+
+  function appendModuleInput(container, index, value){
+    if (!container) return null;
+    const { wrapper, input } = createModuleInput(index, value);
     container.appendChild(wrapper);
     return input;
   }
@@ -777,18 +782,28 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     if (!container) return;
     const normalized = normalizeModuleUrls(values);
     const limited = normalized.slice(0, MODULE_FIELD_MAX);
-    container.innerHTML = "";
+    const rows = [];
     limited.forEach((value, index) => {
-      appendModuleInput(container, index, value);
+      const { wrapper } = createModuleInput(index, value);
+      rows.push(wrapper);
     });
     let count = limited.length;
     while (count < MODULE_FIELD_MIN && count < MODULE_FIELD_MAX) {
-      appendModuleInput(container, count, "");
+      const { wrapper } = createModuleInput(count, "");
+      rows.push(wrapper);
       count++;
     }
     const canExtend = count < MODULE_FIELD_MAX && normalized.length === limited.length;
     if (canExtend && count === limited.length) {
-      appendModuleInput(container, count, "");
+      const { wrapper } = createModuleInput(count, "");
+      rows.push(wrapper);
+    }
+
+    if (typeof container.replaceChildren === "function") {
+      container.replaceChildren(...rows);
+    } else {
+      container.innerHTML = "";
+      rows.forEach(row => container.appendChild(row));
     }
   }
 
