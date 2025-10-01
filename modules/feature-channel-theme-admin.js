@@ -878,9 +878,9 @@ function bindModuleFieldWatcher(panel, onChange){
     return;
   }
   
-  // Check if already bound using a more reliable method
+  // Check if already bound - use a property instead of dataset to be more reliable
   if (container._btfwModuleHandlerBound) {
-    return; // Already bound
+    return; // Already bound, skip
   }
   
   const handler = (event) => {
@@ -890,7 +890,7 @@ function bindModuleFieldWatcher(panel, onChange){
       setTimeout(() => {
         ensureModuleFieldAvailability(panel);
         if (typeof onChange === "function") onChange();
-      }, 0);
+      }, 10);
     }
   };
   
@@ -898,13 +898,12 @@ function bindModuleFieldWatcher(panel, onChange){
   container.addEventListener('input', handler);
   container.addEventListener('change', handler);
   
-  // Mark as bound using a property that won't be cleared by innerHTML
+  // Mark as bound using a property that survives DOM manipulation
   container._btfwModuleHandlerBound = true;
   container.dataset.btfwModuleWatcher = "1";
+  
+  console.log('[theme-admin] Module field watcher bound successfully');
 }
-setTimeout(() => {
-  ensureModuleFieldAvailability(panel);
-}, 100);
   
   function readModuleValues(panel){
     const container = getModuleContainer(panel);
@@ -1928,7 +1927,15 @@ function replaceBlock(original, startMarker, endMarker, block){
     };
 
     watchInputs(panel, cfg, markDirty);
-
+setTimeout(() => {
+  const container = getModuleContainer(panel);
+  if (container) {
+    console.log('[theme-admin] Module container found, initializing fields');
+    ensureModuleFieldAvailability(panel);
+  } else {
+    console.error('[theme-admin] Module container NOT found after panel init');
+  }
+}, 100);
     const applyBtn = panel.querySelector('#btfw-theme-apply');
     if (applyBtn) {
       applyBtn.addEventListener('click', () => {
