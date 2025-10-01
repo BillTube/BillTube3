@@ -842,67 +842,54 @@ function getModuleContainer(panel){
     }
   }
 
-  function ensureModuleFieldAvailability(panel){
-    const container = getModuleContainer(panel);
-    if (!container) return;
-    container.querySelectorAll('.module-input__row').forEach(row => {
-      if (!row.querySelector('input[data-role="module-input"]')) {
-        row.remove();
-      }
-    });
-    let inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
-    if (!inputs.length) {
-      renderModuleInputs(panel, []);
-      inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
+  function function ensureModuleFieldAvailability(panel, skipTrim){
+  const container = getModuleContainer(panel);
+  if (!container) return;
+  
+  // Clean up orphaned rows
+  container.querySelectorAll('.module-input__row').forEach(row => {
+    if (!row.querySelector('input[data-role="module-input"]')) {
+      row.remove();
     }
-    if (inputs.length < MODULE_FIELD_MIN) {
-      let index = inputs.length;
-      while (index < MODULE_FIELD_MIN && index < MODULE_FIELD_MAX) {
-        appendModuleInput(container, index, "");
-        index++;
-      }
-      inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
+  });
+  
+  let inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
+  
+  // If no inputs exist, render the minimum
+  if (!inputs.length) {
+    renderModuleInputs(panel, []);
+    inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
+  }
+  
+  // Ensure minimum number of fields
+  if (inputs.length < MODULE_FIELD_MIN) {
+    let index = inputs.length;
+    while (index < MODULE_FIELD_MIN && index < MODULE_FIELD_MAX) {
+      appendModuleInput(container, index, "");
+      index++;
     }
-    const hasEmpty = inputs.some(input => !input.value.trim());
-    if (!hasEmpty && inputs.length < MODULE_FIELD_MAX) {
-      appendModuleInput(container, inputs.length, "");
-      inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
-    }
+    inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
+  }
+  
+  // Add a new empty field if all are filled
+  const hasEmpty = inputs.some(input => !input.value.trim());
+  if (!hasEmpty && inputs.length < MODULE_FIELD_MAX) {
+    appendModuleInput(container, inputs.length, "");
+    inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
+  }
+  
+  // CRITICAL FIX: Only trim if not skipping (skip during initialization)
+  if (!skipTrim) {
     trimModuleInputs(panel);
   }
-
-function bindModuleFieldWatcher(panel, onChange){
-  const container = getModuleContainer(panel);
-  if (!container) {
-    console.warn('[theme-admin] Module container not found for binding');
-    return;
-  }
+}
   
-  // Check if already bound - use a property instead of dataset to be more reliable
-  if (container._btfwModuleHandlerBound) {
-    return; // Already bound, skip
-  }
-  
-  const handler = (event) => {
-    // Only respond to events from module inputs
-    if (event?.target?.dataset?.role === 'module-input') {
-      // Small delay to ensure input value is updated
-      setTimeout(() => {
-        ensureModuleFieldAvailability(panel);
-        if (typeof onChange === "function") onChange();
-      }, 10);
-    }
-  };
-  
-  // Use event delegation on the container
   container.addEventListener('input', handler);
   container.addEventListener('change', handler);
   
-  // Mark as bound using a property that survives DOM manipulation
   container._btfwModuleHandlerBound = true;
   container.dataset.btfwModuleWatcher = "1";
   
-  console.log('[theme-admin] Module field watcher bound successfully');
 }
   
   function readModuleValues(panel){
@@ -1503,39 +1490,53 @@ function replaceBlock(original, startMarker, endMarker, block){
   }
 
   function updateInputs(panel, cfg){
-    $$('[data-btfw-bind]', panel).forEach(input => {
-      const path = input.dataset.btfwBind;
-      let value = cfg;
-      path.split('.').forEach(part => { if (value) value = value[part]; });
-      if (input.type === "checkbox") {
-        input.checked = Boolean(value);
-      } else if (input.tagName === "TEXTAREA") {
-        if (Array.isArray(value)) {
-          input.value = value.join('\n');
-        } else {
-          input.value = value || "";
-        }
-      } else if (input.type === "color") {
-        input.value = value || "#000000";
+  $$('[data-btfw-bind]', panel).forEach(input => {
+    const path = input.dataset.btfwBind;
+    let value = cfg;
+    path.split('.').forEach(part => { if (value) value = value[part]; });
+    if (input.type === "checkbox") {
+      input.checked = Boolean(value);
+    } else if (input.tagName === "TEXTAREA") {
+      if (Array.isArray(value)) {
+        input.value = value.join('\n');
       } else {
-        input.value = value ?? "";
+        input.value = value || "";
       }
-    });
-    const root = document.documentElement;
-    if (root) {
-      root.classList.add("btfw-poll-overlay-enabled");
-      root.classList.remove("btfw-poll-overlay-disabled");
+    } else if (input.type === "color") {
+      input.value = value || "#000000";
+    } else {
+      input.value = value ?? "";
     }
-    const moduleCandidates = (cfg?.resources?.modules && cfg.resources.modules.length)
-      ? cfg.resources.modules
-      : (cfg?.resources?.moduleUrls || cfg?.resources?.externalModules || cfg?.modules || cfg?.moduleUrls || cfg?.externalModules || []);
-    const modules = normalizeModuleUrls(moduleCandidates);
-    renderModuleInputs(panel, modules);
-    ensureModuleFieldAvailability(panel);
-    updateTypographyFieldState(panel);
-    updateSliderFieldState(panel);
-    renderPreview(panel, cfg);
+  });
+  
+  const root = document.documentElement;
+  if (root) {
+    root.classList.add("btfw-poll-overlay-enabled");
+    root.classList.remove("btfw-poll-overlay-disabled");
   }
+  
+  const moduleCandidates = (cfg?.resources?.modules && cfg.resources.modules.length)
+    ? cfg.resources.modules
+    : (cfg?.resources?.moduleUrls || cfg?.resources?.externalModules || cfg?.modules || cfg?.moduleUrls || cfg?.externalModules || []);
+  const modules = normalizeModuleUrls(moduleCandidates);
+  
+  console.log('[theme-admin] updateInputs rendering modules:', modules);
+  
+  renderModuleInputs(panel, modules);
+  
+  ensureModuleFieldAvailability(panel, true);
+  
+  updateTypographyFieldState(panel);
+  updateSliderFieldState(panel);
+  renderPreview(panel, cfg);
+}
+
+
+watchInputs(panel, cfg, markDirty);
+
+// Don't call ensureModuleFieldAvailability here anymore since
+// updateInputs already calls it with the skipTrim flag
+console.log('[theme-admin] Panel initialized with', cfg.resources?.modules?.length || 0, 'modules');
 
   function setValueAtPath(obj, path, value){
     const parts = path.split('.');
