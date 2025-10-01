@@ -95,7 +95,6 @@
   display: inline-flex;
 }
 
-/* Scrollable messages - this should take all remaining space */
 #messagebuffer{
   flex: 1 1 auto;
   overflow: auto;
@@ -268,6 +267,8 @@
   box-shadow: 0 1px 4px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
 }
 #messagebuffer .btfw-chat-avatar + .username{ vertical-align: middle; }
+
+.chat-msg-\$server\$ { background: rgba(255, 255, 255, 0.07); border-radius: 1000px; color: hsla(305, 13%, 34%, 0.84); font-size: 8pt; font-style: italic; height: 10px; line-height: 12px; margin: 0px auto; overflow: hidden; padding: 5px 10px; position: relative; transition: bottom 0.5s cubic-bezier(0.42, 0.0, 0.58, 1.0); width: 0; }
 
 /* Emote size inside chat messages */
 #messagebuffer img.emoji,
@@ -636,8 +637,7 @@
 
 #chatwrap.btfw-avatars-off  .btfw-chat-avatar { display: none !important; }
 #chatwrap.btfw-avatars-off  .btfw-chat-avatarwrap { display: none !important; }
-#chatwrap.btfw-avatars-small .btfw-chat-avatar { width: 28px; height: 28px; border-radius: 8px; }
-#chatwrap.btfw-avatars-big   .btfw-chat-avatar { width: 40px; height: 40px; border-radius: 10px; }
+
 
 /* Inline emoji images sized like text */
 img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
@@ -721,7 +721,7 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 #messagebuffer .btfw-chat-avatar {
   width: var(--btfw-avatar-size);
   height: var(--btfw-avatar-size);
-  border-radius: 6px;
+  border-radius: 10px;
   object-fit: cover;
   display: block;
 }
@@ -923,5 +923,6 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
     0%, 100% { text-shadow: 0 0 10px #922fff, 0 0 20px #922fff, 0 0 30px #922fff; }
     50% { text-shadow: 0 0 5px #922fff, 0 0 10px #922fff, 0 0 15px #922fff; }
 }
+
 
 
