@@ -1469,12 +1469,12 @@ function injectLocalStyles(){
     renderPreview(panel, cfg);
   }
 
-  function setValueAtPath(obj, path, value){
+function setValueAtPath(obj, path, value){
     const parts = path.split('.');
     let cursor = obj;
     for (let i = 0; i < parts.length - 1; i++) {
       const key = parts[i];
-    if (!cursor[key] || typeof cursor[key] !== "object") cursor[key] = {};
+      if (!cursor[key] || typeof cursor[key] !== "object") cursor[key] = {};
       cursor = cursor[key];
     }
     cursor[parts[parts.length - 1]] = value;
