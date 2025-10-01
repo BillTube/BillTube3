@@ -632,7 +632,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     });
     return target;
   }
-  // ============================================================================
+// ============================================================================
 // SIMPLE FIX: Just replace these 3 functions in your existing file
 // Search for each function name and replace it entirely
 // ============================================================================
@@ -744,6 +744,36 @@ function updateInputs(panel, cfg){
     root.classList.remove("btfw-poll-overlay-disabled");
   }
   
+// FUNCTION 3: Replace updateInputs - COMPLETE VERSION
+// Search for: function updateInputs(panel, cfg){
+// Replace entire function with:
+
+function updateInputs(panel, cfg){
+  $('[data-btfw-bind]', panel).forEach(input => {
+    const path = input.dataset.btfwBind;
+    let value = cfg;
+    path.split('.').forEach(part => { if (value) value = value[part]; });
+    if (input.type === "checkbox") {
+      input.checked = Boolean(value);
+    } else if (input.tagName === "TEXTAREA") {
+      if (Array.isArray(value)) {
+        input.value = value.join('\n');
+      } else {
+        input.value = value || "";
+      }
+    } else if (input.type === "color") {
+      input.value = value || "#000000";
+    } else {
+      input.value = value ?? "";
+    }
+  });
+  
+  const root = document.documentElement;
+  if (root) {
+    root.classList.add("btfw-poll-overlay-enabled");
+    root.classList.remove("btfw-poll-overlay-disabled");
+  }
+  
   const moduleCandidates = (cfg?.resources?.modules && cfg.resources.modules.length)
     ? cfg.resources.modules
     : (cfg?.resources?.moduleUrls || cfg?.resources?.externalModules || cfg?.modules || cfg?.moduleUrls || cfg?.externalModules || []);
@@ -753,6 +783,7 @@ function updateInputs(panel, cfg){
   
   renderModuleInputs(panel, modules);
   
+  // CRITICAL FIX: Pass skipTrim=true to prevent trimming saved values during load
   ensureModuleFieldAvailability(panel, true);
   
   updateTypographyFieldState(panel);
