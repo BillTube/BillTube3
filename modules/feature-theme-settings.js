@@ -388,31 +388,80 @@ BTFW.define("feature:themeSettings", [], async () => {
     pane._btfwDecorated = true;
     pane.classList.add("btfw-useroptions-pane");
     
-    // Hide specific CyTube controls without destroying them
-    // This preserves the DOM elements and their functionality
-    const themeRow = pane.querySelector('.form-group:has(#us-theme), .form-group:has(select[name="theme"])');
-    if (themeRow) {
-      themeRow.style.display = 'none';
-    }
+    // Hide the "General Preferences" header
+    const headers = Array.from(pane.querySelectorAll('h3, h4, .section-header, legend'));
+    headers.forEach(header => {
+      const text = header.textContent.toLowerCase();
+      if (text.includes('general preferences')) {
+        header.style.display = 'none';
+      }
+    });
     
-    const layoutRow = pane.querySelector('.form-group:has(#us-layout), .form-group:has(select[name="layout"])');
-    if (layoutRow) {
-      layoutRow.style.display = 'none';
-    }
+    // Hide the disclaimer text about layouts
+    const paragraphs = Array.from(pane.querySelectorAll('p, .help-block, .text-muted'));
+    paragraphs.forEach(p => {
+      const text = p.textContent.toLowerCase();
+      if (text.includes('changing layouts') || text.includes('require refreshing')) {
+        p.style.display = 'none';
+      }
+    });
     
-    // Alternative: if the above selectors don't work, try finding by label text
-    const labels = Array.from(pane.querySelectorAll('label'));
-    labels.forEach(label => {
-      const text = label.textContent.toLowerCase();
-      if (text.includes('theme') || text.includes('layout')) {
-        const formGroup = label.closest('.form-group, .control-group, div');
+        const controlsById = [
+      '#us-theme',
+      '#us-layout', 
+      '#us-no-channelcss',
+      '#us-no-channeljs'
+    ];
+    
+    controlsById.forEach(id => {
+      const element = pane.querySelector(id);
+      if (element) {
+        const formGroup = element.closest('.form-group, .control-group, .checkbox, label, div');
         if (formGroup) {
           formGroup.style.display = 'none';
         }
       }
     });
     
-    // Add your custom info section
+    const labels = Array.from(pane.querySelectorAll('label'));
+    labels.forEach(label => {
+      const text = label.textContent.toLowerCase();
+      if (text.includes('theme') || 
+          text.includes('layout') || 
+          text.includes('ignore channel css') || 
+          text.includes('ignore channel javascript')) {
+        // Hide the label itself
+        label.style.display = 'none';
+        
+        const formGroup = label.closest('.form-group, .control-group, .checkbox, div');
+        if (formGroup) {
+          formGroup.style.display = 'none';
+        }
+      }
+    });
+    
+    const checkboxes = Array.from(pane.querySelectorAll('input[type="checkbox"]'));
+    checkboxes.forEach(checkbox => {
+      const name = checkbox.name || checkbox.id || '';
+      if (name.includes('channelcss') || name.includes('channeljs')) {
+        const container = checkbox.closest('.form-group, .control-group, .checkbox, label, div');
+        if (container) {
+          container.style.display = 'none';
+        }
+      }
+    });
+    
+    const selects = Array.from(pane.querySelectorAll('select'));
+    selects.forEach(select => {
+      const name = select.name || select.id || '';
+      if (name.includes('theme') || name.includes('layout')) {
+        const container = select.closest('.form-group, .control-group, div');
+        if (container) {
+          container.style.display = 'none';
+        }
+      }
+    });
+    
     const customSection = document.createElement('div');
     customSection.className = 'btfw-useroptions-about';
     customSection.innerHTML = `
