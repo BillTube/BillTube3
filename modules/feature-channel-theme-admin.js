@@ -866,22 +866,36 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
   function bindModuleFieldWatcher(panel, onChange){
     const container = getModuleContainer(panel);
-    if (!container || container.dataset.btfwModuleWatcher === "1") return;
-    const handler = () => {
-      ensureModuleFieldAvailability(panel);
-      if (typeof onChange === "function") onChange();
+    if (!container) {
+      console.warn('[theme-admin] Module container not found for binding');
+      return;
+    }
+
+    // Check if already bound - use a property instead of dataset to be more reliable
+    if (container._btfwModuleHandlerBound) {
+      return; // Already bound, skip
+    }
+
+    const handler = (event) => {
+      // Only respond to events from module inputs
+      if (event?.target?.dataset?.role === 'module-input') {
+        // Small delay to ensure input value is updated
+        setTimeout(() => {
+          ensureModuleFieldAvailability(panel);
+          if (typeof onChange === "function") onChange();
+        }, 10);
+      }
     };
-    container.addEventListener('input', event => {
-      if (event?.target?.dataset?.role === 'module-input') {
-        handler();
-      }
-    });
-    container.addEventListener('change', event => {
-      if (event?.target?.dataset?.role === 'module-input') {
-        handler();
-      }
-    });
+
+    // Use event delegation on the container
+    container.addEventListener('input', handler);
+    container.addEventListener('change', handler);
+
+    // Mark as bound using a property that survives DOM manipulation
+    container._btfwModuleHandlerBound = true;
     container.dataset.btfwModuleWatcher = "1";
+
+    console.log('[theme-admin] Module field watcher bound successfully');
   }
 
   function readModuleValues(panel){
@@ -984,6 +998,18 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
     if (typeof normalized.branding.favicon === "string" && !normalized.branding.faviconUrl) {
       normalized.branding.faviconUrl = normalized.branding.favicon;
+    }
+    if (typeof normalized.headerName === "string" && !normalized.branding.headerName) {
+      normalized.branding.headerName = normalized.headerName;
+    }
+    if (typeof normalized.branding.header === "string" && !normalized.branding.headerName) {
+      normalized.branding.headerName = normalized.branding.header;
+    }
+    if (typeof normalized.faviconUrl === "string" && !normalized.branding.faviconUrl) {
+      normalized.branding.faviconUrl = normalized.faviconUrl;
+    }
+    if (typeof normalized.posterUrl === "string" && !normalized.branding.posterUrl) {
+      normalized.branding.posterUrl = normalized.posterUrl;
     }
     if (typeof normalized.branding.posterUrl !== "string") {
       normalized.branding.posterUrl = "";
@@ -1578,6 +1604,21 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (!updated.typography || typeof updated.typography !== "object") {
       updated.typography = cloneDefaults().typography;
     }
+    if (!updated.branding || typeof updated.branding !== "object") {
+      updated.branding = cloneDefaults().branding;
+    }
+    if (typeof updated.branding.headerName !== "string") {
+      updated.branding.headerName = "";
+    }
+    if (typeof updated.branding.faviconUrl !== "string") {
+      updated.branding.faviconUrl = "";
+    }
+    if (typeof updated.branding.posterUrl !== "string") {
+      updated.branding.posterUrl = "";
+    }
+    updated.headerName = updated.branding.headerName;
+    updated.faviconUrl = updated.branding.faviconUrl;
+    updated.posterUrl = updated.branding.posterUrl;
     const typo = updated.typography || {};
     typo.preset = normalizeFontId(typo.preset || FONT_DEFAULT_ID);
     if (typo.preset !== 'custom') {
@@ -1853,6 +1894,18 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (typeof cfg.branding.favicon === "string" && !cfg.branding.faviconUrl) {
       cfg.branding.faviconUrl = cfg.branding.favicon;
     }
+    if (typeof cfg.headerName === "string" && !cfg.branding.headerName) {
+      cfg.branding.headerName = cfg.headerName;
+    }
+    if (typeof cfg.branding.header === "string" && !cfg.branding.headerName) {
+      cfg.branding.headerName = cfg.branding.header;
+    }
+    if (typeof cfg.faviconUrl === "string" && !cfg.branding.faviconUrl) {
+      cfg.branding.faviconUrl = cfg.faviconUrl;
+    }
+    if (typeof cfg.posterUrl === "string" && !cfg.branding.posterUrl) {
+      cfg.branding.posterUrl = cfg.posterUrl;
+    }
     if (typeof cfg.branding.posterUrl !== "string") {
       cfg.branding.posterUrl = '';
     }
@@ -1906,6 +1959,17 @@ function replaceBlock(original, startMarker, endMarker, block){
     };
 
     watchInputs(panel, cfg, markDirty);
+
+    // CRITICAL FIX: Ensure module fields are initialized after binding
+    setTimeout(() => {
+      const container = getModuleContainer(panel);
+      if (container) {
+        console.log('[theme-admin] Module container found, initializing fields');
+        ensureModuleFieldAvailability(panel);
+      } else {
+        console.error('[theme-admin] Module container NOT found after panel init');
+      }
+    }, 100);
 
     const applyBtn = panel.querySelector('#btfw-theme-apply');
     if (applyBtn) {
