@@ -866,22 +866,36 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
   function bindModuleFieldWatcher(panel, onChange){
     const container = getModuleContainer(panel);
-    if (!container || container.dataset.btfwModuleWatcher === "1") return;
-    const handler = () => {
-      ensureModuleFieldAvailability(panel);
-      if (typeof onChange === "function") onChange();
+    if (!container) {
+      console.warn('[theme-admin] Module container not found for binding');
+      return;
+    }
+
+    // Check if already bound - use a property instead of dataset to be more reliable
+    if (container._btfwModuleHandlerBound) {
+      return; // Already bound, skip
+    }
+
+    const handler = (event) => {
+      // Only respond to events from module inputs
+      if (event?.target?.dataset?.role === 'module-input') {
+        // Small delay to ensure input value is updated
+        setTimeout(() => {
+          ensureModuleFieldAvailability(panel);
+          if (typeof onChange === "function") onChange();
+        }, 10);
+      }
     };
-    container.addEventListener('input', event => {
-      if (event?.target?.dataset?.role === 'module-input') {
-        handler();
-      }
-    });
-    container.addEventListener('change', event => {
-      if (event?.target?.dataset?.role === 'module-input') {
-        handler();
-      }
-    });
+
+    // Use event delegation on the container
+    container.addEventListener('input', handler);
+    container.addEventListener('change', handler);
+
+    // Mark as bound using a property that survives DOM manipulation
+    container._btfwModuleHandlerBound = true;
     container.dataset.btfwModuleWatcher = "1";
+
+    console.log('[theme-admin] Module field watcher bound successfully');
   }
 
   function readModuleValues(panel){
@@ -1906,6 +1920,17 @@ function replaceBlock(original, startMarker, endMarker, block){
     };
 
     watchInputs(panel, cfg, markDirty);
+
+    // CRITICAL FIX: Ensure module fields are initialized after binding
+    setTimeout(() => {
+      const container = getModuleContainer(panel);
+      if (container) {
+        console.log('[theme-admin] Module container found, initializing fields');
+        ensureModuleFieldAvailability(panel);
+      } else {
+        console.error('[theme-admin] Module container NOT found after panel init');
+      }
+    }, 100);
 
     const applyBtn = panel.querySelector('#btfw-theme-apply');
     if (applyBtn) {
