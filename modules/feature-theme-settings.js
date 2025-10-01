@@ -381,33 +381,61 @@ BTFW.define("feature:themeSettings", [], async () => {
     });
   }
 
-  function decorateUserOptions(modal = document.getElementById("useroptions")){
-    if (!modal) return;
-    const pane = modal.querySelector("#us-general");
-    if (pane && !pane._btfwDecorated) {
-      pane._btfwDecorated = true;
-      pane.classList.add("btfw-useroptions-pane");
-      pane.innerHTML = `
-        <div class="btfw-useroptions-about">
-          <div class="btfw-useroptions-hero">
-            <span class="btfw-useroptions-badge">BillTube3</span>
-            <h4>Made by Bill</h4>
-            <p>BillTube3 keeps the entire channel aligned with a unified visual language. Manual theme or layout overrides are disabled to protect the curated experience.</p>
-          </div>
-          <div class="btfw-useroptions-panels">
-            <article class="btfw-useroptions-panel">
-              <h5>Unified look</h5>
-              <p>Every viewer sees the same polished interface, playlists, and chat styling that Bill prepared for the community.</p>
-            </article>
-            <article class="btfw-useroptions-panel">
-              <h5>Need a tweak?</h5>
-              <p>Share feedback in chat or ping Bill directly. Adjustments roll out globally after testing in the Channel Theme Toolkit.</p>
-            </article>
-          </div>
-        </div>
-      `;
+ function decorateUserOptions(modal = document.getElementById("useroptions")){
+  if (!modal) return;
+  const pane = modal.querySelector("#us-general");
+  if (pane && !pane._btfwDecorated) {
+    pane._btfwDecorated = true;
+    pane.classList.add("btfw-useroptions-pane");
+    
+    // Hide specific CyTube controls without destroying them
+    // This preserves the DOM elements and their functionality
+    const themeRow = pane.querySelector('.form-group:has(#us-theme), .form-group:has(select[name="theme"])');
+    if (themeRow) {
+      themeRow.style.display = 'none';
     }
+    
+    const layoutRow = pane.querySelector('.form-group:has(#us-layout), .form-group:has(select[name="layout"])');
+    if (layoutRow) {
+      layoutRow.style.display = 'none';
+    }
+    
+    // Alternative: if the above selectors don't work, try finding by label text
+    const labels = Array.from(pane.querySelectorAll('label'));
+    labels.forEach(label => {
+      const text = label.textContent.toLowerCase();
+      if (text.includes('theme') || text.includes('layout')) {
+        const formGroup = label.closest('.form-group, .control-group, div');
+        if (formGroup) {
+          formGroup.style.display = 'none';
+        }
+      }
+    });
+    
+    // Add your custom info section
+    const customSection = document.createElement('div');
+    customSection.className = 'btfw-useroptions-about';
+    customSection.innerHTML = `
+      <div class="btfw-useroptions-hero">
+        <span class="btfw-useroptions-badge">BillTube3</span>
+        <h4>Made by Bill</h4>
+        <p>BillTube3 keeps the entire channel aligned with a unified visual language. Theme and layout settings are managed by the channel to ensure a consistent experience.</p>
+      </div>
+      <div class="btfw-useroptions-panels">
+        <article class="btfw-useroptions-panel">
+          <h5>New features!</h5>
+          <p>Native mobile theme, dynamic chromecast support, Tenor and Giphy for more emote variety.</p>
+        </article>
+        <article class="btfw-useroptions-panel">
+          <h5>Need a tweak?</h5>
+          <p>Share feedback in chat or ping Bill directly on Discord. Adjustments roll out globally after testing in the Channel Theme Toolkit.</p>
+        </article>
+      </div>
+    `;
+    
+    pane.insertBefore(customSection, pane.firstChild);
   }
+}
 
   let userOptionsBound = false;
   function bindUserOptions(){
