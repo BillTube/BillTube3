@@ -1082,19 +1082,23 @@ function replaceBlock(original, startMarker, endMarker, block){
   }
 
   function renderPreview(panel, cfg){
-    const preview = panel.querySelector(".preview");
-    if (!preview) return;
     const colors = cfg.colors || {};
     const typography = applyLiveTypographyAssets(cfg.typography || {});
-    preview.style.setProperty("--bg", colors.background || "#05060d");
-    preview.style.setProperty("--surface", colors.surface || colors.panel || "#0b111d");
-    preview.style.setProperty("--panel", colors.panel || "#141f36");
-    preview.style.setProperty("--accent", colors.accent || "#6d4df6");
-    preview.style.background = `linear-gradient(160deg, ${colors.background || "#05060d"}, ${colors.surface || colors.panel || "#0b111d"})`;
+
+    const preview = panel.querySelector(".preview");
+    if (preview) {
+      preview.style.setProperty("--bg", colors.background || "#05060d");
+      preview.style.setProperty("--surface", colors.surface || colors.panel || "#0b111d");
+      preview.style.setProperty("--panel", colors.panel || "#141f36");
+      preview.style.setProperty("--accent", colors.accent || "#6d4df6");
+      preview.style.background = `linear-gradient(160deg, ${colors.background || "#05060d"}, ${colors.surface || colors.panel || "#0b111d"})`;
+    }
+
     const accent = panel.querySelector(".preview__accent");
     if (accent) {
       accent.style.background = colors.accent || "#6d4df6";
     }
+
     const chips = panel.querySelectorAll(".preview__chip");
     chips.forEach(chip => {
       const key = chip.dataset.key;
