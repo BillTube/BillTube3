@@ -1976,9 +1976,16 @@ function replaceBlock(original, startMarker, endMarker, block){
       cfg.sliderJson = sliderState.url || "";
     }
 
-    let initializing = true;
-    updateInputs(panel, cfg);
-    initializing = false;
+let initializing = true;
+updateInputs(panel, cfg);
+initializing = false;
+
+setTimeout(() => {
+  const modules = normalizeModuleUrls(collectModuleCandidates(cfg));
+  renderModuleInputs(panel, modules);
+  ensureModuleFieldAvailability(panel);
+  console.log('[theme-admin] Module fields populated with:', modules);
+}, 50);
 
     let dirty = false;
     const status = panel.querySelector('#btfw-theme-status');
