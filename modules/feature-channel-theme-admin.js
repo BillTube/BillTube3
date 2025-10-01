@@ -764,6 +764,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   function trimModuleInputs(panel){
     const container = getModuleContainer(panel);
     if (!container) return;
+    container.querySelectorAll('.module-input__row').forEach(row => {
+      if (!row.querySelector('input[data-role="module-input"]')) {
+        row.remove();
+      }
+    });
     let inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
     while (inputs.length > MODULE_FIELD_MIN) {
       const last = inputs[inputs.length - 1];
@@ -787,6 +792,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   function ensureModuleFieldAvailability(panel){
     const container = getModuleContainer(panel);
     if (!container) return;
+    container.querySelectorAll('.module-input__row').forEach(row => {
+      if (!row.querySelector('input[data-role="module-input"]')) {
+        row.remove();
+      }
+    });
     let inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
     if (!inputs.length) {
       renderModuleInputs(panel, []);
@@ -1184,7 +1194,17 @@ function replaceBlock(original, startMarker, endMarker, block){
             </div>
             <div class="field">
               <label for="btfw-theme-module-0">Additional module URLs</label>
-              <div class="module-inputs" data-role="module-inputs"></div>
+              <div class="module-inputs" data-role="module-inputs">
+                <div class="module-input__row">
+                  <input type="url" id="btfw-theme-module-0" name="btfw-theme-module-0" class="module-input__control" placeholder="https://example.com/module.js" data-role="module-input">
+                </div>
+                <div class="module-input__row">
+                  <input type="url" id="btfw-theme-module-1" name="btfw-theme-module-1" class="module-input__control" placeholder="https://example.com/module.js" data-role="module-input">
+                </div>
+                <div class="module-input__row">
+                  <input type="url" id="btfw-theme-module-2" name="btfw-theme-module-2" class="module-input__control" placeholder="https://example.com/module.js" data-role="module-input">
+                </div>
+              </div>
               <p class="help">Load up to 10 extra BillTube modules by URL. A new field appears once you fill the last one.</p>
             </div>
           </div>
