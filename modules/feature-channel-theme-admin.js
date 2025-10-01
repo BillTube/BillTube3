@@ -750,10 +750,17 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return normalized;
   }
 
-  function getModuleContainer(panel){
-    if (!panel) return null;
-    return panel.querySelector(MODULE_INPUT_SELECTOR);
+function getModuleContainer(panel){
+  if (!panel) {
+    console.warn('[theme-admin] Panel is null in getModuleContainer');
+    return null;
   }
+  const container = panel.querySelector(MODULE_INPUT_SELECTOR);
+  if (!container) {
+    console.warn('[theme-admin] Module container not found with selector:', MODULE_INPUT_SELECTOR);
+  }
+  return container;
+}
 
   function createModuleInput(index, value){
     const wrapper = document.createElement("div");
@@ -864,26 +871,41 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     trimModuleInputs(panel);
   }
 
-  function bindModuleFieldWatcher(panel, onChange){
-    const container = getModuleContainer(panel);
-    if (!container || container.dataset.btfwModuleWatcher === "1") return;
-    const handler = () => {
-      ensureModuleFieldAvailability(panel);
-      if (typeof onChange === "function") onChange();
-    };
-    container.addEventListener('input', event => {
-      if (event?.target?.dataset?.role === 'module-input') {
-        handler();
-      }
-    });
-    container.addEventListener('change', event => {
-      if (event?.target?.dataset?.role === 'module-input') {
-        handler();
-      }
-    });
-    container.dataset.btfwModuleWatcher = "1";
+function bindModuleFieldWatcher(panel, onChange){
+  const container = getModuleContainer(panel);
+  if (!container) {
+    console.warn('[theme-admin] Module container not found for binding');
+    return;
   }
-
+  
+  // Check if already bound using a more reliable method
+  if (container._btfwModuleHandlerBound) {
+    return; // Already bound
+  }
+  
+  const handler = (event) => {
+    // Only respond to events from module inputs
+    if (event?.target?.dataset?.role === 'module-input') {
+      // Small delay to ensure input value is updated
+      setTimeout(() => {
+        ensureModuleFieldAvailability(panel);
+        if (typeof onChange === "function") onChange();
+      }, 0);
+    }
+  };
+  
+  // Use event delegation on the container
+  container.addEventListener('input', handler);
+  container.addEventListener('change', handler);
+  
+  // Mark as bound using a property that won't be cleared by innerHTML
+  container._btfwModuleHandlerBound = true;
+  container.dataset.btfwModuleWatcher = "1";
+}
+setTimeout(() => {
+  ensureModuleFieldAvailability(panel);
+}, 100);
+  
   function readModuleValues(panel){
     const container = getModuleContainer(panel);
     if (!container) return [];
