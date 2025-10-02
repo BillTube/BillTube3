@@ -196,7 +196,7 @@ BTFW.define("feature:channels", [], async () => {
       .btfw-channels__media {
         position: relative;
         width: 100%;
-        aspect-ratio: 16 / 9;
+        aspect-ratio: 16 / 6;
         overflow: hidden;
         background: var(--btfw-theme-panel, #141f36);
         background: color-mix(in srgb, var(--btfw-theme-panel, #141f36) 88%, black 12%);
@@ -443,46 +443,6 @@ BTFW.define("feature:channels", [], async () => {
         currentIndex = newIndex;
         updateArrows();
       }
-    });
-
-    let pointerActive = false;
-    let pointerId = null;
-    let startX = 0;
-    let startScroll = 0;
-
-    function releasePointer(){
-      if (!pointerActive) return;
-      pointerActive = false;
-      slider.classList.remove('btfw-channels--dragging');
-      if (pointerId !== null) {
-        try { viewport.releasePointerCapture(pointerId); } catch(_) {}
-      }
-      pointerId = null;
-      startAuto();
-    }
-
-    viewport.addEventListener('pointerdown', (e) => {
-      pointerActive = true;
-      pointerId = e.pointerId;
-      startX = e.clientX;
-      startScroll = viewport.scrollLeft;
-      slider.classList.add('btfw-channels--dragging');
-      viewport.setPointerCapture(e.pointerId);
-      stopAuto();
-    });
-
-    viewport.addEventListener('pointermove', (e) => {
-      if (!pointerActive || e.pointerId !== pointerId) return;
-      e.preventDefault();
-      const delta = e.clientX - startX;
-      viewport.scrollLeft = startScroll - delta;
-    });
-
-    viewport.addEventListener('pointerup', releasePointer);
-    viewport.addEventListener('pointercancel', releasePointer);
-    viewport.addEventListener('pointerleave', () => {
-      if (!pointerActive) return;
-      releasePointer();
     });
 
     slider.addEventListener('mouseenter', stopAuto);
