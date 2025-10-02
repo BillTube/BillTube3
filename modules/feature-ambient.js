@@ -40,12 +40,12 @@ BTFW.define("feature:ambient", [], async () => {
         position: absolute;
         top: 50%;
         left: 50%;
-        transform: translate(-50%, -50%) scale(1.15);
+        transform: translate(-50%, -50%) scale(1.3);
         width: 100%;
         height: 100%;
         object-fit: cover;
-        filter: blur(clamp(60px, 8vw, 90px)) saturate(220%) brightness(1.5) contrast(1.15);
-        opacity: 0.85;
+        filter: blur(clamp(60px, 8vw, 90px)) saturate(280%) brightness(1.8) contrast(1.3);
+        opacity: 1;
       }
 
       /* Reduce background opacity when ambient is active to let glow shine through */
@@ -56,17 +56,17 @@ BTFW.define("feature:ambient", [], async () => {
       body.btfw-ambient-active #userlist,
       body.btfw-ambient-active #messagebuffer,
       body.btfw-ambient-active #chatline {
-        background-color: color-mix(in srgb, var(--btfw-theme-bg) 50%, transparent) !important;
+        background-color: color-mix(in srgb, var(--btfw-theme-bg) 40%, transparent) !important;
       }
 
       body.btfw-ambient-active #chatwrap,
       body.btfw-ambient-active #userlist {
-        background-color: color-mix(in srgb, var(--btfw-theme-surface) 50%, transparent) !important;
+        background-color: color-mix(in srgb, var(--btfw-theme-surface) 40%, transparent) !important;
       }
 
       body.btfw-ambient-active .panel-heading,
       body.btfw-ambient-active .panel-body {
-        background-color: color-mix(in srgb, var(--btfw-theme-panel) 50%, transparent) !important;
+        background-color: color-mix(in srgb, var(--btfw-theme-panel) 40%, transparent) !important;
       }
 
       /* Isolation only when ready */
@@ -77,9 +77,9 @@ BTFW.define("feature:ambient", [], async () => {
       /* Mobile optimizations */
       @media (max-width: 768px) {
         .btfw-ambient-glow-bg video {
-          transform: translate(-50%, -50%) scale(1.2);
-          filter: blur(clamp(50px, 10vw, 70px)) saturate(200%) brightness(1.4) contrast(1.1);
-          opacity: 0.8;
+          transform: translate(-50%, -50%) scale(1.35);
+          filter: blur(clamp(50px, 10vw, 70px)) saturate(260%) brightness(1.7) contrast(1.25);
+          opacity: 0.95;
         }
       }
     `;
@@ -210,7 +210,7 @@ BTFW.define("feature:ambient", [], async () => {
     if (!glowContainer || !wrap) return;
 
     const rect = wrap.getBoundingClientRect();
-    const padding = 80; // Extra space for glow to extend
+    const padding = 100; // Increased padding for more glow spread
 
     glowContainer.style.top = `${rect.top - padding}px`;
     glowContainer.style.left = `${rect.left - padding}px`;
@@ -352,7 +352,6 @@ BTFW.define("feature:ambient", [], async () => {
 
     ensureAmbientRoot(wrapEl);
     active = true;
-    setStoredPreference(true);
     
     // Add ambient class to body for background transparency
     document.body.classList.add("btfw-ambient-active");
@@ -374,7 +373,6 @@ BTFW.define("feature:ambient", [], async () => {
     if (!active) return true;
 
     active = false;
-    setStoredPreference(false);
 
     // Remove ambient class from body
     document.body.classList.remove("btfw-ambient-active");
@@ -424,10 +422,9 @@ BTFW.define("feature:ambient", [], async () => {
   }
 
   function boot() {
-    // Don't inject CSS or do anything until feature is actually enabled
-    if (getStoredPreference()) {
-      enable();
-    }
+    // Always start disabled - no memory of previous state
+    // Feature will dispatch initial state as disabled
+    dispatchState();
   }
 
   if (document.readyState === "loading") {
