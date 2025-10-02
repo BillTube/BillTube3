@@ -2028,6 +2028,8 @@ function replaceBlock(original, startMarker, endMarker, block){
       } catch (_) {}
     });
 
+    const runtimeConfig = syncRuntimeThemeConfig(mergedConfig) || mergedConfig;
+
     if (status) {
       if (mode === 'manual') {
         status.textContent = "Theme JS & CSS applied. Submitting changes...";
@@ -2037,8 +2039,8 @@ function replaceBlock(original, startMarker, endMarker, block){
         status.dataset.variant = "idle";
       }
     }
-    renderPreview(panel, mergedConfig);
-    return { config: mergedConfig, jsField, cssField };
+    renderPreview(panel, runtimeConfig);
+    return { config: runtimeConfig, jsField, cssField };
   }
 
   function initPanel(modal){
