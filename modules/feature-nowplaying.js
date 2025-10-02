@@ -1,10 +1,11 @@
+/* BTFW – feature:nowplaying (Fixed version with robust mounting) */
 BTFW.define("feature:nowplaying", [], async () => {
   const $ = (s, r = document) => r.querySelector(s);
 
   const state = {
     lastCleanTitle: null,
     lastMediaKey: null,
-    pendingUpdate: null  // ← Add debounce state
+    pendingUpdate: null
   };
 
   function stripPrefix(t) {
@@ -16,20 +17,28 @@ BTFW.define("feature:nowplaying", [], async () => {
 
   function ensureSlot() {
     const cw = $("#chatwrap");
-    if (!cw) return null;
+    if (!cw) {
+      console.warn('[nowplaying] chatwrap not found');
+      return null;
+    }
+    
     let top = cw.querySelector(".btfw-chat-topbar");
     if (!top) {
       top = document.createElement("div");
       top.className = "btfw-chat-topbar";
       cw.prepend(top);
+      console.log('[nowplaying] Created topbar');
     }
+    
     let slot = top.querySelector("#btfw-nowplaying-slot");
     if (!slot) {
       slot = document.createElement("div");
       slot.id = "btfw-nowplaying-slot";
       slot.className = "btfw-chat-title";
       top.appendChild(slot);
+      console.log('[nowplaying] Created slot');
     }
+    
     return slot;
   }
 
@@ -46,18 +55,29 @@ BTFW.define("feature:nowplaying", [], async () => {
 
   function mountTitleIntoSlot() {
     const slot = ensureSlot();
-    if (!slot) return;
+    if (!slot) {
+      console.warn('[nowplaying] Cannot mount - slot unavailable');
+      return false;  // Return false to indicate failure
+    }
 
     let ct = findCurrentTitle();
     if (!ct) {
       ct = createCurrentTitle();
+      console.log('[nowplaying] Created new currenttitle element');
     }
 
+    // ✅ CRITICAL FIX: Only clear and mount if needed
     if (ct.parentElement !== slot) {
-      slot.innerHTML = "";
+      // Don't clear innerHTML if slot already contains the correct element
+      if (slot.firstChild !== ct) {
+        slot.innerHTML = "";
+      }
       slot.appendChild(ct);
       ct.classList.add("btfw-nowplaying");
+      console.log('[nowplaying] Mounted title into slot');
     }
+    
+    return true;  // Success
   }
 
   function getQueueActiveTitle() {
@@ -175,7 +195,8 @@ BTFW.define("feature:nowplaying", [], async () => {
   function boot() {
     console.log('[nowplaying] Initializing...');
     
-    mountTitleIntoSlot();
+    // ✅ Initial mount attempt with success tracking
+    const mounted = mountTitleIntoSlot();
     const existing = findCurrentTitle();
     const initialTitle = existing?.textContent || getQueueActiveTitle();
     setTitle(initialTitle);
@@ -185,7 +206,6 @@ BTFW.define("feature:nowplaying", [], async () => {
         socket.on("changeMedia", handleMediaChange);
         socket.on("setCurrent", handleMediaChange);
         socket.on("mediaUpdate", data => {
-          // ✅ FIX: Use debounced version
           debouncedSetTitle(data?.title, { force: false });
           mountTitleIntoSlot();
         });
@@ -211,7 +231,6 @@ BTFW.define("feature:nowplaying", [], async () => {
       const mo = new MutationObserver(() => {
         const queueTitle = getQueueActiveTitle();
         if (queueTitle) {
-          // ✅ FIX: Use debounced version
           debouncedSetTitle(queueTitle);
         }
         mountTitleIntoSlot();
@@ -225,11 +244,13 @@ BTFW.define("feature:nowplaying", [], async () => {
       q._btfwNPObs = mo;
     }
 
+    // ✅ FIX: Watch for title element being moved elsewhere
     if (!document._btfwNpMoveObs) {
       const obs = new MutationObserver(() => {
         const ct = findCurrentTitle();
         const slot = $("#btfw-nowplaying-slot");
         if (ct && slot && !slot.contains(ct)) {
+          console.log('[nowplaying] Title moved, remounting');
           mountTitleIntoSlot();
         }
       });
@@ -237,14 +258,78 @@ BTFW.define("feature:nowplaying", [], async () => {
       document._btfwNpMoveObs = obs;
     }
 
-    // ✅ FIX: Reduce the number of retry attempts
-    [500, 1500].forEach(delay => {
-      setTimeout(() => {
-        mountTitleIntoSlot();
+    // ✅ FIX: Watch for chatwrap being added or modified
+    if (!document._btfwNpChatwrapObs) {
+      const chatwrapObs = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          if (mutation.type === 'childList') {
+            const chatwrap = $("#chatwrap");
+            if (chatwrap) {
+              const slot = chatwrap.querySelector("#btfw-nowplaying-slot");
+              const ct = findCurrentTitle();
+              
+              // If slot exists but doesn't contain title, mount it
+              if (slot && ct && !slot.contains(ct)) {
+                console.log('[nowplaying] Chatwrap modified, remounting title');
+                mountTitleIntoSlot();
+              }
+            }
+          }
+        }
+      });
+      
+      chatwrapObs.observe(document.body, { 
+        childList: true, 
+        subtree: true 
+      });
+      document._btfwNpChatwrapObs = chatwrapObs;
+    }
+
+    // ✅ IMPROVED: Exponential retry with verification
+    const retryDelays = [200, 500, 1000, 2000];
+    let retryCount = 0;
+    
+    const retryMount = () => {
+      const ct = findCurrentTitle();
+      const slot = $("#btfw-nowplaying-slot");
+      
+      // ✅ Check if already properly mounted
+      if (ct && slot && slot.contains(ct)) {
+        console.log('[nowplaying] Title properly mounted, stopping retries');
+        return;
+      }
+      
+      // Try to mount again
+      console.log(`[nowplaying] Retry mount attempt ${retryCount + 1}`);
+      const success = mountTitleIntoSlot();
+      
+      // ✅ Schedule next retry if needed and we haven't exhausted attempts
+      retryCount++;
+      if (!success && retryCount < retryDelays.length) {
+        setTimeout(retryMount, retryDelays[retryCount]);
+      } else if (success) {
         const title = getQueueActiveTitle();
         if (title) setTitle(title);
-      }, delay);
-    });
+      } else {
+        console.warn('[nowplaying] Exhausted retry attempts, title may not be visible');
+      }
+    };
+    
+    // Start retry chain if initial mount failed or for robustness
+    if (!mounted) {
+      console.log('[nowplaying] Initial mount failed, starting retry chain');
+      setTimeout(retryMount, retryDelays[0]);
+    } else {
+      // Even if mounted successfully, do one verification check
+      setTimeout(() => {
+        const ct = findCurrentTitle();
+        const slot = $("#btfw-nowplaying-slot");
+        if (!ct || !slot || !slot.contains(ct)) {
+          console.log('[nowplaying] Verification failed, starting retry chain');
+          retryMount();
+        }
+      }, retryDelays[0]);
+    }
   }
 
   if (document.readyState === "loading") {
