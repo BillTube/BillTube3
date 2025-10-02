@@ -45,6 +45,62 @@ BTFW.define("feature:nowplaying", [], async () => {
     return ct;
   }
 
+  function getActiveMedia() {
+    const candidates = [];
+
+    const pushCandidate = (media) => {
+      if (media && typeof media === "object") {
+        candidates.push(media);
+      }
+    };
+
+    try {
+      const player = window.PLAYER || null;
+      if (player) {
+        pushCandidate(player.media);
+        if (typeof player.getMedia === "function") {
+          pushCandidate(player.getMedia());
+        }
+        if (player.current) {
+          pushCandidate(player.current);
+          if (player.current && typeof player.current === "object") {
+            pushCandidate(player.current.media);
+          }
+        }
+      }
+    } catch (err) {
+      console.debug?.('[nowplaying] Failed to read PLAYER media:', err);
+    }
+
+    try {
+      const client = window.CLIENT || null;
+      if (client) {
+        pushCandidate(client.currentMedia);
+        pushCandidate(client.media);
+
+        const queue = client.queue;
+        if (queue) {
+          if (Array.isArray(queue)) {
+            const active = queue.find(item => item && (item.active || item.current));
+            if (active) {
+              pushCandidate(active);
+              pushCandidate(active.media);
+            }
+          } else if (typeof queue === "object") {
+            pushCandidate(queue.current);
+            if (queue.current && typeof queue.current === "object") {
+              pushCandidate(queue.current.media);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.debug?.('[nowplaying] Failed to read CLIENT media:', err);
+    }
+
+    return candidates.find(media => media && (media.title || media.id || media.uid)) || null;
+  }
+
   function mountTitleIntoSlot() {
     const slot = ensureSlot();
     if (!slot) return;
@@ -161,6 +217,13 @@ BTFW.define("feature:nowplaying", [], async () => {
     const initialTitle = existing?.textContent || getQueueActiveTitle();
     setTitle(initialTitle);
 
+    if (!state.lastCleanTitle) {
+      const activeMedia = getActiveMedia();
+      if (activeMedia && activeMedia.title) {
+        handleMediaChange(activeMedia);
+      }
+    }
+
     try {
       if (window.socket && socket.on) {
         socket.on("changeMedia", handleMediaChange);
@@ -275,6 +338,18 @@ BTFW.define("feature:nowplaying", [], async () => {
         const ct = findCurrentTitle();
         if (ct && ct.textContent && ct.textContent.trim()) {
           setTitle(ct.textContent, { force: true });
+          return;
+        }
+
+        const activeMedia = getActiveMedia();
+        if (activeMedia && activeMedia.title) {
+          handleMediaChange(activeMedia);
+          return;
+        }
+
+        const queueTitle = getQueueActiveTitle();
+        if (queueTitle) {
+          setTitle(queueTitle, { force: true });
         }
       }, 300);
     } else {
