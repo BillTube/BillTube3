@@ -348,7 +348,24 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     }); 
   }
 
-
+  function moveCurrent(){ 
+    const vh=document.getElementById("videowrap-header"); 
+    if(!vh) return; 
+    const ct=vh.querySelector("#currenttitle"); 
+    const top=document.querySelector("#chatwrap .btfw-chat-topbar"); 
+    if(ct&&top){ 
+      let slot=top.querySelector("#btfw-nowplaying-slot"); 
+      if(!slot){ 
+        slot=document.createElement("div"); 
+        slot.id="btfw-nowplaying-slot"; 
+        slot.className="btfw-chat-title"; 
+        top.innerHTML=""; 
+        top.appendChild(slot);
+      } 
+      slot.appendChild(ct);
+    } 
+    vh.remove(); 
+  }
 
   function ensureShell(){
     const wrap=document.getElementById("wrap")||document.body; 
