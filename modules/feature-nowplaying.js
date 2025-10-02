@@ -1,4 +1,3 @@
-/* BTFW – feature:nowplaying */
 BTFW.define("feature:nowplaying", [], async () => {
   const $ = (s, r = document) => r.querySelector(s);
 
@@ -211,6 +210,7 @@ function mountTitleIntoSlot() {
       q._btfwNPObs = mo;
     }
 
+    // Watch for title element being moved elsewhere
     if (!document._btfwNpMoveObs) {
       const obs = new MutationObserver(() => {
         const ct = findCurrentTitle();
@@ -221,6 +221,43 @@ function mountTitleIntoSlot() {
       });
       obs.observe(document.body, { childList: true, subtree: true });
       document._btfwNpMoveObs = obs;
+    }
+
+    // ✅ NEW: Watch for CyTube updating #currenttitle's text content
+    if (!document._btfwNpTextObs) {
+      const textObs = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          if (mutation.type === 'characterData' || mutation.type === 'childList') {
+            const ct = findCurrentTitle();
+            if (ct && ct.textContent && ct.textContent.trim()) {
+              console.log('[nowplaying] CyTube updated title text:', ct.textContent.trim());
+              // Just ensure it's mounted, don't override the text
+              mountTitleIntoSlot();
+              // Update the CSS variable
+              ct.style.setProperty("--length", String(ct.textContent.length));
+              state.lastCleanTitle = ct.textContent.trim();
+            }
+          }
+        }
+      });
+      
+      // Start observing once currenttitle exists
+      const waitForTitle = setInterval(() => {
+        const ct = findCurrentTitle();
+        if (ct) {
+          textObs.observe(ct, { 
+            characterData: true, 
+            childList: true, 
+            subtree: true 
+          });
+          document._btfwNpTextObs = textObs;
+          clearInterval(waitForTitle);
+          console.log('[nowplaying] Started watching currenttitle text changes');
+        }
+      }, 200);
+      
+      // Stop trying after 5 seconds
+      setTimeout(() => clearInterval(waitForTitle), 5000);
     }
 
     [500, 1500].forEach(delay => {
