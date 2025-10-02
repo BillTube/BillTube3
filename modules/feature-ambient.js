@@ -25,13 +25,15 @@ BTFW.define("feature:ambient", [], async () => {
         overflow: visible;
       }
 
-      /* Ambient glow container - covers entire videowrap area and extends beyond */
+      /* Ambient glow container - extends beyond video boundaries */
       #videowrap .btfw-ambient-glow {
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        top: -15%;
+        left: -15%;
+        right: -15%;
+        bottom: -15%;
+        width: auto;
+        height: auto;
         z-index: 0;
         pointer-events: none;
         opacity: 0;
@@ -43,33 +45,38 @@ BTFW.define("feature:ambient", [], async () => {
         opacity: 1;
       }
 
-      /* Cloned video for glow effect - scaled up and heavily blurred */
+      /* Cloned video for glow effect - fills the extended area */
       #videowrap .btfw-ambient-glow video {
         position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(1.3);
+        top: 0;
+        left: 0;
         width: 100%;
         height: 100%;
         object-fit: cover;
-        filter: blur(clamp(60px, 10vw, 100px)) saturate(200%) brightness(1.4) contrast(1.1);
-        opacity: 0.8;
+        filter: blur(80px) saturate(250%) brightness(1.6) contrast(1.2);
+        opacity: 0.9;
       }
 
-      /* Ensure main video content is above the glow */
-      #videowrap.btfw-ambient-enabled #ytapiplayer,
-      #videowrap.btfw-ambient-enabled .video-js,
-      #videowrap.btfw-ambient-enabled iframe,
-      #videowrap.btfw-ambient-enabled > video:not(.btfw-ambient-glow video) {
+      /* Ensure embed-responsive and video containers aren't affected */
+      #videowrap .embed-responsive,
+      #videowrap #ytapiplayer,
+      #videowrap .video-js,
+      #videowrap iframe,
+      #videowrap > video:not(.btfw-ambient-glow video) {
         position: relative;
-        z-index: 1;
+        z-index: 10;
+      }
+
+      /* Preserve embed-responsive positioning */
+      #videowrap .embed-responsive {
+        position: relative !important;
       }
 
       /* Enhanced video styling when ambient is active */
       #videowrap.btfw-ambient-enabled #ytapiplayer,
       #videowrap.btfw-ambient-enabled .video-js,
       #videowrap.btfw-ambient-enabled iframe,
-      #videowrap.btfw-ambient-enabled video:not(.btfw-ambient-glow video) {
+      #videowrap.btfw-ambient-enabled > video:not(.btfw-ambient-glow video) {
         border-radius: clamp(16px, 3vw, 24px);
         box-shadow:
           0 35px 80px rgba(0, 0, 0, 0.45),
@@ -85,10 +92,23 @@ BTFW.define("feature:ambient", [], async () => {
 
       /* Mobile optimizations */
       @media (max-width: 768px) {
+        #videowrap .btfw-ambient-glow {
+          top: -20%;
+          left: -20%;
+          right: -20%;
+          bottom: -20%;
+        }
+
         #videowrap .btfw-ambient-glow video {
-          transform: translate(-50%, -50%) scale(1.4);
-          filter: blur(clamp(50px, 12vw, 80px)) saturate(180%) brightness(1.3) contrast(1.1);
-          opacity: 0.75;
+          filter: blur(60px) saturate(220%) brightness(1.5) contrast(1.15);
+          opacity: 0.85;
+        }
+
+        #videowrap.btfw-ambient-enabled #ytapiplayer,
+        #videowrap.btfw-ambient-enabled .video-js,
+        #videowrap.btfw-ambient-enabled iframe,
+        #videowrap.btfw-ambient-enabled > video:not(.btfw-ambient-glow video) {
+          border-radius: clamp(12px, 4vw, 18px);
         }
       }
 
@@ -102,17 +122,20 @@ BTFW.define("feature:ambient", [], async () => {
         }
       }
 
-      /* Additional glow enhancement layer */
-      #videowrap .btfw-ambient-glow::before {
+      /* Additional glow enhancement - creates the "spill" effect */
+      #videowrap .btfw-ambient-glow::after {
         content: "";
         position: absolute;
-        inset: -30%;
-        background: radial-gradient(
-          ellipse at center,
-          rgba(255, 255, 255, 0.03) 0%,
-          transparent 70%
-        );
+        inset: 10%;
+        background: inherit;
+        filter: blur(40px);
+        opacity: 0.5;
         pointer-events: none;
+      }
+
+      /* Ensure videowrap allows overflow for glow to spill out */
+      #videowrap.btfw-ambient-ready {
+        overflow: visible !important;
       }
     `;
     document.head.appendChild(st);
