@@ -19,11 +19,8 @@ BTFW.define("feature:ambient", [], async () => {
     const st = document.createElement("style");
     st.id = "btfw-ambient-css";
     st.textContent = `
-      /* Make videowrap a stacking context without breaking layout */
-      #videowrap.btfw-ambient-ready {
-        isolation: isolate;
-      }
-
+      /* Only apply styles when ambient is actually active */
+      
       /* Ambient glow background layer - behind everything in videowrap */
       .btfw-ambient-glow-bg {
         position: fixed;
@@ -52,17 +49,6 @@ BTFW.define("feature:ambient", [], async () => {
       }
 
       /* Reduce background opacity when ambient is active to let glow shine through */
-      body.btfw-ambient-active {
-        --btfw-theme-bg-ambient: color-mix(in srgb, var(--btfw-theme-bg) 50%, transparent);
-        --btfw-theme-surface-ambient: color-mix(in srgb, var(--btfw-theme-surface) 50%, transparent);
-        --btfw-theme-panel-ambient: color-mix(in srgb, var(--btfw-theme-panel) 50%, transparent);
-      }
-
-      body.btfw-ambient-active [style*="--btfw-theme-bg"],
-      body.btfw-ambient-active *:not([style]) {
-        background-color: var(--btfw-theme-bg-ambient, var(--btfw-theme-bg)) !important;
-      }
-
       body.btfw-ambient-active #main,
       body.btfw-ambient-active #chatwrap,
       body.btfw-ambient-active #videowrap,
@@ -83,6 +69,11 @@ BTFW.define("feature:ambient", [], async () => {
         background-color: color-mix(in srgb, var(--btfw-theme-panel) 50%, transparent) !important;
       }
 
+      /* Isolation only when ready */
+      #videowrap.btfw-ambient-ready {
+        isolation: isolate;
+      }
+
       /* Mobile optimizations */
       @media (max-width: 768px) {
         .btfw-ambient-glow-bg video {
@@ -93,6 +84,13 @@ BTFW.define("feature:ambient", [], async () => {
       }
     `;
     document.head.appendChild(st);
+  }
+
+  function removeCSS() {
+    const st = document.getElementById("btfw-ambient-css");
+    if (st && st.parentNode) {
+      st.parentNode.removeChild(st);
+    }
   }
 
   function waitForWrap(timeout = 5000) {
@@ -136,15 +134,16 @@ BTFW.define("feature:ambient", [], async () => {
     const nextWrap = preferredWrap || $("#videowrap");
     if (!nextWrap) return null;
 
-    ensureCSS();
-
     if (wrap && wrap !== nextWrap) {
       wrap.classList.remove("btfw-ambient-ready");
       wrap = null;
     }
 
     wrap = nextWrap;
-    wrap.classList.add("btfw-ambient-ready");
+    // Only add ready class when actually enabling
+    if (active) {
+      wrap.classList.add("btfw-ambient-ready");
+    }
 
     return wrap;
   }
@@ -429,7 +428,7 @@ BTFW.define("feature:ambient", [], async () => {
   }
 
   function boot() {
-    ensureCSS();
+    // Don't inject CSS or do anything until feature is actually enabled
     if (getStoredPreference()) {
       enable();
     }
