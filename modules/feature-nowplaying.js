@@ -356,7 +356,28 @@ BTFW.define("feature:nowplaying", [], async () => {
       setTimeout(waitForCyTubeReady, 200);
     }
   }
-
+// Force refresh when socket connects
+if (window.socket) {
+  const originalOn = socket.on.bind(socket);
+  let connectedOnce = false;
+  
+  socket.on = function(event, handler) {
+    if (event === 'connect' && !connectedOnce) {
+      return originalOn(event, function(...args) {
+        handler(...args);
+        connectedOnce = true;
+        console.log('[nowplaying] Socket connected, forcing title refresh');
+        setTimeout(() => {
+          const ct = findCurrentTitle();
+          if (ct && ct.textContent) {
+            setTitle(ct.textContent, { force: true });
+          }
+        }, 500);
+      });
+    }
+    return originalOn(event, handler);
+  };
+}
   document.addEventListener('btfw:ready', () => {
     console.log('[nowplaying] Theme ready, waiting for CyTube...');
     waitForCyTubeReady();
