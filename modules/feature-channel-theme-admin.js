@@ -1198,10 +1198,24 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return normalized;
   }
 
+  function sanitizeConfigForOutput(cfg){
+    const cleaned = JSON.parse(JSON.stringify(cfg || {}));
+    delete cleaned.sliderEnabled;
+    delete cleaned.sliderJson;
+    delete cleaned.headerName;
+    delete cleaned.faviconUrl;
+    delete cleaned.posterUrl;
+    if (cleaned.branding && typeof cleaned.branding === "object") {
+      delete cleaned.branding.favicon;
+    }
+    return cleaned;
+  }
+
 
   function buildConfigBlock(cfg){
     const normalized = normalizeConfig(cfg);
-    const json = JSON.stringify(normalized, null, 2);
+    const cleaned = sanitizeConfigForOutput(normalized);
+    const json = JSON.stringify(cleaned, null, 2);
     return `${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n${JS_BLOCK_END}`;
   }
 
