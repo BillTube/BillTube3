@@ -60,23 +60,22 @@ BTFW.define("feature:ambient", [], async () => {
       /* Ensure embed-responsive and video containers aren't affected */
       #videowrap .embed-responsive,
       #videowrap #ytapiplayer,
-      #videowrap .video-js,
-      #videowrap iframe,
-      #videowrap > video:not(.btfw-ambient-glow video) {
+      #videowrap .video-js {
         position: relative;
         z-index: 10;
       }
 
-      /* Preserve embed-responsive positioning */
-      #videowrap .embed-responsive {
-        position: relative !important;
+      #videowrap iframe,
+      #videowrap video:not(.btfw-ambient-glow video) {
+        position: relative;
+        z-index: 10;
       }
 
       /* Enhanced video styling when ambient is active */
       #videowrap.btfw-ambient-enabled #ytapiplayer,
       #videowrap.btfw-ambient-enabled .video-js,
       #videowrap.btfw-ambient-enabled iframe,
-      #videowrap.btfw-ambient-enabled > video:not(.btfw-ambient-glow video) {
+      #videowrap.btfw-ambient-enabled video:not(.btfw-ambient-glow video) {
         border-radius: clamp(16px, 3vw, 24px);
         box-shadow:
           0 35px 80px rgba(0, 0, 0, 0.45),
@@ -135,7 +134,7 @@ BTFW.define("feature:ambient", [], async () => {
 
       /* Ensure videowrap allows overflow for glow to spill out */
       #videowrap.btfw-ambient-ready {
-        overflow: visible !important;
+        position: relative;
       }
     `;
     document.head.appendChild(st);
@@ -239,6 +238,8 @@ BTFW.define("feature:ambient", [], async () => {
     glowContainer = document.createElement("div");
     glowContainer.className = "btfw-ambient-glow";
     glowContainer.setAttribute("aria-hidden", "true");
+    // Important: Don't set position or dimensions in JS, let CSS handle it
+    glowContainer.style.pointerEvents = "none";
 
     // Create cloned video for glow effect
     glowVideo = document.createElement("video");
@@ -260,11 +261,6 @@ BTFW.define("feature:ambient", [], async () => {
       wrap.insertBefore(glowContainer, wrap.firstChild);
     } else {
       wrap.appendChild(glowContainer);
-    }
-
-    // Ensure videowrap has proper positioning
-    if (getComputedStyle(wrap).position === "static") {
-      wrap.style.position = "relative";
     }
   }
 
