@@ -105,7 +105,7 @@
   -webkit-overflow-scrolling: touch;
 }
 
-#messagebuffer > div {
+#messagebuffer > div { 
   display: flex;
   flex-wrap: nowrap;
   align-items: flex-start;
@@ -114,6 +114,12 @@
   position: relative;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Ensure chat messages without avatars keep username spacing */
+#messagebuffer > div[class^="chat-msg-"]:not(.btfw-has-avatar),
+#messagebuffer > div[class*=" chat-msg-"]:not(.btfw-has-avatar) {
+  padding: 4px 10px 0px 30px !important;
 }
 
 #messagebuffer > div .timestamp {
