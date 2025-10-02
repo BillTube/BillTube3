@@ -335,18 +335,31 @@ function startAutoclose(o){
 
     // Now playing: changeMedia & setCurrent often both fire → de-dupe
     try {
-      socket.on("changeMedia", (d)=>{
-        postOnce("np", 1500, () => {
-          const t = decodeHtmlEntities(titleFromAnywhere(d));
-          api.info({ title: "Now playing", html: `<div class="np-title">${escapeHtml(t)}</div>`, icon:"▶️" });
-        });
-      });
-      socket.on("setCurrent", (d)=>{
-        postOnce("np", 1500, () => {
-          const t = decodeHtmlEntities(titleFromAnywhere(d));
-          if (t) api.info({ title: "Now playing", html: `<div class="np-title">${escapeHtml(t)}</div>`, icon:"▶️" });
-        });
-      });
+      const scheduleNowPlaying = (payload) => {
+        const direct = titleFromData(payload);
+        if (direct) {
+          return postNowPlayingToast(direct);
+        }
+
+        const attemptFallback = (remaining, delay = 200) => {
+          if (remaining <= 0) return;
+          setTimeout(() => {
+            const fallback = titleFromAnywhere();
+            if (fallback && fallback !== "New media") {
+              postNowPlayingToast(fallback);
+            } else {
+              attemptFallback(remaining - 1, delay);
+            }
+          }, delay);
+        };
+
+        // If we couldn't get the title from the payload, wait a bit for the
+        // DOM/queue to update (feature:nowplaying may debounce updates).
+        attemptFallback(3);
+      };
+
+      socket.on("changeMedia", scheduleNowPlaying);
+      socket.on("setCurrent", scheduleNowPlaying);
     } catch(_){}
 
     // New poll: de-dupe by title for a short time
@@ -380,14 +393,64 @@ function startAutoclose(o){
     } catch(_){}
   }
 
-  function titleFromAnywhere(d){
-    if (d?.title) return String(d.title);
+  function stripNowPlayingPrefix(value){
+    return String(value || "").replace(/^\s*(?:currently|now)\s*playing\s*[:\-]\s*/i, "").trim();
+  }
+
+  function titleFromData(d){
+    if (!d) return "";
+
+    const candidates = [
+      d.title,
+      d.currenttitle,
+      d.currentTitle,
+      d.media?.title,
+      d.current?.media?.title,
+      d.queue?.media?.title,
+      d.queue?.current?.media?.title,
+      d.queue?.item?.title,
+      d.item?.media?.title,
+      d.item?.title
+    ];
+
+    for (const candidate of candidates) {
+      if (candidate != null && String(candidate).trim()) {
+        return stripNowPlayingPrefix(candidate);
+      }
+    }
+
+    return "";
+  }
+
+  function titleFromAnywhere(){
     const ct = $("#currenttitle");
-    if (ct && ct.textContent) return ct.textContent.replace(/^now\s*playing:\s*/i,"").trim();
+    if (ct && ct.textContent) return stripNowPlayingPrefix(ct.textContent);
     // playlist fallback
     const a = document.querySelector('#queue .queue_active .qe_title a, #queue .queue_active .qe_title');
-    if (a && a.textContent) return a.textContent.trim();
+    if (a && a.textContent) return stripNowPlayingPrefix(a.textContent);
     return "New media";
+  }
+
+  function normaliseTitleKey(title){
+    const value = (title == null) ? "" : String(title);
+    const trimmed = value.trim();
+    if (!trimmed) return "__unknown__";
+    return trimmed.toLowerCase();
+  }
+
+  function postNowPlayingToast(rawTitle){
+    const decoded = decodeHtmlEntities(rawTitle || "");
+    const cleaned = stripNowPlayingPrefix(decoded);
+    const display = cleaned || "New media";
+    const key = `np:${normaliseTitleKey(display)}`;
+
+    postOnce(key, 1500, () => {
+      api.info({
+        title: "Now playing",
+        html: `<div class="np-title">${escapeHtml(display)}</div>`,
+        icon: "▶️"
+      });
+    });
   }
 
   function escapeHtml(s){ return s.replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
