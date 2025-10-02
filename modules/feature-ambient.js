@@ -19,33 +19,22 @@ BTFW.define("feature:ambient", [], async () => {
     const st = document.createElement("style");
     st.id = "btfw-ambient-css";
     st.textContent = `
-      #videowrap.btfw-ambient-ready {
-        position: relative;
-        isolation: isolate;
-        overflow: visible;
-      }
-
-      /* Ambient glow container - extends beyond video boundaries */
+      /* Don't touch videowrap itself - let CyTube control it */
+      
+      /* Ambient glow container - positioned outside videowrap flow */
       #videowrap .btfw-ambient-glow {
-        position: absolute;
-        top: -15%;
-        left: -15%;
-        right: -15%;
-        bottom: -15%;
-        width: auto;
-        height: auto;
-        z-index: 0;
+        position: fixed;
         pointer-events: none;
+        z-index: -1;
         opacity: 0;
         transition: opacity 0.6s ease;
-        overflow: visible;
       }
 
       #videowrap.btfw-ambient-enabled .btfw-ambient-glow {
         opacity: 1;
       }
 
-      /* Cloned video for glow effect - fills the extended area */
+      /* Cloned video for glow effect */
       #videowrap .btfw-ambient-glow video {
         position: absolute;
         top: 0;
@@ -57,61 +46,15 @@ BTFW.define("feature:ambient", [], async () => {
         opacity: 0.9;
       }
 
-      /* Ensure embed-responsive and video containers aren't affected */
-      #videowrap .embed-responsive,
-      #videowrap #ytapiplayer,
-      #videowrap .video-js {
-        position: relative;
-        z-index: 10;
-      }
-
-      #videowrap iframe,
-      #videowrap video:not(.btfw-ambient-glow video) {
-        position: relative;
-        z-index: 10;
-      }
-
-      /* Enhanced video styling when ambient is active */
-      #videowrap.btfw-ambient-enabled #ytapiplayer,
-      #videowrap.btfw-ambient-enabled .video-js,
-      #videowrap.btfw-ambient-enabled iframe,
-      #videowrap.btfw-ambient-enabled video:not(.btfw-ambient-glow video) {
-        border-radius: clamp(16px, 3vw, 24px);
-        box-shadow:
-          0 35px 80px rgba(0, 0, 0, 0.45),
-          0 20px 40px rgba(0, 0, 0, 0.35),
-          0 10px 20px rgba(0, 0, 0, 0.25);
-        overflow: hidden;
-        transition: box-shadow 0.45s ease, border-radius 0.45s ease;
-      }
-
-      #videowrap.btfw-ambient-enabled .video-js {
-        background: transparent;
-      }
-
       /* Mobile optimizations */
       @media (max-width: 768px) {
-        #videowrap .btfw-ambient-glow {
-          top: -20%;
-          left: -20%;
-          right: -20%;
-          bottom: -20%;
-        }
-
         #videowrap .btfw-ambient-glow video {
           filter: blur(60px) saturate(220%) brightness(1.5) contrast(1.15);
           opacity: 0.85;
         }
-
-        #videowrap.btfw-ambient-enabled #ytapiplayer,
-        #videowrap.btfw-ambient-enabled .video-js,
-        #videowrap.btfw-ambient-enabled iframe,
-        #videowrap.btfw-ambient-enabled > video:not(.btfw-ambient-glow video) {
-          border-radius: clamp(12px, 4vw, 18px);
-        }
       }
 
-      /* Smooth fade-in animation */
+      /* No transform animations */
       @keyframes btfw-ambient-fadeIn {
         from {
           opacity: 0;
@@ -119,22 +62,6 @@ BTFW.define("feature:ambient", [], async () => {
         to {
           opacity: 1;
         }
-      }
-
-      /* Additional glow enhancement - creates the "spill" effect */
-      #videowrap .btfw-ambient-glow::after {
-        content: "";
-        position: absolute;
-        inset: 10%;
-        background: inherit;
-        filter: blur(40px);
-        opacity: 0.5;
-        pointer-events: none;
-      }
-
-      /* Ensure videowrap allows overflow for glow to spill out */
-      #videowrap.btfw-ambient-ready {
-        position: relative;
       }
     `;
     document.head.appendChild(st);
@@ -234,11 +161,14 @@ BTFW.define("feature:ambient", [], async () => {
     // Remove existing glow elements
     cleanupGlowElements();
 
-    // Create glow container - this is a dedicated div that sits behind everything
+    // Find the actual video element to get its position
+    const videoElement = findVideoElement();
+    if (!videoElement) return;
+
+    // Create glow container using fixed positioning
     glowContainer = document.createElement("div");
     glowContainer.className = "btfw-ambient-glow";
     glowContainer.setAttribute("aria-hidden", "true");
-    // Important: Don't set position or dimensions in JS, let CSS handle it
     glowContainer.style.pointerEvents = "none";
 
     // Create cloned video for glow effect
@@ -249,19 +179,28 @@ BTFW.define("feature:ambient", [], async () => {
     glowVideo.preload = "auto";
     glowVideo.style.pointerEvents = "none";
     glowVideo.setAttribute("aria-hidden", "true");
-    
-    // Disable controls and make it purely decorative
     glowVideo.controls = false;
     glowVideo.disablePictureInPicture = true;
 
     glowContainer.appendChild(glowVideo);
     
-    // Insert at the very beginning of videowrap (behind everything)
-    if (wrap.firstChild) {
-      wrap.insertBefore(glowContainer, wrap.firstChild);
-    } else {
-      wrap.appendChild(glowContainer);
-    }
+    // Append to body to avoid interfering with videowrap layout
+    document.body.appendChild(glowContainer);
+    
+    // Position the glow to match the video
+    updateGlowPosition();
+  }
+
+  function updateGlowPosition() {
+    if (!glowContainer || !wrap) return;
+
+    const rect = wrap.getBoundingClientRect();
+    const padding = 50; // Extra space for glow to extend
+
+    glowContainer.style.top = `${rect.top - padding}px`;
+    glowContainer.style.left = `${rect.left - padding}px`;
+    glowContainer.style.width = `${rect.width + padding * 2}px`;
+    glowContainer.style.height = `${rect.height + padding * 2}px`;
   }
 
   function syncVideos() {
@@ -356,7 +295,14 @@ BTFW.define("feature:ambient", [], async () => {
       if (videoEl !== currentVideo) {
         attachVideo(videoEl);
       }
+
+      // Update glow position on scroll/resize
+      updateGlowPosition();
     }, 1000);
+
+    // Update position on scroll and resize
+    window.addEventListener('scroll', updateGlowPosition, { passive: true });
+    window.addEventListener('resize', updateGlowPosition, { passive: true });
 
     wireSocketListener();
   }
@@ -366,6 +312,8 @@ BTFW.define("feature:ambient", [], async () => {
       clearInterval(monitorTimer);
       monitorTimer = null;
     }
+    window.removeEventListener('scroll', updateGlowPosition);
+    window.removeEventListener('resize', updateGlowPosition);
     detachVideoListeners();
     cleanupGlowElements();
   }
