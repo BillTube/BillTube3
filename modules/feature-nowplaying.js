@@ -274,6 +274,34 @@ function mountTitleIntoSlot() {
   } else {
     boot();
   }
+// ✅ Re-initialize when theme is fully loaded
+  document.addEventListener('btfw:ready', () => {
+    console.log('[nowplaying] Theme ready, re-initializing title...');
+    setTimeout(() => {
+      mountTitleIntoSlot();
+      
+      // Try to get title from CyTube's currenttitle element
+      const ct = findCurrentTitle();
+      if (ct && ct.textContent && ct.textContent.trim()) {
+        console.log('[nowplaying] Found existing title:', ct.textContent.trim());
+        ct.style.setProperty("--length", String(ct.textContent.length));
+        state.lastCleanTitle = ct.textContent.trim();
+      } else {
+        // Fallback to queue
+        const queueTitle = getQueueActiveTitle();
+        if (queueTitle) {
+          console.log('[nowplaying] Setting title from queue:', queueTitle);
+          setTitle(queueTitle, { force: true });
+        }
+      }
+    }, 200);
+  });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 
   return { 
     name: "feature:nowplaying", 
