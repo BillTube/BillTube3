@@ -973,6 +973,17 @@ linear infinite;
     position: relative;
     transition: .3s;
 }
+.chat-msg-hunchback .username {
+    -webkit-background-clip: border-box, border-box, text;
+    -webkit-text-fill-color: transparent;
+    animation: playboy 3.5s 
+cubic-bezier(0.4, 0, 1, 1) 0s running;
+    background-image: url(https://i.imgur.com/cWvW3KS.gif), url(https://i.imgur.com/jxlCmc9.gif), linear-gradient(200deg, rgb(39 85 254) 20%, rgb(209 74 147) 30%, rgb(254 39 39) 40%, rgb(254 39 91) 50%, rgb(254 39 191) 60%, rgb(255 33 84) 70%, rgb(231 85 85) 80%);
+    background-size: 10em, 10em, 5em;
+    font-weight: bold;
+    text-shadow: 1px 1px 15px rgb(255 173 173 / 62%);
+    transition: .3s;
+}
 /* ==========================================
    REQUIRED ANIMATIONS
    ========================================== */
@@ -1004,6 +1015,7 @@ linear infinite;
     0%, 100% { text-shadow: 0 0 10px #922fff, 0 0 20px #922fff, 0 0 30px #922fff; }
     50% { text-shadow: 0 0 5px #922fff, 0 0 10px #922fff, 0 0 15px #922fff; }
 }
+
 
 
 
