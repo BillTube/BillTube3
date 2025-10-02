@@ -25,7 +25,7 @@ BTFW.define("feature:ambient", [], async () => {
       .btfw-ambient-glow-bg {
         position: fixed;
         pointer-events: none;
-        z-index: 1;
+        z-index: -1;
         opacity: 0;
         transition: opacity 0.6s ease;
         will-change: opacity;
