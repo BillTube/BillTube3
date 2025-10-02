@@ -1,3 +1,4 @@
+/* BTFW – feature:nowplaying */
 BTFW.define("feature:nowplaying", [], async () => {
   const $ = (s, r = document) => r.querySelector(s);
 
@@ -44,7 +45,7 @@ BTFW.define("feature:nowplaying", [], async () => {
     return ct;
   }
 
-function mountTitleIntoSlot() {
+  function mountTitleIntoSlot() {
     const slot = ensureSlot();
     if (!slot) return;
 
@@ -54,7 +55,7 @@ function mountTitleIntoSlot() {
     }
 
     if (ct.parentElement !== slot) {
-      // ✅ FIX: Don't clear slot if it already contains the currenttitle element
+      // Only clear if slot doesn't already contain currenttitle
       const slotHasTitle = slot.contains(ct);
       if (!slotHasTitle) {
         slot.innerHTML = "";
@@ -90,35 +91,6 @@ function mountTitleIntoSlot() {
     
     // Always update if the clean title is different or if forced
     if ((textChanged && cleanTitle) || options.force) {
-      ct.textContent = cleanTitle;
-      ct.title = cleanTitle;
-      ct.style.setProperty("--length", String(cleanTitle.length));
-      state.lastCleanTitle = cleanTitle;
-      console.log('[nowplaying] Set title:', cleanTitle);
-    }
-
-    return true;
-  }
-
-
-    // If CyTube already set content, don't override it unless forced
-    const cytubeContent = ct.textContent && ct.textContent.trim();
-    if (cytubeContent && !options.force) {
-      console.log('[nowplaying] Using CyTube content:', cytubeContent);
-      state.lastCleanTitle = cytubeContent;
-      return true;
-    }
-
-    // Only set title if CyTube hasn't set it yet or if forced
-    const title = newTitle || getQueueActiveTitle();
-    const cleanTitle = stripPrefix(title);
-
-    const currentText = ct.textContent || "";
-    const nextText = cleanTitle || "";
-    
-    const textChanged = currentText !== nextText;
-    
-    if (textChanged && cleanTitle) {
       ct.textContent = cleanTitle;
       ct.title = cleanTitle;
       ct.style.setProperty("--length", String(cleanTitle.length));
@@ -232,7 +204,6 @@ function mountTitleIntoSlot() {
       q._btfwNPObs = mo;
     }
 
-    // Watch for title element being moved elsewhere
     if (!document._btfwNpMoveObs) {
       const obs = new MutationObserver(() => {
         const ct = findCurrentTitle();
@@ -245,25 +216,26 @@ function mountTitleIntoSlot() {
       document._btfwNpMoveObs = obs;
     }
 
-    // ✅ NEW: Watch for CyTube updating #currenttitle's text content
+    // Watch for CyTube updating #currenttitle's text content
     if (!document._btfwNpTextObs) {
       const textObs = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
           if (mutation.type === 'characterData' || mutation.type === 'childList') {
             const ct = findCurrentTitle();
             if (ct && ct.textContent && ct.textContent.trim()) {
-              console.log('[nowplaying] CyTube updated title text:', ct.textContent.trim());
-              // Just ensure it's mounted, don't override the text
-              mountTitleIntoSlot();
-              // Update the CSS variable
-              ct.style.setProperty("--length", String(ct.textContent.length));
-              state.lastCleanTitle = ct.textContent.trim();
+              const cleanTitle = stripPrefix(ct.textContent);
+              if (cleanTitle && cleanTitle !== state.lastCleanTitle) {
+                console.log('[nowplaying] CyTube updated title, cleaning:', cleanTitle);
+                ct.textContent = cleanTitle;
+                ct.title = cleanTitle;
+                ct.style.setProperty("--length", String(cleanTitle.length));
+                state.lastCleanTitle = cleanTitle;
+              }
             }
           }
         }
       });
       
-      // Start observing once currenttitle exists
       const waitForTitle = setInterval(() => {
         const ct = findCurrentTitle();
         if (ct) {
@@ -278,45 +250,41 @@ function mountTitleIntoSlot() {
         }
       }, 200);
       
-      // Stop trying after 5 seconds
       setTimeout(() => clearInterval(waitForTitle), 5000);
     }
 
     [500, 1500].forEach(delay => {
       setTimeout(() => {
         mountTitleIntoSlot();
-        const title = getQueueActiveTitle();
-        if (title) setTitle(title);
+        const ct = findCurrentTitle();
+        if (ct && ct.textContent) {
+          setTitle(ct.textContent, { force: true });
+        } else {
+          const title = getQueueActiveTitle();
+          if (title) setTitle(title);
+        }
       }, delay);
     });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
-  } else {
-    boot();
-  }
-// ✅ Re-initialize when theme is fully loaded
-  document.addEventListener('btfw:ready', () => {
-    console.log('[nowplaying] Theme ready, re-initializing title...');
-    setTimeout(() => {
-      mountTitleIntoSlot();
-      
-      // Try to get title from CyTube's currenttitle element
-      const ct = findCurrentTitle();
-      if (ct && ct.textContent && ct.textContent.trim()) {
-        console.log('[nowplaying] Found existing title:', ct.textContent.trim());
-        ct.style.setProperty("--length", String(ct.textContent.length));
-        state.lastCleanTitle = ct.textContent.trim();
-      } else {
-        // Fallback to queue
-        const queueTitle = getQueueActiveTitle();
-        if (queueTitle) {
-          console.log('[nowplaying] Setting title from queue:', queueTitle);
-          setTitle(queueTitle, { force: true });
+  // Watch for CyTube to be ready
+  function waitForCyTubeReady() {
+    if (window.CLIENT && window.PLAYER) {
+      console.log('[nowplaying] CyTube is ready, refreshing title...');
+      setTimeout(() => {
+        const ct = findCurrentTitle();
+        if (ct && ct.textContent && ct.textContent.trim()) {
+          setTitle(ct.textContent, { force: true });
         }
-      }
-    }, 200);
+      }, 300);
+    } else {
+      setTimeout(waitForCyTubeReady, 200);
+    }
+  }
+
+  document.addEventListener('btfw:ready', () => {
+    console.log('[nowplaying] Theme ready, waiting for CyTube...');
+    waitForCyTubeReady();
   });
 
   if (document.readyState === "loading") {
