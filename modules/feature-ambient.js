@@ -1,4 +1,5 @@
 BTFW.define("feature:ambient", [], async () => {
+  // Inspired by the open-source ambient light effect from https://github.com/NikxDa/ambient
   const STORAGE_KEY = "btfw:ambient:enabled";
   const DEFAULT_COLOR = { r: 60, g: 72, b: 110 };
 
@@ -6,9 +7,9 @@ BTFW.define("feature:ambient", [], async () => {
 
   const clampChannel = (value) => Math.max(0, Math.min(255, Math.round(value)));
   const clampColor = (color) => ({
-    r: clampChannel(color.r),
-    g: clampChannel(color.g),
-    b: clampChannel(color.b)
+    r: clampChannel(color.r ?? DEFAULT_COLOR.r),
+    g: clampChannel(color.g ?? DEFAULT_COLOR.g),
+    b: clampChannel(color.b ?? DEFAULT_COLOR.b)
   });
   const mixWithWhite = (color, amount) => clampColor({
     r: color.r + (255 - color.r) * amount,
@@ -22,23 +23,45 @@ BTFW.define("feature:ambient", [], async () => {
   });
   const formatColor = (color) => `${color.r}, ${color.g}, ${color.b}`;
 
+  const parseColor = (value) => {
+    if (!value || typeof value !== "string") return null;
+    const hex = value.trim();
+    if (hex.startsWith("#")) {
+      const cleaned = hex.replace(/[^0-9a-f]/gi, "");
+      if (cleaned.length === 3) {
+        const [r, g, b] = cleaned.split("").map((v) => parseInt(v + v, 16));
+        return { r, g, b };
+      }
+      if (cleaned.length === 6) {
+        const r = parseInt(cleaned.slice(0, 2), 16);
+        const g = parseInt(cleaned.slice(2, 4), 16);
+        const b = parseInt(cleaned.slice(4, 6), 16);
+        return { r, g, b };
+      }
+      return null;
+    }
+
+    const rgbMatch = hex.match(/rgba?\(([^)]+)\)/i);
+    if (rgbMatch) {
+      const parts = rgbMatch[1]
+        .split(",")
+        .map((part) => part.trim())
+        .map((part) => Number.parseFloat(part));
+      if (parts.length >= 3 && parts.every((part) => Number.isFinite(part))) {
+        return { r: parts[0], g: parts[1], b: parts[2] };
+      }
+    }
+    return null;
+  };
+
   let active = false;
   let wrap = null;
   let monitorTimer = null;
-  let currentVideo = null;
-  let samplingCanvas = null;
-  let samplingCtx = null;
-  let samplingBlocked = false;
-  let samplingCooldownUntil = 0;
-  let lastSampleTime = 0;
-  let storedColor = { ...DEFAULT_COLOR };
   let waitForWrapPromise = null;
   let socketListenerAttached = false;
-  let frameLoopHandle = null;
-  let frameLoopMode = null;
-  let corsFailedForVideo = new WeakSet(); // Track which videos failed CORS
+  let renderer = null;
 
-  const debug = (...args) => console.log('[ambient]', ...args);
+  const debug = (...args) => console.log("[ambient]", ...args);
 
   function ensureCSS() {
     if (document.getElementById("btfw-ambient-css")) return;
@@ -50,32 +73,60 @@ BTFW.define("feature:ambient", [], async () => {
         position: relative;
         isolation: isolate;
         overflow: visible;
-
-        --ambient-rgb: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
-        --ambient-rgb-soft: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
-        --ambient-rgb-highlight: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
-        --ambient-rgb-deep: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
       }
 
-      #videowrap.btfw-ambient-ready::before {
-        content: "";
+      #videowrap.btfw-ambient-ready .btfw-ambient-layer {
+        pointer-events: none;
+      }
+
+      .btfw-ambient-layer {
         position: absolute;
         inset: clamp(-18%, -8vw, -12%);
-        pointer-events: none;
+        border-radius: clamp(26px, 8vw, 38px);
+        overflow: hidden;
         z-index: -1;
         opacity: 0;
-        transform: scale(0.9);
-        border-radius: clamp(26px, 8vw, 38px);
-        background:
-          radial-gradient(circle at 20% 18%, rgba(var(--ambient-rgb-highlight), 0.58) 0%, transparent 56%),
-          radial-gradient(circle at 78% 22%, rgba(var(--ambient-rgb-soft), 0.48) 0%, transparent 58%),
-          radial-gradient(circle at 46% 82%, rgba(var(--ambient-rgb-deep), 0.56) 0%, transparent 74%),
-          radial-gradient(circle at 50% 50%, rgba(var(--ambient-rgb), 0.38) 0%, transparent 88%);
-        filter: blur(82px) saturate(128%) brightness(1.05);
+        transform: scale(0.92);
         transition: opacity 0.5s ease, transform 0.6s ease;
+        background:
+          radial-gradient(circle at 20% 18%, rgba(var(--ambient-highlight, ${formatColor(
+            mixWithWhite(DEFAULT_COLOR, 0.52)
+          )}), 0.58) 0%, transparent 56%),
+          radial-gradient(circle at 78% 22%, rgba(var(--ambient-soft, ${formatColor(
+            mixWithWhite(DEFAULT_COLOR, 0.28)
+          )}), 0.48) 0%, transparent 58%),
+          radial-gradient(circle at 46% 82%, rgba(var(--ambient-deep, ${formatColor(
+            mixWithBlack(DEFAULT_COLOR, 0.42)
+          )}), 0.56) 0%, transparent 74%),
+          radial-gradient(circle at 50% 50%, rgba(var(--ambient-base, ${formatColor(
+            DEFAULT_COLOR
+          )}), 0.38) 0%, transparent 88%);
       }
 
-      #videowrap.btfw-ambient-enabled::before {
+      .btfw-ambient-layer::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(10, 14, 32, 0.35);
+        mix-blend-mode: screen;
+      }
+
+      .btfw-ambient-layer video {
+        position: absolute;
+        inset: -12% -12% -12% -12%;
+        width: 124%;
+        height: 124%;
+        object-fit: cover;
+        filter: blur(86px) saturate(140%) brightness(1.05);
+        transform: scale(1.08);
+      }
+
+      #videowrap.btfw-ambient-enabled::before,
+      #videowrap.btfw-ambient-enabled::after {
+        content: none !important;
+      }
+
+      #videowrap.btfw-ambient-enabled .btfw-ambient-layer {
         opacity: 1;
         transform: scale(1);
       }
@@ -86,10 +137,16 @@ BTFW.define("feature:ambient", [], async () => {
       #videowrap.btfw-ambient-enabled video {
         border-radius: clamp(16px, 3vw, 24px);
         box-shadow:
-          0 34px 94px rgba(var(--ambient-rgb-soft), 0.42),
-          0 18px 40px rgba(var(--ambient-rgb-deep), 0.28);
+          0 34px 94px rgba(var(--ambient-soft, ${formatColor(
+            mixWithWhite(DEFAULT_COLOR, 0.28)
+          )}), 0.42),
+          0 18px 40px rgba(var(--ambient-deep, ${formatColor(
+            mixWithBlack(DEFAULT_COLOR, 0.42)
+          )}), 0.28);
         overflow: hidden;
-        background: rgba(var(--ambient-rgb-deep), 0.22);
+        background: rgba(var(--ambient-deep, ${formatColor(
+          mixWithBlack(DEFAULT_COLOR, 0.42)
+        )}), 0.22);
         transition: box-shadow 0.45s ease;
       }
 
@@ -98,9 +155,13 @@ BTFW.define("feature:ambient", [], async () => {
       }
 
       @media (max-width: 768px) {
-        #videowrap.btfw-ambient-ready::before {
+        .btfw-ambient-layer {
           inset: clamp(-22%, -12vw, -16%);
-          filter: blur(64px) saturate(132%) brightness(1.08);
+          border-radius: clamp(18px, 6vw, 28px);
+        }
+
+        .btfw-ambient-layer video {
+          filter: blur(72px) saturate(138%) brightness(1.08);
         }
 
         #videowrap.btfw-ambient-enabled #ytapiplayer,
@@ -109,13 +170,17 @@ BTFW.define("feature:ambient", [], async () => {
         #videowrap.btfw-ambient-enabled video {
           border-radius: clamp(12px, 4vw, 18px);
           box-shadow:
-            0 24px 68px rgba(var(--ambient-rgb-soft), 0.38),
-            0 12px 32px rgba(var(--ambient-rgb-deep), 0.2);
+            0 24px 68px rgba(var(--ambient-soft, ${formatColor(
+              mixWithWhite(DEFAULT_COLOR, 0.28)
+            )}), 0.38),
+            0 12px 32px rgba(var(--ambient-deep, ${formatColor(
+              mixWithBlack(DEFAULT_COLOR, 0.42)
+            )}), 0.2);
         }
       }
     `;
     document.head.appendChild(st);
-    debug('CSS injected');
+    debug("CSS injected");
   }
 
   function waitForWrap(timeout = 5000) {
@@ -123,14 +188,14 @@ BTFW.define("feature:ambient", [], async () => {
 
     const immediate = $("#videowrap");
     if (immediate) {
-      debug('Found #videowrap immediately');
+      debug("Found #videowrap immediately");
       return Promise.resolve(immediate);
     }
 
-    debug('Waiting for #videowrap...');
+    debug("Waiting for #videowrap...");
     waitForWrapPromise = new Promise((resolve) => {
       if (!document.body) {
-        debug('No document.body yet');
+        debug("No document.body yet");
         resolve(null);
         return;
       }
@@ -139,12 +204,12 @@ BTFW.define("feature:ambient", [], async () => {
       const observer = new MutationObserver(() => {
         const found = $("#videowrap");
         if (found) {
-          debug('Found #videowrap via observer');
+          debug("Found #videowrap via observer");
           observer.disconnect();
           waitForWrapPromise = null;
           resolve(found);
         } else if (Date.now() > deadline) {
-          debug('Timeout waiting for #videowrap');
+          debug("Timeout waiting for #videowrap");
           observer.disconnect();
           waitForWrapPromise = null;
           resolve(null);
@@ -165,7 +230,7 @@ BTFW.define("feature:ambient", [], async () => {
   function ensureAmbientRoot(preferredWrap = null) {
     const nextWrap = preferredWrap || $("#videowrap");
     if (!nextWrap) {
-      debug('No #videowrap found');
+      debug("No #videowrap found");
       return null;
     }
 
@@ -184,20 +249,27 @@ BTFW.define("feature:ambient", [], async () => {
         legacy.parentNode && legacy.parentNode.removeChild(legacy);
       }
     }
+
     wrap.classList.add("btfw-ambient-ready");
     if (active) {
       wrap.classList.add("btfw-ambient-enabled");
     }
-    updateWrapColor();
 
-    debug('Ambient root prepared', { active, wrap });
+    if (!renderer) {
+      renderer = new AmbientRenderer();
+      renderer.mount(wrap);
+    } else {
+      renderer.mount(wrap);
+    }
+
+    debug("Ambient root prepared", { active, wrap });
     return wrap;
   }
 
   function getStoredPreference() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY) === "1";
-      debug('Stored preference:', stored);
+      debug("Stored preference:", stored);
       return stored;
     } catch (_) {
       return false;
@@ -207,219 +279,24 @@ BTFW.define("feature:ambient", [], async () => {
   function setStoredPreference(value) {
     try {
       localStorage.setItem(STORAGE_KEY, value ? "1" : "0");
-      debug('Stored preference updated:', value);
+      debug("Stored preference updated:", value);
     } catch (_) {}
-  }
-
-  function applyColor(color) {
-    storedColor = clampColor(color);
-    updateWrapColor();
-    debug('Color applied:', storedColor);
-  }
-
-  function updateWrapColor() {
-    if (!wrap) return;
-    const base = clampColor(storedColor);
-    const soft = mixWithWhite(base, 0.28);
-    const highlight = mixWithWhite(base, 0.52);
-    const deep = mixWithBlack(base, 0.42);
-
-    wrap.style.setProperty("--ambient-rgb", formatColor(base));
-    wrap.style.setProperty("--ambient-rgb-soft", formatColor(soft));
-    wrap.style.setProperty("--ambient-rgb-highlight", formatColor(highlight));
-    wrap.style.setProperty("--ambient-rgb-deep", formatColor(deep));
   }
 
   function findVideoElement() {
     const video = $("#ytapiplayer video") || $("#videowrap video") || document.querySelector("video");
     if (video) {
-      debug('Found video element:', video.src || video.currentSrc || 'no src');
+      debug("Found video element:", video.src || video.currentSrc || "no src");
     } else {
-      debug('No video element found');
+      debug("No video element found");
     }
     return video;
-  }
-
-  function stopSamplingLoop() {
-    if (!frameLoopHandle) return;
-
-    if (frameLoopMode === "video" && currentVideo && typeof currentVideo.cancelVideoFrameCallback === "function") {
-      try {
-        currentVideo.cancelVideoFrameCallback(frameLoopHandle);
-      } catch (_) {}
-    } else if (frameLoopMode === "raf") {
-      try {
-        cancelAnimationFrame(frameLoopHandle);
-      } catch (_) {}
-    }
-
-    frameLoopHandle = null;
-    frameLoopMode = null;
-    debug('Sampling loop stopped');
-  }
-
-  function detachVideoListeners() {
-    if (!currentVideo) return;
-    const handler = currentVideo._btfwAmbientHandler;
-    if (handler) {
-      ["timeupdate", "loadeddata", "play", "seeked", "ended", "emptied"].forEach((evt) => {
-        try {
-          currentVideo.removeEventListener(evt, handler);
-        } catch (_) {}
-      });
-      delete currentVideo._btfwAmbientHandler;
-    }
-    stopSamplingLoop();
-    debug('Video listeners detached');
-    currentVideo = null;
-  }
-
-  function sampleVideoFrame(video) {
-    if (!video) return;
-    
-    // Skip if we know this video has CORS issues
-    if (corsFailedForVideo.has(video)) {
-      return;
-    }
-    
-    if (samplingBlocked && performance.now() < samplingCooldownUntil) return;
-    samplingBlocked = false;
-    if (video.readyState < 2) {
-      debug('Video not ready, readyState:', video.readyState);
-      return;
-    }
-
-    const now = performance.now();
-    if (now - lastSampleTime < 120) return;
-    lastSampleTime = now;
-
-    try {
-      if (!samplingCanvas) {
-        samplingCanvas = document.createElement("canvas");
-        samplingCanvas.width = samplingCanvas.height = 32;
-        samplingCtx = samplingCanvas.getContext("2d", { willReadFrequently: true });
-        debug('Sampling canvas created');
-      }
-
-      samplingCtx.drawImage(video, 0, 0, samplingCanvas.width, samplingCanvas.height);
-      const { data } = samplingCtx.getImageData(0, 0, samplingCanvas.width, samplingCanvas.height);
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      let count = 0;
-
-      for (let i = 0; i < data.length; i += 4) {
-        const alpha = data[i + 3];
-        if (alpha < 8) continue;
-        r += data[i];
-        g += data[i + 1];
-        b += data[i + 2];
-        count++;
-      }
-
-      if (!count) {
-        debug('No valid pixels sampled');
-        return;
-      }
-
-      applyColor({ r: r / count, g: g / count, b: b / count });
-    } catch (err) {
-      // Check if it's a CORS error
-      if (err.message && err.message.includes('cross-origin')) {
-        debug('CORS blocked - video from external domain without proper headers');
-        debug('Falling back to static ambient color');
-        corsFailedForVideo.add(video);
-        stopSamplingLoop(); // Stop trying to sample this video
-      } else {
-        samplingBlocked = true;
-        samplingCooldownUntil = performance.now() + 5000;
-        debug('Sampling error:', err.message);
-      }
-      applyColor(DEFAULT_COLOR);
-    }
-  }
-
-  function attachVideo(video) {
-    if (currentVideo === video) return;
-
-    detachVideoListeners();
-    currentVideo = video && video.tagName === "VIDEO" ? video : null;
-
-    if (!currentVideo) {
-      debug('No video to attach');
-      applyColor(DEFAULT_COLOR);
-      return;
-    }
-
-    debug('Attaching to video');
-    samplingBlocked = false;
-    samplingCooldownUntil = 0;
-    
-    // Only try setting crossOrigin if it's not already set
-    try {
-      if ("crossOrigin" in currentVideo && !currentVideo.crossOrigin) {
-        currentVideo.crossOrigin = "anonymous";
-        debug('Set crossOrigin=anonymous (may not work if video already loaded)');
-      }
-    } catch (err) {
-      debug('Could not set crossOrigin:', err.message);
-    }
-
-    const handler = () => sampleVideoFrame(currentVideo);
-    currentVideo._btfwAmbientHandler = handler;
-    ["timeupdate", "loadeddata", "play", "seeked"].forEach((evt) => {
-      try {
-        currentVideo.addEventListener(evt, handler);
-      } catch (_) {}
-    });
-
-    handler();
-    startSamplingLoop();
-  }
-
-  function startSamplingLoop() {
-    stopSamplingLoop();
-    if (!currentVideo) return;
-
-    const useVideoFrame =
-      typeof currentVideo.requestVideoFrameCallback === "function" &&
-      typeof currentVideo.cancelVideoFrameCallback === "function";
-
-    debug('Starting sampling loop, mode:', useVideoFrame ? 'video frame callback' : 'requestAnimationFrame');
-
-    const scheduleNext = () => {
-      if (!currentVideo || corsFailedForVideo.has(currentVideo)) return;
-
-      if (useVideoFrame) {
-        try {
-          frameLoopMode = "video";
-          frameLoopHandle = currentVideo.requestVideoFrameCallback(() => {
-            frameLoopHandle = null;
-            sampleVideoFrame(currentVideo);
-            scheduleNext();
-          });
-          return;
-        } catch (_) {
-          frameLoopHandle = null;
-          frameLoopMode = null;
-        }
-      }
-
-      frameLoopMode = "raf";
-      frameLoopHandle = requestAnimationFrame(() => {
-        frameLoopHandle = null;
-        sampleVideoFrame(currentVideo);
-        scheduleNext();
-      });
-    };
-
-    scheduleNext();
   }
 
   function startMonitoring() {
     if (monitorTimer) return;
 
-    debug('Starting monitoring');
+    debug("Starting monitoring");
     monitorTimer = window.setInterval(() => {
       if (!active) return;
       const wrapNow = $("#videowrap");
@@ -433,7 +310,8 @@ BTFW.define("feature:ambient", [], async () => {
         ensureAmbientRoot(wrapNow);
       }
 
-      attachVideo(findVideoElement());
+      const video = findVideoElement();
+      if (renderer) renderer.attach(video);
     }, 1000);
 
     wireSocketListener();
@@ -443,9 +321,9 @@ BTFW.define("feature:ambient", [], async () => {
     if (monitorTimer) {
       clearInterval(monitorTimer);
       monitorTimer = null;
-      debug('Monitoring stopped');
+      debug("Monitoring stopped");
     }
-    detachVideoListeners();
+    if (renderer) renderer.detach();
   }
 
   function wireSocketListener() {
@@ -455,10 +333,11 @@ BTFW.define("feature:ambient", [], async () => {
         socketListenerAttached = true;
         socket.on("changeMedia", () => {
           if (!active) return;
-          debug('Media changed via socket');
+          debug("Media changed via socket");
           setTimeout(() => {
             ensureAmbientRoot();
-            attachVideo(findVideoElement());
+            const video = findVideoElement();
+            if (renderer) renderer.attach(video);
           }, 400);
         });
       }
@@ -468,7 +347,7 @@ BTFW.define("feature:ambient", [], async () => {
   async function enable() {
     if (active) return true;
 
-    debug('Enabling ambient mode');
+    debug("Enabling ambient mode");
     ensureCSS();
     const wrapEl = $("#videowrap") || (await waitForWrap());
     if (!wrapEl) {
@@ -479,22 +358,22 @@ BTFW.define("feature:ambient", [], async () => {
     const ensuredWrap = ensureAmbientRoot(wrapEl);
     if (ensuredWrap) {
       ensuredWrap.classList.add("btfw-ambient-enabled");
-      updateWrapColor();
+      updateRendererColor(renderer, findVideoElement());
     }
     active = true;
 
     setStoredPreference(true);
     startMonitoring();
-    attachVideo(findVideoElement());
+    if (renderer) renderer.attach(findVideoElement());
     dispatchState();
-    debug('Ambient mode enabled');
+    debug("Ambient mode enabled");
     return true;
   }
 
   async function disable() {
     if (!active) return true;
 
-    debug('Disabling ambient mode');
+    debug("Disabling ambient mode");
     active = false;
     setStoredPreference(false);
 
@@ -510,9 +389,10 @@ BTFW.define("feature:ambient", [], async () => {
 
   function refresh() {
     if (!active) return;
-    debug('Refreshing');
+    debug("Refreshing");
     ensureAmbientRoot();
-    attachVideo(findVideoElement());
+    updateRendererColor(renderer, findVideoElement());
+    if (renderer) renderer.attach(findVideoElement());
   }
 
   function isActive() {
@@ -529,11 +409,242 @@ BTFW.define("feature:ambient", [], async () => {
     );
   }
 
+  function updateRendererColor(instance, video) {
+    if (!instance) return;
+    const color = deriveColorFromVideo(video);
+    instance.setColor(color || DEFAULT_COLOR);
+  }
+
+  function deriveColorFromVideo(video) {
+    if (!video) return null;
+
+    const dataAttr = video.getAttribute("data-ambient-color") || video.dataset?.ambientColor;
+    if (dataAttr) {
+      const parsed = parseColor(dataAttr);
+      if (parsed) return parsed;
+    }
+
+    const cssColor = (() => {
+      try {
+        const styles = getComputedStyle(video);
+        const bg = styles.getPropertyValue("--ambient-color") || styles.backgroundColor;
+        return bg && bg.trim() ? bg : null;
+      } catch (_) {
+        return null;
+      }
+    })();
+
+    if (cssColor) {
+      const parsed = parseColor(cssColor);
+      if (parsed) return parsed;
+    }
+
+    return null;
+  }
+
+  class AmbientRenderer {
+    constructor() {
+      this.root = document.createElement("div");
+      this.root.className = "btfw-ambient-layer";
+      this.mirrorVideo = document.createElement("video");
+      this.mirrorVideo.setAttribute("aria-hidden", "true");
+      this.mirrorVideo.setAttribute("muted", "");
+      this.mirrorVideo.muted = true;
+      this.mirrorVideo.playsInline = true;
+      this.mirrorVideo.autoplay = true;
+      this.mirrorVideo.loop = true;
+      this.root.appendChild(this.mirrorVideo);
+
+      this.source = null;
+      this.color = clampColor(DEFAULT_COLOR);
+      this.mounted = false;
+      this.listeners = new Map();
+      this.syncInterval = null;
+      this.boundHandlers = null;
+    }
+
+    mount(targetWrap) {
+      if (!targetWrap) return;
+      if (this.root.parentNode !== targetWrap) {
+        try {
+          this.root.remove();
+        } catch (_) {}
+        targetWrap.prepend(this.root);
+      }
+      this.mounted = true;
+      this.applyColor();
+    }
+
+    detach() {
+      this.stopSync();
+      this.teardownSource();
+      this.mirrorVideo.pause();
+      this.mirrorVideo.removeAttribute("src");
+      this.mirrorVideo.innerHTML = "";
+      try {
+        this.mirrorVideo.load();
+      } catch (_) {}
+    }
+
+    attach(video) {
+      if (!this.mounted) return;
+      if (this.source === video) return;
+
+      this.stopSync();
+      this.teardownSource();
+
+      if (!video || video.tagName !== "VIDEO") {
+        this.source = null;
+        this.mirrorVideo.removeAttribute("src");
+        this.mirrorVideo.pause();
+        this.boundHandlers = null;
+        this.setColor(DEFAULT_COLOR);
+        return;
+      }
+
+      this.source = video;
+      this.setColor(deriveColorFromVideo(video) || DEFAULT_COLOR);
+      this.loadMirror(video);
+      this.startSync();
+    }
+
+    loadMirror(video) {
+      const src = video.currentSrc || video.src;
+      const sources = Array.from(video.querySelectorAll("source"));
+
+      if (src) {
+        this.mirrorVideo.src = src;
+        this.mirrorVideo.load();
+      } else if (sources.length) {
+        this.mirrorVideo.innerHTML = "";
+        sources.forEach((source) => {
+          const clone = source.cloneNode(true);
+          this.mirrorVideo.appendChild(clone);
+        });
+        this.mirrorVideo.load();
+      } else {
+        this.mirrorVideo.removeAttribute("src");
+      }
+
+      this.mirrorVideo.playbackRate = video.playbackRate || 1;
+
+      if (!this.boundHandlers) {
+        const copyRate = () => {
+          this.mirrorVideo.playbackRate = video.playbackRate || 1;
+        };
+        const copyPlay = () => {
+          const play = () => this.mirrorVideo.play().catch(() => {});
+          if (video.paused) {
+            this.mirrorVideo.pause();
+          } else {
+            if (this.mirrorVideo.readyState >= 2) play();
+            else this.mirrorVideo.addEventListener("loadeddata", play, { once: true });
+          }
+        };
+        const copyPause = () => {
+          if (!video.paused) return;
+          this.mirrorVideo.pause();
+        };
+        const copySeek = () => {
+          if (!Number.isFinite(video.currentTime)) return;
+          const diff = Math.abs((this.mirrorVideo.currentTime || 0) - video.currentTime);
+          if (diff > 0.7) {
+            try {
+              this.mirrorVideo.currentTime = video.currentTime;
+            } catch (_) {}
+          }
+        };
+        const onLoadedData = () => {
+          copyRate();
+          copySeek();
+          copyPlay();
+        };
+        const onEmptied = () => this.attach(null);
+
+        this.boundHandlers = { copyRate, copySeek, copyPlay };
+
+        this.listeners.set("ratechange", copyRate);
+        this.listeners.set("play", copyPlay);
+        this.listeners.set("pause", copyPause);
+        this.listeners.set("timeupdate", copySeek);
+        this.listeners.set("seeked", copySeek);
+        this.listeners.set("loadeddata", onLoadedData);
+        this.listeners.set("emptied", onEmptied);
+
+        this.listeners.forEach((handler, event) => {
+          if (typeof handler !== "function") return;
+          try {
+            video.addEventListener(event, handler);
+          } catch (_) {}
+        });
+      }
+
+      if (this.boundHandlers) {
+        this.boundHandlers.copyRate();
+        this.boundHandlers.copySeek();
+        this.boundHandlers.copyPlay();
+      }
+    }
+
+    startSync() {
+      if (this.syncInterval) return;
+      this.syncInterval = window.setInterval(() => {
+        if (!this.source) return;
+        const src = this.source.currentSrc || this.source.src;
+        const mirrorSrc = this.mirrorVideo.currentSrc || this.mirrorVideo.src;
+        if (src && mirrorSrc && src !== mirrorSrc) {
+          this.loadMirror(this.source);
+        }
+        const derived = deriveColorFromVideo(this.source);
+        if (derived) this.setColor(derived);
+        else this.applyColor();
+      }, 1500);
+    }
+
+    stopSync() {
+      if (this.syncInterval) {
+        clearInterval(this.syncInterval);
+        this.syncInterval = null;
+      }
+    }
+
+    teardownSource() {
+      if (!this.source) return;
+      this.listeners.forEach((handler, event) => {
+        if (typeof handler !== "function") return;
+        try {
+          this.source.removeEventListener(event, handler);
+        } catch (_) {}
+      });
+      this.listeners.clear();
+      this.source = null;
+      this.boundHandlers = null;
+    }
+
+    setColor(color) {
+      this.color = clampColor(color || DEFAULT_COLOR);
+      this.applyColor();
+    }
+
+    applyColor() {
+      if (!this.mounted) return;
+      const base = clampColor(this.color);
+      const soft = mixWithWhite(base, 0.28);
+      const highlight = mixWithWhite(base, 0.52);
+      const deep = mixWithBlack(base, 0.42);
+
+      this.root.style.setProperty("--ambient-base", formatColor(base));
+      this.root.style.setProperty("--ambient-soft", formatColor(soft));
+      this.root.style.setProperty("--ambient-highlight", formatColor(highlight));
+      this.root.style.setProperty("--ambient-deep", formatColor(deep));
+    }
+  }
+
   function boot() {
-    debug('Booting ambient feature');
+    debug("Booting ambient feature");
     ensureCSS();
     if (getStoredPreference()) {
-      debug('Auto-enabling from stored preference');
+      debug("Auto-enabling from stored preference");
       enable();
     }
   }
