@@ -4,9 +4,26 @@ BTFW.define("feature:ambient", [], async () => {
 
   const $ = (selector, root = document) => root.querySelector(selector);
 
+  const clampChannel = (value) => Math.max(0, Math.min(255, Math.round(value)));
+  const clampColor = (color) => ({
+    r: clampChannel(color.r),
+    g: clampChannel(color.g),
+    b: clampChannel(color.b)
+  });
+  const mixWithWhite = (color, amount) => clampColor({
+    r: color.r + (255 - color.r) * amount,
+    g: color.g + (255 - color.g) * amount,
+    b: color.b + (255 - color.b) * amount
+  });
+  const mixWithBlack = (color, amount) => clampColor({
+    r: color.r * (1 - amount),
+    g: color.g * (1 - amount),
+    b: color.b * (1 - amount)
+  });
+  const formatColor = (color) => `${color.r}, ${color.g}, ${color.b}`;
+
   let active = false;
   let wrap = null;
-  let ambientRoot = null;
   let monitorTimer = null;
   let currentVideo = null;
   let samplingCanvas = null;
@@ -25,109 +42,68 @@ BTFW.define("feature:ambient", [], async () => {
     st.textContent = `
       #videowrap.btfw-ambient-ready {
         position: relative;
+        isolation: isolate;
         overflow: visible;
         --ambient-rgb: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
+        --ambient-rgb-soft: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
+        --ambient-rgb-highlight: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
+        --ambient-rgb-deep: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
       }
 
-      #btfw-ambient-wrap {
+      #videowrap.btfw-ambient-ready::before {
+        content: "";
         position: absolute;
-        inset: -8%;
+        inset: clamp(-18%, -8vw, -12%);
         pointer-events: none;
-        z-index: 0;
+        z-index: -1;
         opacity: 0;
-        transform: scale(0.98);
-        transition: opacity 0.45s ease, transform 0.45s ease;
+        transform: scale(0.9);
+        border-radius: clamp(26px, 8vw, 38px);
+        background:
+          radial-gradient(circle at 20% 18%, rgba(var(--ambient-rgb-highlight, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.58) 0%, transparent 56%),
+          radial-gradient(circle at 78% 22%, rgba(var(--ambient-rgb-soft, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.48) 0%, transparent 58%),
+          radial-gradient(circle at 46% 82%, rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.56) 0%, transparent 74%),
+          radial-gradient(circle at 50% 50%, rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.38) 0%, transparent 88%);
+        filter: blur(82px) saturate(128%) brightness(1.05);
+        transition: opacity 0.5s ease, transform 0.6s ease;
       }
 
-      #videowrap.btfw-ambient-enabled #btfw-ambient-wrap {
+      #videowrap.btfw-ambient-enabled::before {
         opacity: 1;
         transform: scale(1);
-      }
-
-      #btfw-ambient-wrap .btfw-ambient-glow {
-        position: absolute;
-        inset: -25%;
-        background: radial-gradient(
-          circle at 50% 50%,
-          rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.65) 0%,
-          rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.25) 55%,
-          transparent 100%
-        );
-        filter: blur(90px);
-        transform: scale(1.15);
-        opacity: 0;
-        transition: opacity 0.6s ease, transform 0.6s ease;
-      }
-
-      #videowrap.btfw-ambient-enabled #btfw-ambient-wrap .btfw-ambient-glow {
-        opacity: 1;
-        transform: scale(1);
-      }
-
-      #btfw-ambient-wrap .btfw-ambient-gradient {
-        position: absolute;
-        inset: -12% -12% -4% -12%;
-        background: linear-gradient(
-          to bottom,
-          rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.4) 0%,
-          rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.24) 28%,
-          rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.08) 65%,
-          transparent 100%
-        );
-        opacity: 0;
-        transition: opacity 0.6s ease;
-      }
-
-      #videowrap.btfw-ambient-enabled #btfw-ambient-wrap .btfw-ambient-gradient {
-        opacity: 1;
-      }
-
-      #btfw-ambient-wrap .btfw-ambient-vignette {
-        position: absolute;
-        inset: -16%;
-        background: radial-gradient(
-          circle at 50% 65%,
-          rgba(0, 0, 0, 0.15) 0%,
-          rgba(0, 0, 0, 0.45) 70%,
-          rgba(0, 0, 0, 0.8) 100%
-        );
-        opacity: 0;
-        transition: opacity 0.6s ease;
-      }
-
-      #videowrap.btfw-ambient-enabled #btfw-ambient-wrap .btfw-ambient-vignette {
-        opacity: 0.35;
-      }
-
-      #videowrap.btfw-ambient-ready #ytapiplayer,
-      #videowrap.btfw-ambient-ready .video-js,
-      #videowrap.btfw-ambient-ready iframe {
-        position: relative;
-        z-index: 1;
       }
 
       #videowrap.btfw-ambient-enabled #ytapiplayer,
       #videowrap.btfw-ambient-enabled .video-js,
-      #videowrap.btfw-ambient-enabled iframe {
-        box-shadow: 0 32px 90px rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.35);
-        border-radius: 16px;
+      #videowrap.btfw-ambient-enabled iframe,
+      #videowrap.btfw-ambient-enabled video {
+        border-radius: clamp(16px, 3vw, 24px);
+        box-shadow:
+          0 34px 94px rgba(var(--ambient-rgb-soft, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.42),
+          0 18px 40px rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.28);
         overflow: hidden;
+        background: rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.22);
+        transition: box-shadow 0.45s ease;
+      }
+
+      #videowrap.btfw-ambient-enabled .video-js {
+        background: transparent;
       }
 
       @media (max-width: 768px) {
-        #btfw-ambient-wrap {
-          inset: -14%;
+        #videowrap.btfw-ambient-ready::before {
+          inset: clamp(-22%, -12vw, -16%);
+          filter: blur(64px) saturate(132%) brightness(1.08);
         }
-        #btfw-ambient-wrap .btfw-ambient-glow {
-          filter: blur(70px);
-        }
-        #videowrap.btfw-ambient-enabled #btfw-ambient-wrap .btfw-ambient-vignette {
-          opacity: 0.25;
-        }
+
         #videowrap.btfw-ambient-enabled #ytapiplayer,
         #videowrap.btfw-ambient-enabled .video-js,
-        #videowrap.btfw-ambient-enabled iframe {
-          border-radius: 12px;
+        #videowrap.btfw-ambient-enabled iframe,
+        #videowrap.btfw-ambient-enabled video {
+          border-radius: clamp(12px, 4vw, 18px);
+          box-shadow:
+            0 24px 68px rgba(var(--ambient-rgb-soft, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.38),
+            0 12px 32px rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.2);
         }
       }
     `;
@@ -171,27 +147,32 @@ BTFW.define("feature:ambient", [], async () => {
     return waitForWrapPromise;
   }
 
-  function ensureAmbientRoot() {
-    wrap = $("#videowrap");
-    if (!wrap) return null;
+  function ensureAmbientRoot(preferredWrap = null) {
+    const nextWrap = preferredWrap || $("#videowrap");
+    if (!nextWrap) return null;
 
     ensureCSS();
-    wrap.classList.add("btfw-ambient-ready");
 
-    ambientRoot = wrap.querySelector("#btfw-ambient-wrap");
-    if (!ambientRoot) {
-      ambientRoot = document.createElement("div");
-      ambientRoot.id = "btfw-ambient-wrap";
-      ambientRoot.innerHTML = `
-        <div class="btfw-ambient-glow"></div>
-        <div class="btfw-ambient-gradient"></div>
-        <div class="btfw-ambient-vignette"></div>
-      `;
-      wrap.insertBefore(ambientRoot, wrap.firstChild || null);
+    if (wrap && wrap !== nextWrap) {
+      wrap.classList.remove("btfw-ambient-enabled", "btfw-ambient-ready");
     }
 
-    applyColor(storedColor);
-    return ambientRoot;
+    wrap = nextWrap;
+    const legacy = wrap.querySelector && wrap.querySelector("#btfw-ambient-wrap");
+    if (legacy) {
+      try {
+        legacy.remove();
+      } catch (_) {
+        legacy.parentNode && legacy.parentNode.removeChild(legacy);
+      }
+    }
+    wrap.classList.add("btfw-ambient-ready");
+    if (active) {
+      wrap.classList.add("btfw-ambient-enabled");
+    }
+    updateWrapColor();
+
+    return wrap;
   }
 
   function getStoredPreference() {
@@ -209,14 +190,21 @@ BTFW.define("feature:ambient", [], async () => {
   }
 
   function applyColor(color) {
-    storedColor = {
-      r: Math.max(0, Math.min(255, Math.round(color.r))),
-      g: Math.max(0, Math.min(255, Math.round(color.g))),
-      b: Math.max(0, Math.min(255, Math.round(color.b)))
-    };
-    const rgb = `${storedColor.r}, ${storedColor.g}, ${storedColor.b}`;
-    if (wrap) wrap.style.setProperty("--ambient-rgb", rgb);
-    if (ambientRoot) ambientRoot.style.setProperty("--ambient-rgb", rgb);
+    storedColor = clampColor(color);
+    updateWrapColor();
+  }
+
+  function updateWrapColor() {
+    if (!wrap) return;
+    const base = clampColor(storedColor);
+    const soft = mixWithWhite(base, 0.28);
+    const highlight = mixWithWhite(base, 0.52);
+    const deep = mixWithBlack(base, 0.42);
+
+    wrap.style.setProperty("--ambient-rgb", formatColor(base));
+    wrap.style.setProperty("--ambient-rgb-soft", formatColor(soft));
+    wrap.style.setProperty("--ambient-rgb-highlight", formatColor(highlight));
+    wrap.style.setProperty("--ambient-rgb-deep", formatColor(deep));
   }
 
   function findVideoElement() {
@@ -306,10 +294,16 @@ BTFW.define("feature:ambient", [], async () => {
     monitorTimer = window.setInterval(() => {
       if (!active) return;
       const wrapNow = $("#videowrap");
-      if (wrapNow && wrapNow !== wrap) {
-        wrap = wrapNow;
-        ensureAmbientRoot();
+
+      if (!wrapNow) {
+        if (wrap && !wrap.isConnected) {
+          wrap.classList.remove("btfw-ambient-enabled", "btfw-ambient-ready");
+          wrap = null;
+        }
+      } else if (wrapNow !== wrap || !wrap || !wrap.classList.contains("btfw-ambient-ready")) {
+        ensureAmbientRoot(wrapNow);
       }
+
       attachVideo(findVideoElement());
     }, 1000);
 
@@ -350,9 +344,11 @@ BTFW.define("feature:ambient", [], async () => {
       return false;
     }
 
-    wrap = wrapEl;
-    ensureAmbientRoot();
-    wrap.classList.add("btfw-ambient-enabled");
+    const ensuredWrap = ensureAmbientRoot(wrapEl);
+    if (ensuredWrap) {
+      ensuredWrap.classList.add("btfw-ambient-enabled");
+      updateWrapColor();
+    }
     active = true;
 
     setStoredPreference(true);
