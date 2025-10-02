@@ -963,7 +963,16 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
     animation: lights 8s 750ms linear infinite;
     font-weight: 1000;
 }
-
+.chat-msg-Nailgun .username {
+    -webkit-background-clip: text, text, border-box, border-box, border-box;
+    -webkit-text-fill-color: transparent;
+    animation: myproxiesanim 20s 
+linear infinite;
+    background-image: url(https://i.imgur.com/k6rhOtN.gif), radial-gradient(circle, rgb(21 255 32) 8%, rgb(202 255 74) 19%, rgba(173, 247, 242, 1) 35%, rgba(156, 238, 243, 1) 60%, rgba(21, 170, 255, 1) 70%, rgb(65 0 118) 87%, rgba(255, 255, 255, 1) 100%), url(https://i.ibb.co/DtJBDNy/white-lightning.gif), url(https://i.imgur.com/afWakbq.gif);
+    background-size: 5em, 15% 800%, 10em, 25em;
+    position: relative;
+    transition: .3s;
+}
 /* ==========================================
    REQUIRED ANIMATIONS
    ========================================== */
@@ -995,6 +1004,7 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
     0%, 100% { text-shadow: 0 0 10px #922fff, 0 0 20px #922fff, 0 0 30px #922fff; }
     50% { text-shadow: 0 0 5px #922fff, 0 0 10px #922fff, 0 0 15px #922fff; }
 }
+
 
 
 
