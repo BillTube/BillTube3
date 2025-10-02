@@ -25,35 +25,44 @@ BTFW.define("feature:ambient", [], async () => {
         overflow: visible;
       }
 
-      /* Ambient glow container */
+      /* Ambient glow container - covers entire videowrap area and extends beyond */
       #videowrap .btfw-ambient-glow {
         position: absolute;
-        inset: -15%;
-        z-index: -1;
-        overflow: hidden;
-        border-radius: clamp(26px, 8vw, 38px);
-        opacity: 0;
-        transform: scale(0.92);
-        transition: opacity 0.6s ease, transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
         pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.6s ease;
+        overflow: visible;
       }
 
       #videowrap.btfw-ambient-enabled .btfw-ambient-glow {
         opacity: 1;
-        transform: scale(1);
       }
 
-      /* Cloned video for glow effect */
+      /* Cloned video for glow effect - scaled up and heavily blurred */
       #videowrap .btfw-ambient-glow video {
         position: absolute;
         top: 50%;
         left: 50%;
-        transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%) scale(1.3);
         width: 100%;
         height: 100%;
         object-fit: cover;
-        filter: blur(clamp(50px, 8vw, 80px)) saturate(180%) brightness(1.25);
-        opacity: 0.75;
+        filter: blur(clamp(60px, 10vw, 100px)) saturate(200%) brightness(1.4) contrast(1.1);
+        opacity: 0.8;
+      }
+
+      /* Ensure main video content is above the glow */
+      #videowrap.btfw-ambient-enabled #ytapiplayer,
+      #videowrap.btfw-ambient-enabled .video-js,
+      #videowrap.btfw-ambient-enabled iframe,
+      #videowrap.btfw-ambient-enabled > video:not(.btfw-ambient-glow video) {
+        position: relative;
+        z-index: 1;
       }
 
       /* Enhanced video styling when ambient is active */
@@ -76,24 +85,10 @@ BTFW.define("feature:ambient", [], async () => {
 
       /* Mobile optimizations */
       @media (max-width: 768px) {
-        #videowrap .btfw-ambient-glow {
-          inset: -20%;
-          border-radius: clamp(20px, 10vw, 32px);
-        }
-
         #videowrap .btfw-ambient-glow video {
-          filter: blur(clamp(40px, 10vw, 60px)) saturate(160%) brightness(1.2);
-          opacity: 0.7;
-        }
-
-        #videowrap.btfw-ambient-enabled #ytapiplayer,
-        #videowrap.btfw-ambient-enabled .video-js,
-        #videowrap.btfw-ambient-enabled iframe,
-        #videowrap.btfw-ambient-enabled video:not(.btfw-ambient-glow video) {
-          border-radius: clamp(12px, 4vw, 18px);
-          box-shadow:
-            0 25px 60px rgba(0, 0, 0, 0.4),
-            0 15px 30px rgba(0, 0, 0, 0.3);
+          transform: translate(-50%, -50%) scale(1.4);
+          filter: blur(clamp(50px, 12vw, 80px)) saturate(180%) brightness(1.3) contrast(1.1);
+          opacity: 0.75;
         }
       }
 
@@ -101,12 +96,23 @@ BTFW.define("feature:ambient", [], async () => {
       @keyframes btfw-ambient-fadeIn {
         from {
           opacity: 0;
-          transform: scale(0.92);
         }
         to {
           opacity: 1;
-          transform: scale(1);
         }
+      }
+
+      /* Additional glow enhancement layer */
+      #videowrap .btfw-ambient-glow::before {
+        content: "";
+        position: absolute;
+        inset: -30%;
+        background: radial-gradient(
+          ellipse at center,
+          rgba(255, 255, 255, 0.03) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
       }
     `;
     document.head.appendChild(st);
@@ -206,24 +212,36 @@ BTFW.define("feature:ambient", [], async () => {
     // Remove existing glow elements
     cleanupGlowElements();
 
-    // Create glow container
+    // Create glow container - this is a dedicated div that sits behind everything
     glowContainer = document.createElement("div");
     glowContainer.className = "btfw-ambient-glow";
+    glowContainer.setAttribute("aria-hidden", "true");
 
     // Create cloned video for glow effect
     glowVideo = document.createElement("video");
     glowVideo.muted = true;
     glowVideo.playsInline = true;
     glowVideo.loop = true;
+    glowVideo.preload = "auto";
     glowVideo.style.pointerEvents = "none";
+    glowVideo.setAttribute("aria-hidden", "true");
+    
+    // Disable controls and make it purely decorative
+    glowVideo.controls = false;
+    glowVideo.disablePictureInPicture = true;
 
     glowContainer.appendChild(glowVideo);
     
-    // Insert at the beginning of videowrap
+    // Insert at the very beginning of videowrap (behind everything)
     if (wrap.firstChild) {
       wrap.insertBefore(glowContainer, wrap.firstChild);
     } else {
       wrap.appendChild(glowContainer);
+    }
+
+    // Ensure videowrap has proper positioning
+    if (getComputedStyle(wrap).position === "static") {
+      wrap.style.position = "relative";
     }
   }
 
