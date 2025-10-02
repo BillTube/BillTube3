@@ -718,7 +718,7 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-right: 6px;
+  margin-right: 0px;
   flex: 0 0 var(--btfw-avatar-size);
   width: var(--btfw-avatar-size);
   height: var(--btfw-avatar-size);
@@ -929,6 +929,7 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
     0%, 100% { text-shadow: 0 0 10px #922fff, 0 0 20px #922fff, 0 0 30px #922fff; }
     50% { text-shadow: 0 0 5px #922fff, 0 0 10px #922fff, 0 0 15px #922fff; }
 }
+
 
 
 
