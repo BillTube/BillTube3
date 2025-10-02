@@ -149,17 +149,13 @@ BTFW.define("feature:ambient", [], async () => {
   }
 
   function getStoredPreference() {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === "1";
-    } catch (_) {
-      return false;
-    }
+    // Always return false - don't remember state between sessions
+    return false;
   }
 
   function setStoredPreference(value) {
-    try {
-      localStorage.setItem(STORAGE_KEY, value ? "1" : "0");
-    } catch (_) {}
+    // Don't store preference - always start disabled
+    return;
   }
 
   function findVideoElement() {
