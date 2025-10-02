@@ -69,16 +69,6 @@ BTFW.define("feature:nowplaying", [], async () => {
     return active && active.textContent ? active.textContent.trim() : "";
   }
 
-  // NEW: Get title directly from CyTube's PLAYER object
-  function getTitleFromPlayer() {
-    try {
-      if (window.PLAYER && window.PLAYER.mediaTitle) {
-        return window.PLAYER.mediaTitle;
-      }
-    } catch (e) {}
-    return "";
-  }
-
   function setTitle(newTitle, options = {}) {
     let ct = findCurrentTitle();
     if (!ct) {
@@ -89,18 +79,15 @@ BTFW.define("feature:nowplaying", [], async () => {
       }
     }
 
-    // Try multiple sources for the title
-    const title = newTitle || getTitleFromPlayer() || ct.textContent || getQueueActiveTitle();
+    const title = newTitle || ct.textContent || getQueueActiveTitle();
     const cleanTitle = stripPrefix(title);
 
     if (!cleanTitle) {
-      console.log('[nowplaying] No title available yet');
       return false;
     }
 
     const currentText = stripPrefix(ct.textContent || "");
     
-    // Only update if different or forced
     if (currentText !== cleanTitle || options.force) {
       ct.textContent = cleanTitle;
       ct.title = cleanTitle;
@@ -131,22 +118,53 @@ BTFW.define("feature:nowplaying", [], async () => {
 
   function handleMediaChange(data) {
     console.log('[nowplaying] Media changed:', data);
-    const title = data?.title || getTitleFromPlayer();
-    setTitle(title, { force: true });
-    mountTitleIntoSlot();
+    
+    // Handle both object with title and just queue position number
+    if (data && typeof data === 'object' && data.title) {
+      setTitle(data.title, { force: true });
+      mountTitleIntoSlot();
+      
+      const mediaKey = mediaIdentity(data);
+      if (mediaKey) {
+        state.lastMediaKey = mediaKey;
+      }
+    } else if (typeof data === 'number') {
+      // Just a queue position, ignore for now
+      console.log('[nowplaying] Received queue position:', data);
+    }
   }
 
-  // Continuously poll for title updates
-  function startTitlePolling() {
-    setInterval(() => {
-      const currentDisplayed = stripPrefix(findCurrentTitle()?.textContent || "");
-      const actualTitle = getTitleFromPlayer();
-      
-      if (actualTitle && stripPrefix(actualTitle) !== currentDisplayed) {
-        console.log('[nowplaying] Detected title change via polling');
-        setTitle(actualTitle, { force: true });
-      }
-    }, 2000); // Check every 2 seconds
+  function mediaIdentity(media) {
+    if (!media) return "";
+
+    const parts = [
+      media.uid,
+      media.queue?.uid,
+      media.qe?.uid,
+      media.temp?.uid,
+      media.uniqueID,
+      media.id && media.type ? `${media.type}:${media.id}` : null,
+      media.id,
+      media.title ? stripPrefix(media.title) : null
+    ]
+      .map(value => (value === undefined || value === null) ? null : String(value))
+      .filter(value => value);
+
+    if (!parts.length) return "";
+
+    return `m:${parts.join('|')}`;
+  }
+
+  function requestMediaInfo() {
+    if (window.socket && socket.connected) {
+      console.log('[nowplaying] Requesting current media from server...');
+      socket.emit('playerReady');
+    } else if (window.socket) {
+      socket.once('connect', () => {
+        console.log('[nowplaying] Socket connected, requesting media...');
+        socket.emit('playerReady');
+      });
+    }
   }
 
   function boot() {
@@ -154,32 +172,82 @@ BTFW.define("feature:nowplaying", [], async () => {
     
     mountTitleIntoSlot();
 
-    // Try to set initial title
-    setTimeout(() => {
-      const title = getTitleFromPlayer() || getQueueActiveTitle();
-      if (title) {
-        setTitle(title, { force: true });
-      }
-    }, 1000);
-
     try {
       if (window.socket && socket.on) {
         socket.on("changeMedia", handleMediaChange);
         socket.on("setCurrent", handleMediaChange);
+        socket.on("mediaUpdate", data => {
+          if (data && data.title) {
+            debouncedSetTitle(data.title, { force: false });
+          }
+          mountTitleIntoSlot();
+        });
       }
     } catch (e) {
       console.warn('[nowplaying] Socket not available:', e);
     }
 
-    // Start polling for title changes
-    startTitlePolling();
+    try {
+      if (window.Callbacks && Callbacks.changeMedia) {
+        const originalChangeMedia = Callbacks.changeMedia;
+        Callbacks.changeMedia = function(data) {
+          originalChangeMedia(data);
+          handleMediaChange(data);
+        };
+      }
+    } catch (e) {
+      console.warn('[nowplaying] Could not override Callbacks.changeMedia:', e);
+    }
 
-    // Retry mounting periodically
-    [2000, 4000].forEach(delay => {
+    const q = $("#queue");
+    if (q && !q._btfwNPObs) {
+      const mo = new MutationObserver(() => {
+        const queueTitle = getQueueActiveTitle();
+        if (queueTitle) {
+          debouncedSetTitle(queueTitle);
+        }
+        mountTitleIntoSlot();
+      });
+      mo.observe(q, { 
+        childList: true, 
+        subtree: true, 
+        attributes: true, 
+        attributeFilter: ['class'] 
+      });
+      q._btfwNPObs = mo;
+    }
+
+    if (!document._btfwNpMoveObs) {
+      const obs = new MutationObserver(() => {
+        const ct = findCurrentTitle();
+        const slot = $("#btfw-nowplaying-slot");
+        if (ct && slot && !slot.contains(ct)) {
+          mountTitleIntoSlot();
+        }
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+      document._btfwNpMoveObs = obs;
+    }
+
+    // Request media info from server immediately and after delays
+    setTimeout(requestMediaInfo, 500);
+    setTimeout(requestMediaInfo, 2000);
+    
+    // Also request when theme is ready
+    document.addEventListener('btfw:ready', () => {
+      setTimeout(requestMediaInfo, 500);
+    });
+
+    [500, 1500].forEach(delay => {
       setTimeout(() => {
         mountTitleIntoSlot();
-        const title = getTitleFromPlayer();
-        if (title) setTitle(title, { force: true });
+        const ct = findCurrentTitle();
+        if (ct && ct.textContent) {
+          const existing = ct.textContent.trim();
+          if (existing) {
+            setTitle(existing, { force: true });
+          }
+        }
       }, delay);
     });
   }
