@@ -5,7 +5,8 @@ BTFW.define("feature:nowplaying", [], async () => {
   const state = {
     lastCleanTitle: null,
     lastMediaKey: null,
-    pendingUpdate: null
+    pendingUpdate: null,
+    mediaPoll: null
   };
 
   function stripPrefix(t) {
@@ -43,6 +44,98 @@ BTFW.define("feature:nowplaying", [], async () => {
     ct.id = "currenttitle";
     ct.className = "btfw-nowplaying";
     return ct;
+  }
+
+  function extractMediaTitle(media) {
+    if (!media || typeof media !== "object") {
+      return "";
+    }
+
+    if (typeof media.title === "string" && media.title.trim()) {
+      return media.title;
+    }
+
+    if (media.media && typeof media.media === "object") {
+      return extractMediaTitle(media.media);
+    }
+
+    if (media.current && typeof media.current === "object") {
+      return extractMediaTitle(media.current);
+    }
+
+    if (media.temp && typeof media.temp === "object") {
+      return extractMediaTitle(media.temp);
+    }
+
+    return "";
+  }
+
+  function getActiveMedia() {
+    const candidates = [];
+
+    const pushCandidate = (media) => {
+      if (media && typeof media === "object") {
+        candidates.push(media);
+      }
+    };
+
+    try {
+      const channel = window.CHANNEL || null;
+      if (channel) {
+        pushCandidate(channel.media);
+        if (channel.currentMedia) {
+          pushCandidate(channel.currentMedia);
+        }
+      }
+    } catch (err) {
+      console.debug?.('[nowplaying] Failed to read CHANNEL media:', err);
+    }
+
+    try {
+      const player = window.PLAYER || null;
+      if (player) {
+        pushCandidate(player.media);
+        if (typeof player.getMedia === "function") {
+          pushCandidate(player.getMedia());
+        }
+        if (player.current) {
+          pushCandidate(player.current);
+          if (player.current && typeof player.current === "object") {
+            pushCandidate(player.current.media);
+          }
+        }
+      }
+    } catch (err) {
+      console.debug?.('[nowplaying] Failed to read PLAYER media:', err);
+    }
+
+    try {
+      const client = window.CLIENT || null;
+      if (client) {
+        pushCandidate(client.currentMedia);
+        pushCandidate(client.media);
+
+        const queue = client.queue;
+        if (queue) {
+          if (Array.isArray(queue)) {
+            const active = queue.find(item => item && (item.active || item.current));
+            if (active) {
+              pushCandidate(active);
+              pushCandidate(active.media);
+            }
+          } else if (typeof queue === "object") {
+            pushCandidate(queue.current);
+            if (queue.current && typeof queue.current === "object") {
+              pushCandidate(queue.current.media);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.debug?.('[nowplaying] Failed to read CLIENT media:', err);
+    }
+
+    return candidates.find(media => media && (media.title || media.id || media.uid || extractMediaTitle(media))) || null;
   }
 
   function mountTitleIntoSlot() {
@@ -120,15 +213,17 @@ BTFW.define("feature:nowplaying", [], async () => {
   function handleMediaChange(data) {
     const mediaKey = mediaIdentity(data);
     const forceUpdate = mediaKey && mediaKey !== state.lastMediaKey;
-    
+
     if (forceUpdate) {
-      setTitle(data?.title || "", { force: true, forceLog: true });
+      const title = data?.title || extractMediaTitle(data) || "";
+      setTitle(title, { force: true, forceLog: true });
       mountTitleIntoSlot();
       if (mediaKey) {
         state.lastMediaKey = mediaKey;
       }
     } else {
-      debouncedSetTitle(data?.title || "");
+      const title = data?.title || extractMediaTitle(data) || "";
+      debouncedSetTitle(title);
     }
   }
 
@@ -160,6 +255,14 @@ BTFW.define("feature:nowplaying", [], async () => {
     const existing = findCurrentTitle();
     const initialTitle = existing?.textContent || getQueueActiveTitle();
     setTitle(initialTitle);
+
+    if (!state.lastCleanTitle) {
+      const activeMedia = getActiveMedia();
+      const title = extractMediaTitle(activeMedia);
+      if (activeMedia && title) {
+        handleMediaChange({ ...activeMedia, title });
+      }
+    }
 
     try {
       if (window.socket && socket.on) {
@@ -260,22 +363,64 @@ BTFW.define("feature:nowplaying", [], async () => {
         if (ct && ct.textContent) {
           setTitle(ct.textContent, { force: true });
         } else {
-          const title = getQueueActiveTitle();
+          const title = getQueueActiveTitle() || extractMediaTitle(getActiveMedia());
           if (title) setTitle(title);
         }
       }, delay);
     });
+
+    ensureMediaPolling();
+    waitForCyTubeReady();
+  }
+
+  function ensureMediaPolling() {
+    if (state.mediaPoll) return;
+
+    state.mediaPoll = setInterval(() => {
+      const activeMedia = getActiveMedia();
+      const title = extractMediaTitle(activeMedia);
+
+      if (title) {
+        handleMediaChange({ ...activeMedia, title });
+        if (state.lastCleanTitle) {
+          clearInterval(state.mediaPoll);
+          state.mediaPoll = null;
+        }
+      }
+    }, 500);
+
+    setTimeout(() => {
+      if (state.mediaPoll) {
+        clearInterval(state.mediaPoll);
+        state.mediaPoll = null;
+      }
+    }, 15000);
   }
 
   // Watch for CyTube to be ready
   function waitForCyTubeReady() {
-    if (window.CLIENT && window.PLAYER) {
+    if (window.CLIENT || window.PLAYER) {
       console.log('[nowplaying] CyTube is ready, refreshing title...');
       setTimeout(() => {
         const ct = findCurrentTitle();
         if (ct && ct.textContent && ct.textContent.trim()) {
           setTitle(ct.textContent, { force: true });
+          return;
         }
+
+        const activeMedia = getActiveMedia();
+        const title = extractMediaTitle(activeMedia);
+        if (activeMedia && title) {
+          handleMediaChange({ ...activeMedia, title });
+          return;
+        }
+
+        const queueTitle = getQueueActiveTitle();
+        if (queueTitle) {
+          setTitle(queueTitle, { force: true });
+        }
+
+        ensureMediaPolling();
       }, 300);
     } else {
       setTimeout(waitForCyTubeReady, 200);
