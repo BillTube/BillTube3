@@ -27,12 +27,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     version: 6,
     tint: "midnight",
     colors: {
-      background: "#05060d",
-      surface: "#0b111d",
-      panel: "#141f36",
+      background: "#0d0d0d",
+      surface: "#090d15",
+      panel: "#191b24",
       text: "#e8ecfb",
       chatText: "#d4defd",
-      accent: "#6d4df6"
+      accent: "#191434"
     },
     slider: {
       enabled: false,
