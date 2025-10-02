@@ -58,6 +58,11 @@ BTFW.define("feature:ambient", [], async () => {
       }
 
       /* Reduce background opacity when ambient is active to let glow shine through */
+      body.btfw-ambient-active,
+      html[data-btfw-theme] body.btfw-ambient-active {
+        background-color: color-mix(in srgb, var(--btfw-theme-bg, #13030c) 40%, transparent) !important;
+      }
+
       body.btfw-ambient-active #main,
       body.btfw-ambient-active #chatwrap,
       body.btfw-ambient-active #videowrap,
