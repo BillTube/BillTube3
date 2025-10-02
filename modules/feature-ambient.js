@@ -19,26 +19,28 @@ BTFW.define("feature:ambient", [], async () => {
     const st = document.createElement("style");
     st.id = "btfw-ambient-css";
     st.textContent = `
-      /* Don't touch videowrap itself - let CyTube control it */
-      
       /* Ambient glow container - positioned outside videowrap flow */
       #videowrap .btfw-ambient-glow {
         position: fixed;
         pointer-events: none;
-        z-index: -1;
+        z-index: 999;
         opacity: 0;
         transition: opacity 0.6s ease;
+        background: rgba(255, 0, 0, 0.1); /* Debug: slight red tint to see if it's there */
       }
 
-      #videowrap.btfw-ambient-enabled .btfw-ambient-glow {
+      #videowrap.btfw-ambient-enabled .btfw-ambient-glow,
+      body > .btfw-ambient-glow.btfw-ambient-active {
         opacity: 1;
       }
 
       /* Cloned video for glow effect */
-      #videowrap .btfw-ambient-glow video {
+      #videowrap .btfw-ambient-glow video,
+      body > .btfw-ambient-glow video {
         position: absolute;
-        top: 0;
-        left: 0;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(1.2);
         width: 100%;
         height: 100%;
         object-fit: cover;
@@ -168,6 +170,9 @@ BTFW.define("feature:ambient", [], async () => {
     // Create glow container using fixed positioning
     glowContainer = document.createElement("div");
     glowContainer.className = "btfw-ambient-glow";
+    if (active) {
+      glowContainer.classList.add("btfw-ambient-active");
+    }
     glowContainer.setAttribute("aria-hidden", "true");
     glowContainer.style.pointerEvents = "none";
 
@@ -187,6 +192,8 @@ BTFW.define("feature:ambient", [], async () => {
     // Append to body to avoid interfering with videowrap layout
     document.body.appendChild(glowContainer);
     
+    console.log('[ambient] Glow elements created and appended to body');
+    
     // Position the glow to match the video
     updateGlowPosition();
   }
@@ -201,6 +208,13 @@ BTFW.define("feature:ambient", [], async () => {
     glowContainer.style.left = `${rect.left - padding}px`;
     glowContainer.style.width = `${rect.width + padding * 2}px`;
     glowContainer.style.height = `${rect.height + padding * 2}px`;
+
+    console.log('[ambient] Glow position updated:', {
+      top: rect.top - padding,
+      left: rect.left - padding,
+      width: rect.width + padding * 2,
+      height: rect.height + padding * 2
+    });
   }
 
   function syncVideos() {
@@ -353,7 +367,15 @@ BTFW.define("feature:ambient", [], async () => {
     setStoredPreference(true);
     startMonitoring();
     attachVideo(findVideoElement());
+    
+    // Make sure glow is marked as active
+    if (glowContainer) {
+      glowContainer.classList.add("btfw-ambient-active");
+    }
+    
     dispatchState();
+    
+    console.log('[ambient] Ambient mode enabled');
     
     return true;
   }
@@ -365,8 +387,14 @@ BTFW.define("feature:ambient", [], async () => {
     setStoredPreference(false);
 
     if (wrap) wrap.classList.remove("btfw-ambient-enabled");
+    if (glowContainer) {
+      glowContainer.classList.remove("btfw-ambient-active");
+    }
+    
     stopMonitoring();
     dispatchState();
+    
+    console.log('[ambient] Ambient mode disabled');
     
     return true;
   }
