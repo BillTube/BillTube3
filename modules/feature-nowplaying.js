@@ -79,6 +79,28 @@ function mountTitleIntoSlot() {
       }
     }
 
+    // Get the title from various sources
+    const title = newTitle || ct.textContent || getQueueActiveTitle();
+    const cleanTitle = stripPrefix(title);
+
+    const currentText = ct.textContent || "";
+    const nextText = cleanTitle || "";
+    
+    const textChanged = currentText !== nextText;
+    
+    // Always update if the clean title is different or if forced
+    if ((textChanged && cleanTitle) || options.force) {
+      ct.textContent = cleanTitle;
+      ct.title = cleanTitle;
+      ct.style.setProperty("--length", String(cleanTitle.length));
+      state.lastCleanTitle = cleanTitle;
+      console.log('[nowplaying] Set title:', cleanTitle);
+    }
+
+    return true;
+  }
+
+
     // If CyTube already set content, don't override it unless forced
     const cytubeContent = ct.textContent && ct.textContent.trim();
     if (cytubeContent && !options.force) {
