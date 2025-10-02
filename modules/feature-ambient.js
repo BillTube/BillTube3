@@ -36,8 +36,8 @@ BTFW.define("feature:ambient", [], async () => {
   let socketListenerAttached = false;
   let frameLoopHandle = null;
   let frameLoopMode = null;
+  let corsFailedForVideo = new WeakSet(); // Track which videos failed CORS
 
-  // Add debug logging
   const debug = (...args) => console.log('[ambient]', ...args);
 
   function ensureCSS() {
@@ -276,6 +276,12 @@ BTFW.define("feature:ambient", [], async () => {
 
   function sampleVideoFrame(video) {
     if (!video) return;
+    
+    // Skip if we know this video has CORS issues
+    if (corsFailedForVideo.has(video)) {
+      return;
+    }
+    
     if (samplingBlocked && performance.now() < samplingCooldownUntil) return;
     samplingBlocked = false;
     if (video.readyState < 2) {
@@ -318,9 +324,17 @@ BTFW.define("feature:ambient", [], async () => {
 
       applyColor({ r: r / count, g: g / count, b: b / count });
     } catch (err) {
-      samplingBlocked = true;
-      samplingCooldownUntil = performance.now() + 5000;
-      debug('Sampling error:', err.message);
+      // Check if it's a CORS error
+      if (err.message && err.message.includes('cross-origin')) {
+        debug('CORS blocked - video from external domain without proper headers');
+        debug('Falling back to static ambient color');
+        corsFailedForVideo.add(video);
+        stopSamplingLoop(); // Stop trying to sample this video
+      } else {
+        samplingBlocked = true;
+        samplingCooldownUntil = performance.now() + 5000;
+        debug('Sampling error:', err.message);
+      }
       applyColor(DEFAULT_COLOR);
     }
   }
@@ -340,11 +354,16 @@ BTFW.define("feature:ambient", [], async () => {
     debug('Attaching to video');
     samplingBlocked = false;
     samplingCooldownUntil = 0;
+    
+    // Only try setting crossOrigin if it's not already set
     try {
-      if ("crossOrigin" in currentVideo && currentVideo.crossOrigin !== "anonymous") {
+      if ("crossOrigin" in currentVideo && !currentVideo.crossOrigin) {
         currentVideo.crossOrigin = "anonymous";
+        debug('Set crossOrigin=anonymous (may not work if video already loaded)');
       }
-    } catch (_) {}
+    } catch (err) {
+      debug('Could not set crossOrigin:', err.message);
+    }
 
     const handler = () => sampleVideoFrame(currentVideo);
     currentVideo._btfwAmbientHandler = handler;
@@ -369,7 +388,7 @@ BTFW.define("feature:ambient", [], async () => {
     debug('Starting sampling loop, mode:', useVideoFrame ? 'video frame callback' : 'requestAnimationFrame');
 
     const scheduleNext = () => {
-      if (!currentVideo) return;
+      if (!currentVideo || corsFailedForVideo.has(currentVideo)) return;
 
       if (useVideoFrame) {
         try {
