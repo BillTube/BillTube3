@@ -37,6 +37,9 @@ BTFW.define("feature:ambient", [], async () => {
   let frameLoopHandle = null;
   let frameLoopMode = null;
 
+  // Add debug logging
+  const debug = (...args) => console.log('[ambient]', ...args);
+
   function ensureCSS() {
     if (document.getElementById("btfw-ambient-css")) return;
 
@@ -64,10 +67,10 @@ BTFW.define("feature:ambient", [], async () => {
         transform: scale(0.9);
         border-radius: clamp(26px, 8vw, 38px);
         background:
-          radial-gradient(circle at 20% 18%, rgba(var(--ambient-rgb-highlight, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.58) 0%, transparent 56%),
-          radial-gradient(circle at 78% 22%, rgba(var(--ambient-rgb-soft, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.48) 0%, transparent 58%),
-          radial-gradient(circle at 46% 82%, rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.56) 0%, transparent 74%),
-          radial-gradient(circle at 50% 50%, rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.38) 0%, transparent 88%);
+          radial-gradient(circle at 20% 18%, rgba(var(--ambient-rgb-highlight), 0.58) 0%, transparent 56%),
+          radial-gradient(circle at 78% 22%, rgba(var(--ambient-rgb-soft), 0.48) 0%, transparent 58%),
+          radial-gradient(circle at 46% 82%, rgba(var(--ambient-rgb-deep), 0.56) 0%, transparent 74%),
+          radial-gradient(circle at 50% 50%, rgba(var(--ambient-rgb), 0.38) 0%, transparent 88%);
         filter: blur(82px) saturate(128%) brightness(1.05);
         transition: opacity 0.5s ease, transform 0.6s ease;
       }
@@ -83,10 +86,10 @@ BTFW.define("feature:ambient", [], async () => {
       #videowrap.btfw-ambient-enabled video {
         border-radius: clamp(16px, 3vw, 24px);
         box-shadow:
-          0 34px 94px rgba(var(--ambient-rgb-soft, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.42),
-          0 18px 40px rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.28);
+          0 34px 94px rgba(var(--ambient-rgb-soft), 0.42),
+          0 18px 40px rgba(var(--ambient-rgb-deep), 0.28);
         overflow: hidden;
-        background: rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.22);
+        background: rgba(var(--ambient-rgb-deep), 0.22);
         transition: box-shadow 0.45s ease;
       }
 
@@ -106,22 +109,28 @@ BTFW.define("feature:ambient", [], async () => {
         #videowrap.btfw-ambient-enabled video {
           border-radius: clamp(12px, 4vw, 18px);
           box-shadow:
-            0 24px 68px rgba(var(--ambient-rgb-soft, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.38),
-            0 12px 32px rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.2);
+            0 24px 68px rgba(var(--ambient-rgb-soft), 0.38),
+            0 12px 32px rgba(var(--ambient-rgb-deep), 0.2);
         }
       }
     `;
     document.head.appendChild(st);
+    debug('CSS injected');
   }
 
   function waitForWrap(timeout = 5000) {
     if (waitForWrapPromise) return waitForWrapPromise;
 
     const immediate = $("#videowrap");
-    if (immediate) return Promise.resolve(immediate);
+    if (immediate) {
+      debug('Found #videowrap immediately');
+      return Promise.resolve(immediate);
+    }
 
+    debug('Waiting for #videowrap...');
     waitForWrapPromise = new Promise((resolve) => {
       if (!document.body) {
+        debug('No document.body yet');
         resolve(null);
         return;
       }
@@ -130,10 +139,12 @@ BTFW.define("feature:ambient", [], async () => {
       const observer = new MutationObserver(() => {
         const found = $("#videowrap");
         if (found) {
+          debug('Found #videowrap via observer');
           observer.disconnect();
           waitForWrapPromise = null;
           resolve(found);
         } else if (Date.now() > deadline) {
+          debug('Timeout waiting for #videowrap');
           observer.disconnect();
           waitForWrapPromise = null;
           resolve(null);
@@ -153,7 +164,10 @@ BTFW.define("feature:ambient", [], async () => {
 
   function ensureAmbientRoot(preferredWrap = null) {
     const nextWrap = preferredWrap || $("#videowrap");
-    if (!nextWrap) return null;
+    if (!nextWrap) {
+      debug('No #videowrap found');
+      return null;
+    }
 
     ensureCSS();
 
@@ -176,12 +190,15 @@ BTFW.define("feature:ambient", [], async () => {
     }
     updateWrapColor();
 
+    debug('Ambient root prepared', { active, wrap });
     return wrap;
   }
 
   function getStoredPreference() {
     try {
-      return localStorage.getItem(STORAGE_KEY) === "1";
+      const stored = localStorage.getItem(STORAGE_KEY) === "1";
+      debug('Stored preference:', stored);
+      return stored;
     } catch (_) {
       return false;
     }
@@ -190,12 +207,14 @@ BTFW.define("feature:ambient", [], async () => {
   function setStoredPreference(value) {
     try {
       localStorage.setItem(STORAGE_KEY, value ? "1" : "0");
+      debug('Stored preference updated:', value);
     } catch (_) {}
   }
 
   function applyColor(color) {
     storedColor = clampColor(color);
     updateWrapColor();
+    debug('Color applied:', storedColor);
   }
 
   function updateWrapColor() {
@@ -212,7 +231,13 @@ BTFW.define("feature:ambient", [], async () => {
   }
 
   function findVideoElement() {
-    return $("#ytapiplayer video") || $("#videowrap video") || document.querySelector("video");
+    const video = $("#ytapiplayer video") || $("#videowrap video") || document.querySelector("video");
+    if (video) {
+      debug('Found video element:', video.src || video.currentSrc || 'no src');
+    } else {
+      debug('No video element found');
+    }
+    return video;
   }
 
   function stopSamplingLoop() {
@@ -230,6 +255,7 @@ BTFW.define("feature:ambient", [], async () => {
 
     frameLoopHandle = null;
     frameLoopMode = null;
+    debug('Sampling loop stopped');
   }
 
   function detachVideoListeners() {
@@ -244,6 +270,7 @@ BTFW.define("feature:ambient", [], async () => {
       delete currentVideo._btfwAmbientHandler;
     }
     stopSamplingLoop();
+    debug('Video listeners detached');
     currentVideo = null;
   }
 
@@ -251,7 +278,10 @@ BTFW.define("feature:ambient", [], async () => {
     if (!video) return;
     if (samplingBlocked && performance.now() < samplingCooldownUntil) return;
     samplingBlocked = false;
-    if (video.readyState < 2) return;
+    if (video.readyState < 2) {
+      debug('Video not ready, readyState:', video.readyState);
+      return;
+    }
 
     const now = performance.now();
     if (now - lastSampleTime < 120) return;
@@ -261,7 +291,8 @@ BTFW.define("feature:ambient", [], async () => {
       if (!samplingCanvas) {
         samplingCanvas = document.createElement("canvas");
         samplingCanvas.width = samplingCanvas.height = 32;
-        samplingCtx = samplingCanvas.getContext("2d");
+        samplingCtx = samplingCanvas.getContext("2d", { willReadFrequently: true });
+        debug('Sampling canvas created');
       }
 
       samplingCtx.drawImage(video, 0, 0, samplingCanvas.width, samplingCanvas.height);
@@ -280,13 +311,16 @@ BTFW.define("feature:ambient", [], async () => {
         count++;
       }
 
-      if (!count) return;
+      if (!count) {
+        debug('No valid pixels sampled');
+        return;
+      }
 
       applyColor({ r: r / count, g: g / count, b: b / count });
     } catch (err) {
       samplingBlocked = true;
       samplingCooldownUntil = performance.now() + 5000;
-      console.warn("[ambient] Sampling disabled:", err && err.message ? err.message : err);
+      debug('Sampling error:', err.message);
       applyColor(DEFAULT_COLOR);
     }
   }
@@ -298,10 +332,12 @@ BTFW.define("feature:ambient", [], async () => {
     currentVideo = video && video.tagName === "VIDEO" ? video : null;
 
     if (!currentVideo) {
+      debug('No video to attach');
       applyColor(DEFAULT_COLOR);
       return;
     }
 
+    debug('Attaching to video');
     samplingBlocked = false;
     samplingCooldownUntil = 0;
     try {
@@ -329,6 +365,8 @@ BTFW.define("feature:ambient", [], async () => {
     const useVideoFrame =
       typeof currentVideo.requestVideoFrameCallback === "function" &&
       typeof currentVideo.cancelVideoFrameCallback === "function";
+
+    debug('Starting sampling loop, mode:', useVideoFrame ? 'video frame callback' : 'requestAnimationFrame');
 
     const scheduleNext = () => {
       if (!currentVideo) return;
@@ -362,6 +400,7 @@ BTFW.define("feature:ambient", [], async () => {
   function startMonitoring() {
     if (monitorTimer) return;
 
+    debug('Starting monitoring');
     monitorTimer = window.setInterval(() => {
       if (!active) return;
       const wrapNow = $("#videowrap");
@@ -385,6 +424,7 @@ BTFW.define("feature:ambient", [], async () => {
     if (monitorTimer) {
       clearInterval(monitorTimer);
       monitorTimer = null;
+      debug('Monitoring stopped');
     }
     detachVideoListeners();
   }
@@ -396,6 +436,7 @@ BTFW.define("feature:ambient", [], async () => {
         socketListenerAttached = true;
         socket.on("changeMedia", () => {
           if (!active) return;
+          debug('Media changed via socket');
           setTimeout(() => {
             ensureAmbientRoot();
             attachVideo(findVideoElement());
@@ -408,6 +449,7 @@ BTFW.define("feature:ambient", [], async () => {
   async function enable() {
     if (active) return true;
 
+    debug('Enabling ambient mode');
     ensureCSS();
     const wrapEl = $("#videowrap") || (await waitForWrap());
     if (!wrapEl) {
@@ -426,12 +468,14 @@ BTFW.define("feature:ambient", [], async () => {
     startMonitoring();
     attachVideo(findVideoElement());
     dispatchState();
+    debug('Ambient mode enabled');
     return true;
   }
 
   async function disable() {
     if (!active) return true;
 
+    debug('Disabling ambient mode');
     active = false;
     setStoredPreference(false);
 
@@ -447,6 +491,7 @@ BTFW.define("feature:ambient", [], async () => {
 
   function refresh() {
     if (!active) return;
+    debug('Refreshing');
     ensureAmbientRoot();
     attachVideo(findVideoElement());
   }
@@ -466,8 +511,10 @@ BTFW.define("feature:ambient", [], async () => {
   }
 
   function boot() {
+    debug('Booting ambient feature');
     ensureCSS();
     if (getStoredPreference()) {
+      debug('Auto-enabling from stored preference');
       enable();
     }
   }
