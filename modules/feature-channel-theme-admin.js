@@ -162,6 +162,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   const FONT_DEFAULT_ID = "inter";
   const FONT_FALLBACK_FAMILY = FONT_PRESETS[FONT_DEFAULT_ID].family;
   const THEME_FONT_LINK_ID = "btfw-theme-font";
+  const THEME_FONT_PREVIEW_LINK_ID = `${THEME_FONT_LINK_ID}-preview`;
+  const PREVIEW_FONT_WEIGHTS = ["400", "600", "700", "300"];
+  const previewFontLoadCache = new Map();
+  const previewStylesheetPromises = new Map();
 
   const STYLE_ID = "btfw-theme-admin-style";
   const MODULE_FIELD_MIN = 3;
@@ -477,7 +481,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   function applyRuntimeTypography(theme){
     if (!theme || typeof theme !== "object") return;
     const typography = (theme.typography && typeof theme.typography === "object") ? theme.typography : (theme.typography = {});
-    const resolved = applyLiveTypographyAssets(typography);
+    const resolved = applyLiveTypographyAssets(typography, { scope: "runtime" });
     typography.resolvedFamily = resolved.family;
   }
 
@@ -662,7 +666,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   }
 
   function ensureStylesheetLink(id, url){
-    if (!document.head) return;
+    if (typeof document === "undefined" || !document.head) return;
     let link = document.getElementById(id);
     if (url) {
       if (!link) {
@@ -679,13 +683,143 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
   }
 
-  function applyLiveTypographyAssets(typography){
+  function extractPrimaryFontFamily(family){
+    if (!family) return "";
+    const first = String(family).split(",")[0] || "";
+    return first.replace(/['"]/g, "").trim();
+  }
+
+  function waitForFontFamilyLoad(name){
+    if (!name || typeof document === "undefined") return Promise.resolve(false);
+    const fontSet = document.fonts;
+    if (!fontSet || typeof fontSet.load !== "function") {
+      return Promise.resolve(false);
+    }
+    if (typeof fontSet.check === "function") {
+      try {
+        if (fontSet.check(`1rem "${name}"`)) {
+          return Promise.resolve(true);
+        }
+      } catch (_) {}
+    }
+    const requests = PREVIEW_FONT_WEIGHTS.map(weight => {
+      const spec = `${weight} 1rem "${name}"`;
+      try {
+        return fontSet.load(spec);
+      } catch (error) {
+        try {
+          return fontSet.load(`1rem "${name}"`);
+        } catch (_) {
+          return Promise.resolve();
+        }
+      }
+    });
+    return Promise.all(requests).then(() => true).catch(() => false);
+  }
+
+  function ensurePreviewFontStylesheet(url){
+    if (typeof document === "undefined" || !document.head) return Promise.resolve(null);
+    const existing = document.getElementById(THEME_FONT_PREVIEW_LINK_ID);
+    if (!url) {
+      if (existing && existing.parentElement) {
+        existing.parentElement.removeChild(existing);
+      }
+      return Promise.resolve(null);
+    }
+    if (existing && existing.getAttribute("href") === url) {
+      if (existing.dataset.btfwLoaded === "1") {
+        return Promise.resolve(existing);
+      }
+      if (previewStylesheetPromises.has(url)) {
+        return previewStylesheetPromises.get(url);
+      }
+      const wait = new Promise(resolve => {
+        const finalize = () => resolve(existing);
+        existing.addEventListener("load", () => {
+          existing.dataset.btfwLoaded = "1";
+          finalize();
+        }, { once: true });
+        existing.addEventListener("error", finalize, { once: true });
+      });
+      previewStylesheetPromises.set(url, wait);
+      return wait.then(result => {
+        previewStylesheetPromises.delete(url);
+        return result;
+      }, error => {
+        previewStylesheetPromises.delete(url);
+        throw error;
+      });
+    }
+    if (existing && existing.parentElement) {
+      existing.parentElement.removeChild(existing);
+    }
+    const link = document.createElement("link");
+    link.id = THEME_FONT_PREVIEW_LINK_ID;
+    link.rel = "stylesheet";
+    link.dataset.btfwScope = "preview";
+    const promise = new Promise(resolve => {
+      const finalize = () => resolve(link);
+      link.addEventListener("load", () => {
+        link.dataset.btfwLoaded = "1";
+        finalize();
+      }, { once: true });
+      link.addEventListener("error", finalize, { once: true });
+    });
+    link.href = url;
+    document.head.appendChild(link);
+    previewStylesheetPromises.set(url, promise);
+    return promise.then(result => {
+      previewStylesheetPromises.delete(url);
+      return result;
+    }, error => {
+      previewStylesheetPromises.delete(url);
+      throw error;
+    });
+  }
+
+  function ensurePreviewFontAssets(resolved){
+    if (!resolved) return;
+    const url = resolved.url || "";
+    if (!url) {
+      return ensurePreviewFontStylesheet("");
+    }
+    const family = extractPrimaryFontFamily(resolved.family);
+    if (!family) {
+      return ensurePreviewFontStylesheet(url);
+    }
+    const cacheKey = `${url}::${family}`;
+    if (previewFontLoadCache.has(cacheKey)) {
+      return previewFontLoadCache.get(cacheKey);
+    }
+    const loadPromise = ensurePreviewFontStylesheet(url)
+      .then(() => waitForFontFamilyLoad(family))
+      .then(result => result, error => {
+        console.warn(`[theme-admin] Failed to load preview font "${family}"`, error);
+        previewFontLoadCache.delete(cacheKey);
+        return false;
+      });
+    previewFontLoadCache.set(cacheKey, loadPromise);
+    return loadPromise;
+  }
+
+  function applyLiveTypographyAssets(typography, options = {}){
     const resolved = resolveTypographyConfig(typography);
-    const root = document.documentElement;
+    const scope = options.scope === "preview" ? "preview" : "runtime";
+    const root = options.root || (typeof document !== "undefined" ? document.documentElement : null);
     if (root && resolved.family) {
       root.style.setProperty("--btfw-theme-font-family", resolved.family);
     }
-    ensureStylesheetLink(THEME_FONT_LINK_ID, resolved.url || "");
+    if (scope === "preview") {
+      ensurePreviewFontAssets(resolved);
+    } else {
+      ensureStylesheetLink(THEME_FONT_LINK_ID, resolved.url || "");
+      if (typeof document !== "undefined") {
+        const previewLink = document.getElementById(THEME_FONT_PREVIEW_LINK_ID);
+        if (previewLink && previewLink.parentElement) {
+          previewLink.parentElement.removeChild(previewLink);
+        }
+      }
+    }
     return resolved;
   }
 
@@ -1073,7 +1207,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
   function buildCssBlock(cfg){
     const colors = cfg.colors || {};
-    const typography = applyLiveTypographyAssets(cfg.typography || {});
+    const typography = resolveTypographyConfig(cfg.typography || {});
     const bg = colors.background || "#05060d";
     const surface = colors.surface || colors.panel || "#0b111d";
     const panel = colors.panel || "#141f36";
@@ -1217,7 +1351,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     const preview = panel.querySelector(".preview");
     if (!preview) return;
     const colors = cfg.colors || {};
-    const typography = applyLiveTypographyAssets(cfg.typography || {});
+    const typography = applyLiveTypographyAssets(cfg.typography || {}, { scope: "preview" });
     preview.style.setProperty("--bg", colors.background || "#05060d");
     preview.style.setProperty("--surface", colors.surface || colors.panel || "#0b111d");
     preview.style.setProperty("--panel", colors.panel || "#141f36");
