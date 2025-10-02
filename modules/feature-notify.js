@@ -13,11 +13,28 @@ BTFW.define("feature:notify", [], async () => {
   }
 
   const LS_ENABLED     = "btfw:notify:enabled";   // "1"|"0"
+  const LS_JOIN_NOTICES= "btfw:chat:joinNotices"; // "1"|"0"
   const MAX_VISIBLE    = 3;
   const DEFAULT_TIMEOUT= 6000;
 
   let enabled = true;
   try { const v = localStorage.getItem(LS_ENABLED); if (v !== null) enabled = v === "1"; } catch(e){}
+
+  let joinNoticesEnabled = true;
+  try {
+    const stored = localStorage.getItem(LS_JOIN_NOTICES);
+    if (stored !== null) joinNoticesEnabled = stored === "1";
+  } catch(_){}
+
+  document.addEventListener("btfw:chat:joinNoticesChanged", (ev)=>{
+    if (!ev || !ev.detail) return;
+    joinNoticesEnabled = !!ev.detail.enabled;
+  });
+
+  document.addEventListener("btfw:themeSettings:apply", (ev)=>{
+    const value = ev?.detail?.values?.joinNotices;
+    if (value != null) joinNoticesEnabled = !!value;
+  });
 
   // ---- container (absolute overlay) ------------------------------------------
   function ensureStack(){
@@ -386,6 +403,7 @@ function startAutoclose(o){
     try {
       socket.on("addUser", (u)=>{
         const name = (u && (u.name || u.un)) ? (u.name || u.un) : "Someone";
+        if (!joinNoticesEnabled) return;
         postOnce("join:"+name, 4000, ()=>{
           api.success({ title: "Joined", html: `<b>${escapeHtml(decodeHtmlEntities(name))}</b> entered the channel`, icon:"👋", timeout: 4500 });
         });
