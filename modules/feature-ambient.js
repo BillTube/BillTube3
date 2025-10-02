@@ -4,6 +4,24 @@ BTFW.define("feature:ambient", [], async () => {
 
   const $ = (selector, root = document) => root.querySelector(selector);
 
+  const clampChannel = (value) => Math.max(0, Math.min(255, Math.round(value)));
+  const clampColor = (color) => ({
+    r: clampChannel(color.r),
+    g: clampChannel(color.g),
+    b: clampChannel(color.b)
+  });
+  const mixWithWhite = (color, amount) => clampColor({
+    r: color.r + (255 - color.r) * amount,
+    g: color.g + (255 - color.g) * amount,
+    b: color.b + (255 - color.b) * amount
+  });
+  const mixWithBlack = (color, amount) => clampColor({
+    r: color.r * (1 - amount),
+    g: color.g * (1 - amount),
+    b: color.b * (1 - amount)
+  });
+  const formatColor = (color) => `${color.r}, ${color.g}, ${color.b}`;
+
   let active = false;
   let wrap = null;
   let monitorTimer = null;
@@ -24,11 +42,13 @@ BTFW.define("feature:ambient", [], async () => {
     st.textContent = `
       #videowrap.btfw-ambient-ready {
         position: relative;
-        --ambient-rgb: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
-      }
-
-      #videowrap.btfw-ambient-enabled {
+        isolation: isolate;
         overflow: visible;
+
+        --ambient-rgb: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
+        --ambient-rgb-soft: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
+        --ambient-rgb-highlight: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
+        --ambient-rgb-deep: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
       }
 
       #videowrap.btfw-ambient-ready::before {
@@ -36,15 +56,16 @@ BTFW.define("feature:ambient", [], async () => {
         position: absolute;
         inset: clamp(-18%, -8vw, -12%);
         pointer-events: none;
-        z-index: 0;
+        z-index: -1;
         opacity: 0;
-        transform: scale(0.94);
+        transform: scale(0.9);
         border-radius: clamp(26px, 8vw, 38px);
         background:
-          radial-gradient(circle at 28% 22%, rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.45) 0%, transparent 60%),
-          radial-gradient(circle at 72% 20%, rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.36) 0%, transparent 58%),
-          radial-gradient(circle at 50% 78%, rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.52) 0%, transparent 72%);
-        filter: blur(68px) saturate(120%);
+          radial-gradient(circle at 20% 18%, rgba(var(--ambient-rgb-highlight, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.58) 0%, transparent 56%),
+          radial-gradient(circle at 78% 22%, rgba(var(--ambient-rgb-soft, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.48) 0%, transparent 58%),
+          radial-gradient(circle at 46% 82%, rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.56) 0%, transparent 74%),
+          radial-gradient(circle at 50% 50%, rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.38) 0%, transparent 88%);
+        filter: blur(82px) saturate(128%) brightness(1.05);
         transition: opacity 0.5s ease, transform 0.6s ease;
       }
 
@@ -53,24 +74,18 @@ BTFW.define("feature:ambient", [], async () => {
         transform: scale(1);
       }
 
-      #videowrap.btfw-ambient-ready #ytapiplayer,
-      #videowrap.btfw-ambient-ready .video-js,
-      #videowrap.btfw-ambient-ready iframe,
-      #videowrap.btfw-ambient-ready video {
-        position: relative;
-        z-index: 1;
-      }
-
       #videowrap.btfw-ambient-enabled #ytapiplayer,
       #videowrap.btfw-ambient-enabled .video-js,
       #videowrap.btfw-ambient-enabled iframe,
       #videowrap.btfw-ambient-enabled video {
         border-radius: clamp(16px, 3vw, 24px);
         box-shadow:
-          0 32px 90px rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.38),
-          0 18px 38px rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.24);
+          0 34px 94px rgba(var(--ambient-rgb-soft, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.42),
+          0 18px 40px rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.28);
         overflow: hidden;
-        background: rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.22);
+        background: rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.22);
+        transition: box-shadow 0.45s ease;
+
       }
 
       #videowrap.btfw-ambient-enabled .video-js {
@@ -80,7 +95,8 @@ BTFW.define("feature:ambient", [], async () => {
       @media (max-width: 768px) {
         #videowrap.btfw-ambient-ready::before {
           inset: clamp(-22%, -12vw, -16%);
-          filter: blur(52px) saturate(125%);
+          filter: blur(64px) saturate(132%) brightness(1.08);
+
         }
 
         #videowrap.btfw-ambient-enabled #ytapiplayer,
@@ -89,8 +105,9 @@ BTFW.define("feature:ambient", [], async () => {
         #videowrap.btfw-ambient-enabled video {
           border-radius: clamp(12px, 4vw, 18px);
           box-shadow:
-            0 22px 60px rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.32),
-            0 12px 28px rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.18);
+            0 24px 68px rgba(var(--ambient-rgb-soft, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.38),
+            0 12px 32px rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.2);
+
         }
       }
     `;
@@ -177,18 +194,23 @@ BTFW.define("feature:ambient", [], async () => {
   }
 
   function applyColor(color) {
-    storedColor = {
-      r: Math.max(0, Math.min(255, Math.round(color.r))),
-      g: Math.max(0, Math.min(255, Math.round(color.g))),
-      b: Math.max(0, Math.min(255, Math.round(color.b)))
-    };
+    storedColor = clampColor(color);
+
     updateWrapColor();
   }
 
   function updateWrapColor() {
     if (!wrap) return;
-    const rgb = `${storedColor.r}, ${storedColor.g}, ${storedColor.b}`;
-    wrap.style.setProperty("--ambient-rgb", rgb);
+    const base = clampColor(storedColor);
+    const soft = mixWithWhite(base, 0.28);
+    const highlight = mixWithWhite(base, 0.52);
+    const deep = mixWithBlack(base, 0.42);
+
+    wrap.style.setProperty("--ambient-rgb", formatColor(base));
+    wrap.style.setProperty("--ambient-rgb-soft", formatColor(soft));
+    wrap.style.setProperty("--ambient-rgb-highlight", formatColor(highlight));
+    wrap.style.setProperty("--ambient-rgb-deep", formatColor(deep));
+
   }
 
   function findVideoElement() {
