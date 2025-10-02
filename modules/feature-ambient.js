@@ -6,7 +6,6 @@ BTFW.define("feature:ambient", [], async () => {
 
   let active = false;
   let wrap = null;
-  let ambientRoot = null;
   let monitorTimer = null;
   let currentVideo = null;
   let samplingCanvas = null;
@@ -25,109 +24,73 @@ BTFW.define("feature:ambient", [], async () => {
     st.textContent = `
       #videowrap.btfw-ambient-ready {
         position: relative;
-        overflow: visible;
         --ambient-rgb: ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b};
       }
 
-      #btfw-ambient-wrap {
+      #videowrap.btfw-ambient-enabled {
+        overflow: visible;
+      }
+
+      #videowrap.btfw-ambient-ready::before {
+        content: "";
         position: absolute;
-        inset: -8%;
+        inset: clamp(-18%, -8vw, -12%);
         pointer-events: none;
         z-index: 0;
         opacity: 0;
-        transform: scale(0.98);
-        transition: opacity 0.45s ease, transform 0.45s ease;
+        transform: scale(0.94);
+        border-radius: clamp(26px, 8vw, 38px);
+        background:
+          radial-gradient(circle at 28% 22%, rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.45) 0%, transparent 60%),
+          radial-gradient(circle at 72% 20%, rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.36) 0%, transparent 58%),
+          radial-gradient(circle at 50% 78%, rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.52) 0%, transparent 72%);
+        filter: blur(68px) saturate(120%);
+        transition: opacity 0.5s ease, transform 0.6s ease;
       }
 
-      #videowrap.btfw-ambient-enabled #btfw-ambient-wrap {
+      #videowrap.btfw-ambient-enabled::before {
         opacity: 1;
         transform: scale(1);
-      }
-
-      #btfw-ambient-wrap .btfw-ambient-glow {
-        position: absolute;
-        inset: -25%;
-        background: radial-gradient(
-          circle at 50% 50%,
-          rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.65) 0%,
-          rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.25) 55%,
-          transparent 100%
-        );
-        filter: blur(90px);
-        transform: scale(1.15);
-        opacity: 0;
-        transition: opacity 0.6s ease, transform 0.6s ease;
-      }
-
-      #videowrap.btfw-ambient-enabled #btfw-ambient-wrap .btfw-ambient-glow {
-        opacity: 1;
-        transform: scale(1);
-      }
-
-      #btfw-ambient-wrap .btfw-ambient-gradient {
-        position: absolute;
-        inset: -12% -12% -4% -12%;
-        background: linear-gradient(
-          to bottom,
-          rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.4) 0%,
-          rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.24) 28%,
-          rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.08) 65%,
-          transparent 100%
-        );
-        opacity: 0;
-        transition: opacity 0.6s ease;
-      }
-
-      #videowrap.btfw-ambient-enabled #btfw-ambient-wrap .btfw-ambient-gradient {
-        opacity: 1;
-      }
-
-      #btfw-ambient-wrap .btfw-ambient-vignette {
-        position: absolute;
-        inset: -16%;
-        background: radial-gradient(
-          circle at 50% 65%,
-          rgba(0, 0, 0, 0.15) 0%,
-          rgba(0, 0, 0, 0.45) 70%,
-          rgba(0, 0, 0, 0.8) 100%
-        );
-        opacity: 0;
-        transition: opacity 0.6s ease;
-      }
-
-      #videowrap.btfw-ambient-enabled #btfw-ambient-wrap .btfw-ambient-vignette {
-        opacity: 0.35;
       }
 
       #videowrap.btfw-ambient-ready #ytapiplayer,
       #videowrap.btfw-ambient-ready .video-js,
-      #videowrap.btfw-ambient-ready iframe {
+      #videowrap.btfw-ambient-ready iframe,
+      #videowrap.btfw-ambient-ready video {
         position: relative;
         z-index: 1;
       }
 
       #videowrap.btfw-ambient-enabled #ytapiplayer,
       #videowrap.btfw-ambient-enabled .video-js,
-      #videowrap.btfw-ambient-enabled iframe {
-        box-shadow: 0 32px 90px rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.35);
-        border-radius: 16px;
+      #videowrap.btfw-ambient-enabled iframe,
+      #videowrap.btfw-ambient-enabled video {
+        border-radius: clamp(16px, 3vw, 24px);
+        box-shadow:
+          0 32px 90px rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.38),
+          0 18px 38px rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.24);
         overflow: hidden;
+        background: rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.22);
+      }
+
+      #videowrap.btfw-ambient-enabled .video-js {
+        background: transparent;
       }
 
       @media (max-width: 768px) {
-        #btfw-ambient-wrap {
-          inset: -14%;
+        #videowrap.btfw-ambient-ready::before {
+          inset: clamp(-22%, -12vw, -16%);
+          filter: blur(52px) saturate(125%);
         }
-        #btfw-ambient-wrap .btfw-ambient-glow {
-          filter: blur(70px);
-        }
-        #videowrap.btfw-ambient-enabled #btfw-ambient-wrap .btfw-ambient-vignette {
-          opacity: 0.25;
-        }
+
         #videowrap.btfw-ambient-enabled #ytapiplayer,
         #videowrap.btfw-ambient-enabled .video-js,
-        #videowrap.btfw-ambient-enabled iframe {
-          border-radius: 12px;
+        #videowrap.btfw-ambient-enabled iframe,
+        #videowrap.btfw-ambient-enabled video {
+          border-radius: clamp(12px, 4vw, 18px);
+          box-shadow:
+            0 22px 60px rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.32),
+            0 12px 28px rgba(var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b}), 0.18);
         }
       }
     `;
@@ -171,27 +134,32 @@ BTFW.define("feature:ambient", [], async () => {
     return waitForWrapPromise;
   }
 
-  function ensureAmbientRoot() {
-    wrap = $("#videowrap");
-    if (!wrap) return null;
+  function ensureAmbientRoot(preferredWrap = null) {
+    const nextWrap = preferredWrap || $("#videowrap");
+    if (!nextWrap) return null;
 
     ensureCSS();
-    wrap.classList.add("btfw-ambient-ready");
 
-    ambientRoot = wrap.querySelector("#btfw-ambient-wrap");
-    if (!ambientRoot) {
-      ambientRoot = document.createElement("div");
-      ambientRoot.id = "btfw-ambient-wrap";
-      ambientRoot.innerHTML = `
-        <div class="btfw-ambient-glow"></div>
-        <div class="btfw-ambient-gradient"></div>
-        <div class="btfw-ambient-vignette"></div>
-      `;
-      wrap.insertBefore(ambientRoot, wrap.firstChild || null);
+    if (wrap && wrap !== nextWrap) {
+      wrap.classList.remove("btfw-ambient-enabled", "btfw-ambient-ready");
     }
 
-    applyColor(storedColor);
-    return ambientRoot;
+    wrap = nextWrap;
+    const legacy = wrap.querySelector && wrap.querySelector("#btfw-ambient-wrap");
+    if (legacy) {
+      try {
+        legacy.remove();
+      } catch (_) {
+        legacy.parentNode && legacy.parentNode.removeChild(legacy);
+      }
+    }
+    wrap.classList.add("btfw-ambient-ready");
+    if (active) {
+      wrap.classList.add("btfw-ambient-enabled");
+    }
+    updateWrapColor();
+
+    return wrap;
   }
 
   function getStoredPreference() {
@@ -214,9 +182,13 @@ BTFW.define("feature:ambient", [], async () => {
       g: Math.max(0, Math.min(255, Math.round(color.g))),
       b: Math.max(0, Math.min(255, Math.round(color.b)))
     };
+    updateWrapColor();
+  }
+
+  function updateWrapColor() {
+    if (!wrap) return;
     const rgb = `${storedColor.r}, ${storedColor.g}, ${storedColor.b}`;
-    if (wrap) wrap.style.setProperty("--ambient-rgb", rgb);
-    if (ambientRoot) ambientRoot.style.setProperty("--ambient-rgb", rgb);
+    wrap.style.setProperty("--ambient-rgb", rgb);
   }
 
   function findVideoElement() {
@@ -306,10 +278,16 @@ BTFW.define("feature:ambient", [], async () => {
     monitorTimer = window.setInterval(() => {
       if (!active) return;
       const wrapNow = $("#videowrap");
-      if (wrapNow && wrapNow !== wrap) {
-        wrap = wrapNow;
-        ensureAmbientRoot();
+
+      if (!wrapNow) {
+        if (wrap && !wrap.isConnected) {
+          wrap.classList.remove("btfw-ambient-enabled", "btfw-ambient-ready");
+          wrap = null;
+        }
+      } else if (wrapNow !== wrap || !wrap || !wrap.classList.contains("btfw-ambient-ready")) {
+        ensureAmbientRoot(wrapNow);
       }
+
       attachVideo(findVideoElement());
     }, 1000);
 
@@ -350,9 +328,11 @@ BTFW.define("feature:ambient", [], async () => {
       return false;
     }
 
-    wrap = wrapEl;
-    ensureAmbientRoot();
-    wrap.classList.add("btfw-ambient-enabled");
+    const ensuredWrap = ensureAmbientRoot(wrapEl);
+    if (ensuredWrap) {
+      ensuredWrap.classList.add("btfw-ambient-enabled");
+      updateWrapColor();
+    }
     active = true;
 
     setStoredPreference(true);
