@@ -26,6 +26,14 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
 
   let refreshClickCount = 0;
   let refreshCooldownUntil = 0;
+  let lastRefreshTimestamp = 0;
+
+  const USER_REFRESH_INTERVAL = 2000;
+  const AUTO_REFRESH_BASE_INTERVAL = 8000;
+  const AUTO_REFRESH_MAX_INTERVAL = 45000;
+  const AUTO_IDLE_RESET_INTERVAL = 120000;
+
+  let autoRefreshInterval = AUTO_REFRESH_BASE_INTERVAL;
   let ambientModulePromise = null;
   let airplayListenerAttached = false;
   let trackedAirplayVideo = null;
@@ -462,6 +470,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
         const original = el.onclick;
         el.onclick = (event) => {
           event.preventDefault();
+          const isUserAction = !!(event && event.isTrusted);
           handleMediaRefresh(() => {
             if (typeof original === "function") {
               try {
@@ -472,7 +481,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
               }
             }
             return false;
-          });
+          }, { isUserAction });
         };
       }
 
@@ -492,12 +501,37 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     return false;
   }
 
-  function handleMediaRefresh(triggerOriginal) {
+  function handleMediaRefresh(triggerOriginal, options = {}) {
+    const { isUserAction = false } = options;
     const now = Date.now();
+
+    if (lastRefreshTimestamp && now - lastRefreshTimestamp > AUTO_IDLE_RESET_INTERVAL) {
+      autoRefreshInterval = AUTO_REFRESH_BASE_INTERVAL;
+      refreshClickCount = 0;
+    }
 
     if (now < refreshCooldownUntil) {
       const remainingSeconds = Math.ceil((refreshCooldownUntil - now) / 1000);
-      showNotification(`Refresh on cooldown for ${remainingSeconds}s`, "warning");
+      showNotification(
+        isUserAction
+          ? `Refresh available in ${remainingSeconds}s`
+          : `Auto refresh paused. Next attempt in ${remainingSeconds}s`,
+        "warning"
+      );
+      return false;
+    }
+
+    const minInterval = isUserAction ? USER_REFRESH_INTERVAL : autoRefreshInterval;
+    if (lastRefreshTimestamp && now - lastRefreshTimestamp < minInterval) {
+      const waitMs = minInterval - (now - lastRefreshTimestamp);
+      const waitSeconds = Math.ceil(waitMs / 1000);
+      refreshCooldownUntil = now + waitMs;
+      showNotification(
+        isUserAction
+          ? `Refresh available in ${waitSeconds}s`
+          : `Auto refresh paused. Next attempt in ${waitSeconds}s`,
+        "warning"
+      );
       return false;
     }
 
@@ -510,9 +544,12 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       return false;
     }
 
+    const decayMs = isUserAction
+      ? 6000
+      : Math.max(12000, autoRefreshInterval + 2000);
     setTimeout(() => {
       if (refreshClickCount > 0) refreshClickCount--;
-    }, 10000);
+    }, decayMs);
 
     let handled = false;
     if (typeof triggerOriginal === "function") {
@@ -527,7 +564,33 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       handled = emitNativeRefresh();
     }
 
-    showNotification(handled ? "Media refreshed" : "Unable to refresh media", handled ? "success" : "error");
+    lastRefreshTimestamp = Date.now();
+
+    if (isUserAction) {
+      autoRefreshInterval = AUTO_REFRESH_BASE_INTERVAL;
+    } else {
+      const multiplier = handled ? 1.25 : 1.5;
+      autoRefreshInterval = Math.min(
+        AUTO_REFRESH_MAX_INTERVAL,
+        Math.max(AUTO_REFRESH_BASE_INTERVAL, Math.round(autoRefreshInterval * multiplier))
+      );
+    }
+
+    const nextWindow = isUserAction ? USER_REFRESH_INTERVAL : autoRefreshInterval;
+    refreshCooldownUntil = Math.max(refreshCooldownUntil, lastRefreshTimestamp + nextWindow);
+
+    if (!isUserAction && handled) {
+      showNotification(
+        `Auto refresh sent. Next attempt in ${Math.ceil(autoRefreshInterval / 1000)}s`,
+        "info"
+      );
+    } else {
+      showNotification(
+        handled ? "Media refreshed" : "Unable to refresh media",
+        handled ? "success" : "error"
+      );
+    }
+
     return handled;
   }
 
