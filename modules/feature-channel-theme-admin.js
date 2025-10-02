@@ -863,22 +863,39 @@ background: "#0d0d0d",
   function collectModuleCandidates(source){
     if (!source || typeof source !== "object") return [];
 
+    const seen = typeof WeakSet === "function" ? new WeakSet() : null;
     const candidates = [];
-    const collectFromObject = (obj) => {
-      if (!obj || typeof obj !== "object") return;
-      Object.keys(obj).forEach(key => {
-        if (!/module/i.test(key)) return;
-        const value = obj[key];
-        if (typeof value === "undefined" || value === null) return;
-        candidates.push(value);
+
+    const traverse = (value) => {
+      if (!value || typeof value !== "object") return;
+      if (seen) {
+        if (seen.has(value)) return;
+        seen.add(value);
+      }
+
+      if (Array.isArray(value)) {
+        value.forEach(item => {
+          if (item && typeof item === "object") {
+            traverse(item);
+          }
+        });
+        return;
+      }
+
+      Object.keys(value).forEach(key => {
+        const child = value[key];
+        if (/module/i.test(key)) {
+          if (typeof child !== "undefined" && child !== null) {
+            candidates.push(child);
+          }
+        }
+        if (child && typeof child === "object") {
+          traverse(child);
+        }
       });
     };
 
-    collectFromObject(source);
-    if (source.resources && typeof source.resources === "object") {
-      collectFromObject(source.resources);
-    }
-
+    traverse(source);
     return candidates;
   }
 
