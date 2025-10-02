@@ -156,6 +156,12 @@ BTFW.define("feature:nowplaying", [], async () => {
   }
 
   function requestMediaInfo() {
+    // Don't request if we already have a title
+    if (state.lastCleanTitle) {
+      console.log('[nowplaying] Already have title, skipping request');
+      return;
+    }
+    
     if (window.socket && socket.connected) {
       console.log('[nowplaying] Requesting current media from server...');
       socket.emit('playerReady');
