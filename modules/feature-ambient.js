@@ -1,7 +1,6 @@
 BTFW.define("feature:ambient", [], async () => {
   // Inspired by the open-source ambient light effect from https://github.com/NikxDa/ambient
   const STORAGE_KEY = "btfw:ambient:enabled";
-  const DEFAULT_COLOR = { r: 60, g: 72, b: 110 };
 
   const $ = (selector, root = document) => root.querySelector(selector);
 
@@ -62,6 +61,7 @@ BTFW.define("feature:ambient", [], async () => {
   let renderer = null;
 
   const debug = (...args) => console.log("[ambient]", ...args);
+
 
   function ensureCSS() {
     if (document.getElementById("btfw-ambient-css")) return;
@@ -131,10 +131,24 @@ BTFW.define("feature:ambient", [], async () => {
         transform: scale(1);
       }
 
+      /* Cloned video for glow effect */
+      #videowrap .btfw-ambient-glow video {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: blur(clamp(50px, 8vw, 80px)) saturate(180%) brightness(1.25);
+        opacity: 0.75;
+      }
+
+      /* Enhanced video styling when ambient is active */
       #videowrap.btfw-ambient-enabled #ytapiplayer,
       #videowrap.btfw-ambient-enabled .video-js,
       #videowrap.btfw-ambient-enabled iframe,
-      #videowrap.btfw-ambient-enabled video {
+      #videowrap.btfw-ambient-enabled video:not(.btfw-ambient-glow video) {
         border-radius: clamp(16px, 3vw, 24px);
         box-shadow:
           0 34px 94px rgba(var(--ambient-soft, ${formatColor(
@@ -154,6 +168,7 @@ BTFW.define("feature:ambient", [], async () => {
         background: transparent;
       }
 
+      /* Mobile optimizations */
       @media (max-width: 768px) {
         .btfw-ambient-layer {
           inset: clamp(-22%, -12vw, -16%);
@@ -162,12 +177,13 @@ BTFW.define("feature:ambient", [], async () => {
 
         .btfw-ambient-layer video {
           filter: blur(72px) saturate(138%) brightness(1.08);
+
         }
 
         #videowrap.btfw-ambient-enabled #ytapiplayer,
         #videowrap.btfw-ambient-enabled .video-js,
         #videowrap.btfw-ambient-enabled iframe,
-        #videowrap.btfw-ambient-enabled video {
+        #videowrap.btfw-ambient-enabled video:not(.btfw-ambient-glow video) {
           border-radius: clamp(12px, 4vw, 18px);
           box-shadow:
             0 24px 68px rgba(var(--ambient-soft, ${formatColor(
@@ -181,6 +197,7 @@ BTFW.define("feature:ambient", [], async () => {
     `;
     document.head.appendChild(st);
     debug("CSS injected");
+
   }
 
   function waitForWrap(timeout = 5000) {
@@ -196,6 +213,7 @@ BTFW.define("feature:ambient", [], async () => {
     waitForWrapPromise = new Promise((resolve) => {
       if (!document.body) {
         debug("No document.body yet");
+
         resolve(null);
         return;
       }
@@ -238,6 +256,7 @@ BTFW.define("feature:ambient", [], async () => {
 
     if (wrap && wrap !== nextWrap) {
       wrap.classList.remove("btfw-ambient-enabled", "btfw-ambient-ready");
+      cleanupGlowElements();
     }
 
     wrap = nextWrap;
@@ -251,6 +270,7 @@ BTFW.define("feature:ambient", [], async () => {
     }
 
     wrap.classList.add("btfw-ambient-ready");
+    
     if (active) {
       wrap.classList.add("btfw-ambient-enabled");
     }
@@ -290,7 +310,8 @@ BTFW.define("feature:ambient", [], async () => {
     } else {
       debug("No video element found");
     }
-    return video;
+    glowContainer = null;
+    glowVideo = null;
   }
 
   function startMonitoring() {
@@ -299,11 +320,13 @@ BTFW.define("feature:ambient", [], async () => {
     debug("Starting monitoring");
     monitorTimer = window.setInterval(() => {
       if (!active) return;
+
       const wrapNow = $("#videowrap");
 
       if (!wrapNow) {
         if (wrap && !wrap.isConnected) {
           wrap.classList.remove("btfw-ambient-enabled", "btfw-ambient-ready");
+          cleanupGlowElements();
           wrap = null;
         }
       } else if (wrapNow !== wrap || !wrap || !wrap.classList.contains("btfw-ambient-ready")) {
@@ -360,8 +383,8 @@ BTFW.define("feature:ambient", [], async () => {
       ensuredWrap.classList.add("btfw-ambient-enabled");
       updateRendererColor(renderer, findVideoElement());
     }
+    
     active = true;
-
     setStoredPreference(true);
     startMonitoring();
     if (renderer) renderer.attach(findVideoElement());
@@ -380,6 +403,7 @@ BTFW.define("feature:ambient", [], async () => {
     if (wrap) wrap.classList.remove("btfw-ambient-enabled");
     stopMonitoring();
     dispatchState();
+    
     return true;
   }
 
@@ -645,12 +669,16 @@ BTFW.define("feature:ambient", [], async () => {
     ensureCSS();
     if (getStoredPreference()) {
       debug("Auto-enabling from stored preference");
+
       enable();
     }
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 
   return {
     name: "feature:ambient",
