@@ -29,10 +29,13 @@ BTFW.define("feature:ambient", [], async () => {
   let samplingCanvas = null;
   let samplingCtx = null;
   let samplingBlocked = false;
+  let samplingCooldownUntil = 0;
   let lastSampleTime = 0;
   let storedColor = { ...DEFAULT_COLOR };
   let waitForWrapPromise = null;
   let socketListenerAttached = false;
+  let frameLoopHandle = null;
+  let frameLoopMode = null;
 
   function ensureCSS() {
     if (document.getElementById("btfw-ambient-css")) return;
@@ -85,7 +88,6 @@ BTFW.define("feature:ambient", [], async () => {
         overflow: hidden;
         background: rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.22);
         transition: box-shadow 0.45s ease;
-
       }
 
       #videowrap.btfw-ambient-enabled .video-js {
@@ -96,7 +98,6 @@ BTFW.define("feature:ambient", [], async () => {
         #videowrap.btfw-ambient-ready::before {
           inset: clamp(-22%, -12vw, -16%);
           filter: blur(64px) saturate(132%) brightness(1.08);
-
         }
 
         #videowrap.btfw-ambient-enabled #ytapiplayer,
@@ -107,7 +108,6 @@ BTFW.define("feature:ambient", [], async () => {
           box-shadow:
             0 24px 68px rgba(var(--ambient-rgb-soft, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.38),
             0 12px 32px rgba(var(--ambient-rgb-deep, var(--ambient-rgb, ${DEFAULT_COLOR.r}, ${DEFAULT_COLOR.g}, ${DEFAULT_COLOR.b})), 0.2);
-
         }
       }
     `;
@@ -195,7 +195,6 @@ BTFW.define("feature:ambient", [], async () => {
 
   function applyColor(color) {
     storedColor = clampColor(color);
-
     updateWrapColor();
   }
 
@@ -210,11 +209,27 @@ BTFW.define("feature:ambient", [], async () => {
     wrap.style.setProperty("--ambient-rgb-soft", formatColor(soft));
     wrap.style.setProperty("--ambient-rgb-highlight", formatColor(highlight));
     wrap.style.setProperty("--ambient-rgb-deep", formatColor(deep));
-
   }
 
   function findVideoElement() {
     return $("#ytapiplayer video") || $("#videowrap video") || document.querySelector("video");
+  }
+
+  function stopSamplingLoop() {
+    if (!frameLoopHandle) return;
+
+    if (frameLoopMode === "video" && currentVideo && typeof currentVideo.cancelVideoFrameCallback === "function") {
+      try {
+        currentVideo.cancelVideoFrameCallback(frameLoopHandle);
+      } catch (_) {}
+    } else if (frameLoopMode === "raf") {
+      try {
+        cancelAnimationFrame(frameLoopHandle);
+      } catch (_) {}
+    }
+
+    frameLoopHandle = null;
+    frameLoopMode = null;
   }
 
   function detachVideoListeners() {
@@ -228,15 +243,18 @@ BTFW.define("feature:ambient", [], async () => {
       });
       delete currentVideo._btfwAmbientHandler;
     }
+    stopSamplingLoop();
     currentVideo = null;
   }
 
   function sampleVideoFrame(video) {
-    if (!video || samplingBlocked) return;
+    if (!video) return;
+    if (samplingBlocked && performance.now() < samplingCooldownUntil) return;
+    samplingBlocked = false;
     if (video.readyState < 2) return;
 
     const now = performance.now();
-    if (now - lastSampleTime < 350) return;
+    if (now - lastSampleTime < 120) return;
     lastSampleTime = now;
 
     try {
@@ -267,6 +285,7 @@ BTFW.define("feature:ambient", [], async () => {
       applyColor({ r: r / count, g: g / count, b: b / count });
     } catch (err) {
       samplingBlocked = true;
+      samplingCooldownUntil = performance.now() + 5000;
       console.warn("[ambient] Sampling disabled:", err && err.message ? err.message : err);
       applyColor(DEFAULT_COLOR);
     }
@@ -283,6 +302,14 @@ BTFW.define("feature:ambient", [], async () => {
       return;
     }
 
+    samplingBlocked = false;
+    samplingCooldownUntil = 0;
+    try {
+      if ("crossOrigin" in currentVideo && currentVideo.crossOrigin !== "anonymous") {
+        currentVideo.crossOrigin = "anonymous";
+      }
+    } catch (_) {}
+
     const handler = () => sampleVideoFrame(currentVideo);
     currentVideo._btfwAmbientHandler = handler;
     ["timeupdate", "loadeddata", "play", "seeked"].forEach((evt) => {
@@ -292,6 +319,44 @@ BTFW.define("feature:ambient", [], async () => {
     });
 
     handler();
+    startSamplingLoop();
+  }
+
+  function startSamplingLoop() {
+    stopSamplingLoop();
+    if (!currentVideo) return;
+
+    const useVideoFrame =
+      typeof currentVideo.requestVideoFrameCallback === "function" &&
+      typeof currentVideo.cancelVideoFrameCallback === "function";
+
+    const scheduleNext = () => {
+      if (!currentVideo) return;
+
+      if (useVideoFrame) {
+        try {
+          frameLoopMode = "video";
+          frameLoopHandle = currentVideo.requestVideoFrameCallback(() => {
+            frameLoopHandle = null;
+            sampleVideoFrame(currentVideo);
+            scheduleNext();
+          });
+          return;
+        } catch (_) {
+          frameLoopHandle = null;
+          frameLoopMode = null;
+        }
+      }
+
+      frameLoopMode = "raf";
+      frameLoopHandle = requestAnimationFrame(() => {
+        frameLoopHandle = null;
+        sampleVideoFrame(currentVideo);
+        scheduleNext();
+      });
+    };
+
+    scheduleNext();
   }
 
   function startMonitoring() {
