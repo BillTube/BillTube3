@@ -1,17 +1,67 @@
 BTFW.define("feature:ambient", [], async () => {
+  // Inspired by the open-source ambient light effect from https://github.com/NikxDa/ambient
   const STORAGE_KEY = "btfw:ambient:enabled";
 
   const $ = (selector, root = document) => root.querySelector(selector);
 
+  const clampChannel = (value) => Math.max(0, Math.min(255, Math.round(value)));
+  const clampColor = (color) => ({
+    r: clampChannel(color.r ?? DEFAULT_COLOR.r),
+    g: clampChannel(color.g ?? DEFAULT_COLOR.g),
+    b: clampChannel(color.b ?? DEFAULT_COLOR.b)
+  });
+  const mixWithWhite = (color, amount) => clampColor({
+    r: color.r + (255 - color.r) * amount,
+    g: color.g + (255 - color.g) * amount,
+    b: color.b + (255 - color.b) * amount
+  });
+  const mixWithBlack = (color, amount) => clampColor({
+    r: color.r * (1 - amount),
+    g: color.g * (1 - amount),
+    b: color.b * (1 - amount)
+  });
+  const formatColor = (color) => `${color.r}, ${color.g}, ${color.b}`;
+
+  const parseColor = (value) => {
+    if (!value || typeof value !== "string") return null;
+    const hex = value.trim();
+    if (hex.startsWith("#")) {
+      const cleaned = hex.replace(/[^0-9a-f]/gi, "");
+      if (cleaned.length === 3) {
+        const [r, g, b] = cleaned.split("").map((v) => parseInt(v + v, 16));
+        return { r, g, b };
+      }
+      if (cleaned.length === 6) {
+        const r = parseInt(cleaned.slice(0, 2), 16);
+        const g = parseInt(cleaned.slice(2, 4), 16);
+        const b = parseInt(cleaned.slice(4, 6), 16);
+        return { r, g, b };
+      }
+      return null;
+    }
+
+    const rgbMatch = hex.match(/rgba?\(([^)]+)\)/i);
+    if (rgbMatch) {
+      const parts = rgbMatch[1]
+        .split(",")
+        .map((part) => part.trim())
+        .map((part) => Number.parseFloat(part));
+      if (parts.length >= 3 && parts.every((part) => Number.isFinite(part))) {
+        return { r: parts[0], g: parts[1], b: parts[2] };
+      }
+    }
+    return null;
+  };
+
   let active = false;
   let wrap = null;
   let monitorTimer = null;
-  let currentVideo = null;
-  let glowVideo = null;
-  let glowContainer = null;
   let waitForWrapPromise = null;
   let socketListenerAttached = false;
-  let syncHandler = null;
+  let renderer = null;
+
+  const debug = (...args) => console.log("[ambient]", ...args);
+
 
   function ensureCSS() {
     if (document.getElementById("btfw-ambient-css")) return;
@@ -25,20 +75,58 @@ BTFW.define("feature:ambient", [], async () => {
         overflow: visible;
       }
 
-      /* Ambient glow container */
-      #videowrap .btfw-ambient-glow {
-        position: absolute;
-        inset: -15%;
-        z-index: -1;
-        overflow: hidden;
-        border-radius: clamp(26px, 8vw, 38px);
-        opacity: 0;
-        transform: scale(0.92);
-        transition: opacity 0.6s ease, transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+      #videowrap.btfw-ambient-ready .btfw-ambient-layer {
         pointer-events: none;
       }
 
-      #videowrap.btfw-ambient-enabled .btfw-ambient-glow {
+      .btfw-ambient-layer {
+        position: absolute;
+        inset: clamp(-18%, -8vw, -12%);
+        border-radius: clamp(26px, 8vw, 38px);
+        overflow: hidden;
+        z-index: -1;
+        opacity: 0;
+        transform: scale(0.92);
+        transition: opacity 0.5s ease, transform 0.6s ease;
+        background:
+          radial-gradient(circle at 20% 18%, rgba(var(--ambient-highlight, ${formatColor(
+            mixWithWhite(DEFAULT_COLOR, 0.52)
+          )}), 0.58) 0%, transparent 56%),
+          radial-gradient(circle at 78% 22%, rgba(var(--ambient-soft, ${formatColor(
+            mixWithWhite(DEFAULT_COLOR, 0.28)
+          )}), 0.48) 0%, transparent 58%),
+          radial-gradient(circle at 46% 82%, rgba(var(--ambient-deep, ${formatColor(
+            mixWithBlack(DEFAULT_COLOR, 0.42)
+          )}), 0.56) 0%, transparent 74%),
+          radial-gradient(circle at 50% 50%, rgba(var(--ambient-base, ${formatColor(
+            DEFAULT_COLOR
+          )}), 0.38) 0%, transparent 88%);
+      }
+
+      .btfw-ambient-layer::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(10, 14, 32, 0.35);
+        mix-blend-mode: screen;
+      }
+
+      .btfw-ambient-layer video {
+        position: absolute;
+        inset: -12% -12% -12% -12%;
+        width: 124%;
+        height: 124%;
+        object-fit: cover;
+        filter: blur(86px) saturate(140%) brightness(1.05);
+        transform: scale(1.08);
+      }
+
+      #videowrap.btfw-ambient-enabled::before,
+      #videowrap.btfw-ambient-enabled::after {
+        content: none !important;
+      }
+
+      #videowrap.btfw-ambient-enabled .btfw-ambient-layer {
         opacity: 1;
         transform: scale(1);
       }
@@ -63,11 +151,17 @@ BTFW.define("feature:ambient", [], async () => {
       #videowrap.btfw-ambient-enabled video:not(.btfw-ambient-glow video) {
         border-radius: clamp(16px, 3vw, 24px);
         box-shadow:
-          0 35px 80px rgba(0, 0, 0, 0.45),
-          0 20px 40px rgba(0, 0, 0, 0.35),
-          0 10px 20px rgba(0, 0, 0, 0.25);
+          0 34px 94px rgba(var(--ambient-soft, ${formatColor(
+            mixWithWhite(DEFAULT_COLOR, 0.28)
+          )}), 0.42),
+          0 18px 40px rgba(var(--ambient-deep, ${formatColor(
+            mixWithBlack(DEFAULT_COLOR, 0.42)
+          )}), 0.28);
         overflow: hidden;
-        transition: box-shadow 0.45s ease, border-radius 0.45s ease;
+        background: rgba(var(--ambient-deep, ${formatColor(
+          mixWithBlack(DEFAULT_COLOR, 0.42)
+        )}), 0.22);
+        transition: box-shadow 0.45s ease;
       }
 
       #videowrap.btfw-ambient-enabled .video-js {
@@ -76,14 +170,14 @@ BTFW.define("feature:ambient", [], async () => {
 
       /* Mobile optimizations */
       @media (max-width: 768px) {
-        #videowrap .btfw-ambient-glow {
-          inset: -20%;
-          border-radius: clamp(20px, 10vw, 32px);
+        .btfw-ambient-layer {
+          inset: clamp(-22%, -12vw, -16%);
+          border-radius: clamp(18px, 6vw, 28px);
         }
 
-        #videowrap .btfw-ambient-glow video {
-          filter: blur(clamp(40px, 10vw, 60px)) saturate(160%) brightness(1.2);
-          opacity: 0.7;
+        .btfw-ambient-layer video {
+          filter: blur(72px) saturate(138%) brightness(1.08);
+
         }
 
         #videowrap.btfw-ambient-enabled #ytapiplayer,
@@ -92,34 +186,34 @@ BTFW.define("feature:ambient", [], async () => {
         #videowrap.btfw-ambient-enabled video:not(.btfw-ambient-glow video) {
           border-radius: clamp(12px, 4vw, 18px);
           box-shadow:
-            0 25px 60px rgba(0, 0, 0, 0.4),
-            0 15px 30px rgba(0, 0, 0, 0.3);
-        }
-      }
-
-      /* Smooth fade-in animation */
-      @keyframes btfw-ambient-fadeIn {
-        from {
-          opacity: 0;
-          transform: scale(0.92);
-        }
-        to {
-          opacity: 1;
-          transform: scale(1);
+            0 24px 68px rgba(var(--ambient-soft, ${formatColor(
+              mixWithWhite(DEFAULT_COLOR, 0.28)
+            )}), 0.38),
+            0 12px 32px rgba(var(--ambient-deep, ${formatColor(
+              mixWithBlack(DEFAULT_COLOR, 0.42)
+            )}), 0.2);
         }
       }
     `;
     document.head.appendChild(st);
+    debug("CSS injected");
+
   }
 
   function waitForWrap(timeout = 5000) {
     if (waitForWrapPromise) return waitForWrapPromise;
 
     const immediate = $("#videowrap");
-    if (immediate) return Promise.resolve(immediate);
+    if (immediate) {
+      debug("Found #videowrap immediately");
+      return Promise.resolve(immediate);
+    }
 
+    debug("Waiting for #videowrap...");
     waitForWrapPromise = new Promise((resolve) => {
       if (!document.body) {
+        debug("No document.body yet");
+
         resolve(null);
         return;
       }
@@ -128,10 +222,12 @@ BTFW.define("feature:ambient", [], async () => {
       const observer = new MutationObserver(() => {
         const found = $("#videowrap");
         if (found) {
+          debug("Found #videowrap via observer");
           observer.disconnect();
           waitForWrapPromise = null;
           resolve(found);
         } else if (Date.now() > deadline) {
+          debug("Timeout waiting for #videowrap");
           observer.disconnect();
           waitForWrapPromise = null;
           resolve(null);
@@ -151,7 +247,10 @@ BTFW.define("feature:ambient", [], async () => {
 
   function ensureAmbientRoot(preferredWrap = null) {
     const nextWrap = preferredWrap || $("#videowrap");
-    if (!nextWrap) return null;
+    if (!nextWrap) {
+      debug("No #videowrap found");
+      return null;
+    }
 
     ensureCSS();
 
@@ -161,18 +260,37 @@ BTFW.define("feature:ambient", [], async () => {
     }
 
     wrap = nextWrap;
+    const legacy = wrap.querySelector && wrap.querySelector("#btfw-ambient-wrap");
+    if (legacy) {
+      try {
+        legacy.remove();
+      } catch (_) {
+        legacy.parentNode && legacy.parentNode.removeChild(legacy);
+      }
+    }
+
     wrap.classList.add("btfw-ambient-ready");
     
     if (active) {
       wrap.classList.add("btfw-ambient-enabled");
     }
 
+    if (!renderer) {
+      renderer = new AmbientRenderer();
+      renderer.mount(wrap);
+    } else {
+      renderer.mount(wrap);
+    }
+
+    debug("Ambient root prepared", { active, wrap });
     return wrap;
   }
 
   function getStoredPreference() {
     try {
-      return localStorage.getItem(STORAGE_KEY) === "1";
+      const stored = localStorage.getItem(STORAGE_KEY) === "1";
+      debug("Stored preference:", stored);
+      return stored;
     } catch (_) {
       return false;
     }
@@ -181,125 +299,25 @@ BTFW.define("feature:ambient", [], async () => {
   function setStoredPreference(value) {
     try {
       localStorage.setItem(STORAGE_KEY, value ? "1" : "0");
+      debug("Stored preference updated:", value);
     } catch (_) {}
   }
 
   function findVideoElement() {
-    return $("#ytapiplayer video") || $("#videowrap video") || document.querySelector("video");
-  }
-
-  function cleanupGlowElements() {
-    if (glowContainer && glowContainer.parentNode) {
-      try {
-        glowContainer.remove();
-      } catch (_) {
-        glowContainer.parentNode.removeChild(glowContainer);
-      }
+    const video = $("#ytapiplayer video") || $("#videowrap video") || document.querySelector("video");
+    if (video) {
+      debug("Found video element:", video.src || video.currentSrc || "no src");
+    } else {
+      debug("No video element found");
     }
     glowContainer = null;
     glowVideo = null;
   }
 
-  function createGlowElements() {
-    if (!wrap) return;
-
-    // Remove existing glow elements
-    cleanupGlowElements();
-
-    // Create glow container
-    glowContainer = document.createElement("div");
-    glowContainer.className = "btfw-ambient-glow";
-
-    // Create cloned video for glow effect
-    glowVideo = document.createElement("video");
-    glowVideo.muted = true;
-    glowVideo.playsInline = true;
-    glowVideo.loop = true;
-    glowVideo.style.pointerEvents = "none";
-
-    glowContainer.appendChild(glowVideo);
-    
-    // Insert at the beginning of videowrap
-    if (wrap.firstChild) {
-      wrap.insertBefore(glowContainer, wrap.firstChild);
-    } else {
-      wrap.appendChild(glowContainer);
-    }
-  }
-
-  function syncVideos() {
-    if (!currentVideo || !glowVideo) return;
-
-    try {
-      // Sync source
-      const src = currentVideo.src || currentVideo.currentSrc;
-      if (src && glowVideo.src !== src) {
-        glowVideo.src = src;
-      }
-
-      // Sync time
-      const timeDiff = Math.abs(currentVideo.currentTime - glowVideo.currentTime);
-      if (timeDiff > 0.3) {
-        glowVideo.currentTime = currentVideo.currentTime;
-      }
-
-      // Sync playback state
-      if (!currentVideo.paused && glowVideo.paused) {
-        glowVideo.play().catch(() => {});
-      } else if (currentVideo.paused && !glowVideo.paused) {
-        glowVideo.pause();
-      }
-    } catch (_) {}
-  }
-
-  function detachVideoListeners() {
-    if (!currentVideo || !syncHandler) return;
-
-    const events = ["loadeddata", "play", "pause", "seeked", "timeupdate", "ended", "emptied"];
-    events.forEach((evt) => {
-      try {
-        currentVideo.removeEventListener(evt, syncHandler);
-      } catch (_) {}
-    });
-
-    syncHandler = null;
-    currentVideo = null;
-  }
-
-  function attachVideo(video) {
-    if (currentVideo === video) return;
-
-    detachVideoListeners();
-    currentVideo = video && video.tagName === "VIDEO" ? video : null;
-
-    if (!currentVideo) {
-      cleanupGlowElements();
-      return;
-    }
-
-    // Create glow elements if they don't exist
-    if (!glowContainer) {
-      createGlowElements();
-    }
-
-    // Create sync handler
-    syncHandler = () => syncVideos();
-
-    // Attach event listeners
-    const events = ["loadeddata", "play", "pause", "seeked", "timeupdate"];
-    events.forEach((evt) => {
-      try {
-        currentVideo.addEventListener(evt, syncHandler);
-      } catch (_) {}
-    });
-
-    // Initial sync
-    syncVideos();
-  }
-
   function startMonitoring() {
     if (monitorTimer) return;
 
+    debug("Starting monitoring");
     monitorTimer = window.setInterval(() => {
       if (!active) return;
 
@@ -315,10 +333,8 @@ BTFW.define("feature:ambient", [], async () => {
         ensureAmbientRoot(wrapNow);
       }
 
-      const videoEl = findVideoElement();
-      if (videoEl !== currentVideo) {
-        attachVideo(videoEl);
-      }
+      const video = findVideoElement();
+      if (renderer) renderer.attach(video);
     }, 1000);
 
     wireSocketListener();
@@ -328,9 +344,9 @@ BTFW.define("feature:ambient", [], async () => {
     if (monitorTimer) {
       clearInterval(monitorTimer);
       monitorTimer = null;
+      debug("Monitoring stopped");
     }
-    detachVideoListeners();
-    cleanupGlowElements();
+    if (renderer) renderer.detach();
   }
 
   function wireSocketListener() {
@@ -340,9 +356,11 @@ BTFW.define("feature:ambient", [], async () => {
         socketListenerAttached = true;
         socket.on("changeMedia", () => {
           if (!active) return;
+          debug("Media changed via socket");
           setTimeout(() => {
             ensureAmbientRoot();
-            attachVideo(findVideoElement());
+            const video = findVideoElement();
+            if (renderer) renderer.attach(video);
           }, 400);
         });
       }
@@ -352,6 +370,7 @@ BTFW.define("feature:ambient", [], async () => {
   async function enable() {
     if (active) return true;
 
+    debug("Enabling ambient mode");
     ensureCSS();
     const wrapEl = $("#videowrap") || (await waitForWrap());
     if (!wrapEl) {
@@ -362,20 +381,22 @@ BTFW.define("feature:ambient", [], async () => {
     const ensuredWrap = ensureAmbientRoot(wrapEl);
     if (ensuredWrap) {
       ensuredWrap.classList.add("btfw-ambient-enabled");
+      updateRendererColor(renderer, findVideoElement());
     }
     
     active = true;
     setStoredPreference(true);
     startMonitoring();
-    attachVideo(findVideoElement());
+    if (renderer) renderer.attach(findVideoElement());
     dispatchState();
-    
+    debug("Ambient mode enabled");
     return true;
   }
 
   async function disable() {
     if (!active) return true;
 
+    debug("Disabling ambient mode");
     active = false;
     setStoredPreference(false);
 
@@ -392,8 +413,10 @@ BTFW.define("feature:ambient", [], async () => {
 
   function refresh() {
     if (!active) return;
+    debug("Refreshing");
     ensureAmbientRoot();
-    attachVideo(findVideoElement());
+    updateRendererColor(renderer, findVideoElement());
+    if (renderer) renderer.attach(findVideoElement());
   }
 
   function isActive() {
@@ -410,9 +433,243 @@ BTFW.define("feature:ambient", [], async () => {
     );
   }
 
+  function updateRendererColor(instance, video) {
+    if (!instance) return;
+    const color = deriveColorFromVideo(video);
+    instance.setColor(color || DEFAULT_COLOR);
+  }
+
+  function deriveColorFromVideo(video) {
+    if (!video) return null;
+
+    const dataAttr = video.getAttribute("data-ambient-color") || video.dataset?.ambientColor;
+    if (dataAttr) {
+      const parsed = parseColor(dataAttr);
+      if (parsed) return parsed;
+    }
+
+    const cssColor = (() => {
+      try {
+        const styles = getComputedStyle(video);
+        const bg = styles.getPropertyValue("--ambient-color") || styles.backgroundColor;
+        return bg && bg.trim() ? bg : null;
+      } catch (_) {
+        return null;
+      }
+    })();
+
+    if (cssColor) {
+      const parsed = parseColor(cssColor);
+      if (parsed) return parsed;
+    }
+
+    return null;
+  }
+
+  class AmbientRenderer {
+    constructor() {
+      this.root = document.createElement("div");
+      this.root.className = "btfw-ambient-layer";
+      this.mirrorVideo = document.createElement("video");
+      this.mirrorVideo.setAttribute("aria-hidden", "true");
+      this.mirrorVideo.setAttribute("muted", "");
+      this.mirrorVideo.muted = true;
+      this.mirrorVideo.playsInline = true;
+      this.mirrorVideo.autoplay = true;
+      this.mirrorVideo.loop = true;
+      this.root.appendChild(this.mirrorVideo);
+
+      this.source = null;
+      this.color = clampColor(DEFAULT_COLOR);
+      this.mounted = false;
+      this.listeners = new Map();
+      this.syncInterval = null;
+      this.boundHandlers = null;
+    }
+
+    mount(targetWrap) {
+      if (!targetWrap) return;
+      if (this.root.parentNode !== targetWrap) {
+        try {
+          this.root.remove();
+        } catch (_) {}
+        targetWrap.prepend(this.root);
+      }
+      this.mounted = true;
+      this.applyColor();
+    }
+
+    detach() {
+      this.stopSync();
+      this.teardownSource();
+      this.mirrorVideo.pause();
+      this.mirrorVideo.removeAttribute("src");
+      this.mirrorVideo.innerHTML = "";
+      try {
+        this.mirrorVideo.load();
+      } catch (_) {}
+    }
+
+    attach(video) {
+      if (!this.mounted) return;
+      if (this.source === video) return;
+
+      this.stopSync();
+      this.teardownSource();
+
+      if (!video || video.tagName !== "VIDEO") {
+        this.source = null;
+        this.mirrorVideo.removeAttribute("src");
+        this.mirrorVideo.pause();
+        this.boundHandlers = null;
+        this.setColor(DEFAULT_COLOR);
+        return;
+      }
+
+      this.source = video;
+      this.setColor(deriveColorFromVideo(video) || DEFAULT_COLOR);
+      this.loadMirror(video);
+      this.startSync();
+    }
+
+    loadMirror(video) {
+      const src = video.currentSrc || video.src;
+      const sources = Array.from(video.querySelectorAll("source"));
+
+      if (src) {
+        this.mirrorVideo.src = src;
+        this.mirrorVideo.load();
+      } else if (sources.length) {
+        this.mirrorVideo.innerHTML = "";
+        sources.forEach((source) => {
+          const clone = source.cloneNode(true);
+          this.mirrorVideo.appendChild(clone);
+        });
+        this.mirrorVideo.load();
+      } else {
+        this.mirrorVideo.removeAttribute("src");
+      }
+
+      this.mirrorVideo.playbackRate = video.playbackRate || 1;
+
+      if (!this.boundHandlers) {
+        const copyRate = () => {
+          this.mirrorVideo.playbackRate = video.playbackRate || 1;
+        };
+        const copyPlay = () => {
+          const play = () => this.mirrorVideo.play().catch(() => {});
+          if (video.paused) {
+            this.mirrorVideo.pause();
+          } else {
+            if (this.mirrorVideo.readyState >= 2) play();
+            else this.mirrorVideo.addEventListener("loadeddata", play, { once: true });
+          }
+        };
+        const copyPause = () => {
+          if (!video.paused) return;
+          this.mirrorVideo.pause();
+        };
+        const copySeek = () => {
+          if (!Number.isFinite(video.currentTime)) return;
+          const diff = Math.abs((this.mirrorVideo.currentTime || 0) - video.currentTime);
+          if (diff > 0.7) {
+            try {
+              this.mirrorVideo.currentTime = video.currentTime;
+            } catch (_) {}
+          }
+        };
+        const onLoadedData = () => {
+          copyRate();
+          copySeek();
+          copyPlay();
+        };
+        const onEmptied = () => this.attach(null);
+
+        this.boundHandlers = { copyRate, copySeek, copyPlay };
+
+        this.listeners.set("ratechange", copyRate);
+        this.listeners.set("play", copyPlay);
+        this.listeners.set("pause", copyPause);
+        this.listeners.set("timeupdate", copySeek);
+        this.listeners.set("seeked", copySeek);
+        this.listeners.set("loadeddata", onLoadedData);
+        this.listeners.set("emptied", onEmptied);
+
+        this.listeners.forEach((handler, event) => {
+          if (typeof handler !== "function") return;
+          try {
+            video.addEventListener(event, handler);
+          } catch (_) {}
+        });
+      }
+
+      if (this.boundHandlers) {
+        this.boundHandlers.copyRate();
+        this.boundHandlers.copySeek();
+        this.boundHandlers.copyPlay();
+      }
+    }
+
+    startSync() {
+      if (this.syncInterval) return;
+      this.syncInterval = window.setInterval(() => {
+        if (!this.source) return;
+        const src = this.source.currentSrc || this.source.src;
+        const mirrorSrc = this.mirrorVideo.currentSrc || this.mirrorVideo.src;
+        if (src && mirrorSrc && src !== mirrorSrc) {
+          this.loadMirror(this.source);
+        }
+        const derived = deriveColorFromVideo(this.source);
+        if (derived) this.setColor(derived);
+        else this.applyColor();
+      }, 1500);
+    }
+
+    stopSync() {
+      if (this.syncInterval) {
+        clearInterval(this.syncInterval);
+        this.syncInterval = null;
+      }
+    }
+
+    teardownSource() {
+      if (!this.source) return;
+      this.listeners.forEach((handler, event) => {
+        if (typeof handler !== "function") return;
+        try {
+          this.source.removeEventListener(event, handler);
+        } catch (_) {}
+      });
+      this.listeners.clear();
+      this.source = null;
+      this.boundHandlers = null;
+    }
+
+    setColor(color) {
+      this.color = clampColor(color || DEFAULT_COLOR);
+      this.applyColor();
+    }
+
+    applyColor() {
+      if (!this.mounted) return;
+      const base = clampColor(this.color);
+      const soft = mixWithWhite(base, 0.28);
+      const highlight = mixWithWhite(base, 0.52);
+      const deep = mixWithBlack(base, 0.42);
+
+      this.root.style.setProperty("--ambient-base", formatColor(base));
+      this.root.style.setProperty("--ambient-soft", formatColor(soft));
+      this.root.style.setProperty("--ambient-highlight", formatColor(highlight));
+      this.root.style.setProperty("--ambient-deep", formatColor(deep));
+    }
+  }
+
   function boot() {
+    debug("Booting ambient feature");
     ensureCSS();
     if (getStoredPreference()) {
+      debug("Auto-enabling from stored preference");
+
       enable();
     }
   }
