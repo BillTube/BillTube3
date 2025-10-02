@@ -9,6 +9,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     avatarsMode : "btfw:chat:avatars",        // "off" | "small" | "big"
     emoteSize   : "btfw:chat:emoteSize",      // "small" | "medium" | "big"
     gifAutoplay : "btfw:chat:gifAutoplay",    // "1" | "0"
+    chatJoinNotices: "btfw:chat:joinNotices", // "1" | "0"
     stackCompact: "btfw:stack:compact",       // "1" | "0"
     localSubs   : "btfw:video:localsubs",     // "1" | "0"
     billcastEnabled: "btfw:billcast:enabled", // "1" | "0"
@@ -175,6 +176,19 @@ BTFW.define("feature:themeSettings", [], async () => {
                     </label>
                   </div>
                 </section>
+
+                <section class="btfw-ts-card">
+                  <header class="btfw-ts-card__header">
+                    <h3>Notifications</h3>
+                    <p>Decide which chat popups show up for you.</p>
+                  </header>
+                  <div class="btfw-ts-card__body">
+                    <label class="checkbox btfw-checkbox">
+                      <input type="checkbox" id="btfw-chat-join-notices"> <span>Show notifications when users join</span>
+                    </label>
+                    <p class="btfw-help">Affects the “Joined” popups triggered by users entering the channel.</p>
+                  </div>
+                </section>
               </div>
             </div>
 
@@ -285,6 +299,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     const chatTextPx  = $("#btfw-chat-textsize", m)?.value || "14";
     const emoteSize   = $("#btfw-emote-size", m)?.value   || "medium";
     const gifAutoOn   = $("#btfw-gif-autoplay", m)?.checked;
+    const joinNoticesOn = $("#btfw-chat-join-notices", m)?.checked;
     const compactBtn  = $("#btfw-compact-stack-toggle", m);
     const compactOn   = compactBtn ? compactBtn.getAttribute("aria-pressed") === "true" : true;
     const localSubsOn = $("#btfw-localsubs-toggle", m)?.checked;
@@ -296,6 +311,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     set(TS_KEYS.chatTextPx, chatTextPx);
     set(TS_KEYS.emoteSize, emoteSize);
     set(TS_KEYS.gifAutoplay, gifAutoOn ? "1":"0");
+    set(TS_KEYS.chatJoinNotices, joinNoticesOn ? "1":"0");
     set(TS_KEYS.stackCompact, compactOn ? "1":"0");
     set(TS_KEYS.localSubs,   localSubsOn ? "1":"0");
     set(TS_KEYS.billcastEnabled, billcastOn ? "1":"0");
@@ -311,6 +327,7 @@ BTFW.define("feature:themeSettings", [], async () => {
 
     // notify modules
     document.dispatchEvent(new CustomEvent("btfw:chat:gifAutoplayChanged", { detail:{ autoplay: !!gifAutoOn } }));
+    document.dispatchEvent(new CustomEvent("btfw:chat:joinNoticesChanged", { detail:{ enabled: !!joinNoticesOn } }));
     document.dispatchEvent(new CustomEvent("btfw:stack:compactChanged",    { detail:{ enabled : !!compactOn } }));
     document.dispatchEvent(new CustomEvent("btfw:video:localsubs:changed", { detail:{ enabled : !!localSubsOn } }));
     document.dispatchEvent(new CustomEvent("btfw:layout:chatSideChanged",   { detail:{ side    : chatSide } }));
@@ -319,6 +336,7 @@ BTFW.define("feature:themeSettings", [], async () => {
         avatarsMode, chatTextPx: parseInt(chatTextPx,10),
         emoteSize, gifAutoplay: !!gifAutoOn, compactStack: !!compactOn,
         localSubs: !!localSubsOn, billcastEnabled: !!billcastOn,
+        joinNotices: !!joinNoticesOn,
         chatSide
       }
     }}));
@@ -348,6 +366,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     if (chatLabel) chatLabel.textContent = `${chatPxNow}px`;
     $("#btfw-emote-size").value   = get(TS_KEYS.emoteSize,   "medium");
     $("#btfw-gif-autoplay").checked = get(TS_KEYS.gifAutoplay, "1") === "1";
+    $("#btfw-chat-join-notices").checked = get(TS_KEYS.chatJoinNotices, "1") === "1";
     $("#btfw-localsubs-toggle").checked = get(TS_KEYS.localSubs, "1") === "1";
     const bc = $("#btfw-billcast-toggle"); if (bc) bc.checked = get(TS_KEYS.billcastEnabled, "1") === "1";
     const compactStored = get(TS_KEYS.stackCompact, "1") === "1";

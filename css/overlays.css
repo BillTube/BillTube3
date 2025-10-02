@@ -864,11 +864,11 @@ html[data-btfw-theme="dark"] .panel {
 }
 
 .btfw-notice--success{
-  --btfw-notice-bg: color-mix(in srgb, #31ce8f 38%, var(--btfw-color-panel) 62%);
-  --btfw-notice-border: color-mix(in srgb, #31ce8f 48%, var(--btfw-color-accent) 52%);
-  --btfw-notice-accent: color-mix(in srgb, #31ce8f 70%, var(--btfw-color-accent) 30%);
-  --btfw-notice-icon-bg: color-mix(in srgb, #31ce8f 26%, transparent 74%);
-  --btfw-notice-icon-color: color-mix(in srgb, var(--btfw-color-on-accent) 88%, #dff7eb 12%);
+  --btfw-notice-bg: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+  --btfw-notice-border: color-mix(in srgb, var(--btfw-color-accent) 46%, transparent 54%);
+  --btfw-notice-accent: var(--btfw-color-accent);
+  --btfw-notice-icon-bg: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
+  --btfw-notice-icon-color: var(--btfw-color-on-accent);
 }
 
 .btfw-notice--warn{
