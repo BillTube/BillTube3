@@ -1,4 +1,4 @@
-/* BTFW – feature:nowplaying (Original version restored) */
+/* BTFW – feature:nowplaying */
 BTFW.define("feature:nowplaying", [], async () => {
   const $ = (s, r = document) => r.querySelector(s);
 
@@ -76,6 +76,15 @@ BTFW.define("feature:nowplaying", [], async () => {
       }
     }
 
+    // If CyTube already set content, don't override it unless forced
+    const cytubeContent = ct.textContent && ct.textContent.trim();
+    if (cytubeContent && !options.force) {
+      console.log('[nowplaying] Using CyTube content:', cytubeContent);
+      state.lastCleanTitle = cytubeContent;
+      return true;
+    }
+
+    // Only set title if CyTube hasn't set it yet or if forced
     const title = newTitle || getQueueActiveTitle();
     const cleanTitle = stripPrefix(title);
 
@@ -83,32 +92,12 @@ BTFW.define("feature:nowplaying", [], async () => {
     const nextText = cleanTitle || "";
     
     const textChanged = currentText !== nextText;
-    const titleAttrChanged = ct.title !== nextText;
-    const titleStateChanged = state.lastCleanTitle !== cleanTitle;
     
-    const needsUpdate = textChanged || titleAttrChanged || options.force;
-
-    if (!needsUpdate && !titleStateChanged) {
-      return false;
-    }
-
-    if (textChanged || options.force) {
-      ct.textContent = cleanTitle || "";
-    }
-    
-    if (titleAttrChanged || options.force) {
-      ct.title = cleanTitle || "";
-    }
-    
-    const currentLength = ct.style.getPropertyValue("--length");
-    const newLength = String((cleanTitle || "").length);
-    if (currentLength !== newLength) {
-      ct.style.setProperty("--length", newLength);
-    }
-
-    state.lastCleanTitle = cleanTitle;
-
-    if (titleStateChanged || options.forceLog) {
+    if (textChanged && cleanTitle) {
+      ct.textContent = cleanTitle;
+      ct.title = cleanTitle;
+      ct.style.setProperty("--length", String(cleanTitle.length));
+      state.lastCleanTitle = cleanTitle;
       console.log('[nowplaying] Set title:', cleanTitle);
     }
 
