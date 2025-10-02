@@ -45,7 +45,7 @@ BTFW.define("feature:nowplaying", [], async () => {
     return ct;
   }
 
-  function mountTitleIntoSlot() {
+function mountTitleIntoSlot() {
     const slot = ensureSlot();
     if (!slot) return;
 
@@ -55,7 +55,11 @@ BTFW.define("feature:nowplaying", [], async () => {
     }
 
     if (ct.parentElement !== slot) {
-      slot.innerHTML = "";
+      // ✅ FIX: Don't clear slot if it already contains the currenttitle element
+      const slotHasTitle = slot.contains(ct);
+      if (!slotHasTitle) {
+        slot.innerHTML = "";
+      }
       slot.appendChild(ct);
       ct.classList.add("btfw-nowplaying");
     }
