@@ -51,6 +51,38 @@ BTFW.define("feature:ambient", [], async () => {
         opacity: 0.85;
       }
 
+      /* Reduce background opacity when ambient is active to let glow shine through */
+      body.btfw-ambient-active {
+        --btfw-theme-bg-ambient: color-mix(in srgb, var(--btfw-theme-bg) 50%, transparent);
+        --btfw-theme-surface-ambient: color-mix(in srgb, var(--btfw-theme-surface) 50%, transparent);
+        --btfw-theme-panel-ambient: color-mix(in srgb, var(--btfw-theme-panel) 50%, transparent);
+      }
+
+      body.btfw-ambient-active [style*="--btfw-theme-bg"],
+      body.btfw-ambient-active *:not([style]) {
+        background-color: var(--btfw-theme-bg-ambient, var(--btfw-theme-bg)) !important;
+      }
+
+      body.btfw-ambient-active #main,
+      body.btfw-ambient-active #chatwrap,
+      body.btfw-ambient-active #videowrap,
+      body.btfw-ambient-active .panel,
+      body.btfw-ambient-active #userlist,
+      body.btfw-ambient-active #messagebuffer,
+      body.btfw-ambient-active #chatline {
+        background-color: color-mix(in srgb, var(--btfw-theme-bg) 50%, transparent) !important;
+      }
+
+      body.btfw-ambient-active #chatwrap,
+      body.btfw-ambient-active #userlist {
+        background-color: color-mix(in srgb, var(--btfw-theme-surface) 50%, transparent) !important;
+      }
+
+      body.btfw-ambient-active .panel-heading,
+      body.btfw-ambient-active .panel-body {
+        background-color: color-mix(in srgb, var(--btfw-theme-panel) 50%, transparent) !important;
+      }
+
       /* Mobile optimizations */
       @media (max-width: 768px) {
         .btfw-ambient-glow-bg video {
@@ -327,6 +359,9 @@ BTFW.define("feature:ambient", [], async () => {
     active = true;
     setStoredPreference(true);
     
+    // Add ambient class to body for background transparency
+    document.body.classList.add("btfw-ambient-active");
+    
     // Create glow and activate it
     const videoEl = findVideoElement();
     if (videoEl) {
@@ -345,6 +380,9 @@ BTFW.define("feature:ambient", [], async () => {
 
     active = false;
     setStoredPreference(false);
+
+    // Remove ambient class from body
+    document.body.classList.remove("btfw-ambient-active");
 
     if (wrap) {
       wrap.classList.remove("btfw-ambient-ready");
