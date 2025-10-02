@@ -349,21 +349,37 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   }
 
   function moveCurrent(){ 
-    const vh=document.getElementById("videowrap-header"); 
-    if(!vh) return; 
-    const ct=vh.querySelector("#currenttitle"); 
-    const top=document.querySelector("#chatwrap .btfw-chat-topbar"); 
-    if(ct&&top){ 
-      let slot=top.querySelector("#btfw-nowplaying-slot"); 
-      if(!slot){ 
-        slot=document.createElement("div"); 
-        slot.id="btfw-nowplaying-slot"; 
-        slot.className="btfw-chat-title"; 
-        top.innerHTML=""; 
+    const vh = document.getElementById("videowrap-header"); 
+    
+    // If videowrap-header doesn't exist, that's okay - title might be created by CyTube later
+    if (!vh) {
+      console.log('[layout] No videowrap-header found');
+      return;
+    }
+    
+    const ct = vh.querySelector("#currenttitle"); 
+    const top = document.querySelector("#chatwrap .btfw-chat-topbar"); 
+    
+    if (top) { 
+      let slot = top.querySelector("#btfw-nowplaying-slot"); 
+      if (!slot) { 
+        slot = document.createElement("div"); 
+        slot.id = "btfw-nowplaying-slot"; 
+        slot.className = "btfw-chat-title"; 
+        top.innerHTML = ""; 
         top.appendChild(slot);
-      } 
-      slot.appendChild(ct);
-    } 
+      }
+      
+      // If currenttitle exists, move it
+      if (ct) {
+        slot.appendChild(ct);
+        console.log('[layout] Moved #currenttitle to slot');
+      } else {
+        console.log('[layout] No #currenttitle found in videowrap-header');
+      }
+    }
+    
+    // Only remove videowrap-header - the title is either moved or wasn't there
     vh.remove(); 
   }
 
