@@ -836,12 +836,15 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     observer.observe(main, {childList:true, subtree:false});
   }
   setTimeout(() => {
-  const pm = document.querySelector('.btfw-stack-item[data-bind="playlist-group"]');
-  if (pm) {
-    pm.dataset.open = 'false';
-    pm.classList.remove('is-open');
-  }
-}, 1000);
+    const playlistGroup = document.querySelector('.btfw-stack-item[data-bind="playlist-group"]');
+    if (!playlistGroup) return;
+
+    const storedVisibility = getStoredPlaylistVisibility();
+    const shouldBeOpen = storedVisibility !== null ? storedVisibility : true;
+
+    playlistGroup.dataset.open = shouldBeOpen ? 'true' : 'false';
+    playlistGroup.classList.toggle('is-open', shouldBeOpen);
+  }, 1000);
   let n=0;
   const iv=setInterval(()=>{
     populate(refs);
