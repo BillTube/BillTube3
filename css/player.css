@@ -47,13 +47,18 @@
   -webkit-backface-visibility: hidden;
   will-change: transform;            /* Prepare for animations */
 }
+.video-js, 
+.video-js * {
+  will-change: auto !important; 
+}
 
-/* Remove will-change when not needed */
+.vjs-control-bar {
+  backdrop-filter: none !important; 
+}
 #videowrap.vjs-has-started video,
 #videowrap.vjs-playing video {
-  will-change: auto;  /* Don't hold GPU layer when stable */
+  will-change: auto;  
 }
-/* Support legacy .embed-responsive wrappers if present */
 #videowrap .embed-responsive{
   position: relative;
   width: 100%;
@@ -901,6 +906,7 @@
     justify-content: flex-start;
   }
 }
+
 
 
 
