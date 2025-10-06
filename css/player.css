@@ -478,34 +478,30 @@
 /* Playlist queue entries */
 #queue li.queue_entry,
 .queue_entry {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px 14px;
-  padding: 12px 16px;
-  margin: 0 0 8px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--btfw-color-panel) 96%, transparent 4%);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 16%, transparent 84%);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--btfw-color-bg) 36%, transparent 64%);
+  gap: 6px 12px;
+  padding: 8px 12px;
+  margin: 0 0 6px;
+  border-radius: 8px;
+  background: var(--btfw-color-panel);
+  border: 1px solid var(--btfw-border);
   color: var(--btfw-color-text);
-  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 #queue li.queue_entry:hover,
 .queue_entry:hover {
-  background: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
+  background: var(--btfw-color-surface, var(--btfw-color-panel));
+  border-color: var(--btfw-border);
 }
 
 #queue li.queue_entry .qe_title,
 .queue_entry .qe_title {
-  grid-column: 1 / 2;
-  grid-row: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--btfw-color-text);
   text-decoration: none;
   overflow: hidden;
@@ -515,55 +511,43 @@
 
 #queue li.queue_entry .qe_title:hover,
 .queue_entry .qe_title:hover {
-  color: color-mix(in srgb, var(--btfw-color-accent) 70%, white 30%);
+  color: var(--btfw-color-accent);
 }
 
 #queue li.queue_entry .qe_time,
 .queue_entry .qe_time {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: end;
-  font-size: 0.8rem;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
-  color: color-mix(in srgb, var(--btfw-color-text) 94%, white 6%);
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--btfw-color-text-soft);
+  font-weight: 500;
+  letter-spacing: 0.03em;
 }
 
 #queue li.queue_entry .btn-group,
 .queue_entry .btn-group {
-  grid-column: 1 / -1;
-  grid-row: 2;
+  flex: 1 1 100%;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   justify-content: flex-end;
 }
 
 #queue li.queue_entry .btn-group .btn,
 .queue_entry .btn-group .btn {
-  background: color-mix(in srgb, var(--btfw-color-surface) 86%, transparent 14%);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
-  border-radius: 10px;
+  background: var(--btfw-color-surface, var(--btfw-color-panel));
+  border: 1px solid var(--btfw-border);
+  border-radius: 6px;
   color: var(--btfw-color-text) !important;
-  padding: 6px 12px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 #queue li.queue_entry .btn-group .btn:hover,
 .queue_entry .btn-group .btn:hover {
-  background: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);
-  transform: translateY(-1px);
-}
-
-#queue li.queue_entry .btn-group .btn:active,
-.queue_entry .btn-group .btn:active {
-  transform: translateY(0);
+  background: var(--btfw-color-accent);
+  border-color: var(--btfw-color-accent);
+  color: var(--btfw-color-on-accent) !important;
 }
 
 #queue li.queue_entry .qe_clear,
@@ -594,26 +578,23 @@
 #queue li.queue_active,
 .queue_entry.queue_active,
 .queue_entry.playing {
-  background: color-mix(in srgb, var(--btfw-color-accent) 26%, var(--btfw-color-panel) 74%) !important;
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 46%, transparent 54%) !important;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
-  color: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
+  background: var(--btfw-color-accent) !important;
+  border-color: var(--btfw-color-accent) !important;
+  color: var(--btfw-color-on-accent);
 }
 
 #queue li.queue_entry.queue_active .qe_title,
 #queue li.queue_entry.playing .qe_title,
 .queue_entry.queue_active .qe_title,
 .queue_entry.playing .qe_title {
-  color: color-mix(in srgb, var(--btfw-color-text) 98%, white 2%);
+  color: var(--btfw-color-on-accent);
 }
 
 #queue li.queue_entry.queue_active .qe_time,
 #queue li.queue_entry.playing .qe_time,
 .queue_entry.queue_active .qe_time,
 .queue_entry.playing .qe_time {
-  background: color-mix(in srgb, var(--btfw-color-accent) 54%, transparent 46%) !important;
   color: var(--btfw-color-on-accent) !important;
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--btfw-color-accent) 36%, transparent 64%);
 }
 
 #queue li.queue_entry.is-temp,
@@ -906,15 +887,13 @@
 @media (max-width: 720px) {
   #queue li.queue_entry,
   .queue_entry {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   #queue li.queue_entry .qe_time,
   .queue_entry .qe_time {
-    grid-column: 1;
-    justify-self: flex-start;
-    margin-top: 2px;
+    margin-left: 0;
   }
 
   #queue li.queue_entry .btn-group,
