@@ -1409,80 +1409,32 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 .queue_temp {
     background: #ffffff14 !important;
 }
-/* PLAYLIST PERFORMANCE OPTIMIZATION
- * Add this to your CSS (css/stack.css or css/base.css)
- * 
- * This uses CSS containment to improve rendering performance
- * without breaking functionality
- */
 
-/* Optimize playlist container */
+
 #queue {
-  /* GPU acceleration */
   transform: translateZ(0);
-  will-change: scroll-position;
-  
-  /* Improve scrolling performance */
-  overflow-y: auto;
+    overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  
-  /* Limit height to reduce render area */
   max-height: 600px;
 }
 
-/* Optimize individual playlist items */
 #queue li,
 #queue .queue_entry {
-  /* CSS containment - tells browser this element is independent */
-  contain: layout style paint;
-  
-  /* Prevent layout shifts */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 45px; /* Estimated height of item */
-  
-  /* GPU layer for smoother rendering */
-  will-change: auto;
-  
-  /* Prevent repaints during scroll */
+  contain: layout style;  
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
 
-/* Optimize buttons within playlist items */
 #queue li button,
 #queue .queue_entry button {
   /* Contain button repaints */
-  contain: layout style;
-  
-  /* Reduce repaint on hover */
-  will-change: auto;
+  contain: layout;
 }
 
-/* Optimize when scrolling */
-#queue:not(:hover) li {
-  /* Disable expensive effects during scroll */
-  pointer-events: auto;
-}
-
-/* Reduce complexity during active scrolling */
 body.is-scrolling #queue li {
-  /* Temporarily reduce rendering quality for smoothness */
-  contain: strict;
+  pointer-events: none; 
 }
 
-/* Optional: Pagination helper (show first 100, load more button) */
-#queue li:nth-child(n+101) {
-  /* You can use this to hide items beyond 100 */
-  /* Uncomment if you want pagination: */
-  /* display: none; */
-}
-
-/* Show loading indicator when many items */
-#queue::after {
-  content: attr(data-item-count) " videos in playlist";
-  display: block;
-  padding: 10px;
-  text-align: center;
-  font-size: 12px;
-  opacity: 0.5;
+body:not(.is-scrolling) #queue li {
+  pointer-events: auto;
 }
