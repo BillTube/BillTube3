@@ -696,7 +696,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   display: flex;
   flex-wrap: nowrap;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: flex-start;
   width: 100%;
   align-self: stretch;
 }
