@@ -133,11 +133,27 @@ BTFW.define("feature:chat-avatars", [], async () => {
   // Consecutive message compaction: if same user as previous message, hide avatar and reduce gap
   let lastSender = null;
   function compactIfConsecutive(msgEl){
+    if (!msgEl) return;
+
     const uEl = msgEl.querySelector(".username");
-    if (!uEl) return;
-    const name = (uEl.textContent || "").trim().replace(/:\s*$/,"");
     const avatar = msgEl.querySelector(".btfw-chat-avatarwrap");
-    if (!name || !avatar) return;
+    const classes = Array.from(msgEl.classList || []);
+    const isChatMessage = classes.some(cls => cls === "chat-msg" || cls.startsWith("chat-msg-")) || !!avatar;
+
+    // Ignore non-chat/system messages (join/leave notices, server logs, etc.).
+    // They shouldn't affect compaction state for the next real chat line.
+    if (!isChatMessage) return;
+
+    if (!uEl) {
+      lastSender = null;
+      return;
+    }
+
+    const name = (uEl.textContent || "").trim().replace(/:\s*$/,"");
+    if (!name || !avatar) {
+      lastSender = null;
+      return;
+    }
 
     const consecutive = currentMode !== "off" && lastSender && lastSender === name;
     msgEl.classList.toggle("btfw-compact", consecutive);
