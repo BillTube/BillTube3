@@ -1,6 +1,5 @@
 BTFW.define("feature:playlistPerformance", [], function() {
   const $ = s => document.querySelector(s);
-  const $$ = s => Array.from(document.querySelectorAll(s));
   
   let isOptimized = false;
   let originalDisplay = new Map();
@@ -22,6 +21,43 @@ BTFW.define("feature:playlistPerformance", [], function() {
     return Array.from(queue.children).filter(item => item.id !== 'btfw-playlist-performance-indicator');
   }
 
+  function ensurePollButtonForItem(item) {
+    if (!item) return;
+
+    const group = item.querySelector('.btn-group');
+    if (!group || group.querySelector('.btfw-qbtn-pollcopy')) return;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-xs btn-default qbtn-pollcopy btfw-qbtn-pollcopy';
+    btn.title = 'Add this title to the poll';
+    btn.textContent = 'Poll';
+
+    const queueNext = group.querySelector('.qbtn-next');
+    if (queueNext && queueNext.nextSibling) {
+      group.insertBefore(btn, queueNext.nextSibling);
+    } else {
+      group.appendChild(btn);
+    }
+  }
+
+  function ensurePollButtonsForVisibleItems(children) {
+    const items = Array.isArray(children) ? children : getPlaylistItems();
+    if (!items.length) return;
+
+    const limit = Number.isFinite(currentVisibleCount)
+      ? Math.min(items.length, currentVisibleCount)
+      : items.length;
+
+    for (let index = 0; index < limit; index += 1) {
+      const item = items[index];
+      if (!item || item.style.display === 'none' || item.hidden) continue;
+
+      ensurePollButtonForItem(item);
+    }
+  }
+
+
   function applyVisibility(children) {
     children.forEach((item, index) => {
       if (!originalDisplay.has(item)) {
@@ -35,6 +71,9 @@ BTFW.define("feature:playlistPerformance", [], function() {
         item.style.display = 'none';
       }
     });
+
+    ensurePollButtonsForVisibleItems(children);
+
   }
 
   function detachScrollWatcher(queue) {
@@ -82,8 +121,6 @@ BTFW.define("feature:playlistPerformance", [], function() {
     const children = getPlaylistItems();
     if (!children.length) return;
 
-    console.log(`[PlaylistPerformance] Optimizing ${children.length} items...`);
-
     const hadOptimization = isOptimized;
 
     if (!hadOptimization || !Number.isFinite(currentVisibleCount)) {
@@ -123,6 +160,7 @@ BTFW.define("feature:playlistPerformance", [], function() {
     });
     originalDisplay.clear();
     currentVisibleCount = Infinity;
+    ensurePollButtonsForVisibleItems(children);
     isOptimized = false;
 
     if (queue) {
@@ -167,7 +205,6 @@ BTFW.define("feature:playlistPerformance", [], function() {
     if (showMoreBtn) {
       showMoreBtn.addEventListener('click', () => {
         revealNextBatch();
-        console.log('[PlaylistPerformance] Showing additional items');
       });
     }
 
@@ -175,7 +212,6 @@ BTFW.define("feature:playlistPerformance", [], function() {
     if (showAllBtn) {
       showAllBtn.addEventListener('click', () => {
         restorePlaylist();
-        console.log('[PlaylistPerformance] All items restored');
       });
     }
 
@@ -246,15 +282,13 @@ BTFW.define("feature:playlistPerformance", [], function() {
         restorePlaylist();
         btn.classList.remove('btn-success');
         btn.innerHTML = '<i class="fa fa-rocket"></i> Performance';
-        console.log('[PlaylistPerformance] Disabled');
       } else {
         optimizePlaylist();
         btn.classList.add('btn-success');
         btn.innerHTML = '<i class="fa fa-rocket"></i> Performance ON';
-        console.log('[PlaylistPerformance] Enabled');
       }
     });
-    
+
     toolbar.appendChild(btn);
   }
   
@@ -330,9 +364,8 @@ BTFW.define("feature:playlistPerformance", [], function() {
 
     // Auto-enable if more than 100 items
     if (itemCount > 100 && !isOptimized) {
-      console.log(`[PlaylistPerformance] Auto-enabling for ${itemCount} items`);
       optimizePlaylist();
-      
+
       // Update button state if it exists
       const btn = $('#btfw-perf-toggle');
       if (btn) {
@@ -349,14 +382,31 @@ BTFW.define("feature:playlistPerformance", [], function() {
 
     queue._perfWatched = true;
 
-    const observer = new MutationObserver(() => {
+    const observer = new MutationObserver((mutations) => {
+      const hasRelevantChange = mutations.some(mutation => {
+        const added = Array.from(mutation.addedNodes || []);
+        const removed = Array.from(mutation.removedNodes || []);
+
+        const touchesQueueEntry = node => {
+          if (!(node instanceof HTMLElement)) return false;
+          if (node.id === 'btfw-playlist-performance-indicator') return false;
+          return node.classList.contains('queue_entry') || !!node.querySelector?.('.queue_entry');
+        };
+
+        return added.some(touchesQueueEntry) || removed.some(touchesQueueEntry);
+      });
+
+      if (!hasRelevantChange) {
+        return;
+      }
+
       if (isOptimized) {
         // Re-apply optimization after playlist change
         setTimeout(() => {
           optimizePlaylist();
         }, 100);
       }
-      
+
       // Check if we should auto-enable
       checkAutoEnable();
     });
@@ -375,7 +425,6 @@ BTFW.define("feature:playlistPerformance", [], function() {
     watchPlaylist();
     checkAutoEnable();
     
-    console.log('[PlaylistPerformance] Module loaded');
   }
   
   // Start
