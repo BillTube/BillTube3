@@ -120,9 +120,9 @@ html[data-btfw-theme="dark"] .modal-content {
   border:1px solid var(--btfw-border) !important;
 }
 @media screen and (min-width: 769px) {
-    .modal-card, .modal-content {
-        width: 60rem;
-    }
+  .modal-card, .modal-content {
+    width: 44rem;
+  }
 }
 html[data-btfw-theme="dark"] .modal-header,
 html[data-btfw-theme="dark"] .modal-footer {
