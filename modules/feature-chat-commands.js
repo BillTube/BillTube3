@@ -29,16 +29,8 @@ BTFW.define("feature:chat-commands", [], async () => {
   function norm(s){ return String(s||"").toLowerCase().replace(/['".,;:!?()\[\]{}]/g,"").replace(/\s+/g," ").trim(); }
 
 function getCurrentTitle(){
-  // Prefer the active queue item
-  const a = document.querySelector('#queue .queue_active a');
-  let t = a?.textContent?.trim() || "";
-
-  // Fallback: #currenttitle (strip any prefix from older code or server)
-  if (!t) {
-    const ct = document.getElementById('currenttitle');
-    t = (ct?.textContent || "").trim();
-  }
-
+  const ct = document.getElementById('currenttitle') || document.querySelector('.currenttitle');
+  let t = (ct?.textContent || "").trim();
   // Remove any "Currently playing:" / "Now playing:" prefix
   t = t.replace(/^\s*(?:currently|now)\s*playing\s*[:\-]\s*/i, "").trim();
   return t;
