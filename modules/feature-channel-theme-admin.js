@@ -679,6 +679,12 @@ background: "#0d0d0d",
         link.rel = "stylesheet";
         document.head.appendChild(link);
       }
+      if (link.rel !== "stylesheet") {
+        link.rel = "stylesheet";
+      }
+      if (link.getAttribute("crossorigin") !== "anonymous") {
+        link.setAttribute("crossorigin", "anonymous");
+      }
       if (link.getAttribute("href") !== url) {
         link.setAttribute("href", url);
       }
