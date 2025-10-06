@@ -443,9 +443,6 @@ function startAutoclose(o){
   function titleFromAnywhere(){
     const ct = $("#currenttitle");
     if (ct && ct.textContent) return stripNowPlayingPrefix(ct.textContent);
-    // playlist fallback
-    const a = document.querySelector('#queue .queue_active .qe_title a, #queue .queue_active .qe_title');
-    if (a && a.textContent) return stripNowPlayingPrefix(a.textContent);
     return "New media";
   }
 
