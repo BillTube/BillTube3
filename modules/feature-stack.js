@@ -739,25 +739,19 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     return compactSpacing;
   }
 
-  function boot(){
-    const refs=ensureStack();
-    if(!refs) return;
-    populate(refs);
-    function boot(){
+ function boot(){
   const refs=ensureStack();
   if(!refs) return;
   populate(refs);
-  
-  const obs=new MutationObserver(()=>populate(refs));
-  
-  const leftpad = document.getElementById('btfw-leftpad');
+    const observer=new MutationObserver(()=>populate(refs));
+    const leftpad = document.getElementById('btfw-leftpad');
   const main = document.getElementById('main');
   
   if (leftpad) {
-    obs.observe(leftpad, {childList:true, subtree:false}); // Only direct children
+    observer.observe(leftpad, {childList:true, subtree:false});
   }
   if (main) {
-    obs.observe(main, {childList:true, subtree:false}); // Only direct children  
+    observer.observe(main, {childList:true, subtree:false});
   }
   
   let n=0;
@@ -765,14 +759,7 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     populate(refs);
     if(++n>8) clearInterval(iv);
   },700);
-} 
-    obs.observe(document.body,{childList:true,subtree:true}); 
-    let n=0; 
-    const iv=setInterval(()=>{ 
-      populate(refs); 
-      if(++n>8) clearInterval(iv); 
-    },700); 
-  }
+}
 
   document.addEventListener("btfw:layoutReady", boot);
   setTimeout(boot, 1200);
