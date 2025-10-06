@@ -107,63 +107,67 @@ background: "#0d0d0d",
     }
   };
 
+  const CRITICAL_FONT_WEIGHTS = ["400", "600"];
+  const GOOGLE_FONT_WEIGHT_QUERY = CRITICAL_FONT_WEIGHTS.join(";");
+
   const FONT_PRESETS = {
     inter: {
       name: "Inter",
       family: "'Inter', 'Segoe UI', sans-serif",
-      google: "Inter:wght@300;400;600;700"
+      google: `Inter:wght@${GOOGLE_FONT_WEIGHT_QUERY}`
     },
     roboto: {
       name: "Roboto",
       family: "'Roboto', 'Segoe UI', sans-serif",
-      google: "Roboto:wght@300;400;500;700"
+      google: `Roboto:wght@${GOOGLE_FONT_WEIGHT_QUERY}`
     },
     poppins: {
       name: "Poppins",
       family: "'Poppins', 'Segoe UI', sans-serif",
-      google: "Poppins:wght@300;400;600;700"
+      google: `Poppins:wght@${GOOGLE_FONT_WEIGHT_QUERY}`
     },
     montserrat: {
       name: "Montserrat",
       family: "'Montserrat', 'Segoe UI', sans-serif",
-      google: "Montserrat:wght@300;400;600;700"
+      google: `Montserrat:wght@${GOOGLE_FONT_WEIGHT_QUERY}`
     },
     opensans: {
       name: "Open Sans",
       family: "'Open Sans', 'Segoe UI', sans-serif",
-      google: "Open+Sans:wght@300;400;600;700"
+      google: `Open+Sans:wght@${GOOGLE_FONT_WEIGHT_QUERY}`
     },
     lato: {
       name: "Lato",
       family: "'Lato', 'Segoe UI', sans-serif",
-      google: "Lato:wght@300;400;700;900"
+      google: `Lato:wght@${GOOGLE_FONT_WEIGHT_QUERY}`
     },
     nunito: {
       name: "Nunito",
       family: "'Nunito', 'Segoe UI', sans-serif",
-      google: "Nunito:wght@300;400;600;700"
+      google: `Nunito:wght@${GOOGLE_FONT_WEIGHT_QUERY}`
     },
     manrope: {
       name: "Manrope",
       family: "'Manrope', 'Segoe UI', sans-serif",
-      google: "Manrope:wght@300;400;600;700"
+      google: `Manrope:wght@${GOOGLE_FONT_WEIGHT_QUERY}`
     },
     outfit: {
       name: "Outfit",
       family: "'Outfit', 'Segoe UI', sans-serif",
-      google: "Outfit:wght@300;400;600;700"
+      google: `Outfit:wght@${GOOGLE_FONT_WEIGHT_QUERY}`
     },
     urbanist: {
       name: "Urbanist",
       family: "'Urbanist', 'Segoe UI', sans-serif",
-      google: "Urbanist:wght@300;400;600;700"
+      google: `Urbanist:wght@${GOOGLE_FONT_WEIGHT_QUERY}`
     }
   };
   const FONT_DEFAULT_ID = "inter";
   const FONT_FALLBACK_FAMILY = FONT_PRESETS[FONT_DEFAULT_ID].family;
   const THEME_FONT_LINK_ID = "btfw-theme-font";
+  const THEME_FONT_PRELOAD_LINK_ID = `${THEME_FONT_LINK_ID}-preload`;
   const THEME_FONT_PREVIEW_LINK_ID = `${THEME_FONT_LINK_ID}-preview`;
-  const PREVIEW_FONT_WEIGHTS = ["400", "600", "700", "300"];
+  const PREVIEW_FONT_WEIGHTS = [...CRITICAL_FONT_WEIGHTS];
   const previewFontLoadCache = new Map();
   const previewStylesheetPromises = new Map();
 
@@ -640,7 +644,7 @@ background: "#0d0d0d",
     const trimmed = name.trim();
     if (!trimmed) return "";
     const encoded = trimmed.replace(/\s+/g, "+");
-    return `https://fonts.googleapis.com/css2?family=${encoded}:wght@300;400;600;700&display=swap`;
+    return `https://fonts.googleapis.com/css2?family=${encoded}:wght@${GOOGLE_FONT_WEIGHT_QUERY}&display=swap`;
   }
 
   function resolveTypographyConfig(typo){
@@ -673,6 +677,26 @@ background: "#0d0d0d",
         link = document.createElement("link");
         link.id = id;
         link.rel = "stylesheet";
+        document.head.appendChild(link);
+      }
+      if (link.getAttribute("href") !== url) {
+        link.setAttribute("href", url);
+      }
+    } else if (link && link.parentElement) {
+      link.parentElement.removeChild(link);
+    }
+  }
+
+  function ensureFontPreloadLink(id, url){
+    if (typeof document === "undefined" || !document.head) return;
+    let link = document.getElementById(id);
+    if (url) {
+      if (!link) {
+        link = document.createElement("link");
+        link.id = id;
+        link.rel = "preload";
+        link.as = "style";
+        link.setAttribute("crossorigin", "anonymous");
         document.head.appendChild(link);
       }
       if (link.getAttribute("href") !== url) {
@@ -812,7 +836,9 @@ background: "#0d0d0d",
     if (scope === "preview") {
       ensurePreviewFontAssets(resolved);
     } else {
-      ensureStylesheetLink(THEME_FONT_LINK_ID, resolved.url || "");
+      const fontUrl = resolved.url || "";
+      ensureFontPreloadLink(THEME_FONT_PRELOAD_LINK_ID, fontUrl);
+      ensureStylesheetLink(THEME_FONT_LINK_ID, fontUrl);
       if (typeof document !== "undefined") {
         const previewLink = document.getElementById(THEME_FONT_PREVIEW_LINK_ID);
         if (previewLink && previewLink.parentElement) {
