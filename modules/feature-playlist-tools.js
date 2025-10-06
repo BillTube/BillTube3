@@ -57,6 +57,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     });
     updateCount(visible);
   }
+  
   function wireFilter(){
     const input = $("#btfw-pl-filter");
     const clear = $("#btfw-pl-clear");
@@ -78,6 +79,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
       input.focus();
     });
   }
+  
   function updateCount(known){
     const count = $("#btfw-pl-count");
     const queue = $("#queue");
@@ -103,24 +105,38 @@ BTFW.define("feature:playlist-tools", [], async () => {
     });
   }
 
-  /* ---------- Playlist entry → Poll option helper ---------- */
-  function ensureQueuePollButtons(){
-    $$("#queue > .queue_entry").forEach(li => {
+  /* ---------- OPTIMIZED: Playlist entry → Poll option helper ---------- */
+  function ensureQueuePollButtons() {
+    // Only process visible items to avoid adding buttons to hundreds of hidden items
+    const visibleItems = Array.from(document.querySelectorAll('#queue > .queue_entry'))
+      .filter(li => {
+        // Check if item is visible
+        const style = window.getComputedStyle(li);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+      })
+      .slice(0, 50); // Only process first 50 visible items for performance
+    
+    visibleItems.forEach(li => {
       if (!li) return;
       const group = li.querySelector(".btn-group");
       if (!group) return;
-      if (group.querySelector(".btfw-qbtn-pollcopy")) return;
-
+      if (group.querySelector(".btfw-qbtn-pollcopy")) return; // Already has button
+      
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "btn btn-xs btn-default qbtn-pollcopy btfw-qbtn-pollcopy";
       btn.setAttribute("title", "Add this title to the poll");
-      btn.innerHTML = `<i class="fa fa-clipboard"></i> Poll Title`;
-
+      // Use simple text instead of icon for better performance
+      btn.textContent = "Poll";
+      
       const queueNext = group.querySelector(".qbtn-next");
-      if (queueNext && queueNext.nextSibling) group.insertBefore(btn, queueNext.nextSibling);
-      else if (queueNext) group.appendChild(btn);
-      else group.appendChild(btn);
+      if (queueNext && queueNext.nextSibling) {
+        group.insertBefore(btn, queueNext.nextSibling);
+      } else if (queueNext) {
+        group.appendChild(btn);
+      } else {
+        group.appendChild(btn);
+      }
     });
   }
 
@@ -169,7 +185,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
   /* ---------- Add-from-URL title sanitiser ---------- */
   const scrubTokens = ["720p", "brrip", "x264", "yify", "mp4"];
   const scrubPattern = new RegExp(`\\b(?:${scrubTokens.join("|")})\\b`, "gi");
-  const titleInputSelectors = ["#addfromurl-title-val", "#mediaurl-title", ".media-title-input"]; // support legacy variants
+  const titleInputSelectors = ["#addfromurl-title-val", "#mediaurl-title", ".media-title-input"];
 
   function sanitiseTitleInput(value){
     if (!value) return "";
@@ -272,6 +288,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
 
   /* ---------- Utils ---------- */
   function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+  
   function toast(msg, kind="info"){
     const text = (msg == null) ? "" : String(msg).trim();
     if (!text) return;
@@ -295,6 +312,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     } catch(_){}
     console.log("[playlist-tools]", text);
   }
+  
   function escapeHtml(str){
     return str.replace(/[&<>"']/g, (c) => ({
       "&": "&amp;",
@@ -305,6 +323,51 @@ BTFW.define("feature:playlist-tools", [], async () => {
     })[c]);
   }
 
+  /* ---------- OPTIMIZED MutationObserver Setup ---------- */
+  function setupOptimizedObservers() {
+    // Container observer (debounced)
+    const container = $("#queuecontainer") || $("#playlistwrap") || document.body;
+    if (container && !container._btfw_pl_obs_optimized) {
+      container._btfw_pl_obs_optimized = true;
+      
+      let observerTimeout;
+      const debouncedCallback = () => {
+        clearTimeout(observerTimeout);
+        observerTimeout = setTimeout(() => {
+          injectToolbar();
+          ensureQueuePollButtons();
+          ensureAddFromUrlTitleFilter();
+          ensureAddTempPreference();
+        }, 100); // Wait 100ms after last mutation
+      };
+      
+      new MutationObserver(debouncedCallback).observe(container, { 
+        childList: true, 
+        subtree: true 
+      });
+    }
+    
+    // Queue observer for count updates (also debounced)
+    const queue = $("#queue");
+    if (queue && !queue._btfw_pl_count_obs_optimized) {
+      queue._btfw_pl_count_obs_optimized = true;
+      
+      let queueTimeout;
+      const debouncedQueueCallback = () => {
+        clearTimeout(queueTimeout);
+        queueTimeout = setTimeout(() => {
+          updateCount();
+          ensureQueuePollButtons(); // Re-add buttons to new visible items
+        }, 100);
+      };
+      
+      new MutationObserver(debouncedQueueCallback).observe(queue, { 
+        childList: true, 
+        subtree: false // Don't need subtree for direct children
+      });
+    }
+  }
+
   /* ---------- Boot & observe ---------- */
   function boot(){
     injectToolbar();
@@ -312,21 +375,9 @@ BTFW.define("feature:playlist-tools", [], async () => {
     wireQueuePollCopy();
     ensureAddFromUrlTitleFilter();
     ensureAddTempPreference();
-
-
-    // Re-ensure toolbar when playlist re-renders
-    const container = $("#queuecontainer") || $("#playlistwrap") || document.body;
-    if (container && !container._btfw_pl_obs) {
-      container._btfw_pl_obs = true;
-      new MutationObserver(()=> { injectToolbar(); ensureQueuePollButtons(); ensureAddFromUrlTitleFilter(); ensureAddTempPreference(); }).observe(container, { childList:true, subtree:true });
-    }
-
-    // Keep count roughly up-to-date as entries change
-    const queue = $("#queue");
-    if (queue && !queue._btfw_pl_count_obs) {
-      queue._btfw_pl_count_obs = true;
-      new MutationObserver(()=> { updateCount(); ensureQueuePollButtons(); ensureAddFromUrlTitleFilter(); ensureAddTempPreference(); }).observe(queue, { childList:true, subtree:true });
-    }
+    
+    // Set up optimized observers instead of the old ones
+    setupOptimizedObservers();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
