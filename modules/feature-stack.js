@@ -743,7 +743,29 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     const refs=ensureStack();
     if(!refs) return;
     populate(refs);
-    const obs=new MutationObserver(()=>populate(refs)); 
+    function boot(){
+  const refs=ensureStack();
+  if(!refs) return;
+  populate(refs);
+  
+  const obs=new MutationObserver(()=>populate(refs));
+  
+  const leftpad = document.getElementById('btfw-leftpad');
+  const main = document.getElementById('main');
+  
+  if (leftpad) {
+    obs.observe(leftpad, {childList:true, subtree:false}); // Only direct children
+  }
+  if (main) {
+    obs.observe(main, {childList:true, subtree:false}); // Only direct children  
+  }
+  
+  let n=0;
+  const iv=setInterval(()=>{
+    populate(refs);
+    if(++n>8) clearInterval(iv);
+  },700);
+} 
     obs.observe(document.body,{childList:true,subtree:true}); 
     let n=0; 
     const iv=setInterval(()=>{ 
@@ -755,7 +777,6 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
   document.addEventListener("btfw:layoutReady", boot);
   setTimeout(boot, 1200);
   
-  // ✅ FIX: Re-populate when channel theme config is applied (for channel slider)
   document.addEventListener("btfw:channelThemeTint", () => {
     const refs = ensureStack();
     if (refs) {
