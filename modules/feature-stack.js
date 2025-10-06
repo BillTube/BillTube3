@@ -512,10 +512,10 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
         <button class="btfw-arrow btfw-down">↓</button>
       </span>
     `;
-    
+
     const body = document.createElement("div");
     body.className = "btfw-stack-item__body btfw-group-body";
-    
+
     // Add all elements to this group with safety checks
     elements.forEach(el => {
       if (el && el.parentElement !== body && !body.contains(el) && !el.contains(body)) {
@@ -526,14 +526,67 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
         }
       }
     });
-    
+
     wrapper.appendChild(header);
     wrapper.appendChild(body);
-    
+
+    if (group.id === "playlist-group") {
+      if (!wrapper.hasAttribute("data-open")) {
+        wrapper.dataset.open = "true";
+        wrapper.classList.add("is-open");
+      }
+
+      const arrows = header.querySelector(".btfw-stack-arrows");
+      if (arrows && !arrows.querySelector(".btfw-playlist-toggle")) {
+        const toggleBtn = document.createElement("button");
+        toggleBtn.type = "button";
+        toggleBtn.className = "btfw-arrow btfw-playlist-toggle";
+        toggleBtn.setAttribute("aria-label", "Toggle playlist visibility");
+        toggleBtn.style.display = "flex";
+        toggleBtn.style.alignItems = "center";
+        toggleBtn.style.justifyContent = "center";
+
+        const updateToggle = () => {
+          const isOpen = wrapper.dataset.open !== "false";
+          toggleBtn.textContent = isOpen ? "👁️" : "👁️‍🗨️";
+          toggleBtn.title = isOpen ? "Hide playlist (improves performance)" : "Show playlist";
+          toggleBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+          wrapper.classList.toggle("is-open", isOpen);
+        };
+
+        const setOpenState = (open) => {
+          const isOpen = !!open;
+          wrapper.dataset.open = isOpen ? "true" : "false";
+          updateToggle();
+        };
+
+        toggleBtn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const currentlyOpen = wrapper.dataset.open !== "false";
+          setOpenState(!currentlyOpen);
+          console.log("[Playlist Toggle]", currentlyOpen ? "Collapsed" : "Expanded");
+        });
+
+        updateToggle();
+
+        const observer = new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            if (mutation.type === "attributes") {
+              updateToggle();
+            }
+          }
+        });
+        observer.observe(wrapper, { attributes: true, attributeFilter: ["data-open"] });
+
+        arrows.appendChild(toggleBtn);
+      }
+    }
+
     // Wire up/down buttons
-    wrapper.querySelector(".btfw-up").onclick = function(){ 
-      const p = wrapper.parentElement; 
-      const prev = wrapper.previousElementSibling; 
+    wrapper.querySelector(".btfw-up").onclick = function(){
+      const p = wrapper.parentElement;
+      const prev = wrapper.previousElementSibling;
       if(prev) p.insertBefore(wrapper, prev); 
       save(p); 
     };
