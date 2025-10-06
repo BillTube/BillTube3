@@ -41,6 +41,154 @@ BTFW.define("feature:playlist-tools", [], async () => {
     updateCount(); // initial count
   }
 
+  /* ---------- Copy titles toggle + helpers ---------- */
+  let copyTitlesEnabled = false;
+  let copyTitlesToggle = null;
+
+  function ensureCopyTitlesToggle(){
+    const bar = $("#btfw-plbar");
+    if (!bar) return;
+
+    let actions = bar.querySelector(".btfw-plbar__actions");
+    if (!actions) {
+      actions = document.createElement("div");
+      actions.className = "btfw-plbar__actions";
+      bar.appendChild(actions);
+    }
+
+    if (copyTitlesToggle && copyTitlesToggle.isConnected) {
+      updateCopyTitlesToggleAppearance();
+      return;
+    }
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "btfw-pl-copytoggle";
+    btn.className = "button is-dark is-small btfw-plbar__action-btn";
+    btn.textContent = "Copy titles";
+    btn.setAttribute("aria-pressed", copyTitlesEnabled ? "true" : "false");
+    btn.addEventListener("click", () => {
+      copyTitlesEnabled = !copyTitlesEnabled;
+      updateCopyTitlesToggleAppearance();
+      ensureCopyTitleButtons();
+      toast(copyTitlesEnabled ? "Copy buttons enabled" : "Copy buttons disabled", "info");
+    });
+
+    actions.appendChild(btn);
+    copyTitlesToggle = btn;
+    updateCopyTitlesToggleAppearance();
+  }
+
+  function updateCopyTitlesToggleAppearance(){
+    if (!copyTitlesToggle) return;
+    copyTitlesToggle.setAttribute("aria-pressed", copyTitlesEnabled ? "true" : "false");
+    copyTitlesToggle.classList.toggle("is-success", copyTitlesEnabled);
+    copyTitlesToggle.classList.toggle("is-dark", !copyTitlesEnabled);
+    copyTitlesToggle.classList.toggle("is-outlined", copyTitlesEnabled);
+  }
+
+  function ensureCopyTitleButtons(){
+    const entries = $$("#queue > .queue_entry");
+    if (!entries.length) return;
+
+    entries.forEach(li => {
+      const group = li.querySelector(".btn-group");
+      if (!group) return;
+      const existing = group.querySelector(".btfw-qbtn-copytitle");
+      if (copyTitlesEnabled) {
+        if (existing) return;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn-xs btn-default qbtn-copytitle btfw-qbtn-copytitle";
+        btn.setAttribute("title", "Copy title and URL");
+        btn.innerHTML = `<span class="glyphicon glyphicon-copy"></span>Copy`;
+        group.appendChild(btn);
+      } else if (existing) {
+        existing.remove();
+      }
+    });
+  }
+
+  async function copyTitleForEntry(entry){
+    if (!entry) return false;
+    const titleAnchor = entry.querySelector(".qe_title") || entry.querySelector("a");
+    if (!titleAnchor) return false;
+    const rawTitle = (titleAnchor.textContent || "").trim();
+    const href = titleAnchor.getAttribute("href") || "";
+    if (!rawTitle || !href) return false;
+
+    const formattedTitle = formatTitleForCopy(rawTitle);
+    const payload = `${formattedTitle} - ${href}`;
+    const ok = await copyToClipboard(payload);
+    if (ok) toast(`Copied \"${formattedTitle}\"`, "success");
+    else toast("Unable to copy to clipboard", "warn");
+    return ok;
+  }
+
+  function formatTitleForCopy(raw){
+    if (!raw) return "";
+    let text = String(raw).trim();
+    if (!text) return "";
+
+    const yearMatch = text.match(/\b(19|20)\d{2}\b(?!.*\b(19|20)\d{2}\b)/);
+    let year = "";
+    if (yearMatch) {
+      year = yearMatch[0];
+      const idx = yearMatch.index ?? text.indexOf(year);
+      if (idx > -1) {
+        text = `${text.slice(0, idx)} ${text.slice(idx + year.length)}`;
+      }
+    }
+
+    text = text.replace(/\s+/g, " ").trim();
+
+    const titled = text.replace(/\b([A-Za-z][^\s]*)/g, (word) => {
+      if (word.toUpperCase() === word) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    });
+
+    return year ? `${titled}${titled ? " " : ""}(${year})` : titled;
+  }
+
+  async function copyToClipboard(text){
+    if (!text) return false;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch(_){}
+
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch(_){}
+
+    return false;
+  }
+
+  function wireCopyTitleButtons(){
+    const queue = $("#queue");
+    if (!queue || queue._btfwCopyTitleDelegated) return;
+    queue._btfwCopyTitleDelegated = true;
+    queue.addEventListener("click", (ev) => {
+      const btn = ev.target.closest?.(".btfw-qbtn-copytitle");
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const entry = btn.closest(".queue_entry");
+      copyTitleForEntry(entry);
+    }, true);
+  }
+
   /* ---------- Filter logic (client-side) ---------- */
   let lastQ = "";
   function applyFilter(q){
@@ -335,7 +483,9 @@ BTFW.define("feature:playlist-tools", [], async () => {
         clearTimeout(observerTimeout);
         observerTimeout = setTimeout(() => {
           injectToolbar();
+          ensureCopyTitlesToggle();
           ensureQueuePollButtons();
+          ensureCopyTitleButtons();
           ensureAddFromUrlTitleFilter();
           ensureAddTempPreference();
         }, 100); // Wait 100ms after last mutation
@@ -358,9 +508,10 @@ BTFW.define("feature:playlist-tools", [], async () => {
         queueTimeout = setTimeout(() => {
           updateCount();
           ensureQueuePollButtons(); // Re-add buttons to new visible items
+          ensureCopyTitleButtons();
         }, 100);
       };
-      
+
       new MutationObserver(debouncedQueueCallback).observe(queue, { 
         childList: true, 
         subtree: false // Don't need subtree for direct children
@@ -371,7 +522,10 @@ BTFW.define("feature:playlist-tools", [], async () => {
   /* ---------- Boot & observe ---------- */
   function boot(){
     injectToolbar();
+    ensureCopyTitlesToggle();
     ensureQueuePollButtons();
+    ensureCopyTitleButtons();
+    wireCopyTitleButtons();
     wireQueuePollCopy();
     ensureAddFromUrlTitleFilter();
     ensureAddTempPreference();
