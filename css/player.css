@@ -489,10 +489,11 @@
   gap: 6px 12px;
   padding: 8px 12px;
   margin: 0 0 6px;
-  border-radius: 8px;
   background: var(--btfw-color-panel);
   border: 1px solid var(--btfw-border);
   color: var(--btfw-color-text);
+  buffered-rendering: auto;
+  text-rendering: optimizeSpeed;
 }
 
 #queue li.queue_entry:hover,
@@ -906,6 +907,7 @@
     justify-content: flex-start;
   }
 }
+
 
 
 
