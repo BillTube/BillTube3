@@ -118,7 +118,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     if (!rawTitle || !href) return false;
 
     const formattedTitle = formatTitleForCopy(rawTitle);
-    const payload = `${formattedTitle} - ${href}`;
+    const payload = formattedTitle ? `${href} ${formattedTitle}` : href;
     const ok = await copyToClipboard(payload);
     if (ok) toast(`Copied \"${formattedTitle}\"`, "success");
     else toast("Unable to copy to clipboard", "warn");
