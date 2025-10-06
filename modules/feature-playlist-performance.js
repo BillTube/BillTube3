@@ -57,7 +57,6 @@ BTFW.define("feature:playlistPerformance", [], function() {
     }
   }
 
-
   function applyVisibility(children) {
     children.forEach((item, index) => {
       if (!originalDisplay.has(item)) {
@@ -73,7 +72,6 @@ BTFW.define("feature:playlistPerformance", [], function() {
     });
 
     ensurePollButtonsForVisibleItems(children);
-
   }
 
   function detachScrollWatcher(queue) {
