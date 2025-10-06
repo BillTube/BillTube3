@@ -1,11 +1,4 @@
-/* SIMPLE PLAYLIST PERFORMANCE FIX
- * Hides playlist items beyond visible area to improve performance
- * This is a quick fix until virtual scrolling is implemented
- * 
- * Add to: modules/feature-playlist-performance.js
- */
-
-BTFW.define("feature:playlistPerformance", ["core"], function() {
+BTFW.define("feature:playlistPerformance", [], function() {
   const $ = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
   
