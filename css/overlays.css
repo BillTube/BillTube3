@@ -75,7 +75,7 @@
   line-height: 1.2;
 }
 #btfw-userlist-pop .btfw-popbody #userlist{
-  max-height: 100% !important;
+  max-height: 3rem !important;
   overflow-y: auto !important;
 }
 
@@ -1109,6 +1109,7 @@ html[data-btfw-theme="dark"] .panel {
     font-size: 20px;
     padding: 1px 0px 0px 20px;
 }
+
 
 
 
