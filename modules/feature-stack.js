@@ -743,13 +743,32 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     const refs=ensureStack();
     if(!refs) return;
     populate(refs);
-    const obs=new MutationObserver(()=>populate(refs)); 
-    obs.observe(document.body,{childList:true,subtree:true}); 
-    let n=0; 
-    const iv=setInterval(()=>{ 
-      populate(refs); 
-      if(++n>8) clearInterval(iv); 
-    },700); 
+    const obs=new MutationObserver(()=>populate(refs));
+    obs.observe(document.body,{childList:true,subtree:true});
+    let n=0;
+    const iv=setInterval(()=>{
+      populate(refs);
+      if(++n>8) clearInterval(iv);
+    },700);
+
+    setTimeout(() => {
+      const playlistModule = document.querySelector('.btfw-stack-item[data-bind="playlist-group"]');
+      if (playlistModule) {
+        playlistModule.dataset.open = 'false';
+        playlistModule.classList.remove('is-open');
+
+        const body = playlistModule.querySelector('.btfw-stack-item__body');
+        if (body) {
+          const queue = body.querySelector('#queue');
+          const userpl = body.querySelector('#userpl_list');
+          const library = body.querySelector('#library');
+
+          if (queue) queue.style.display = 'none';
+          if (userpl) userpl.style.display = 'none';
+          if (library) library.style.display = 'none';
+        }
+      }
+    }, 500);
   }
 
   document.addEventListener("btfw:layoutReady", boot);
