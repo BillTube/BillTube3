@@ -32,6 +32,10 @@ BTFW.define("feature:gifs", [], async () => {
     loading: false
   };
 
+  // Track rendered state for optimized rendering
+  let renderedItems = []; // Track what's currently rendered
+  let gridClickHandlerAttached = false; // Ensure we only attach the delegated handler once
+
   /* ---- Utils ---- */
   function insertAtCursor(input, text) {
     input.focus();
@@ -141,11 +145,11 @@ BTFW.define("feature:gifs", [], async () => {
     });
 
     $("#btfw-gif-prev", modal).addEventListener("click", ()=>{
-      if (state.page > 1) { state.page--; render(); }
+      if (state.page > 1) { state.page--; debouncedRender(); }
     });
     $("#btfw-gif-next", modal).addEventListener("click", ()=>{
       const totalPages = Math.max(1, Math.ceil(state.total / PER_PAGE));
-      if (state.page < totalPages) { state.page++; render(); }
+      if (state.page < totalPages) { state.page++; debouncedRender(); }
     });
 
     return modal;
@@ -231,20 +235,34 @@ BTFW.define("feature:gifs", [], async () => {
   /* ---- Rendering ---- */
   function renderSkeleton(){
     const grid = $("#btfw-gif-grid", ensureModal());
+
+    // Clear rendered state
+    renderedItems = [];
+
+    // Only clear if we're not already showing skeletons
+    const existingSkeletons = grid.querySelectorAll('.is-skeleton');
+    if (existingSkeletons.length === PER_PAGE) {
+      return; // Already showing correct number of skeletons
+    }
+
     grid.innerHTML = "";
     const frag = document.createDocumentFragment();
-    for (let i=0;i<PER_PAGE;i++){
+
+    for (let i = 0; i < PER_PAGE; i++){
       const sk = document.createElement("div");
       sk.className = "btfw-gif-cell is-skeleton";
       frag.appendChild(sk);
     }
+
     grid.appendChild(frag);
     $("#btfw-gif-pages").textContent = "… / …";
   }
 
   function render(){
     const grid = $("#btfw-gif-grid", ensureModal());
-    grid.innerHTML = "";
+
+    // Setup event delegation (only once)
+    setupGridClickHandler(grid);
 
     const totalPages = Math.max(1, Math.ceil(state.total / PER_PAGE));
     const clamped = Math.max(1, Math.min(totalPages, state.page));
@@ -253,35 +271,153 @@ BTFW.define("feature:gifs", [], async () => {
     const start = (state.page - 1) * PER_PAGE;
     const pageItems = state.items.slice(start, start + PER_PAGE);
 
-    const frag = document.createDocumentFragment();
-    pageItems.forEach(item => {
-      const cell = document.createElement("button");
-      cell.className = "btfw-gif-cell";
-      cell.type = "button";
-      const img = document.createElement("img");
-      img.src = item.thumb;
-      img.alt = "gif";
-      img.loading = "lazy";
-      img.decoding = "async";
-      img.onerror = ()=> cell.classList.add("is-broken");
-      cell.appendChild(img);
+    // OPTIMIZATION: Check if we can update in place
+    const canUpdateInPlace = shouldUpdateInPlace(pageItems, grid);
 
-      cell.addEventListener("click", () => {
-        const input = document.getElementById("chatline");
-        if (!input) return;
-        // Always insert the classic URL we computed
-        const url = item.urlClassic || "";
-        if (url) insertAtCursor(input, " " + url + " ");
-        close();
-      });
+    if (canUpdateInPlace) {
+      // Fast path: update existing elements
+      updateExistingCells(grid, pageItems);
+    } else {
+      // Full render needed
+      fullRender(grid, pageItems);
+    }
 
-      frag.appendChild(cell);
-    });
-    grid.appendChild(frag);
+    // Update rendered state
+    renderedItems = pageItems.map(item => ({
+      id: item.id,
+      thumb: item.thumb,
+      urlClassic: item.urlClassic
+    }));
 
+    // Update pagination
     $("#btfw-gif-pages").textContent = `${state.page} / ${totalPages}`;
     $("#btfw-gif-prev").disabled = (state.page <= 1);
     $("#btfw-gif-next").disabled = (state.page >= totalPages);
+  }
+
+  // Event delegation - ONE handler for all GIF clicks
+  function setupGridClickHandler(grid) {
+    if (gridClickHandlerAttached) return;
+
+    grid.addEventListener("click", (e) => {
+      // Find the clicked cell (bubbling from img or button)
+      const cell = e.target.closest(".btfw-gif-cell");
+      if (!cell || cell.classList.contains("is-skeleton")) return;
+
+      // Get URL from data attribute
+      const url = cell.dataset.url;
+      if (!url) return;
+
+      const input = document.getElementById("chatline");
+      if (!input) return;
+
+      insertAtCursor(input, " " + url + " ");
+      close();
+    });
+
+    gridClickHandlerAttached = true;
+  }
+
+  // Check if we can update existing cells instead of full re-render
+  function shouldUpdateInPlace(newItems, grid) {
+    const existingCells = grid.querySelectorAll(".btfw-gif-cell:not(.is-skeleton)");
+
+    // If counts don't match, need full render
+    if (existingCells.length !== newItems.length) return false;
+
+    // If we have no tracked state, need full render
+    if (renderedItems.length === 0) return false;
+
+    return true;
+  }
+
+  // Update existing cells efficiently
+  function updateExistingCells(grid, newItems) {
+    const cells = grid.querySelectorAll(".btfw-gif-cell");
+
+    newItems.forEach((item, index) => {
+      const cell = cells[index];
+      if (!cell) return;
+
+      const oldItem = renderedItems[index];
+
+      // Only update if item actually changed
+      if (!oldItem || oldItem.id !== item.id) {
+        updateCell(cell, item);
+      }
+    });
+  }
+
+  // Update a single cell's content
+  function updateCell(cell, item) {
+    // Update data attribute
+    cell.dataset.url = item.urlClassic || "";
+    cell.dataset.id = item.id || "";
+
+    // Update image
+    const img = cell.querySelector("img");
+    if (img && img.src !== item.thumb) {
+      img.src = item.thumb;
+      img.alt = "gif";
+
+      // Reset broken state
+      cell.classList.remove("is-broken");
+
+      // Re-attach error handler
+      img.onerror = () => cell.classList.add("is-broken");
+    }
+
+    // Remove skeleton class if present
+    cell.classList.remove("is-skeleton");
+  }
+
+  // Full render when updating in place isn't possible
+  function fullRender(grid, pageItems) {
+    // Use replaceChildren for efficient bulk replacement (better than innerHTML = "")
+    const frag = document.createDocumentFragment();
+
+    pageItems.forEach(item => {
+      const cell = createGifCell(item);
+      frag.appendChild(cell);
+    });
+
+    grid.replaceChildren(frag);
+  }
+
+  // Create a single GIF cell element
+  function createGifCell(item) {
+    const cell = document.createElement("button");
+    cell.className = "btfw-gif-cell";
+    cell.type = "button";
+
+    // Store data in attributes for event delegation
+    cell.dataset.url = item.urlClassic || "";
+    cell.dataset.id = item.id || "";
+
+    const img = document.createElement("img");
+    img.src = item.thumb;
+    img.alt = "gif";
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.onerror = () => cell.classList.add("is-broken");
+
+    cell.appendChild(img);
+
+    return cell;
+  }
+
+  // If you have rapid pagination clicks, you can debounce renders:
+  let renderTimeout = null;
+
+  function debouncedRender() {
+    if (renderTimeout) {
+      clearTimeout(renderTimeout);
+    }
+
+    renderTimeout = setTimeout(() => {
+      render();
+      renderTimeout = null;
+    }, 16); // ~60fps
   }
 // Open the GIF modal when the bridge asks
 document.addEventListener('btfw:openGifs', ()=> {
