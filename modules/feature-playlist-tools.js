@@ -41,14 +41,317 @@ BTFW.define("feature:playlist-tools", [], async () => {
     updateCount(); // initial count
   }
 
+  /* ---------- Virtual scrolling ---------- */
+  const virtualScroll = (() => {
+    const ITEM_HEIGHT = 40;
+    const BUFFER_ITEMS = 10;
+    const MIN_ITEMS = 50;
+
+    let queue = null;
+    let scrollContainer = null;
+    let container = null;
+    let spacer = null;
+    let observer = null;
+    let refreshTimer = null;
+    let suppressMutations = false;
+    let originalQueuePosition = "";
+    let allItems = [];
+    let filterTerm = "";
+    let visibleCount = 0;
+    let active = false;
+    let refreshCallback = null;
+    let releaseHandle = null;
+
+    const beginMutations = () => {
+      suppressMutations = true;
+      if (releaseHandle) {
+        clearTimeout(releaseHandle);
+        releaseHandle = null;
+      }
+    };
+
+    const endMutations = () => {
+      if (!suppressMutations) return;
+      if (releaseHandle) clearTimeout(releaseHandle);
+      releaseHandle = setTimeout(() => {
+        suppressMutations = false;
+        releaseHandle = null;
+      }, 0);
+    };
+
+    const notify = (result) => {
+      if (typeof refreshCallback !== "function") return;
+      try { refreshCallback(result); }
+      catch (error) { console.warn("[playlist-tools] virtual scroll callback failed", error); }
+    };
+
+    const isQueueEntry = (node) => node instanceof HTMLElement && node.classList.contains("queue_entry");
+
+    const ensureQueue = () => {
+      const el = document.getElementById("queue");
+      return (el && el.isConnected) ? el : null;
+    };
+
+    const findScrollContainer = () => {
+      const q = ensureQueue();
+      if (!q) return null;
+      let parent = q.parentElement;
+      while (parent && parent !== document.body) {
+        const overflow = getComputedStyle(parent).overflowY;
+        if (overflow === "auto" || overflow === "scroll") return parent;
+        parent = parent.parentElement;
+      }
+      return q.parentElement || null;
+    };
+
+    const buildItems = (nodes) => nodes.map((el) => ({
+      el,
+      text: (el.textContent || "").toLowerCase(),
+      matches: true
+    }));
+
+    const collectCombinedEntries = () => {
+      const combined = [];
+      const seen = new Set();
+      allItems.forEach(item => {
+        if (!item || !item.el) return;
+        if (seen.has(item.el)) return;
+        combined.push(item.el);
+        seen.add(item.el);
+      });
+      const live = queue ? Array.from(queue.querySelectorAll(".queue_entry")) : [];
+      live.forEach(el => {
+        if (!seen.has(el)) {
+          combined.push(el);
+          seen.add(el);
+        }
+      });
+      return combined;
+    };
+
+    const updateMatches = () => {
+      const term = filterTerm;
+      const hasFilter = !!term;
+      visibleCount = 0;
+      allItems.forEach(item => {
+        if (!item || !item.el) return;
+        const matches = !hasFilter || item.text.includes(term);
+        item.matches = matches;
+        if (matches) visibleCount++;
+      });
+      if (spacer) spacer.style.height = `${visibleCount * ITEM_HEIGHT}px`;
+    };
+
+    const updateVisibleItems = () => {
+      if (!active || !container || !scrollContainer) return;
+      beginMutations();
+      container.innerHTML = "";
+      const items = allItems.filter(item => item && item.matches);
+      if (!items.length) {
+        endMutations();
+        return;
+      }
+
+      const viewportHeight = scrollContainer.clientHeight || 0;
+      const scrollTop = scrollContainer.scrollTop || 0;
+      const start = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_ITEMS);
+      const end = Math.min(items.length, Math.ceil((scrollTop + viewportHeight) / ITEM_HEIGHT) + BUFFER_ITEMS);
+
+      const fragment = document.createDocumentFragment();
+      for (let i = start; i < end; i++) {
+        const item = items[i];
+        if (!item) continue;
+        const el = item.el;
+        if (!el) continue;
+        el.style.position = "absolute";
+        el.style.left = "0";
+        el.style.right = "0";
+        el.style.width = "100%";
+        el.style.top = `${i * ITEM_HEIGHT}px`;
+        el.style.display = "";
+        fragment.appendChild(el);
+      }
+
+      container.appendChild(fragment);
+      endMutations();
+    };
+
+    const attachObserver = () => {
+      if (!queue) return;
+      if (!observer) observer = new MutationObserver((mutations) => {
+        if (!active || suppressMutations) return;
+        const relevant = mutations.some(mutation => {
+          if (mutation.type !== "childList") return false;
+          if (Array.from(mutation.addedNodes).some(isQueueEntry)) return true;
+          if (Array.from(mutation.removedNodes).some(isQueueEntry)) return true;
+          return false;
+        });
+        if (relevant) scheduleRefresh();
+      });
+      observer.disconnect();
+      observer.observe(queue, { childList: true, subtree: true });
+    };
+
+    const detachObserver = () => {
+      if (observer) observer.disconnect();
+    };
+
+    const enable = () => {
+      queue = ensureQueue();
+      if (!queue) return false;
+      const entries = Array.from(queue.children).filter(node => node instanceof HTMLElement && node.classList.contains("queue_entry"));
+      if (entries.length <= MIN_ITEMS) return false;
+
+      allItems = buildItems(entries);
+      ensureQueuePollButtons(entries);
+
+      scrollContainer = findScrollContainer();
+      if (!scrollContainer) return false;
+
+      beginMutations();
+
+      originalQueuePosition = queue.style.position || "";
+      queue.innerHTML = "";
+
+      spacer = document.createElement("div");
+      spacer.className = "playlist-virtual-spacer";
+
+      container = document.createElement("div");
+      container.className = "playlist-virtual-viewport";
+      container.style.cssText = "position:absolute;top:0;left:0;right:0;will-change:transform;";
+
+      queue.style.position = "relative";
+      queue.appendChild(spacer);
+      queue.appendChild(container);
+
+      active = true;
+
+      updateMatches();
+      updateVisibleItems();
+      scrollContainer.addEventListener("scroll", updateVisibleItems, { passive: true });
+      attachObserver();
+
+      endMutations();
+      return true;
+    };
+
+    const disable = () => {
+      if (!active) return false;
+      queue = ensureQueue();
+      if (!queue) return false;
+
+      detachObserver();
+      beginMutations();
+
+      const combined = collectCombinedEntries();
+      const fragment = document.createDocumentFragment();
+      combined.forEach(el => {
+        if (!(el instanceof HTMLElement)) return;
+        el.style.position = "";
+        el.style.left = "";
+        el.style.right = "";
+        el.style.width = "";
+        el.style.top = "";
+        fragment.appendChild(el);
+      });
+
+      queue.innerHTML = "";
+      queue.appendChild(fragment);
+
+      if (scrollContainer) scrollContainer.removeEventListener("scroll", updateVisibleItems);
+      if (originalQueuePosition) queue.style.position = originalQueuePosition;
+      else queue.style.removeProperty("position");
+
+      container = null;
+      spacer = null;
+      scrollContainer = null;
+      allItems = [];
+      visibleCount = combined.length;
+      active = false;
+
+      endMutations();
+      return true;
+    };
+
+    const refresh = () => {
+      queue = ensureQueue();
+      if (!queue) return { changed: false, virtualized: false };
+
+      const total = active ? allItems.length : queue.querySelectorAll(".queue_entry").length;
+      if (total <= MIN_ITEMS) {
+        const changed = disable();
+        return { changed, virtualized: false };
+      }
+
+      const changed = active ? disable() : false;
+      const enabled = enable();
+      if (enabled && filterTerm) applyFilter(filterTerm);
+      return { changed: changed || enabled, virtualized: active };
+    };
+
+    const scheduleRefresh = () => {
+      if (refreshTimer) return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        const result = refresh();
+        notify(result);
+      }, 120);
+    };
+
+    const applyFilter = (term) => {
+      filterTerm = term ? term.trim().toLowerCase() : "";
+      if (!active) return null;
+      updateMatches();
+      updateVisibleItems();
+      return visibleCount;
+    };
+
+    const init = () => {
+      const attempt = () => {
+        const q = ensureQueue();
+        if (!q) return false;
+        const entries = q.querySelectorAll(".queue_entry").length;
+        if (entries <= MIN_ITEMS) return false;
+        const enabled = enable();
+        if (enabled) notify({ changed: true, virtualized: true });
+        return enabled;
+      };
+
+      if (attempt()) return;
+
+      const timer = setInterval(() => {
+        if (attempt()) clearInterval(timer);
+      }, 400);
+      setTimeout(() => clearInterval(timer), 10000);
+    };
+
+    return {
+      init,
+      refresh,
+      applyFilter,
+      getVisibleCount: () => (active ? visibleCount : null),
+      isActive: () => active,
+      isRendering: () => suppressMutations,
+      setRefreshCallback(fn) {
+        refreshCallback = typeof fn === "function" ? fn : null;
+      }
+    };
+  })();
+
   /* ---------- Filter logic (client-side) ---------- */
   let lastQ = "";
   function applyFilter(q){
     const queue = $("#queue");
     if (!queue) return;
-    let visible = 0;
     const term = (q || "").trim().toLowerCase();
+    const handled = virtualScroll.applyFilter(term);
 
+    if (handled != null) {
+      updateCount(handled);
+      return;
+    }
+
+    let visible = 0;
     $$("#queue > .queue_entry").forEach(li => {
       const text = (li.textContent || "").toLowerCase();
       const ok = term ? text.includes(term) : true;
@@ -80,11 +383,21 @@ BTFW.define("feature:playlist-tools", [], async () => {
   }
   function updateCount(known){
     const count = $("#btfw-pl-count");
-    const queue = $("#queue");
-    if (!count || !queue) return;
-    const n = (known != null) ? known :
-      $$("#queue > .queue_entry").filter(li => li.style.display !== "none").length;
-    count.textContent = n ? `${n} item${n===1?"":"s"}` : "";
+    if (!count) return;
+
+    let total = (typeof known === "number") ? known : null;
+    if (total == null) {
+      const virtualCount = virtualScroll.getVisibleCount();
+      if (typeof virtualCount === "number") total = virtualCount;
+    }
+
+    if (total == null) {
+      const queue = $("#queue");
+      if (!queue) return;
+      total = $$("#queue > .queue_entry").filter(li => li.style.display !== "none").length;
+    }
+
+    count.textContent = total ? `${total} item${total===1?"":"s"}` : "";
   }
 
   /* ---------- Scroll to current ---------- */
@@ -104,8 +417,11 @@ BTFW.define("feature:playlist-tools", [], async () => {
   }
 
   /* ---------- Playlist entry → Poll option helper ---------- */
-  function ensureQueuePollButtons(){
-    $$("#queue > .queue_entry").forEach(li => {
+  function ensureQueuePollButtons(items){
+    const entries = Array.isArray(items)
+      ? items.filter(Boolean)
+      : $$("#queue > .queue_entry");
+    entries.forEach(li => {
       if (!li) return;
       const group = li.querySelector(".btn-group");
       if (!group) return;
@@ -306,6 +622,15 @@ BTFW.define("feature:playlist-tools", [], async () => {
   }
 
   /* ---------- Boot & observe ---------- */
+  function syncPlaylistMetrics(result){
+    const virtualCount = result && result.virtualized ? virtualScroll.getVisibleCount() : null;
+    if (lastQ) {
+      applyFilter(lastQ);
+    } else {
+      updateCount(virtualCount);
+    }
+  }
+
   function boot(){
     injectToolbar();
     ensureQueuePollButtons();
@@ -313,19 +638,37 @@ BTFW.define("feature:playlist-tools", [], async () => {
     ensureAddFromUrlTitleFilter();
     ensureAddTempPreference();
 
+    virtualScroll.setRefreshCallback(syncPlaylistMetrics);
+    virtualScroll.init();
+    updateCount();
 
     // Re-ensure toolbar when playlist re-renders
     const container = $("#queuecontainer") || $("#playlistwrap") || document.body;
     if (container && !container._btfw_pl_obs) {
       container._btfw_pl_obs = true;
-      new MutationObserver(()=> { injectToolbar(); ensureQueuePollButtons(); ensureAddFromUrlTitleFilter(); ensureAddTempPreference(); }).observe(container, { childList:true, subtree:true });
+      new MutationObserver(()=> {
+        if (virtualScroll.isRendering()) return;
+        injectToolbar();
+        ensureQueuePollButtons();
+        ensureAddFromUrlTitleFilter();
+        ensureAddTempPreference();
+        const result = virtualScroll.refresh();
+        syncPlaylistMetrics(result);
+      }).observe(container, { childList:true, subtree:true });
     }
 
     // Keep count roughly up-to-date as entries change
     const queue = $("#queue");
     if (queue && !queue._btfw_pl_count_obs) {
       queue._btfw_pl_count_obs = true;
-      new MutationObserver(()=> { updateCount(); ensureQueuePollButtons(); ensureAddFromUrlTitleFilter(); ensureAddTempPreference(); }).observe(queue, { childList:true, subtree:true });
+      new MutationObserver(()=> {
+        if (virtualScroll.isRendering()) return;
+        ensureQueuePollButtons();
+        ensureAddFromUrlTitleFilter();
+        ensureAddTempPreference();
+        const result = virtualScroll.refresh();
+        syncPlaylistMetrics(result);
+      }).observe(queue, { childList:true, subtree:true });
     }
   }
 
