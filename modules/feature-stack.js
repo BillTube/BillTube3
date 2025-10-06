@@ -1,5 +1,6 @@
 BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
   const SKEY="btfw-stack-order";
+  const PLAYLIST_VISIBILITY_KEY = "btfw-stack-playlist-open";
   let compactSpacing = true;
   
   // Define what should be grouped together
@@ -531,10 +532,14 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     wrapper.appendChild(body);
 
     if (group.id === "playlist-group") {
+      const storedVisibility = getStoredPlaylistVisibility();
+
       if (!wrapper.hasAttribute("data-open")) {
-        wrapper.dataset.open = "true";
-        wrapper.classList.add("is-open");
+        const shouldOpen = storedVisibility !== null ? storedVisibility : true;
+        wrapper.dataset.open = shouldOpen ? "true" : "false";
       }
+
+      wrapper.classList.toggle("is-open", wrapper.dataset.open !== "false");
 
       const arrows = header.querySelector(".btfw-stack-arrows");
       if (arrows && !arrows.querySelector(".btfw-playlist-toggle")) {
@@ -554,10 +559,13 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
           wrapper.classList.toggle("is-open", isOpen);
         };
 
-        const setOpenState = (open) => {
+        const setOpenState = (open, options = {}) => {
           const isOpen = !!open;
           wrapper.dataset.open = isOpen ? "true" : "false";
           updateToggle();
+          if (options.persist !== false) {
+            storePlaylistVisibility(isOpen);
+          }
         };
 
         toggleBtn.addEventListener("click", (ev) => {
@@ -568,12 +576,17 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
           console.log("[Playlist Toggle]", currentlyOpen ? "Collapsed" : "Expanded");
         });
 
-        updateToggle();
+        if (storedVisibility !== null) {
+          setOpenState(storedVisibility, { persist: false });
+        } else {
+          updateToggle();
+        }
 
         const observer = new MutationObserver((mutations) => {
           for (const mutation of mutations) {
             if (mutation.type === "attributes") {
               updateToggle();
+              storePlaylistVisibility(wrapper.dataset.open !== "false");
             }
           }
         });
@@ -611,12 +624,28 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     }catch(e){} 
   }
   
-  function load(){ 
-    try{ 
-      return JSON.parse(localStorage.getItem(SKEY)||"[]"); 
-    }catch(e){ 
-      return []; 
-    } 
+  function load(){
+    try{
+      return JSON.parse(localStorage.getItem(SKEY)||"[]");
+    }catch(e){
+      return [];
+    }
+  }
+
+  function getStoredPlaylistVisibility(){
+    try{
+      const stored = localStorage.getItem(PLAYLIST_VISIBILITY_KEY);
+      if (stored === null) return null;
+      return stored === "true";
+    }catch(e){
+      return null;
+    }
+  }
+
+  function storePlaylistVisibility(isOpen){
+    try{
+      localStorage.setItem(PLAYLIST_VISIBILITY_KEY, isOpen ? "true" : "false");
+    }catch(e){}
   }
   
   function attachFooter(footer){
@@ -807,12 +836,15 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     observer.observe(main, {childList:true, subtree:false});
   }
   setTimeout(() => {
-  const pm = document.querySelector('.btfw-stack-item[data-bind="playlist-group"]');
-  if (pm) {
-    pm.dataset.open = 'false';
-    pm.classList.remove('is-open');
-  }
-}, 1000);
+    const playlistGroup = document.querySelector('.btfw-stack-item[data-bind="playlist-group"]');
+    if (!playlistGroup) return;
+
+    const storedVisibility = getStoredPlaylistVisibility();
+    const shouldBeOpen = storedVisibility !== null ? storedVisibility : true;
+
+    playlistGroup.dataset.open = shouldBeOpen ? 'true' : 'false';
+    playlistGroup.classList.toggle('is-open', shouldBeOpen);
+  }, 1000);
   let n=0;
   const iv=setInterval(()=>{
     populate(refs);
