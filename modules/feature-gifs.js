@@ -1,13 +1,13 @@
 /* BillTube Framework — feature:gifs (BillTube2-compatible, classic GIPHY URL)
    - Inserts GIPHY as https://media1.giphy.com/media/<ID>/giphy.gif  (matches your filter)
    - Inserts Tenor as direct .gif with params stripped
-   - 3×3 grid, search/trending, pagination
+   - 4×3 grid, search/trending, pagination
 */
 
 BTFW.define("feature:gifs", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-  const PER_PAGE = 9;
+  const PER_PAGE = 12;
 
   /* ---- Keys (BillTube2 defaults; can override via localStorage) ---- */
   const K = { giphy: "btfw:giphy:key", tenor: "btfw:tenor:key" };
