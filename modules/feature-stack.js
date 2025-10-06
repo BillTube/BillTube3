@@ -743,13 +743,14 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     const refs=ensureStack();
     if(!refs) return;
     populate(refs);
-    const obs=new MutationObserver(()=>populate(refs)); 
-    obs.observe(document.body,{childList:true,subtree:true}); 
-    let n=0; 
-    const iv=setInterval(()=>{ 
-      populate(refs); 
-      if(++n>8) clearInterval(iv); 
-    },700); 
+    const obs=new MutationObserver(()=>populate(refs));
+    obs.observe(document.body,{childList:true,subtree:true});
+    let n=0;
+    const iv=setInterval(()=>{
+      populate(refs);
+      if(++n>8) clearInterval(iv);
+    },700);
+
   }
 
   document.addEventListener("btfw:layoutReady", boot);
