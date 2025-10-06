@@ -75,9 +75,8 @@
   line-height: 1.2;
 }
 #btfw-userlist-pop .btfw-popbody #userlist{
-  max-height: none !important;
-  height: auto !important;
-  overflow: visible !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
 }
 
 /* The close “X” inside the pop head uses .btfw-popclose */
