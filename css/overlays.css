@@ -308,6 +308,12 @@
   display: flex; align-items: center; gap: 8px;
   padding: 8px 10px;
   border-bottom: 1px solid var(--btfw-border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--btfw-overlay-bg) 94%, transparent 6%);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.18);
 }
 
 #btfw-emotes-pop .btfw-emotes-tabs { display: inline-flex; gap: 4px; }
@@ -362,12 +368,14 @@
 #btfw-emotes-grid {
   flex: 1 1 auto;
   overflow: visible;
+  overflow-y: auto;
   padding: 10px;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   content-visibility: auto;
   contain-intrinsic-size: 320px 320px;
+  scrollbar-gutter: stable;
 }
 
 #btfw-emotes-grid .btfw-emote-tile {
