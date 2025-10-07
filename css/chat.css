@@ -148,12 +148,13 @@
   overflow: visible;
 }
 
-.btfw-chat-topbar-left{
-  display:flex;
-  align-items:center;
-  gap: 10px;
-  flex: 1 1 auto;
-  min-width: 0;
+.btfw-chat-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
 }
 
 .btfw-chat-topbar-actions{
@@ -1114,6 +1115,7 @@ cubic-bezier(0.4, 0, 1, 1) 0s running;
     0%, 100% { text-shadow: 0 0 10px #922fff, 0 0 20px #922fff, 0 0 30px #922fff; }
     50% { text-shadow: 0 0 5px #922fff, 0 0 10px #922fff, 0 0 15px #922fff; }
 }
+
 
 
 
