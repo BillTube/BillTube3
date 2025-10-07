@@ -1208,10 +1208,56 @@ const scheduleNormalizeChatActions = (() => {
     const ch = $("#chatheader");
     if (ch) ch.remove();
 
+    sanitizeUsercountMarkup();
+    observeUsercountElement();
     updateUsercount();
     wireUsercountUpdatesOnce();
   }
   let trackedUsercount = null;
+  let latestSocketUsercount = null;
+  let usercountBootstrapTimer = null;
+  let usercountMarkupGuard = false;
+
+  function ensureUsercountStructure(){
+    const uc = $("#usercount");
+    if (!uc) return null;
+    if (usercountMarkupGuard) return uc.querySelector?.(".btfw-usercount-num") || null;
+    usercountMarkupGuard = true;
+
+    uc.classList.add("btfw-usercount");
+
+    let icon = uc.querySelector?.(".fa.fa-users");
+    if (!icon) {
+      icon = document.createElement("i");
+      icon.className = "fa fa-users";
+      icon.setAttribute("aria-hidden", "true");
+      uc.insertBefore(icon, uc.firstChild || null);
+    }
+
+    let numEl = uc.querySelector?.(".btfw-usercount-num");
+    if (!numEl) {
+      numEl = document.createElement("span");
+      numEl.className = "btfw-usercount-num";
+      uc.appendChild(numEl);
+    }
+
+    Array.from(uc.childNodes).forEach((node) => {
+      if (node === icon || node === numEl) return;
+      if (node.nodeType === Node.TEXT_NODE && !node.textContent.trim()) return;
+      uc.removeChild(node);
+    });
+
+    usercountMarkupGuard = false;
+    return numEl;
+  }
+
+  function sanitizeUsercountMarkup(){
+    const numEl = ensureUsercountStructure();
+    if (numEl && typeof trackedUsercount === "number") {
+      numEl.textContent = String(trackedUsercount);
+    }
+  }
+
   function deriveUsercountFromDom(){
     const ul = $("#userlist");
     if (ul) {
@@ -1224,48 +1270,200 @@ const scheduleNormalizeChatActions = (() => {
     if (m) return parseInt(m[0], 10) || 0;
     return 0;
   }
+
+  function deriveUsercountFromGlobals(){
+    const candidates = [];
+
+    const USERLIST = window.USERLIST;
+    if (USERLIST) {
+      if (Array.isArray(USERLIST.users)) candidates.push(USERLIST.users.length);
+      if (Array.isArray(USERLIST.userlist)) candidates.push(USERLIST.userlist.length);
+      if (typeof USERLIST.count === "number") candidates.push(USERLIST.count);
+    }
+
+    const CHANNEL = window.CHANNEL;
+    if (CHANNEL) {
+      if (Array.isArray(CHANNEL.users)) candidates.push(CHANNEL.users.length);
+      if (typeof CHANNEL.usercount === "number") candidates.push(CHANNEL.usercount);
+      if (typeof CHANNEL.userCount === "number") candidates.push(CHANNEL.userCount);
+    }
+
+    const CLIENT = window.CLIENT;
+    if (CLIENT) {
+      if (Array.isArray(CLIENT.userlist)) candidates.push(CLIENT.userlist.length);
+      if (typeof CLIENT.getUsercount === "function") {
+        try {
+          const val = CLIENT.getUsercount();
+          if (typeof val === "number") candidates.push(val);
+        } catch (_) {}
+      }
+    }
+
+    if (candidates.length) {
+      for (const val of candidates) {
+        if (typeof val === "number" && Number.isFinite(val) && val >= 0) {
+          return val;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function derivePreferredUsercount(){
+    if (typeof latestSocketUsercount === "number") {
+      return { count: latestSocketUsercount, source: "socket" };
+    }
+    const globalCount = deriveUsercountFromGlobals();
+    if (typeof globalCount === "number") {
+      return { count: globalCount, source: "global" };
+    }
+    return { count: deriveUsercountFromDom(), source: "dom" };
+  }
+
   function renderUsercount(count){
-    const numEl = $("#usercount .btfw-usercount-num");
+    const numEl = ensureUsercountStructure();
     if (numEl) numEl.textContent = String(count);
   }
-  function setTrackedUsercount(next){
+
+  function setTrackedUsercount(next, source){
     const sanitized = Math.max(0, Number.isFinite(next) ? Math.floor(next) : 0);
     trackedUsercount = sanitized;
+    if (source === "socket") {
+      latestSocketUsercount = sanitized;
+    }
     renderUsercount(sanitized);
   }
   function currentUsercount(){
     if (typeof trackedUsercount === "number") return trackedUsercount;
-    const derived = deriveUsercountFromDom();
-    setTrackedUsercount(derived);
-    return derived;
+    const { count, source } = derivePreferredUsercount();
+    setTrackedUsercount(count, source);
+    return count;
   }
   function updateUsercount(explicit){
     if (typeof explicit === "number" && !Number.isNaN(explicit)) {
       setTrackedUsercount(explicit);
       return;
     }
-    setTrackedUsercount(deriveUsercountFromDom());
+    const { count, source } = derivePreferredUsercount();
+    setTrackedUsercount(count, source);
   }
   function adjustUsercount(delta){
     const next = currentUsercount() + delta;
-    setTrackedUsercount(next);
+    setTrackedUsercount(next, "socket");
   }
+  function countFromPayload(payload){
+    if (typeof payload === "number" && Number.isFinite(payload)) {
+      return payload;
+    }
+    if (Array.isArray(payload)) {
+      return payload.length;
+    }
+    if (!payload || typeof payload !== "object") {
+      return null;
+    }
+    if (Array.isArray(payload.users)) return payload.users.length;
+    if (Array.isArray(payload.list)) return payload.list.length;
+    if (Array.isArray(payload.viewers)) return payload.viewers.length;
+    if (Array.isArray(payload.connections)) return payload.connections.length;
+    if (typeof payload.usercount === "number") return payload.usercount;
+    if (typeof payload.userCount === "number") return payload.userCount;
+    if (typeof payload.viewerCount === "number") return payload.viewerCount;
+    if (typeof payload.count === "number") return payload.count;
+    if (typeof payload.length === "number") return payload.length;
+    return null;
+  }
+
+  function observeUsercountElement(){
+    const uc = $("#usercount");
+    if (!uc || uc._btfwUsercountMO) return;
+    const mo = new MutationObserver(() => {
+      sanitizeUsercountMarkup();
+    });
+    mo.observe(uc, { childList: true, subtree: false, characterData: true });
+    uc._btfwUsercountMO = mo;
+  }
+
+  function observeUserlistDom(){
+    const ul = $("#userlist");
+    if (!ul || ul._btfwUsercountMO) return false;
+    const mo = new MutationObserver(() => {
+      updateUsercount();
+    });
+    mo.observe(ul, { childList: true });
+    ul._btfwUsercountMO = mo;
+    updateUsercount();
+    return true;
+  }
+
+  function scheduleUserlistObserver(){
+    if (document._btfwUserlistObserverScheduled) return;
+    document._btfwUserlistObserverScheduled = true;
+    let tries = 0;
+    const attempt = () => {
+      observeUsercountElement();
+      const attached = observeUserlistDom();
+      tries++;
+      if (attached || tries > 40) {
+        return;
+      }
+      setTimeout(attempt, 250);
+    };
+    attempt();
+  }
+
   function wireUsercountUpdatesOnce(){
     if (document._btfw_uc_wired) return;
     document._btfw_uc_wired = true;
 
+    scheduleUserlistObserver();
+
     if (window.socket && typeof window.socket.on === "function") {
       try {
-        socket.on("addUser",   () => adjustUsercount(1));
-        socket.on("userLeave", () => adjustUsercount(-1));
-        socket.on("userlist",  (list) => {
-          if (Array.isArray(list)) {
-            setTrackedUsercount(list.length);
+        const safeOn = (event, handler) => {
+          try {
+            socket.on(event, handler);
+          } catch (_) {}
+        };
+
+        safeOn("addUser",   () => adjustUsercount(1));
+        safeOn("userLeave", () => adjustUsercount(-1));
+        safeOn("userlist",  (payload) => {
+          const count = countFromPayload(payload);
+          if (typeof count === "number") {
+            setTrackedUsercount(count, "socket");
           } else {
             updateUsercount();
           }
         });
+        ["usercount", "updateUsercount", "viewerCount", "channelUsercount"].forEach((event) => {
+          safeOn(event, (payload) => {
+            const count = countFromPayload(payload);
+            if (typeof count === "number") {
+              setTrackedUsercount(count, "socket");
+            }
+          });
+        });
       } catch (_) {}
+    }
+
+    if (!usercountBootstrapTimer) {
+      let attempts = 0;
+      usercountBootstrapTimer = setInterval(() => {
+        attempts++;
+        const { count, source } = derivePreferredUsercount();
+        if (typeof count === "number") {
+          setTrackedUsercount(count, source);
+          if (source === "socket" || attempts > 20) {
+            clearInterval(usercountBootstrapTimer);
+            usercountBootstrapTimer = null;
+          }
+        }
+        if (attempts > 40) {
+          clearInterval(usercountBootstrapTimer);
+          usercountBootstrapTimer = null;
+        }
+      }, 500);
     }
   }
 
