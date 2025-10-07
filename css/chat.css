@@ -919,7 +919,7 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
 }
 
 #usercount.btfw-usercount {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
     font-size: 12px;
@@ -938,9 +938,13 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
   opacity: 1;
 }
 
-#usercount .fa-users {
+#usercount.btfw-usercount::before {
+  content: "\f0c0";
+  font-family: "Font Awesome 5 Free", "Font Awesome 5 Pro", "Font Awesome 5", "FontAwesome", sans-serif;
+  font-weight: 900;
   font-size: 14px;
   opacity: .75;
+  line-height: 1;
 }
 .server-msg-reconnect {
   border: 0px solid #009900!important;
