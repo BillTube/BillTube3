@@ -20,8 +20,7 @@
   line-height: 0.8rem;
 }
 .btfw-new-user-msg {
-  margin-top: 16px !important;
-  padding-top: 4px !important;
+  margin-top: 5px !important;
 }
 
 .btfw-new-user-msg:first-child {
@@ -1113,6 +1112,7 @@ cubic-bezier(0.4, 0, 1, 1) 0s running;
     0%, 100% { text-shadow: 0 0 10px #922fff, 0 0 20px #922fff, 0 0 30px #922fff; }
     50% { text-shadow: 0 0 5px #922fff, 0 0 10px #922fff, 0 0 15px #922fff; }
 }
+
 
 
 
