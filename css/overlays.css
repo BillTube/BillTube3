@@ -368,11 +368,11 @@
 #btfw-emotes-grid {
   flex: 1 1 auto;
   overflow: visible;
-  overflow-y: auto;
+  overflow-y: visible;
   padding: 10px;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  gap: 5px;
   content-visibility: auto;
   contain-intrinsic-size: 320px 320px;
   scrollbar-gutter: stable;
@@ -1147,6 +1147,7 @@ html[data-btfw-theme="dark"] .panel {
     font-size: 20px;
     padding: 1px 0px 0px 20px;
 }
+
 
 
 
