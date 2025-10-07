@@ -1147,6 +1147,9 @@ html[data-btfw-theme="dark"] .panel {
     font-size: 20px;
     padding: 1px 0px 0px 20px;
 }
+#chatheader {
+    display: none;
+}
 
 
 
