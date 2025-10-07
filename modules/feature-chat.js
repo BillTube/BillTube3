@@ -1172,121 +1172,85 @@ const scheduleNormalizeChatActions = (() => {
     };
   })();
 
-  /* ---------------- Custom usercount (icon + number only) ---------------- */
+  /* ---------------- Usercount cleanup + styling ---------------- */
+  const usercountState = {
+    socket: null
+  };
+
+  function cleanUsercountText(){
+    const uc = $("#usercount");
+    if (!uc) return;
+
+    const cleaned = (uc.textContent || "")
+      .replace(/connected users/gi, " ")
+      .replace(/connected user/gi, " ")
+      .replace(/not connected/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    uc.textContent = cleaned || "0";
+  }
+
+  function wireUsercountSocket(){
+    const uc = $("#usercount");
+    if (!uc) return;
+
+    cleanUsercountText();
+
+    const sock = window.socket;
+    if (!sock || typeof sock.on !== "function") {
+      setTimeout(wireUsercountSocket, 500);
+      return;
+    }
+
+    if (usercountState.socket === sock) return;
+    usercountState.socket = sock;
+
+    sock.on("usercount", () => {
+      cleanUsercountText();
+    });
+
+    sock.on("userlist", (list) => {
+      if (Array.isArray(list)) {
+        const el = $("#usercount");
+        if (el) el.textContent = String(list.length);
+      }
+      cleanUsercountText();
+    });
+  }
+
   function ensureUsercountInBar(){
     const cw = $("#chatwrap"); if (!cw) return;
     const bar = cw.querySelector(".btfw-chat-bottombar"); if (!bar) return;
     const actions = bar.querySelector("#btfw-chat-actions"); if (!actions) return;
 
-    // Remove native elements
-    const nativeUc = $("#usercount");
-    if (nativeUc && !nativeUc.classList.contains("btfw-usercount")) nativeUc.remove();
-    const ch = $("#chatheader");
-    if (ch) ch.remove();
+    let uc = actions.querySelector("#usercount");
+    if (!uc) {
+      uc = $("#usercount");
+      if (uc && uc.parentElement !== actions) {
+        actions.appendChild(uc);
+      }
+    }
 
-    // Create our usercount button
-    let uc = actions.querySelector("#usercount.btfw-usercount");
     if (!uc) {
       uc = document.createElement("button");
       uc.id = "usercount";
-      uc.classList.add("btfw-usercount");
-      uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
-                    <span class="btfw-usercount-num">0</span>`;
       actions.appendChild(uc);
-
-      // Click toggles userlist
-      uc.addEventListener("click", toggleUserlist);
     }
 
-    setUsercount(currentCount);
+    uc.classList.add("btfw-usercount");
+    uc.setAttribute("type", "button");
+    if (!uc.title) uc.title = "Connected users";
+
+    if (!uc.dataset.btfwUsercountBound) {
+      uc.addEventListener("click", toggleUserlist);
+      uc.dataset.btfwUsercountBound = "true";
+    }
+
+    cleanUsercountText();
     orderChatActions(actions);
     wireUsercountSocket();
   }
-
-/* ---------------- Custom usercount (icon + number only) ---------------- */
-let currentCount = 0;
-
-function setUsercount(count) {
-  const safe = Number.isFinite(count) ? count : Number(count);
-  const normalized = Math.max(0, Number.isFinite(safe) ? Math.floor(safe) : 0);
-  currentCount = normalized;
-  const numEl = $("#usercount .btfw-usercount-num");
-  if (numEl) numEl.textContent = String(normalized);
-}
-
-function getInitialCount() {
-  const ul = $("#userlist");
-  if (ul) {
-    const items = ul.querySelectorAll("li");
-    if (items.length > 0) return items.length;
-  }
-  return 0;
-}
-
-function wireUsercountSocket() {
-  if (document._btfw_uc_socket_wired) return;
-  document._btfw_uc_socket_wired = true;
-
-  const tryWire = () => {
-    if (!window.socket || typeof window.socket.on !== "function") {
-      setTimeout(tryWire, 500);
-      return;
-    }
-
-    // CyTube sends "X connected users" or "X connected user" or "not connected"
-    socket.on("usercount", (data) => {
-      const text = String(data || "");
-      // Strip "connected users", "connected user", "not connected"
-      const cleaned = text.replace(/connected users?|not connected/gi, '').trim();
-      const match = cleaned.match(/\d+/);
-      if (match) {
-        setUsercount(parseInt(match[0], 10));
-      }
-    });
-
-    // Fallback: userlist event for initial/reconnect state
-    socket.on("userlist", (list) => {
-      if (Array.isArray(list)) setUsercount(list.length);
-    });
-
-    // Set initial count from DOM
-    const initial = getInitialCount();
-    if (initial > 0) setUsercount(initial);
-  };
-
-  tryWire();
-}
-
-function ensureUsercountInBar(){
-  const cw = $("#chatwrap"); if (!cw) return;
-  const bar = cw.querySelector(".btfw-chat-bottombar"); if (!bar) return;
-  const actions = bar.querySelector("#btfw-chat-actions"); if (!actions) return;
-
-  // Remove native CyTube usercount elements
-  const nativeUc = $("#usercount");
-  if (nativeUc && !nativeUc.classList.contains("btfw-usercount")) nativeUc.remove();
-  const ch = $("#chatheader");
-  if (ch) ch.remove();
-
-  // Create our custom usercount button
-  let uc = actions.querySelector("#usercount.btfw-usercount");
-  if (!uc) {
-    uc = document.createElement("button");
-    uc.id = "usercount";
-    uc.classList.add("btfw-usercount");
-    uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
-                    <span class="btfw-usercount-num">0</span>`;
-    actions.appendChild(uc);
-    uc.addEventListener("click", toggleUserlist);
-  }
-
-  // Set initial count
-  const initial = getInitialCount();
-  if (initial > 0) setUsercount(initial);
-
-  orderChatActions(actions);
-  wireUsercountSocket();
-}
   /* ---------------- Deterministic username colors ---------------- */
   function colorizeUser(el){
     const n = el.matches?.(".username,.nick,.name") ? el : el.querySelector?.(".username,.nick,.name");
