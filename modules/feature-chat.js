@@ -490,6 +490,52 @@ const scheduleNormalizeChatActions = (() => {
 
   const processedMessages = new WeakSet();
 
+  function isChatMessageElement(el) {
+    if (!el || el.nodeType !== 1) return false;
+    const classList = el.classList;
+    if (!classList || classList.length === 0) return false;
+    if (classList.contains("chat-msg")) return true;
+    for (const cls of classList) {
+      if (cls && cls.startsWith("chat-msg-")) return true;
+    }
+    return false;
+  }
+
+  function applyChatMessageGrouping(el) {
+    if (!isChatMessageElement(el)) return;
+    const hasUsername = !!el.querySelector(".username");
+    if (hasUsername) {
+      el.classList.add("btfw-new-user-msg");
+      el.classList.remove("btfw-continuation-msg");
+    } else {
+      el.classList.add("btfw-continuation-msg");
+      el.classList.remove("btfw-new-user-msg");
+    }
+  }
+
+  function markChatMessageGroups() {
+    const buffer = getChatBuffer();
+    if (!buffer) return;
+    const nodes = buffer.children || [];
+    for (const node of nodes) {
+      if (!node || node.nodeType !== 1) continue;
+      applyChatMessageGrouping(node);
+    }
+  }
+
+  const scheduleMarkChatMessageGroups = (() => {
+    let pending = false;
+    const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
+    return () => {
+      if (pending) return;
+      pending = true;
+      raf(() => {
+        pending = false;
+        markChatMessageGroups();
+      });
+    };
+  })();
+
   function getChatBuffer(){
     return document.getElementById("messagebuffer") ||
            document.querySelector(".chat-messages, #chatbuffer, .message-buffer");
@@ -622,6 +668,7 @@ const scheduleNormalizeChatActions = (() => {
     buffer.querySelectorAll(MESSAGE_SELECTOR).forEach((el) => {
       if (processedMessages.has(el)) return;
       restyleTriviaMessage(el);
+      applyChatMessageGrouping(el);
       processedMessages.add(el);
       sawMessage = true;
     });
@@ -732,6 +779,7 @@ const scheduleNormalizeChatActions = (() => {
     buffer.addEventListener("scroll", handleScroll, { passive: true });
 
     processPendingChatMessages();
+    scheduleMarkChatMessageGroups();
     setTimeout(() => scrollBufferToBottom(buffer, false), 80);
   }
 
@@ -1064,6 +1112,7 @@ const scheduleNormalizeChatActions = (() => {
     ensureScrollManagement();
     restyleExistingTrivia();
     scheduleProcessPendingChatMessages();
+    scheduleMarkChatMessageGroups();
   }
 
   const scheduleChatDomRefresh = (() => {
@@ -1290,6 +1339,10 @@ const scheduleNormalizeChatActions = (() => {
     }, true);
   }
 
+  document.addEventListener("btfw:themeSettings:apply", () => {
+    scheduleMarkChatMessageGroups();
+  });
+
   /* ---------------- Boot ---------------- */
   function boot(){
     refreshChatDom();
@@ -1298,6 +1351,7 @@ const scheduleNormalizeChatActions = (() => {
     ensureUsercountInBar();
     ensureUserlistPopover();
     observeChatDom();
+    scheduleMarkChatMessageGroups();
     wireDelegatedClicks();
     watchForStrayButtons();
   }
