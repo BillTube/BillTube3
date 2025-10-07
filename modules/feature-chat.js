@@ -1212,10 +1212,26 @@ function setUsercount(count) {
   currentCount = normalized;
   const numEl = $("#usercount .btfw-usercount-num");
   if (numEl) numEl.textContent = String(normalized);
+  
+  // Remove any text nodes CyTube adds
+  cleanUsercountElement();
+}
+
+function cleanUsercountElement() {
+  const uc = $("#usercount.btfw-usercount");
+  if (!uc) return;
+  
+  const icon = uc.querySelector(".fa.fa-users");
+  const num = uc.querySelector(".btfw-usercount-num");
+  
+  // Remove all child nodes except our icon and number
+  Array.from(uc.childNodes).forEach(node => {
+    if (node === icon || node === num) return;
+    uc.removeChild(node);
+  });
 }
 
 function getInitialCount() {
-  // Try to get count from userlist DOM
   const ul = $("#userlist");
   if (ul) {
     const items = ul.querySelectorAll("li");
@@ -1235,16 +1251,12 @@ function wireUsercountSocket() {
     }
 
     socket.on("usercount", (count) => setUsercount(count));
-    
     socket.on("addUser", () => setUsercount(currentCount + 1));
-    
     socket.on("userLeave", () => setUsercount(Math.max(0, currentCount - 1)));
-    
     socket.on("userlist", (list) => {
       if (Array.isArray(list)) setUsercount(list.length);
     });
 
-    // Get initial count after wiring
     const initial = getInitialCount();
     if (initial > 0) setUsercount(initial);
   };
@@ -1257,13 +1269,11 @@ function ensureUsercountInBar(){
   const bar = cw.querySelector(".btfw-chat-bottombar"); if (!bar) return;
   const actions = bar.querySelector("#btfw-chat-actions"); if (!actions) return;
 
-  // Remove native elements
   const nativeUc = $("#usercount");
   if (nativeUc && !nativeUc.classList.contains("btfw-usercount")) nativeUc.remove();
   const ch = $("#chatheader");
   if (ch) ch.remove();
 
-  // Create our usercount button
   let uc = actions.querySelector("#usercount.btfw-usercount");
   if (!uc) {
     uc = document.createElement("button");
@@ -1273,9 +1283,11 @@ function ensureUsercountInBar(){
                     <span class="btfw-usercount-num">0</span>`;
     actions.appendChild(uc);
     uc.addEventListener("click", toggleUserlist);
+    
+    const observer = new MutationObserver(() => cleanUsercountElement());
+    observer.observe(uc, { childList: true, characterData: true, subtree: true });
   }
 
-  // Set initial count from userlist
   const initial = getInitialCount();
   if (initial > 0) setUsercount(initial);
 
