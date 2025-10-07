@@ -849,8 +849,8 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 #messagebuffer img.channel-emote,
 #messagebuffer img.giphy.chat-picture,
 #messagebuffer img.tenor.chat-picture {
-  width: var(--btfw-emote-size) !important;
-  height: var(--btfw-emote-size) !important;
+  width: auto !important;
+  height: auto !important;
   max-width: var(--btfw-emote-size) !important;
   max-height: var(--btfw-emote-size) !important;
   object-fit: contain;
