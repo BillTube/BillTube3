@@ -1203,52 +1203,85 @@ const scheduleNormalizeChatActions = (() => {
     wireUsercountSocket();
   }
 
-  // Track current count
-  let currentCount = 0;
+/* ---------------- Custom usercount (icon + number only) ---------------- */
+let currentCount = 0;
 
-  function setUsercount(count) {
-    const safe = Number.isFinite(count) ? count : Number(count);
-    const normalized = Math.max(0, Number.isFinite(safe) ? Math.floor(safe) : 0);
-    currentCount = normalized;
-    const numEl = $("#usercount .btfw-usercount-num");
-    if (numEl) numEl.textContent = String(normalized);
+function setUsercount(count) {
+  const safe = Number.isFinite(count) ? count : Number(count);
+  const normalized = Math.max(0, Number.isFinite(safe) ? Math.floor(safe) : 0);
+  currentCount = normalized;
+  const numEl = $("#usercount .btfw-usercount-num");
+  if (numEl) numEl.textContent = String(normalized);
+}
+
+function getInitialCount() {
+  // Try to get count from userlist DOM
+  const ul = $("#userlist");
+  if (ul) {
+    const items = ul.querySelectorAll("li");
+    if (items.length > 0) return items.length;
+  }
+  return 0;
+}
+
+function wireUsercountSocket() {
+  if (document._btfw_uc_socket_wired) return;
+  document._btfw_uc_socket_wired = true;
+
+  const tryWire = () => {
+    if (!window.socket || typeof window.socket.on !== "function") {
+      setTimeout(tryWire, 500);
+      return;
+    }
+
+    socket.on("usercount", (count) => setUsercount(count));
+    
+    socket.on("addUser", () => setUsercount(currentCount + 1));
+    
+    socket.on("userLeave", () => setUsercount(Math.max(0, currentCount - 1)));
+    
+    socket.on("userlist", (list) => {
+      if (Array.isArray(list)) setUsercount(list.length);
+    });
+
+    // Get initial count after wiring
+    const initial = getInitialCount();
+    if (initial > 0) setUsercount(initial);
+  };
+
+  tryWire();
+}
+
+function ensureUsercountInBar(){
+  const cw = $("#chatwrap"); if (!cw) return;
+  const bar = cw.querySelector(".btfw-chat-bottombar"); if (!bar) return;
+  const actions = bar.querySelector("#btfw-chat-actions"); if (!actions) return;
+
+  // Remove native elements
+  const nativeUc = $("#usercount");
+  if (nativeUc && !nativeUc.classList.contains("btfw-usercount")) nativeUc.remove();
+  const ch = $("#chatheader");
+  if (ch) ch.remove();
+
+  // Create our usercount button
+  let uc = actions.querySelector("#usercount.btfw-usercount");
+  if (!uc) {
+    uc = document.createElement("button");
+    uc.id = "usercount";
+    uc.classList.add("btfw-usercount");
+    uc.innerHTML = `<i class="fa fa-users" aria-hidden="true"></i>
+                    <span class="btfw-usercount-num">0</span>`;
+    actions.appendChild(uc);
+    uc.addEventListener("click", toggleUserlist);
   }
 
-  // Wire socket listeners once
-  function wireUsercountSocket() {
-    if (document._btfw_uc_socket_wired) return;
-    document._btfw_uc_socket_wired = true;
+  // Set initial count from userlist
+  const initial = getInitialCount();
+  if (initial > 0) setUsercount(initial);
 
-    const tryWire = () => {
-      if (!window.socket || typeof window.socket.on !== "function") {
-        setTimeout(tryWire, 500);
-        return;
-      }
-
-      // Server sends usercount every 10s (throttled)
-      socket.on("usercount", (count) => {
-        setUsercount(count);
-      });
-
-      // Immediate updates
-      socket.on("addUser", () => {
-        setUsercount(currentCount + 1);
-      });
-
-      socket.on("userLeave", () => {
-        setUsercount(Math.max(0, currentCount - 1));
-      });
-
-      // Full userlist refresh
-      socket.on("userlist", (list) => {
-        if (Array.isArray(list)) {
-          setUsercount(list.length);
-        }
-      });
-    };
-
-    tryWire();
-  }
+  orderChatActions(actions);
+  wireUsercountSocket();
+}
 
   /* ---------------- Deterministic username colors ---------------- */
   function colorizeUser(el){
