@@ -152,7 +152,7 @@ BTFW.define("feature:emotes", [], async () => {
       state.search = ""; $("#btfw-emotes-search").value = "";
       if (state.tab === "emoji" && !state.emojiReady) loadEmoji();
       render(true);
-      $("#btfw-emotes-grid").focus();
+      focusGrid();
     });
 
     // Debounced search
@@ -166,7 +166,7 @@ BTFW.define("feature:emotes", [], async () => {
     })();
     $("#btfw-emotes-clear", pop).addEventListener("click", ()=>{
       state.search = ""; $("#btfw-emotes-search").value = "";
-      render(true); $("#btfw-emotes-grid").focus();
+      render(true); focusGrid();
     });
 
     // Close button
@@ -208,6 +208,18 @@ BTFW.define("feature:emotes", [], async () => {
     positionPopover(true);
 
     return pop;
+  }
+
+  function focusGrid(preventScroll = true){
+    const grid = document.getElementById("btfw-emotes-grid");
+    if (!grid || typeof grid.focus !== "function") return;
+    if (preventScroll) {
+      try {
+        grid.focus({ preventScroll: true });
+        return;
+      } catch(_) {}
+    }
+    try { grid.focus(); } catch(_) {}
   }
 
   /* ------------------- anchoring & watchers ------------------- */
@@ -452,7 +464,7 @@ c.addEventListener("click", ev=>{
     positionPopover(true);            // compute fixed height once per open
     pop.classList.remove("hidden");
     render(true);
-    $("#btfw-emotes-grid").focus();
+    focusGrid();
   }
 
   function close(){ $("#btfw-emotes-pop")?.classList.add("hidden"); }
