@@ -354,12 +354,9 @@ BTFW.define("feature:gifs", [], async () => {
     if (img && img.src !== item.thumb) {
       img.src = item.thumb;
       img.alt = "gif";
-
-      // Reset broken state
-      cell.classList.remove("is-broken");
-
-      // Re-attach error handler
-      img.onerror = () => cell.classList.add("is-broken");
+      prepareImageLoadingState(cell, img);
+    } else if (img) {
+      prepareImageLoadingState(cell, img);
     }
 
     // Remove skeleton class if present
@@ -394,11 +391,34 @@ BTFW.define("feature:gifs", [], async () => {
     img.alt = "gif";
     img.loading = "lazy";
     img.decoding = "async";
-    img.onerror = () => cell.classList.add("is-broken");
+    prepareImageLoadingState(cell, img);
 
     cell.appendChild(img);
 
     return cell;
+  }
+
+  function prepareImageLoadingState(cell, img) {
+    const handleLoad = () => {
+      cell.classList.remove("is-loading");
+      cell.classList.remove("is-broken");
+    };
+    const handleError = () => {
+      cell.classList.add("is-broken");
+      cell.classList.remove("is-loading");
+    };
+
+    cell.classList.add("is-loading");
+    img.onload = handleLoad;
+    img.onerror = handleError;
+
+    if (img.complete) {
+      if (img.naturalWidth && img.naturalHeight) {
+        handleLoad();
+      } else {
+        handleError();
+      }
+    }
   }
 
   // If you have rapid pagination clicks, you can debounce renders:
@@ -414,10 +434,11 @@ BTFW.define("feature:gifs", [], async () => {
       renderTimeout = null;
     }, 16); // ~60fps
   }
-// Open the GIF modal when the bridge asks
-document.addEventListener('btfw:openGifs', ()=> {
-  try { openGifModal(); } catch(e){}
-});
+
+  // Open the GIF modal when the bridge asks
+  document.addEventListener('btfw:openGifs', ()=> {
+    try { openGifModal(); } catch(e){}
+  });
 
   /* ---- open / close ---- */
   function open(){
@@ -428,6 +449,13 @@ document.addEventListener('btfw:openGifs', ()=> {
     renderSkeleton();
     setTimeout(search, 0);
     modal.classList.add("is-active");
+    const input = $("#btfw-gif-q", modal);
+    if (input) {
+      requestAnimationFrame(() => {
+        input.focus();
+        input.select();
+      });
+    }
   }
   function close(){ modal?.classList.remove("is-active"); }
 
