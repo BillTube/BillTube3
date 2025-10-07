@@ -54,8 +54,8 @@ BTFW.define("feature:chatMedia", [], async () => {
     if (img.hasAttribute("height")) img.removeAttribute("height");
     // enforce via inline style with !important so nothing overrides it
     const v = "var(--btfw-emote-size)";
-    img.style.setProperty("width",     v, "important");
-    img.style.setProperty("height",    v, "important");
+    img.style.setProperty("width",     "auto", "important");
+    img.style.setProperty("height",    "auto", "important");
     img.style.setProperty("max-width", v, "important");
     img.style.setProperty("max-height",v, "important");
     img.style.setProperty("object-fit","contain");
