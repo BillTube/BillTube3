@@ -489,6 +489,7 @@ const scheduleNormalizeChatActions = (() => {
   };
 
   const processedMessages = new WeakSet();
+  const processedMessageMedia = new WeakSet();
 
   function isChatMessageElement(el) {
     if (!el || el.nodeType !== 1) return false;
@@ -579,10 +580,52 @@ const scheduleNormalizeChatActions = (() => {
     }, 800);
   }
 
+  function scheduleScrollAfterMedia(){
+    if (scrollState.isUserScrolledUp) return;
+    const buffer = scrollState.buffer || getChatBuffer();
+    if (!buffer) return;
+
+    const raf = window.requestAnimationFrame;
+    if (typeof raf === "function") {
+      raf(() => raf(() => scrollBufferToBottom(buffer, false)));
+    } else {
+      setTimeout(() => scrollBufferToBottom(buffer, false), 32);
+    }
+  }
+
   function handleNewMessage(){
     const buffer = scrollState.buffer || getChatBuffer();
     if (!buffer || scrollState.isUserScrolledUp) return;
     setTimeout(() => scrollBufferToBottom(buffer, false), 16);
+  }
+
+  function wireMessageMediaAutoScroll(msgEl){
+    if (!msgEl || processedMessageMedia.has(msgEl)) return;
+    processedMessageMedia.add(msgEl);
+
+    const images = msgEl.querySelectorAll?.("img");
+    if (!images || images.length === 0) return;
+
+    images.forEach((img) => {
+      if (!img) return;
+
+      const onLoad = () => {
+        img.removeEventListener("load", onLoad);
+        scheduleScrollAfterMedia();
+      };
+
+      if (img.complete && img.naturalHeight !== 0) {
+        scheduleScrollAfterMedia();
+      } else {
+        img.addEventListener("load", onLoad, { once: true });
+        setTimeout(() => {
+          if (img.complete && img.naturalHeight !== 0) {
+            img.removeEventListener("load", onLoad);
+            scheduleScrollAfterMedia();
+          }
+        }, 250);
+      }
+    });
   }
 
   function escapeHTML(str){
@@ -670,6 +713,7 @@ const scheduleNormalizeChatActions = (() => {
       restyleTriviaMessage(el);
       applyChatMessageGrouping(el);
       processedMessages.add(el);
+      wireMessageMediaAutoScroll(el);
       sawMessage = true;
     });
     if (sawMessage) handleNewMessage();
