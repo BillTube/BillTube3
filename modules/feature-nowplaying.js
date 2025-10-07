@@ -5,8 +5,128 @@ BTFW.define("feature:nowplaying", [], async () => {
   const state = {
     lastCleanTitle: null,
     lastMediaKey: null,
-    pendingUpdate: null
+    pendingUpdate: null,
+    lastLookupInfo: null
   };
+
+  function deriveLookupInfo(rawTitle) {
+    const original = String(rawTitle || "").trim();
+
+    if (!original) {
+      return {
+        original: "",
+        base: "",
+        year: "",
+        canonical: "",
+        query: ""
+      };
+    }
+
+    const parenMatch = original.match(/\(\s*((?:19|20)\d{2})\s*\)\s*$/);
+    let base = original;
+    let year = "";
+    let canonical = original;
+
+    if (parenMatch) {
+      year = parenMatch[1];
+      const basePart = original.slice(0, parenMatch.index).trim();
+      base = basePart;
+      canonical = basePart ? `${basePart} (${year})` : `(${year})`;
+    } else {
+      const bareYearMatch = /(?:^|[\s,;:|/-])((?:19|20)\d{2})\s*$/.exec(original);
+      if (bareYearMatch) {
+        year = bareYearMatch[1];
+        const basePart = original
+          .slice(0, bareYearMatch.index)
+          .replace(/[\s,;:|/-]+$/, "")
+          .trim();
+
+        if (basePart) {
+          base = basePart;
+          canonical = `${basePart} (${year})`;
+        } else {
+          base = original;
+          canonical = original;
+        }
+      }
+    }
+
+    if (!base) {
+      base = original;
+    }
+
+    const query = canonical || base || original;
+
+    return {
+      original,
+      base,
+      year,
+      canonical,
+      query
+    };
+  }
+
+  function setLookupDataset(el, info) {
+    if (!el || !info) return;
+    const map = el.dataset;
+    const canonical = info.canonical || "";
+    const base = info.base || "";
+    const year = info.year || "";
+    const original = info.original || canonical || base || "";
+    const query = info.query || canonical || original;
+
+    map.btfwLookup = canonical;
+    map.btfwLookupQuery = query;
+    map.btfwLookupBase = base;
+    map.btfwLookupYear = year;
+    map.btfwLookupOriginal = original;
+  }
+
+  function applyLookupMetadata(info, options = {}) {
+    const normalized = info
+      ? {
+          original: info.original || "",
+          base: info.base || "",
+          year: info.year || "",
+          canonical: info.canonical || info.query || info.original || "",
+          query: info.query || info.canonical || info.original || ""
+        }
+      : {
+          original: "",
+          base: "",
+          year: "",
+          canonical: "",
+          query: ""
+        };
+
+    state.lastLookupInfo = normalized;
+
+    const ct = findCurrentTitle();
+    if (ct) {
+      setLookupDataset(ct, normalized);
+    }
+
+    const slot = $("#btfw-nowplaying-slot");
+    if (slot) {
+      setLookupDataset(slot, normalized);
+    }
+
+    try {
+      window.BTFW = window.BTFW || {};
+      window.BTFW.nowPlayingLookup = { ...normalized };
+      if (!window.BTFW.normalizeTitleForLookup) {
+        window.BTFW.normalizeTitleForLookup = deriveLookupInfo;
+      }
+    } catch (_) {}
+
+    if (!options.skipEvent) {
+      try {
+        document.dispatchEvent(
+          new CustomEvent("btfw:nowplayingLookup", { detail: { ...normalized } })
+        );
+      } catch (_) {}
+    }
+  }
 
   function stripPrefix(t) {
     return String(t || "")
@@ -61,6 +181,9 @@ BTFW.define("feature:nowplaying", [], async () => {
       }
       slot.appendChild(ct);
       ct.classList.add("btfw-nowplaying");
+      if (state.lastLookupInfo) {
+        applyLookupMetadata(state.lastLookupInfo, { skipEvent: true });
+      }
     }
   }
 
@@ -90,9 +213,11 @@ BTFW.define("feature:nowplaying", [], async () => {
     
     if (currentText !== cleanTitle || options.force) {
       ct.textContent = cleanTitle;
-      ct.title = cleanTitle;
+      const lookupInfo = deriveLookupInfo(cleanTitle);
+      ct.title = lookupInfo.canonical || cleanTitle;
       ct.style.setProperty("--length", String(cleanTitle.length));
       state.lastCleanTitle = cleanTitle;
+      applyLookupMetadata(lookupInfo);
       console.log('[nowplaying] Set title:', cleanTitle);
       return true;
     }
