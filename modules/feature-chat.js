@@ -1233,13 +1233,23 @@ function wireUsercountSocket() {
       return;
     }
 
-    socket.on("usercount", (count) => setUsercount(count));
-    socket.on("addUser", () => setUsercount(currentCount + 1));
-    socket.on("userLeave", () => setUsercount(Math.max(0, currentCount - 1)));
+    // CyTube sends "X connected users" or "X connected user" or "not connected"
+    socket.on("usercount", (data) => {
+      const text = String(data || "");
+      // Strip "connected users", "connected user", "not connected"
+      const cleaned = text.replace(/connected users?|not connected/gi, '').trim();
+      const match = cleaned.match(/\d+/);
+      if (match) {
+        setUsercount(parseInt(match[0], 10));
+      }
+    });
+
+    // Fallback: userlist event for initial/reconnect state
     socket.on("userlist", (list) => {
       if (Array.isArray(list)) setUsercount(list.length);
     });
 
+    // Set initial count from DOM
     const initial = getInitialCount();
     if (initial > 0) setUsercount(initial);
   };
@@ -1252,11 +1262,13 @@ function ensureUsercountInBar(){
   const bar = cw.querySelector(".btfw-chat-bottombar"); if (!bar) return;
   const actions = bar.querySelector("#btfw-chat-actions"); if (!actions) return;
 
+  // Remove native CyTube usercount elements
   const nativeUc = $("#usercount");
   if (nativeUc && !nativeUc.classList.contains("btfw-usercount")) nativeUc.remove();
   const ch = $("#chatheader");
   if (ch) ch.remove();
 
+  // Create our custom usercount button
   let uc = actions.querySelector("#usercount.btfw-usercount");
   if (!uc) {
     uc = document.createElement("button");
@@ -1266,40 +1278,9 @@ function ensureUsercountInBar(){
                     <span class="btfw-usercount-num">0</span>`;
     actions.appendChild(uc);
     uc.addEventListener("click", toggleUserlist);
-    
-    // Intercept CyTube's text updates and extract just the number
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        // Check for text nodes added by CyTube
-        if (mutation.type === 'childList') {
-          mutation.addedNodes.forEach(node => {
-            if (node.nodeType === Node.TEXT_NODE) {
-              const text = node.textContent || "";
-              const match = text.match(/\d+/);
-              if (match) {
-                const count = parseInt(match[0], 10);
-                node.remove(); // Remove CyTube's text
-                setUsercount(count); // Update with just the number
-              }
-            }
-          });
-        }
-        // CyTube might also directly set textContent
-        if (mutation.type === 'characterData') {
-          const text = mutation.target.textContent || "";
-          if (text.includes("user")) { // CyTube's format
-            const match = text.match(/\d+/);
-            if (match) {
-              const count = parseInt(match[0], 10);
-              setUsercount(count);
-            }
-          }
-        }
-      }
-    });
-    observer.observe(uc, { childList: true, characterData: true, subtree: true });
   }
 
+  // Set initial count
   const initial = getInitialCount();
   if (initial > 0) setUsercount(initial);
 
