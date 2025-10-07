@@ -1205,36 +1205,13 @@ const scheduleNormalizeChatActions = (() => {
 
 /* ---------------- Custom usercount (icon + number only) ---------------- */
 let currentCount = 0;
-let isUpdating = false;
 
 function setUsercount(count) {
   const safe = Number.isFinite(count) ? count : Number(count);
   const normalized = Math.max(0, Number.isFinite(safe) ? Math.floor(safe) : 0);
   currentCount = normalized;
-  
-  isUpdating = true;
   const numEl = $("#usercount .btfw-usercount-num");
   if (numEl) numEl.textContent = String(normalized);
-  isUpdating = false;
-}
-
-function cleanUsercountElement() {
-  if (isUpdating) return; // Don't clean while we're updating
-  
-  const uc = $("#usercount.btfw-usercount");
-  if (!uc) return;
-  
-  const icon = uc.querySelector(".fa.fa-users");
-  const num = uc.querySelector(".btfw-usercount-num");
-  if (!icon || !num) return;
-  
-  // Only remove TEXT nodes that aren't inside our spans
-  Array.from(uc.childNodes).forEach(node => {
-    if (node === icon || node === num) return;
-    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
-      uc.removeChild(node);
-    }
-  });
 }
 
 function getInitialCount() {
@@ -1290,10 +1267,37 @@ function ensureUsercountInBar(){
     actions.appendChild(uc);
     uc.addEventListener("click", toggleUserlist);
     
-    const observer = new MutationObserver(() => {
-      setTimeout(cleanUsercountElement, 0);
+    // Intercept CyTube's text updates and extract just the number
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        // Check for text nodes added by CyTube
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE) {
+              const text = node.textContent || "";
+              const match = text.match(/\d+/);
+              if (match) {
+                const count = parseInt(match[0], 10);
+                node.remove(); // Remove CyTube's text
+                setUsercount(count); // Update with just the number
+              }
+            }
+          });
+        }
+        // CyTube might also directly set textContent
+        if (mutation.type === 'characterData') {
+          const text = mutation.target.textContent || "";
+          if (text.includes("user")) { // CyTube's format
+            const match = text.match(/\d+/);
+            if (match) {
+              const count = parseInt(match[0], 10);
+              setUsercount(count);
+            }
+          }
+        }
+      }
     });
-    observer.observe(uc, { childList: true, subtree: true });
+    observer.observe(uc, { childList: true, characterData: true, subtree: true });
   }
 
   const initial = getInitialCount();
@@ -1302,7 +1306,6 @@ function ensureUsercountInBar(){
   orderChatActions(actions);
   wireUsercountSocket();
 }
-
   /* ---------------- Deterministic username colors ---------------- */
   function colorizeUser(el){
     const n = el.matches?.(".username,.nick,.name") ? el : el.querySelector?.(".username,.nick,.name");
