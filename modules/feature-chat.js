@@ -1205,29 +1205,35 @@ const scheduleNormalizeChatActions = (() => {
 
 /* ---------------- Custom usercount (icon + number only) ---------------- */
 let currentCount = 0;
+let isUpdating = false;
 
 function setUsercount(count) {
   const safe = Number.isFinite(count) ? count : Number(count);
   const normalized = Math.max(0, Number.isFinite(safe) ? Math.floor(safe) : 0);
   currentCount = normalized;
+  
+  isUpdating = true;
   const numEl = $("#usercount .btfw-usercount-num");
   if (numEl) numEl.textContent = String(normalized);
-  
-  // Remove any text nodes CyTube adds
-  cleanUsercountElement();
+  isUpdating = false;
 }
 
 function cleanUsercountElement() {
+  if (isUpdating) return; // Don't clean while we're updating
+  
   const uc = $("#usercount.btfw-usercount");
   if (!uc) return;
   
   const icon = uc.querySelector(".fa.fa-users");
   const num = uc.querySelector(".btfw-usercount-num");
+  if (!icon || !num) return;
   
-  // Remove all child nodes except our icon and number
+  // Only remove TEXT nodes that aren't inside our spans
   Array.from(uc.childNodes).forEach(node => {
     if (node === icon || node === num) return;
-    uc.removeChild(node);
+    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+      uc.removeChild(node);
+    }
   });
 }
 
@@ -1284,8 +1290,10 @@ function ensureUsercountInBar(){
     actions.appendChild(uc);
     uc.addEventListener("click", toggleUserlist);
     
-    const observer = new MutationObserver(() => cleanUsercountElement());
-    observer.observe(uc, { childList: true, characterData: true, subtree: true });
+    const observer = new MutationObserver(() => {
+      setTimeout(cleanUsercountElement, 0);
+    });
+    observer.observe(uc, { childList: true, subtree: true });
   }
 
   const initial = getInitialCount();
