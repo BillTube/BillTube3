@@ -184,6 +184,25 @@ function getCurrentTitle(){
       return null;
     } catch(e){ return "Queue add failed."; }
   }
+function canonicalizeYearSuffix(value){
+  const input = String(value || "").trim();
+  if (!input) return "";
+  if (/\(\s*(?:19|20)\d{2}\s*\)\s*$/.test(input)) return input;
+
+  const match = /(?:^|[\s,;:|/-])((?:19|20)\d{2})\s*$/.exec(input);
+  if (!match) return input;
+
+  const year = match[1];
+  const basePart = input
+    .slice(0, match.index)
+    .replace(/[\s,;:|/-]+$/, "")
+    .trim();
+
+  if (!basePart) return input;
+
+  return `${basePart} (${year})`;
+}
+
 function sanitizeTitleForSearch(t){
   if (!t) return "";
   let s = " " + t + " ";
@@ -202,6 +221,8 @@ function sanitizeTitleForSearch(t){
   // If there is a delimiter like " - " or " | ", prefer left part (often the title)
   const split = s.split(/\s[-–|:]\s/);
   if (split.length > 1 && split[0].length >= 3) s = split[0].trim();
+
+  s = canonicalizeYearSuffix(s);
 
   return s || t;
 }
