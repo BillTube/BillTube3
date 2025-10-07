@@ -158,6 +158,61 @@ footer {
   box-shadow: 0 10px 24px color-mix(in srgb, var(--btfw-color-danger, #ff4d6d) 38%, transparent 62%);
 }
 
+.table-container {
+  background: linear-gradient(165deg,
+      color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%),
+      color-mix(in srgb, var(--btfw-color-surface) 92%, transparent 8%));
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--btfw-color-bg) 54%, transparent 46%),
+    0 4px 12px color-mix(in srgb, var(--btfw-color-bg) 36%, transparent 64%);
+  padding: clamp(10px, 2vw, 16px);
+  overflow: hidden;
+}
+
+.table {
+  background: transparent;
+  color: var(--btfw-color-text);
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table thead th {
+  background: linear-gradient(155deg,
+      color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%),
+      color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%));
+  color: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
+  font-weight: 600;
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-accent) 46%, transparent 54%);
+}
+
+.table thead th,
+.table tbody td {
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+  color: inherit;
+}
+
+.table tbody tr {
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.table.is-striped tbody tr:not(.is-selected):nth-child(odd) {
+  background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+}
+
+.table.is-striped tbody tr:not(.is-selected):nth-child(even) {
+  background: color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%);
+}
+
+.table tbody tr:hover {
+  background: color-mix(in srgb, var(--btfw-color-accent) 18%, var(--btfw-color-panel) 82%);
+}
+
+.table code {
+  background: color-mix(in srgb, var(--btfw-color-panel) 74%, transparent 26%);
+  color: color-mix(in srgb, var(--btfw-color-text) 94%, white 6%);
+}
+
 #pollwrap .well {
   position: relative;
   padding: clamp(18px, 4vw, 24px) clamp(16px, 4vw, 24px) clamp(16px, 4vw, 22px);
