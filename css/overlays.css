@@ -364,7 +364,8 @@
   overflow: auto;
   padding: 10px;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(8, 1fr);
+  grid-auto-rows: 56px;              /* fixed row height → constant squares */
   gap: 8px;
   content-visibility: auto;
   contain-intrinsic-size: 320px 320px;
@@ -377,19 +378,12 @@
   background: color-mix(in srgb, var(--btfw-color-panel) 80%, transparent 20%);
   /* keep size constant: no transform on hover */
   transition: background .12s ease, border-color .12s ease;
-  aspect-ratio: 1 / 1;
-  overflow: hidden;
 }
 #btfw-emotes-grid .btfw-emote-tile:hover {
   background: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
 }
 #btfw-emotes-grid .btfw-emote-tile.is-active { outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 68%, transparent 32%); }
-.btfw-emote-img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+.btfw-emote-img { max-width: 42px; max-height: 42px; }
 .btfw-emoji { font-size: 26px; line-height: 1; }
 
 #btfw-emotes-grid.btfw-emoji-grid--native {
@@ -413,12 +407,15 @@
 }
 
 /* Compact on narrow chat columns */
-@media (max-width: 800px){ #btfw-emotes-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (max-width: 560px){ #btfw-emotes-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 800px){ #btfw-emotes-grid { grid-template-columns: repeat(6, 1fr); } }
+@media (max-width: 560px){ #btfw-emotes-grid { grid-template-columns: repeat(5, 1fr); } }
 
 
 /* Virtualized grid: avoid layout on offscreen parts */
 #btfw-emotes-grid { content-visibility: auto; contain-intrinsic-size: 320px 320px; }
+
+/* Slightly larger row height matches ROW_H=64 math better */
+#btfw-emotes-grid { grid-auto-rows: 64px; }
 
 
 
