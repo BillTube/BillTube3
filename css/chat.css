@@ -919,19 +919,28 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
 }
 
 #usercount.btfw-usercount {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    opacity: .9;
-    margin-right: auto;
-    padding-left: 12px;
-    color: 
- color-mix(in srgb, var(--btfw-color-chat-text) 86%, transparent 14%);
-    justify-content: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  opacity: .9;
+  margin-left: auto;
+  padding: 6px 12px;
+  background: transparent;
+  border: 0;
+  color: color-mix(in srgb, var(--btfw-color-chat-text) 86%, transparent 14%);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
 }
 
-#usercount .fa-users{ font-size:14px; opacity:.75; }
+#usercount.btfw-usercount:hover {
+  opacity: 1;
+}
+
+#usercount .fa-users {
+  font-size: 14px;
+  opacity: .75;
+}
 .server-msg-reconnect {
   border: 0px solid #009900!important;
   border-radius: 10px;
