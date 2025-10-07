@@ -917,15 +917,17 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
   background: var(--btfw-chip-bg-hover);
 }
 
-#usercount.btfw-usercount{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  font-size: 12px;
-  opacity:.9;
-  margin-left:auto;
-  padding-left:12px;
-  color: color-mix(in srgb, var(--btfw-color-chat-text) 86%, transparent 14%);
+#usercount.btfw-usercount {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    opacity: .9;
+    margin-right: auto;
+    padding-left: 12px;
+    color: 
+ color-mix(in srgb, var(--btfw-color-chat-text) 86%, transparent 14%);
+    justify-content: flex-end;
 }
 
 #usercount .fa-users{ font-size:14px; opacity:.75; }
@@ -1112,6 +1114,7 @@ cubic-bezier(0.4, 0, 1, 1) 0s running;
     0%, 100% { text-shadow: 0 0 10px #922fff, 0 0 20px #922fff, 0 0 30px #922fff; }
     50% { text-shadow: 0 0 5px #922fff, 0 0 10px #922fff, 0 0 15px #922fff; }
 }
+
 
 
 
