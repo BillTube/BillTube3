@@ -1095,6 +1095,17 @@ cubic-bezier(0.4, 0, 1, 1) 0s running;
     text-shadow: 1px 1px 15px rgb(255 173 173 / 62%);
     transition: .3s;
 }
+.chat-msg-RandomRetard .username {
+    -webkit-background-clip: border-box, border-box, text;
+    -webkit-text-fill-color: transparent;
+    background-image: url(https://i.ibb.co/R60RZRS/sparkling.gif), url(https://i.ibb.co/R60RZRS/sparkling.gif), linear-gradient(178deg, #419800, #66ffb4, #00983d);
+    background-size: 7em, 7em, 5em;
+    font-weight: bold;
+    text-shadow: 1px 1px 5px #0c955c;
+}
+
+
+
 /* ==========================================
    REQUIRED ANIMATIONS
    ========================================== */
