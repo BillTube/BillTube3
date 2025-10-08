@@ -1,4 +1,3 @@
-/* BTFW — feature:chat (chat bars, userlist popover, username colors, theme settings opener) */
 BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
@@ -1220,37 +1219,41 @@ const scheduleNormalizeChatActions = (() => {
   }
 
   function ensureUsercountInBar(){
-    const cw = $("#chatwrap"); if (!cw) return;
-    const bar = cw.querySelector(".btfw-chat-bottombar"); if (!bar) return;
-    const actions = bar.querySelector("#btfw-chat-actions"); if (!actions) return;
+  const cw = $("#chatwrap"); if (!cw) return;
+  const bar = cw.querySelector(".btfw-chat-bottombar"); if (!bar) return;
+  const actions = bar.querySelector("#btfw-chat-actions"); if (!actions) return;
 
-    let uc = actions.querySelector("#usercount");
-    if (!uc) {
-      uc = $("#usercount");
-      if (uc && uc.parentElement !== actions) {
-        actions.appendChild(uc);
-      }
-    }
-
-    if (!uc) {
-      uc = document.createElement("button");
-      uc.id = "usercount";
+  let uc = actions.querySelector("#usercount");
+  if (!uc) {
+    uc = $("#usercount");
+    if (uc && uc.parentElement !== actions) {
       actions.appendChild(uc);
     }
-
-    uc.classList.add("btfw-usercount");
-    uc.setAttribute("type", "button");
-    if (!uc.title) uc.title = "Connected users";
-
-    if (!uc.dataset.btfwUsercountBound) {
-      uc.addEventListener("click", toggleUserlist);
-      uc.dataset.btfwUsercountBound = "true";
-    }
-
-    cleanUsercountText();
-    orderChatActions(actions);
-    wireUsercountSocket();
   }
+
+  if (!uc) {
+    uc = document.createElement("div");
+    uc.id = "usercount";
+    actions.appendChild(uc);
+  }
+
+  uc.classList.add("btfw-usercount");
+  if (!uc.title) uc.title = "Connected users";
+
+  // Disable context menu
+  if (!uc.dataset.btfwUsercountBound) {
+    uc.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    uc.dataset.btfwUsercountBound = "true";
+  }
+
+  cleanUsercountText();
+  orderChatActions(actions);
+  wireUsercountSocket();
+}
+
   /* ---------------- Deterministic username colors ---------------- */
   function colorizeUser(el){
     const n = el.matches?.(".username,.nick,.name") ? el : el.querySelector?.(".username,.nick,.name");
