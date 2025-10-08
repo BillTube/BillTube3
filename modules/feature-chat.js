@@ -1218,7 +1218,7 @@ const scheduleNormalizeChatActions = (() => {
     });
   }
 
-  function ensureUsercountInBar(){
+ function ensureUsercountInBar(){
   const cw = $("#chatwrap"); if (!cw) return;
   const bar = cw.querySelector(".btfw-chat-bottombar"); if (!bar) return;
   const actions = bar.querySelector("#btfw-chat-actions"); if (!actions) return;
@@ -1238,14 +1238,19 @@ const scheduleNormalizeChatActions = (() => {
   }
 
   uc.classList.add("btfw-usercount");
+  uc.classList.remove("pointer"); // Remove pointer cursor class
   if (!uc.title) uc.title = "Connected users";
 
-  // Disable context menu
+  // Disable all interaction
   if (!uc.dataset.btfwUsercountBound) {
+    uc.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
     uc.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       e.stopPropagation();
-    });
+    }, true);
     uc.dataset.btfwUsercountBound = "true";
   }
 
