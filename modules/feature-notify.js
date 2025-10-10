@@ -370,8 +370,6 @@ function startAutoclose(o){
           }, delay);
         };
 
-        // If we couldn't get the title from the payload, wait a bit for the
-        // DOM/queue to update (feature:nowplaying may debounce updates).
         attemptFallback(3);
       };
 
@@ -379,7 +377,6 @@ function startAutoclose(o){
       socket.on("setCurrent", scheduleNowPlaying);
     } catch(_){}
 
-    // New poll: de-dupe by title for a short time
     try {
       socket.on("newPoll", (p)=>{
         const title = (p && p.title) ? String(p.title) : "A new poll started";
@@ -399,13 +396,12 @@ function startAutoclose(o){
       });
     } catch(_){}
 
-    // User joins: throttle per-name
     try {
       socket.on("addUser", (u)=>{
         const name = (u && (u.name || u.un)) ? (u.name || u.un) : "Someone";
         if (!joinNoticesEnabled) return;
         postOnce("join:"+name, 60000, ()=>{
-          api.success({ title: "Joined", html: `<b>${escapeHtml(decodeHtmlEntities(name))}</b> entered the channel`, icon:"👋", timeout: 1500 });
+          api.success({ title: "Joined", html: `<b>${escapeHtml(decodeHtmlEntities(name))}</b> entered the channel`, icon:"👋", timeout: 3500 });
         });
       });
     } catch(_){}
@@ -484,5 +480,6 @@ function startAutoclose(o){
   window.BTFW_notify = api;
   return Object.assign({ name:"feature:notify" }, api);
 });
+
 
 
