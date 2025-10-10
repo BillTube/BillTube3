@@ -543,7 +543,7 @@ const scheduleNormalizeChatActions = (() => {
 
   function isScrolledToBottom(el){
     if (!el) return false;
-    const tolerance = 5;
+    const tolerance = 50;
     return el.scrollTop >= (el.scrollHeight - el.clientHeight - tolerance);
   }
 
@@ -595,7 +595,7 @@ const scheduleNormalizeChatActions = (() => {
   function handleNewMessage(){
     const buffer = scrollState.buffer || getChatBuffer();
     if (!buffer || scrollState.isUserScrolledUp) return;
-    setTimeout(() => scrollBufferToBottom(buffer, false), 16);
+    setTimeout(() => scrollBufferToBottom(buffer, false), 80);
   }
 
   function wireMessageMediaAutoScroll(msgEl){
