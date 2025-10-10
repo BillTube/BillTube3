@@ -262,6 +262,9 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
 
   /* ---------- Wiring ---------- */
   function wire(){
+    if (window._btfwChatToolsWired) return;
+    window._btfwChatToolsWired = true;
+
     ensureActionsButton();
     ensureMiniModal();
 
