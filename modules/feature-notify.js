@@ -404,8 +404,8 @@ function startAutoclose(o){
       socket.on("addUser", (u)=>{
         const name = (u && (u.name || u.un)) ? (u.name || u.un) : "Someone";
         if (!joinNoticesEnabled) return;
-        postOnce("join:"+name, 4000, ()=>{
-          api.success({ title: "Joined", html: `<b>${escapeHtml(decodeHtmlEntities(name))}</b> entered the channel`, icon:"👋", timeout: 4500 });
+        postOnce("join:"+name, 60000, ()=>{
+          api.success({ title: "Joined", html: `<b>${escapeHtml(decodeHtmlEntities(name))}</b> entered the channel`, icon:"👋", timeout: 1500 });
         });
       });
     } catch(_){}
@@ -484,4 +484,5 @@ function startAutoclose(o){
   window.BTFW_notify = api;
   return Object.assign({ name:"feature:notify" }, api);
 });
+
 
