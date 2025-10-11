@@ -1,9 +1,3 @@
-/* BTFW — feature:chat-commands (full set + robust UI)
-   Fixes:
-   - Registers !summary (TMDB) and uses pluggable key sources.
-   - Commands button now reliably appears in the chat bottom bar (with fallbacks).
-*/
-
 BTFW.define("feature:chat-commands", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -117,30 +111,49 @@ function getCurrentTitle(){
     } catch(_) { return null; }
   }
   async function fetchTMDBSummary(title){
-    const key = getTMDBKey();
-    if (!key) return 'TMDB key missing. Open Theme Settings → General → Integrations to add your TMDB API key, or set one of:\nwindow.BTFW_CONFIG.tmdb = { apiKey: "KEY" };\nlocalStorage.setItem("btfw:tmdb:key","KEY");\nwindow.tmdb_key = "KEY";';
-    try {
-      const q = encodeURIComponent(title);
-      const url = `https://api.themoviedb.org/3/search/multi?api_key=${key}&query=${q}&include_adult=false&language=en-US`;
+  const key = getTMDBKey();
+  if (!key) return 'TMDB key missing. Open Theme Settings → General → Integrations to add your TMDB API key, or set one of:\nwindow.BTFW_CONFIG.tmdb = { apiKey: "KEY" };\nlocalStorage.setItem("btfw:tmdb:key","KEY");\nwindow.tmdb_key = "KEY";';
+  
+  try {
+    const imdbMatch = /^tt\d+$/.test(title.trim());
+    let url, data, r;
+    
+    if (imdbMatch) {
+      url = `https://api.themoviedb.org/3/find/${encodeURIComponent(title.trim())}?api_key=${key}&external_source=imdb_id`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const r = (data.results||[])[0];
-      if (!r) return 'No TMDB result.';
-      const mediaType = r.media_type || (r.title?'movie':'tv');
-      const name = r.title || r.name || title;
-      const year = (r.release_date || r.first_air_date || '').slice(0,4);
-      const rating = (typeof r.vote_average==="number") ? r.vote_average.toFixed(1) : 'n/a';
-      let overview = r.overview || '';
-      if (!overview && r.id) {
-        const detailsUrl = `https://api.themoviedb.org/3/${mediaType}/${r.id}?api_key=${key}&language=en-US`;
-        const dres = await fetch(detailsUrl);
-        if (dres.ok) { const det = await dres.json(); overview = det.overview || ''; }
-      }
-      if (!overview) overview = 'No summary available.';
-      return `col:#87ceeb:[code]${name}${year?` (${year})`:''}[/code] — ★ ${rating}\n${overview}`;
-    } catch(e){ console.error('[summary] TMDB error', e); return `TMDB error: ${e.message||e}`; }
+      data = await res.json();
+      r = (data.movie_results||[])[0] || (data.tv_results||[])[0];
+    } else {
+      const q = encodeURIComponent(title);
+      url = `https://api.themoviedb.org/3/search/multi?api_key=${key}&query=${q}&include_adult=false&language=en-US`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      data = await res.json();
+      r = (data.results||[])[0];
+    }
+    
+    if (!r) return 'No TMDB result.';
+    
+    const mediaType = r.media_type || (r.title ? 'movie' : 'tv');
+    const name = r.title || r.name || title;
+    const year = (r.release_date || r.first_air_date || '').slice(0,4);
+    const rating = (typeof r.vote_average === "number") ? r.vote_average.toFixed(1) : 'n/a';
+    let overview = r.overview || '';
+    
+    if (!overview && r.id) {
+      const detailsUrl = `https://api.themoviedb.org/3/${mediaType}/${r.id}?api_key=${key}&language=en-US`;
+      const dres = await fetch(detailsUrl);
+      if (dres.ok) { const det = await dres.json(); overview = det.overview || ''; }
+    }
+    
+    if (!overview) overview = 'No summary available.';
+    return `col:#87ceeb:[code]${name}${year ? ` (${year})` : ''}[/code] — ★ ${rating}\n${overview}`;
+  } catch(e){ 
+    console.error('[summary] TMDB error', e); 
+    return `TMDB error: ${e.message||e}`; 
   }
+}
 
   // ---------- Channel Emotes (for !sm) ----------
   function getChannelEmotes(){
@@ -408,3 +421,4 @@ function sanitizeTitleForSearch(t){
 
   return { name:"feature:chat-commands" };
 });
+
