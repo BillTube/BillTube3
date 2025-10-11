@@ -560,12 +560,12 @@ const scheduleNormalizeChatActions = (() => {
 
       const distanceFromBottom = buffer.scrollHeight - buffer.scrollTop - buffer.clientHeight;
       if (distanceFromBottom > 0.5) {
-        scrollBufferToBottom(buffer, false);
+        scrollBufferToBottom(buffer);
       }
     });
   }
 
-  function scrollBufferToBottom(el, smooth){
+  function scrollBufferToBottom(el){
     if (!el) return;
 
     el._autoScrolling = true;
@@ -588,11 +588,7 @@ const scheduleNormalizeChatActions = (() => {
     const distance = Math.abs((el.scrollTop || 0) - target);
 
     if (!usedNative || distance > 0.5) {
-      if (smooth && typeof el.scrollTo === "function") {
-        el.scrollTo({ top: target, behavior: "smooth" });
-      } else {
-        el.scrollTop = target;
-      }
+      el.scrollTop = target;
     }
 
     setTimeout(() => { el._autoScrolling = false; }, 100);
@@ -630,7 +626,7 @@ const scheduleNormalizeChatActions = (() => {
         if (scrollState.manualScrollUp) return;
         const buffer = scrollState.buffer || getChatBuffer();
         if (buffer && buffer.contains(el)) {
-          scrollBufferToBottom(buffer, false);
+          scrollBufferToBottom(buffer);
         }
       }, 120);
     }
@@ -703,7 +699,7 @@ const scheduleNormalizeChatActions = (() => {
     observeBufferResize(buffer);
 
     processPendingChatMessages();
-    setTimeout(() => scrollBufferToBottom(buffer, false), 80);
+    setTimeout(() => scrollBufferToBottom(buffer), 80);
   }
 
   function ensureScrollManagement(){
@@ -712,14 +708,11 @@ const scheduleNormalizeChatActions = (() => {
     bindChatBuffer(buffer);
   }
 
-  function scrollChat(opts){
+  function scrollChat(){
     const buffer = scrollState.buffer || getChatBuffer();
     if (!buffer) return;
     scrollState.manualScrollUp = false;
-    let smooth = true;
-    if (typeof opts === "boolean") smooth = opts;
-    else if (opts && Object.prototype.hasOwnProperty.call(opts, "smooth")) smooth = Boolean(opts.smooth);
-    scrollBufferToBottom(buffer, smooth);
+    scrollBufferToBottom(buffer);
   }
 
   if (typeof window.scrollChat !== "function") {
@@ -732,10 +725,10 @@ const scheduleNormalizeChatActions = (() => {
     
     requestAnimationFrame(() => {
       if (!scrollState.manualScrollUp) {
-        scrollBufferToBottom(buffer, false);
+        scrollBufferToBottom(buffer);
         setTimeout(() => {
           if (!scrollState.manualScrollUp) {
-            scrollBufferToBottom(buffer, false);
+            scrollBufferToBottom(buffer);
           }
         }, 120);
       }
@@ -750,7 +743,7 @@ const scheduleNormalizeChatActions = (() => {
         if (!img.complete) {
           const scrollOnLoad = () => {
             if (!scrollState.manualScrollUp) {
-              scrollBufferToBottom(buffer, false);
+              scrollBufferToBottom(buffer);
             }
           };
           img.addEventListener('load', scrollOnLoad, { once: true });
