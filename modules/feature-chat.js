@@ -529,7 +529,10 @@ const scheduleNormalizeChatActions = (() => {
   const scrollState = {
     buffer: null,
     manualScrollUp: false,
-    scrollTimeout: null
+    scrollTimeout: null,
+    resizeObserver: null,
+    resizeFrame: null,
+    windowResizeHandler: null
   };
 
   const processedMessages = new WeakSet();
@@ -539,19 +542,64 @@ const scheduleNormalizeChatActions = (() => {
            document.querySelector(".chat-messages, #chatbuffer, .message-buffer");
   }
 
+  function scheduleBufferBottomSync(target){
+    const el = target || scrollState.buffer;
+    if (!el || scrollState.manualScrollUp) return;
+
+    if (scrollState.resizeFrame) cancelAnimationFrame(scrollState.resizeFrame);
+    scrollState.resizeFrame = requestAnimationFrame(() => {
+      scrollState.resizeFrame = null;
+      if (!scrollState.buffer || scrollState.manualScrollUp) return;
+      const buffer = target || scrollState.buffer;
+      if (!buffer) return;
+
+      const distanceFromBottom = buffer.scrollHeight - buffer.scrollTop - buffer.clientHeight;
+      if (distanceFromBottom > 0.5) {
+        scrollBufferToBottom(buffer, false);
+      }
+    });
+  }
+
   function scrollBufferToBottom(el, smooth){
     if (!el) return;
-    
+
     el._autoScrolling = true;
     void el.offsetHeight;
-    
+
+    const target = Math.max(0, el.scrollHeight - el.clientHeight);
+
     if (smooth && typeof el.scrollTo === "function") {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      el.scrollTo({ top: target, behavior: "smooth" });
     } else {
-      el.scrollTop = el.scrollHeight;
+      el.scrollTop = target;
     }
-    
+
     setTimeout(() => { el._autoScrolling = false; }, 100);
+  }
+
+  function observeBufferResize(buffer){
+    if (!buffer) return;
+
+    if (window.ResizeObserver) {
+      if (!scrollState.resizeObserver) {
+        scrollState.resizeObserver = new ResizeObserver((entries) => {
+          if (!scrollState.buffer || scrollState.manualScrollUp) return;
+          for (const entry of entries) {
+            if (entry.target === scrollState.buffer) {
+              scheduleBufferBottomSync(entry.target);
+              break;
+            }
+          }
+        });
+      }
+      scrollState.resizeObserver.observe(buffer);
+    } else if (!scrollState.windowResizeHandler) {
+      scrollState.windowResizeHandler = () => {
+        if (!scrollState.buffer || scrollState.manualScrollUp) return;
+        scheduleBufferBottomSync(scrollState.buffer);
+      };
+      window.addEventListener("resize", scrollState.windowResizeHandler, { passive: true });
+    }
   }
 
   function handleScroll(event){
@@ -575,6 +623,9 @@ const scheduleNormalizeChatActions = (() => {
     if (scrollState.buffer) {
       scrollState.buffer.removeEventListener("scroll", handleScroll);
     }
+    if (scrollState.resizeObserver && scrollState.buffer) {
+      scrollState.resizeObserver.unobserve(scrollState.buffer);
+    }
     if (scrollState.scrollTimeout) {
       clearTimeout(scrollState.scrollTimeout);
       scrollState.scrollTimeout = null;
@@ -584,6 +635,8 @@ const scheduleNormalizeChatActions = (() => {
     scrollState.manualScrollUp = false;
 
     buffer.addEventListener("scroll", handleScroll, { passive: true });
+
+    observeBufferResize(buffer);
 
     processPendingChatMessages();
     setTimeout(() => scrollBufferToBottom(buffer, false), 80);
