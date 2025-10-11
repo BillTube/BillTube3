@@ -549,12 +549,22 @@ const scheduleNormalizeChatActions = (() => {
 
   function scrollBufferToBottom(el, smooth){
     if (!el) return;
+
+    // Single forced reflow is fast (<2ms on modern browsers)
+    void el.offsetHeight;
+
+    const targetScroll = el.scrollHeight;
+
     if (smooth && typeof el.scrollTo === "function") {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      el.scrollTo({ top: targetScroll, behavior: "smooth" });
     } else {
-      el.scrollTop = el.scrollHeight;
+      el.scrollTop = targetScroll;
     }
   }
+
+  // Debounced image-aware scroll handler
+  let imageScrollTimer = null;
+  const trackedImages = new WeakSet();
 
   function handleScroll(event){
     const el = event.currentTarget || event.target;
@@ -595,7 +605,49 @@ const scheduleNormalizeChatActions = (() => {
   function handleNewMessage(){
     const buffer = scrollState.buffer || getChatBuffer();
     if (!buffer || scrollState.isUserScrolledUp) return;
-    setTimeout(() => scrollBufferToBottom(buffer, false), 80);
+
+    // Single rAF is sufficient - already batched by scheduleProcessPendingChatMessages
+    requestAnimationFrame(() => {
+      if (!scrollState.isUserScrolledUp) {
+        scrollBufferToBottom(buffer, false);
+      }
+    });
+
+    // Efficient image handling with debouncing
+    if (imageScrollTimer) clearTimeout(imageScrollTimer);
+
+    const newMessages = Array.from(buffer.querySelectorAll(MESSAGE_SELECTOR))
+      .filter(el => !processedMessages.has(el));
+
+    let hasUnloadedImages = false;
+
+    newMessages.forEach(msg => {
+      msg.querySelectorAll('img').forEach(img => {
+        if (!img.complete && !trackedImages.has(img)) {
+          hasUnloadedImages = true;
+          trackedImages.add(img);
+
+          const scrollOnLoad = () => {
+            if (!scrollState.isUserScrolledUp) {
+              void buffer.offsetHeight;
+              scrollBufferToBottom(buffer, false);
+            }
+          };
+
+          img.addEventListener('load', scrollOnLoad, { once: true });
+          img.addEventListener('error', scrollOnLoad, { once: true });
+        }
+      });
+    });
+
+    // Fallback scroll for any missed layout changes
+    if (hasUnloadedImages) {
+      imageScrollTimer = setTimeout(() => {
+        if (!scrollState.isUserScrolledUp) {
+          scrollBufferToBottom(buffer, false);
+        }
+      }, 300);
+    }
   }
 
   function wireMessageMediaAutoScroll(msgEl){
