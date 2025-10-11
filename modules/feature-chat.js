@@ -532,7 +532,8 @@ const scheduleNormalizeChatActions = (() => {
     scrollTimeout: null,
     resizeObserver: null,
     resizeFrame: null,
-    windowResizeHandler: null
+    windowResizeHandler: null,
+    messageResizeObserver: null
   };
 
   const processedMessages = new WeakSet();
@@ -575,6 +576,44 @@ const scheduleNormalizeChatActions = (() => {
     }
 
     setTimeout(() => { el._autoScrolling = false; }, 100);
+  }
+
+  function ensureMessageResizeObserver(){
+    if (!window.ResizeObserver) return null;
+    if (!scrollState.messageResizeObserver) {
+      scrollState.messageResizeObserver = new ResizeObserver((entries) => {
+        if (!scrollState.buffer || scrollState.manualScrollUp) return;
+        for (const entry of entries) {
+          const target = entry && entry.target;
+          if (!target || !target.isConnected) continue;
+          if (!scrollState.buffer.contains(target)) continue;
+          scheduleBufferBottomSync(scrollState.buffer);
+          break;
+        }
+      });
+    }
+    return scrollState.messageResizeObserver;
+  }
+
+  function observeMessageResize(el){
+    if (!el || el.dataset?.btfwObservedResize || el.btfwObservedResize) return;
+    const observer = ensureMessageResizeObserver();
+    if (observer) {
+      observer.observe(el);
+      if (el.dataset) {
+        el.dataset.btfwObservedResize = "1";
+      } else {
+        el.btfwObservedResize = true;
+      }
+    } else {
+      setTimeout(() => {
+        if (scrollState.manualScrollUp) return;
+        const buffer = scrollState.buffer || getChatBuffer();
+        if (buffer && buffer.contains(el)) {
+          scrollBufferToBottom(buffer, false);
+        }
+      }, 120);
+    }
   }
 
   function observeBufferResize(buffer){
@@ -623,6 +662,11 @@ const scheduleNormalizeChatActions = (() => {
     if (scrollState.buffer) {
       scrollState.buffer.removeEventListener("scroll", handleScroll);
     }
+    if (scrollState.messageResizeObserver) {
+      try {
+        scrollState.messageResizeObserver.disconnect();
+      } catch (_) {}
+    }
     if (scrollState.resizeObserver && scrollState.buffer) {
       scrollState.resizeObserver.unobserve(scrollState.buffer);
     }
@@ -669,13 +713,19 @@ const scheduleNormalizeChatActions = (() => {
     requestAnimationFrame(() => {
       if (!scrollState.manualScrollUp) {
         scrollBufferToBottom(buffer, false);
+        setTimeout(() => {
+          if (!scrollState.manualScrollUp) {
+            scrollBufferToBottom(buffer, false);
+          }
+        }, 120);
       }
     });
-    
+
     const newMessages = Array.from(buffer.querySelectorAll(MESSAGE_SELECTOR))
       .filter(el => !processedMessages.has(el));
-    
+
     newMessages.forEach(msg => {
+      observeMessageResize(msg);
       msg.querySelectorAll('img').forEach(img => {
         if (!img.complete) {
           const scrollOnLoad = () => {
@@ -774,6 +824,7 @@ const scheduleNormalizeChatActions = (() => {
       if (processedMessages.has(el)) return;
       restyleTriviaMessage(el);
       applyChatMessageGrouping(el);
+      observeMessageResize(el);
       processedMessages.add(el);
       sawMessage = true;
     });
