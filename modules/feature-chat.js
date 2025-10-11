@@ -526,10 +526,18 @@ const scheduleNormalizeChatActions = (() => {
   })();
 
   /* ---------------- Auto-scroll management ---------------- */
+  const cytubeScrollChat = (typeof window.scrollChat === "function")
+    ? window.scrollChat.bind(window)
+    : null;
+
   const scrollState = {
     buffer: null,
     manualScrollUp: false,
-    scrollTimeout: null
+    scrollTimeout: null,
+    resizeObserver: null,
+    resizeFrame: null,
+    windowResizeHandler: null,
+    messageResizeObserver: null
   };
 
   const processedMessages = new WeakSet();
@@ -539,19 +547,118 @@ const scheduleNormalizeChatActions = (() => {
            document.querySelector(".chat-messages, #chatbuffer, .message-buffer");
   }
 
+  function scheduleBufferBottomSync(target){
+    const el = target || scrollState.buffer;
+    if (!el || scrollState.manualScrollUp) return;
+
+    if (scrollState.resizeFrame) cancelAnimationFrame(scrollState.resizeFrame);
+    scrollState.resizeFrame = requestAnimationFrame(() => {
+      scrollState.resizeFrame = null;
+      if (!scrollState.buffer || scrollState.manualScrollUp) return;
+      const buffer = target || scrollState.buffer;
+      if (!buffer) return;
+
+      const distanceFromBottom = buffer.scrollHeight - buffer.scrollTop - buffer.clientHeight;
+      if (distanceFromBottom > 0.5) {
+        scrollBufferToBottom(buffer, false);
+      }
+    });
+  }
+
   function scrollBufferToBottom(el, smooth){
     if (!el) return;
-    
+
     el._autoScrolling = true;
     void el.offsetHeight;
-    
-    if (smooth && typeof el.scrollTo === "function") {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    } else {
-      el.scrollTop = el.scrollHeight;
+
+    let usedNative = false;
+    if (cytubeScrollChat) {
+      const buffer = scrollState.buffer || getChatBuffer();
+      if (buffer && el === buffer) {
+        try {
+          cytubeScrollChat();
+          usedNative = true;
+        } catch (_) {
+          usedNative = false;
+        }
+      }
     }
-    
+
+    const target = Math.max(0, el.scrollHeight - el.clientHeight);
+    const distance = Math.abs((el.scrollTop || 0) - target);
+
+    if (!usedNative || distance > 0.5) {
+      if (smooth && typeof el.scrollTo === "function") {
+        el.scrollTo({ top: target, behavior: "smooth" });
+      } else {
+        el.scrollTop = target;
+      }
+    }
+
     setTimeout(() => { el._autoScrolling = false; }, 100);
+  }
+
+  function ensureMessageResizeObserver(){
+    if (!window.ResizeObserver) return null;
+    if (!scrollState.messageResizeObserver) {
+      scrollState.messageResizeObserver = new ResizeObserver((entries) => {
+        if (!scrollState.buffer || scrollState.manualScrollUp) return;
+        for (const entry of entries) {
+          const target = entry && entry.target;
+          if (!target || !target.isConnected) continue;
+          if (!scrollState.buffer.contains(target)) continue;
+          scheduleBufferBottomSync(scrollState.buffer);
+          break;
+        }
+      });
+    }
+    return scrollState.messageResizeObserver;
+  }
+
+  function observeMessageResize(el){
+    if (!el || el.dataset?.btfwObservedResize || el.btfwObservedResize) return;
+    const observer = ensureMessageResizeObserver();
+    if (observer) {
+      observer.observe(el);
+      if (el.dataset) {
+        el.dataset.btfwObservedResize = "1";
+      } else {
+        el.btfwObservedResize = true;
+      }
+    } else {
+      setTimeout(() => {
+        if (scrollState.manualScrollUp) return;
+        const buffer = scrollState.buffer || getChatBuffer();
+        if (buffer && buffer.contains(el)) {
+          scrollBufferToBottom(buffer, false);
+        }
+      }, 120);
+    }
+  }
+
+  function observeBufferResize(buffer){
+    if (!buffer) return;
+
+    if (window.ResizeObserver) {
+      if (!scrollState.resizeObserver) {
+        scrollState.resizeObserver = new ResizeObserver((entries) => {
+          if (!scrollState.buffer || scrollState.manualScrollUp) return;
+          for (const entry of entries) {
+            if (entry.target === scrollState.buffer) {
+              scheduleBufferBottomSync(entry.target);
+              break;
+            }
+          }
+        });
+      }
+      scrollState.resizeObserver.observe(buffer);
+    } else if (!scrollState.windowResizeHandler) {
+      scrollState.windowResizeHandler = () => {
+        if (!scrollState.buffer || scrollState.manualScrollUp) return;
+        scheduleBufferBottomSync(scrollState.buffer);
+      };
+      window.addEventListener("resize", scrollState.windowResizeHandler, { passive: true });
+    }
   }
 
   function handleScroll(event){
@@ -575,6 +682,14 @@ const scheduleNormalizeChatActions = (() => {
     if (scrollState.buffer) {
       scrollState.buffer.removeEventListener("scroll", handleScroll);
     }
+    if (scrollState.messageResizeObserver) {
+      try {
+        scrollState.messageResizeObserver.disconnect();
+      } catch (_) {}
+    }
+    if (scrollState.resizeObserver && scrollState.buffer) {
+      scrollState.resizeObserver.unobserve(scrollState.buffer);
+    }
     if (scrollState.scrollTimeout) {
       clearTimeout(scrollState.scrollTimeout);
       scrollState.scrollTimeout = null;
@@ -584,6 +699,8 @@ const scheduleNormalizeChatActions = (() => {
     scrollState.manualScrollUp = false;
 
     buffer.addEventListener("scroll", handleScroll, { passive: true });
+
+    observeBufferResize(buffer);
 
     processPendingChatMessages();
     setTimeout(() => scrollBufferToBottom(buffer, false), 80);
@@ -601,7 +718,7 @@ const scheduleNormalizeChatActions = (() => {
     scrollState.manualScrollUp = false;
     let smooth = true;
     if (typeof opts === "boolean") smooth = opts;
-    else if (opts && Object.prototype.hasOwnProperty.call(opts, "smooth")) smooth = !opts.smooth;
+    else if (opts && Object.prototype.hasOwnProperty.call(opts, "smooth")) smooth = Boolean(opts.smooth);
     scrollBufferToBottom(buffer, smooth);
   }
 
@@ -616,13 +733,19 @@ const scheduleNormalizeChatActions = (() => {
     requestAnimationFrame(() => {
       if (!scrollState.manualScrollUp) {
         scrollBufferToBottom(buffer, false);
+        setTimeout(() => {
+          if (!scrollState.manualScrollUp) {
+            scrollBufferToBottom(buffer, false);
+          }
+        }, 120);
       }
     });
-    
+
     const newMessages = Array.from(buffer.querySelectorAll(MESSAGE_SELECTOR))
       .filter(el => !processedMessages.has(el));
-    
+
     newMessages.forEach(msg => {
+      observeMessageResize(msg);
       msg.querySelectorAll('img').forEach(img => {
         if (!img.complete) {
           const scrollOnLoad = () => {
@@ -721,6 +844,7 @@ const scheduleNormalizeChatActions = (() => {
       if (processedMessages.has(el)) return;
       restyleTriviaMessage(el);
       applyChatMessageGrouping(el);
+      observeMessageResize(el);
       processedMessages.add(el);
       sawMessage = true;
     });
