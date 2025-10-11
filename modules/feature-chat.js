@@ -479,17 +479,6 @@ const scheduleNormalizeChatActions = (() => {
     wireButtonSocketListeners();
   }
 
-  /* ---------------- Auto-scroll management ---------------- */
-  const scrollState = {
-    buffer: null,
-    isUserScrolledUp: false,
-    lastScrollTop: 0,
-    timeout: null
-  };
-
-  const processedMessages = new WeakSet();
-  const processedMessageMedia = new WeakSet();
-
   function isChatMessageElement(el) {
     if (!el || el.nodeType !== 1) return false;
     const classList = el.classList;
@@ -536,146 +525,115 @@ const scheduleNormalizeChatActions = (() => {
     };
   })();
 
+  /* ---------------- Auto-scroll management ---------------- */
+  const scrollState = {
+    buffer: null,
+    manualScrollUp: false,
+    scrollTimeout: null
+  };
+
+  const processedMessages = new WeakSet();
+
   function getChatBuffer(){
     return document.getElementById("messagebuffer") ||
            document.querySelector(".chat-messages, #chatbuffer, .message-buffer");
   }
 
-  function isScrolledToBottom(el){
-    if (!el) return false;
-    const tolerance = 50;
-    return el.scrollTop >= (el.scrollHeight - el.clientHeight - tolerance);
-  }
-
   function scrollBufferToBottom(el, smooth){
     if (!el) return;
-
-    // Single forced reflow is fast (<2ms on modern browsers)
+    
+    el._autoScrolling = true;
     void el.offsetHeight;
-
-    const targetScroll = el.scrollHeight;
-
+    
     if (smooth && typeof el.scrollTo === "function") {
-      el.scrollTo({ top: targetScroll, behavior: "smooth" });
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     } else {
-      el.scrollTop = targetScroll;
+      el.scrollTop = el.scrollHeight;
     }
+    
+    setTimeout(() => { el._autoScrolling = false; }, 100);
   }
-
-  // Debounced image-aware scroll handler
-  let imageScrollTimer = null;
-  const trackedImages = new WeakSet();
 
   function handleScroll(event){
     const el = event.currentTarget || event.target;
-    if (!el) return;
-
-    const current = el.scrollTop;
-    const atBottom = isScrolledToBottom(el);
-
-    if (current < scrollState.lastScrollTop && !atBottom) {
-      scrollState.isUserScrolledUp = true;
-    } else if (current > scrollState.lastScrollTop && atBottom) {
-      scrollState.isUserScrolledUp = false;
-    }
-
-    scrollState.lastScrollTop = current;
-
-    if (scrollState.timeout) clearTimeout(scrollState.timeout);
-    scrollState.timeout = setTimeout(() => {
-      if (isScrolledToBottom(el)) {
-        scrollState.isUserScrolledUp = false;
-      }
-    }, 800);
+    if (!el || el._autoScrolling) return;
+    
+    if (scrollState.scrollTimeout) clearTimeout(scrollState.scrollTimeout);
+    
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    scrollState.manualScrollUp = distanceFromBottom > 150;
+    
+    scrollState.scrollTimeout = setTimeout(() => {
+      scrollState.manualScrollUp = false;
+    }, 10000);
   }
 
-  function scheduleScrollAfterMedia(){
-    if (scrollState.isUserScrolledUp) return;
+  function bindChatBuffer(buffer){
+    if (!buffer) return;
+    if (scrollState.buffer === buffer) return;
+
+    if (scrollState.buffer) {
+      scrollState.buffer.removeEventListener("scroll", handleScroll);
+    }
+    if (scrollState.scrollTimeout) {
+      clearTimeout(scrollState.scrollTimeout);
+      scrollState.scrollTimeout = null;
+    }
+
+    scrollState.buffer = buffer;
+    scrollState.manualScrollUp = false;
+
+    buffer.addEventListener("scroll", handleScroll, { passive: true });
+
+    processPendingChatMessages();
+    setTimeout(() => scrollBufferToBottom(buffer, false), 80);
+  }
+
+  function ensureScrollManagement(){
+    const buffer = getChatBuffer();
+    if (!buffer) return;
+    bindChatBuffer(buffer);
+  }
+
+  function scrollChat(opts){
     const buffer = scrollState.buffer || getChatBuffer();
     if (!buffer) return;
+    scrollState.manualScrollUp = false;
+    let smooth = true;
+    if (typeof opts === "boolean") smooth = opts;
+    else if (opts && Object.prototype.hasOwnProperty.call(opts, "smooth")) smooth = !opts.smooth;
+    scrollBufferToBottom(buffer, smooth);
+  }
 
-    const raf = window.requestAnimationFrame;
-    if (typeof raf === "function") {
-      raf(() => raf(() => scrollBufferToBottom(buffer, false)));
-    } else {
-      setTimeout(() => scrollBufferToBottom(buffer, false), 32);
-    }
+  if (typeof window.scrollChat !== "function") {
+    window.scrollChat = scrollChat;
   }
 
   function handleNewMessage(){
     const buffer = scrollState.buffer || getChatBuffer();
-    if (!buffer || scrollState.isUserScrolledUp) return;
-
-    // Single rAF is sufficient - already batched by scheduleProcessPendingChatMessages
+    if (!buffer || scrollState.manualScrollUp) return;
+    
     requestAnimationFrame(() => {
-      if (!scrollState.isUserScrolledUp) {
+      if (!scrollState.manualScrollUp) {
         scrollBufferToBottom(buffer, false);
       }
     });
-
-    // Efficient image handling with debouncing
-    if (imageScrollTimer) clearTimeout(imageScrollTimer);
-
+    
     const newMessages = Array.from(buffer.querySelectorAll(MESSAGE_SELECTOR))
       .filter(el => !processedMessages.has(el));
-
-    let hasUnloadedImages = false;
-
+    
     newMessages.forEach(msg => {
       msg.querySelectorAll('img').forEach(img => {
-        if (!img.complete && !trackedImages.has(img)) {
-          hasUnloadedImages = true;
-          trackedImages.add(img);
-
+        if (!img.complete) {
           const scrollOnLoad = () => {
-            if (!scrollState.isUserScrolledUp) {
-              void buffer.offsetHeight;
+            if (!scrollState.manualScrollUp) {
               scrollBufferToBottom(buffer, false);
             }
           };
-
           img.addEventListener('load', scrollOnLoad, { once: true });
           img.addEventListener('error', scrollOnLoad, { once: true });
         }
       });
-    });
-
-    // Fallback scroll for any missed layout changes
-    if (hasUnloadedImages) {
-      imageScrollTimer = setTimeout(() => {
-        if (!scrollState.isUserScrolledUp) {
-          scrollBufferToBottom(buffer, false);
-        }
-      }, 300);
-    }
-  }
-
-  function wireMessageMediaAutoScroll(msgEl){
-    if (!msgEl || processedMessageMedia.has(msgEl)) return;
-    processedMessageMedia.add(msgEl);
-
-    const images = msgEl.querySelectorAll?.("img");
-    if (!images || images.length === 0) return;
-
-    images.forEach((img) => {
-      if (!img) return;
-
-      const onLoad = () => {
-        img.removeEventListener("load", onLoad);
-        scheduleScrollAfterMedia();
-      };
-
-      if (img.complete && img.naturalHeight !== 0) {
-        scheduleScrollAfterMedia();
-      } else {
-        img.addEventListener("load", onLoad, { once: true });
-        setTimeout(() => {
-          if (img.complete && img.naturalHeight !== 0) {
-            img.removeEventListener("load", onLoad);
-            scheduleScrollAfterMedia();
-          }
-        }, 250);
-      }
     });
   }
 
@@ -764,7 +722,6 @@ const scheduleNormalizeChatActions = (() => {
       restyleTriviaMessage(el);
       applyChatMessageGrouping(el);
       processedMessages.add(el);
-      wireMessageMediaAutoScroll(el);
       sawMessage = true;
     });
     if (sawMessage) handleNewMessage();
@@ -853,49 +810,6 @@ const scheduleNormalizeChatActions = (() => {
       restyleTriviaMessage(el);
       processedMessages.add(el);
     });
-  }
-
-  function bindChatBuffer(buffer){
-    if (!buffer) return;
-    if (scrollState.buffer === buffer) return;
-
-    if (scrollState.buffer) {
-      scrollState.buffer.removeEventListener("scroll", handleScroll);
-    }
-    if (scrollState.timeout) {
-      clearTimeout(scrollState.timeout);
-      scrollState.timeout = null;
-    }
-
-    scrollState.buffer = buffer;
-    scrollState.isUserScrolledUp = false;
-    scrollState.lastScrollTop = buffer.scrollTop;
-
-    buffer.addEventListener("scroll", handleScroll, { passive: true });
-
-    processPendingChatMessages();
-    scheduleMarkChatMessageGroups();
-    setTimeout(() => scrollBufferToBottom(buffer, false), 80);
-  }
-
-  function ensureScrollManagement(){
-    const buffer = getChatBuffer();
-    if (!buffer) return;
-    bindChatBuffer(buffer);
-  }
-
-  function scrollChat(opts){
-    const buffer = scrollState.buffer || getChatBuffer();
-    if (!buffer) return;
-    scrollState.isUserScrolledUp = false;
-    let smooth = true;
-    if (typeof opts === "boolean") smooth = opts;
-    else if (opts && Object.prototype.hasOwnProperty.call(opts, "smooth")) smooth = !!opts.smooth;
-    scrollBufferToBottom(buffer, smooth);
-  }
-
-  if (typeof window.scrollChat !== "function") {
-    window.scrollChat = scrollChat;
   }
 
   function locateUserlistItem(name){
