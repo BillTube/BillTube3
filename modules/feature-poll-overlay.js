@@ -37,7 +37,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       padding: 20px;
       box-shadow: var(--btfw-overlay-shadow);
       color: var(--btfw-color-text);
-      max-width: 1400px;
+      max-width: 800px;
       margin: 0 auto;
     }
 
