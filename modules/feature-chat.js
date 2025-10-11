@@ -526,12 +526,6 @@ const scheduleNormalizeChatActions = (() => {
   })();
 
   /* ---------------- Auto-scroll management ---------------- */
-  const scrollState = {
-    buffer: null,
-    manualScrollUp: false,
-    scrollTimeout: null
-  };
-
   const processedMessages = new WeakSet();
 
   function getChatBuffer(){
@@ -539,91 +533,28 @@ const scheduleNormalizeChatActions = (() => {
            document.querySelector(".chat-messages, #chatbuffer, .message-buffer");
   }
 
-  function scrollBufferToBottom(buffer){
-    if (!buffer) return;
-
-    // Use CyTube's native scrollChat if available
-    if (typeof window.scrollChat === "function") {
-      try {
-        window.scrollChat();
-        return;
-      } catch (_) {}
-    }
-
-    // Fallback: direct scroll
-    buffer.scrollTop = buffer.scrollHeight;
-  }
-
-  function handleScroll(event){
-    const el = event.currentTarget || event.target;
-    if (!el) return;
-
-    if (scrollState.scrollTimeout) clearTimeout(scrollState.scrollTimeout);
-
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    scrollState.manualScrollUp = distanceFromBottom > 150;
-
-    scrollState.scrollTimeout = setTimeout(() => {
-      scrollState.manualScrollUp = false;
-    }, 10000);
-  }
-
-  function bindChatBuffer(buffer){
-    if (!buffer) return;
-    if (scrollState.buffer === buffer) return;
-
-    if (scrollState.buffer) {
-      scrollState.buffer.removeEventListener("scroll", handleScroll);
-    }
-    if (scrollState.scrollTimeout) {
-      clearTimeout(scrollState.scrollTimeout);
-      scrollState.scrollTimeout = null;
-    }
-
-    scrollState.buffer = buffer;
-    scrollState.manualScrollUp = false;
-
-    buffer.addEventListener("scroll", handleScroll, { passive: true });
-
-    processPendingChatMessages();
-    setTimeout(() => scrollBufferToBottom(buffer), 100);
-  }
-
   function ensureScrollManagement(){
     const buffer = getChatBuffer();
     if (!buffer) return;
-    bindChatBuffer(buffer);
-  }
 
-  function handleNewMessage(){
-    const buffer = scrollState.buffer || getChatBuffer();
-    if (!buffer || scrollState.manualScrollUp) return;
-
-    // Immediate scroll
-    scrollBufferToBottom(buffer);
-
-    // Follow-up scroll for images
-    setTimeout(() => {
-      if (!scrollState.manualScrollUp) {
-        scrollBufferToBottom(buffer);
-      }
-    }, 150);
-
-    // Handle lazy-loading images
-    const newMessages = Array.from(buffer.querySelectorAll(MESSAGE_SELECTOR))
-      .filter(el => !processedMessages.has(el));
-
-    newMessages.forEach(msg => {
-      msg.querySelectorAll('img').forEach(img => {
-        if (!img.complete) {
-          img.addEventListener('load', () => {
-            if (!scrollState.manualScrollUp) {
-              scrollBufferToBottom(buffer);
-            }
-          }, { once: true });
+    // Direct socket hook - scroll on every chat message
+    const sock = window.socket;
+    if (sock && typeof sock.on === "function") {
+      sock.on("chatMsg", () => {
+        if (typeof window.scrollChat === "function") {
+          window.scrollChat();
+          setTimeout(() => window.scrollChat(), 100);
+          setTimeout(() => window.scrollChat(), 250);
         }
       });
-    });
+    }
+
+    processPendingChatMessages();
+
+    // Initial scroll
+    if (typeof window.scrollChat === "function") {
+      setTimeout(() => window.scrollChat(), 80);
+    }
   }
 
   function escapeHTML(str){
@@ -713,7 +644,6 @@ const scheduleNormalizeChatActions = (() => {
       newMessages.push(el);
     });
     if (!newMessages.length) return;
-    handleNewMessage();
     newMessages.forEach((el) => {
       processedMessages.add(el);
     });
