@@ -110,7 +110,7 @@ function getCurrentTitle(){
       return key || null;
     } catch(_) { return null; }
   }
- async function fetchTMDBSummary(title){
+async function fetchTMDBSummary(title){
   const key = getTMDBKey();
   if (!key) return 'TMDB key missing. Open Theme Settings → General → Integrations to add your TMDB API key, or set one of:\nwindow.BTFW_CONFIG.tmdb = { apiKey: "KEY" };\nlocalStorage.setItem("btfw:tmdb:key","KEY");\nwindow.tmdb_key = "KEY";';
   
@@ -125,7 +125,6 @@ function getCurrentTitle(){
       const data = await res.json();
       r = (data.movie_results||[])[0] || (data.tv_results||[])[0];
     } else {
-      // Extract year from title if present
       const yearMatch = title.match(/\b(19|20)\d{2}\b/);
       const year = yearMatch ? yearMatch[0] : '';
       let cleanTitle = title;
@@ -136,11 +135,8 @@ function getCurrentTitle(){
       
       const q = encodeURIComponent(cleanTitle);
       
-      // If we have a year, try movie search first (more accurate)
       if (year) {
         const movieUrl = `https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${q}&primary_release_year=${year}&include_adult=false&language=en-US`;
-        console.log('[summary] Movie search URL:', movieUrl);
-        
         const movieRes = await fetch(movieUrl);
         if (movieRes.ok) {
           const movieData = await movieRes.json();
@@ -151,11 +147,8 @@ function getCurrentTitle(){
         }
       }
       
-      // If no movie result, try TV search with year
       if (!r && year) {
         const tvUrl = `https://api.themoviedb.org/3/search/tv?api_key=${key}&query=${q}&first_air_date_year=${year}&include_adult=false&language=en-US`;
-        console.log('[summary] TV search URL:', tvUrl);
-        
         const tvRes = await fetch(tvUrl);
         if (tvRes.ok) {
           const tvData = await tvRes.json();
@@ -166,11 +159,8 @@ function getCurrentTitle(){
         }
       }
       
-      // Fallback to multi search without year filter
       if (!r) {
         const multiUrl = `https://api.themoviedb.org/3/search/multi?api_key=${key}&query=${q}&include_adult=false&language=en-US`;
-        console.log('[summary] Multi search URL:', multiUrl);
-        
         const res = await fetch(multiUrl);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -193,7 +183,14 @@ function getCurrentTitle(){
     }
     
     if (!overview) overview = 'No summary available.';
-    return `col:#87ceeb:[code]${name}${year ? ` (${year})` : ''}[/code] — ★ ${rating}\n${overview}`;
+    
+    // Build poster URL (w342 size is good for chat)
+    const posterUrl = r.poster_path 
+      ? `https://image.tmdb.org/t/p/w342${r.poster_path}`
+      : '';
+    
+    // Return special format that filter will parse
+    return `[tmdb-card]${posterUrl}|${name}|${year}|${rating}|${overview}[/tmdb-card]`;
   } catch(e){ 
     console.error('[summary] TMDB error', e); 
     return `TMDB error: ${e.message||e}`; 
@@ -466,6 +463,7 @@ function sanitizeTitleForSearch(t){
 
   return { name:"feature:chat-commands" };
 });
+
 
 
 
