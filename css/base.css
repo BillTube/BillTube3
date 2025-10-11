@@ -870,7 +870,9 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 #useroptions .btfw-card-head > ul > li {
   margin: 0;
 }
-
+nav.pagination.is-centered.btfw-gif-pager {
+    margin-top: 20px;
+}
 .btfw-card-head > ul > li > a,
 .btfw-card-head > ul > li > button,
 #channeloptions .btfw-card-head > ul > li > a,
