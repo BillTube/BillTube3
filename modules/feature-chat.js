@@ -526,6 +526,10 @@ const scheduleNormalizeChatActions = (() => {
   })();
 
   /* ---------------- Auto-scroll management ---------------- */
+  const cytubeScrollChat = (typeof window.scrollChat === "function")
+    ? window.scrollChat.bind(window)
+    : null;
+
   const scrollState = {
     buffer: null,
     manualScrollUp: false,
@@ -567,12 +571,28 @@ const scheduleNormalizeChatActions = (() => {
     el._autoScrolling = true;
     void el.offsetHeight;
 
-    const target = Math.max(0, el.scrollHeight - el.clientHeight);
+    let usedNative = false;
+    if (cytubeScrollChat) {
+      const buffer = scrollState.buffer || getChatBuffer();
+      if (buffer && el === buffer) {
+        try {
+          cytubeScrollChat();
+          usedNative = true;
+        } catch (_) {
+          usedNative = false;
+        }
+      }
+    }
 
-    if (smooth && typeof el.scrollTo === "function") {
-      el.scrollTo({ top: target, behavior: "smooth" });
-    } else {
-      el.scrollTop = target;
+    const target = Math.max(0, el.scrollHeight - el.clientHeight);
+    const distance = Math.abs((el.scrollTop || 0) - target);
+
+    if (!usedNative || distance > 0.5) {
+      if (smooth && typeof el.scrollTo === "function") {
+        el.scrollTo({ top: target, behavior: "smooth" });
+      } else {
+        el.scrollTop = target;
+      }
     }
 
     setTimeout(() => { el._autoScrolling = false; }, 100);
@@ -698,7 +718,7 @@ const scheduleNormalizeChatActions = (() => {
     scrollState.manualScrollUp = false;
     let smooth = true;
     if (typeof opts === "boolean") smooth = opts;
-    else if (opts && Object.prototype.hasOwnProperty.call(opts, "smooth")) smooth = !opts.smooth;
+    else if (opts && Object.prototype.hasOwnProperty.call(opts, "smooth")) smooth = Boolean(opts.smooth);
     scrollBufferToBottom(buffer, smooth);
   }
 
