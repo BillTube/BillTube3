@@ -31,13 +31,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
       right: 20px;
       pointer-events: auto;
       background: var(--btfw-overlay-bg);
-      backdrop-filter: saturate(130%) blur(6px);
+      backdrop-filter: saturate(130%) blur(2px);
       border: 1px solid var(--btfw-overlay-border);
       border-radius: calc(var(--btfw-radius) + 6px);
       padding: 20px;
       box-shadow: var(--btfw-overlay-shadow);
       color: var(--btfw-color-text);
-      max-width: 600px;
+      max-width: 1400px;
       margin: 0 auto;
     }
 
