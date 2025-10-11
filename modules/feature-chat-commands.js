@@ -190,7 +190,7 @@ async function fetchTMDBSummary(title){
       : '';
     
     // Return special format that filter will parse
-    return `[tmdb-card]${posterUrl}|${name}|${year}|${rating}|${overview}[/tmdb-card]`;
+    return `[tmdbcard]${posterUrl}|${name}|${year}|${rating}|${overview}[/tmdbcard]`;
   } catch(e){ 
     console.error('[summary] TMDB error', e); 
     return `TMDB error: ${e.message||e}`; 
@@ -463,6 +463,7 @@ function sanitizeTitleForSearch(t){
 
   return { name:"feature:chat-commands" };
 });
+
 
 
 
