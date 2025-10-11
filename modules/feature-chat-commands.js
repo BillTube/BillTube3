@@ -110,7 +110,7 @@ function getCurrentTitle(){
       return key || null;
     } catch(_) { return null; }
   }
-  async function fetchTMDBSummary(title){
+ async function fetchTMDBSummary(title){
   const key = getTMDBKey();
   if (!key) return 'TMDB key missing. Open Theme Settings → General → Integrations to add your TMDB API key, or set one of:\nwindow.BTFW_CONFIG.tmdb = { apiKey: "KEY" };\nlocalStorage.setItem("btfw:tmdb:key","KEY");\nwindow.tmdb_key = "KEY";';
   
@@ -125,8 +125,21 @@ function getCurrentTitle(){
       data = await res.json();
       r = (data.movie_results||[])[0] || (data.tv_results||[])[0];
     } else {
-      const q = encodeURIComponent(title);
-      url = `https://api.themoviedb.org/3/search/multi?api_key=${key}&query=${q}&include_adult=false&language=en-US`;
+      // Extract year from title if present
+      const yearMatch = title.match(/\b(19|20)\d{2}\b/);
+      const year = yearMatch ? yearMatch[0] : '';
+      let cleanTitle = title;
+      
+      if (year) {
+        // Remove year and parentheses from title for cleaner search
+        cleanTitle = title.replace(/\s*\(?\s*(19|20)\d{2}\s*\)?\s*/g, ' ').trim();
+      }
+      
+      const q = encodeURIComponent(cleanTitle);
+      url = `https://api.themoviedb.org/3/search/multi?api_key=${key}&query=${q}&include_adult=false&language=en-US${year ? `&year=${year}` : ''}`;
+      
+      console.log('[summary] Search URL:', url);
+      
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       data = await res.json();
@@ -421,4 +434,5 @@ function sanitizeTitleForSearch(t){
 
   return { name:"feature:chat-commands" };
 });
+
 
