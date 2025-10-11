@@ -116,13 +116,13 @@ function getCurrentTitle(){
   
   try {
     const imdbMatch = /^tt\d+$/.test(title.trim());
-    let url, data, r;
+    let r;
     
     if (imdbMatch) {
-      url = `https://api.themoviedb.org/3/find/${encodeURIComponent(title.trim())}?api_key=${key}&external_source=imdb_id`;
+      const url = `https://api.themoviedb.org/3/find/${encodeURIComponent(title.trim())}?api_key=${key}&external_source=imdb_id`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      data = await res.json();
+      const data = await res.json();
       r = (data.movie_results||[])[0] || (data.tv_results||[])[0];
     } else {
       // Extract year from title if present
@@ -131,19 +131,51 @@ function getCurrentTitle(){
       let cleanTitle = title;
       
       if (year) {
-        // Remove year and parentheses from title for cleaner search
         cleanTitle = title.replace(/\s*\(?\s*(19|20)\d{2}\s*\)?\s*/g, ' ').trim();
       }
       
       const q = encodeURIComponent(cleanTitle);
-      url = `https://api.themoviedb.org/3/search/multi?api_key=${key}&query=${q}&include_adult=false&language=en-US${year ? `&year=${year}` : ''}`;
       
-      console.log('[summary] Search URL:', url);
+      // If we have a year, try movie search first (more accurate)
+      if (year) {
+        const movieUrl = `https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${q}&primary_release_year=${year}&include_adult=false&language=en-US`;
+        console.log('[summary] Movie search URL:', movieUrl);
+        
+        const movieRes = await fetch(movieUrl);
+        if (movieRes.ok) {
+          const movieData = await movieRes.json();
+          if (movieData.results && movieData.results.length > 0) {
+            r = movieData.results[0];
+            r.media_type = 'movie';
+          }
+        }
+      }
       
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      data = await res.json();
-      r = (data.results||[])[0];
+      // If no movie result, try TV search with year
+      if (!r && year) {
+        const tvUrl = `https://api.themoviedb.org/3/search/tv?api_key=${key}&query=${q}&first_air_date_year=${year}&include_adult=false&language=en-US`;
+        console.log('[summary] TV search URL:', tvUrl);
+        
+        const tvRes = await fetch(tvUrl);
+        if (tvRes.ok) {
+          const tvData = await tvRes.json();
+          if (tvData.results && tvData.results.length > 0) {
+            r = tvData.results[0];
+            r.media_type = 'tv';
+          }
+        }
+      }
+      
+      // Fallback to multi search without year filter
+      if (!r) {
+        const multiUrl = `https://api.themoviedb.org/3/search/multi?api_key=${key}&query=${q}&include_adult=false&language=en-US`;
+        console.log('[summary] Multi search URL:', multiUrl);
+        
+        const res = await fetch(multiUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        r = (data.results||[])[0];
+      }
     }
     
     if (!r) return 'No TMDB result.';
@@ -434,5 +466,6 @@ function sanitizeTitleForSearch(t){
 
   return { name:"feature:chat-commands" };
 });
+
 
 
