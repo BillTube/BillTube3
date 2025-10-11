@@ -198,7 +198,94 @@ overview = overview.replace(/\|/g, '&#124;');
     return `TMDB error: ${e.message||e}`; 
   }
 }
-
+async function fetchTMDBCast(title){
+  const key = getTMDBKey();
+  if (!key) return 'TMDB key missing. Configure your API key first.';
+  
+  try {
+    const imdbMatch = /^tt\d+$/.test(title.trim());
+    let movieId, mediaType = 'movie';
+    
+    if (imdbMatch) {
+      const url = `https://api.themoviedb.org/3/find/${encodeURIComponent(title.trim())}?api_key=${key}&external_source=imdb_id`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const r = (data.movie_results||[])[0] || (data.tv_results||[])[0];
+      if (!r) return 'No TMDB result.';
+      movieId = r.id;
+      mediaType = r.media_type || (data.movie_results?.[0] ? 'movie' : 'tv');
+    } else {
+      const yearMatch = title.match(/\b(19|20)\d{2}\b/);
+      const year = yearMatch ? yearMatch[0] : '';
+      let cleanTitle = title;
+      
+      if (year) {
+        cleanTitle = title.replace(/\s*\(?\s*(19|20)\d{2}\s*\)?\s*/g, ' ').trim();
+      }
+      
+      const q = encodeURIComponent(cleanTitle);
+      let r;
+      
+      if (year) {
+        const movieUrl = `https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${q}&primary_release_year=${year}&include_adult=false&language=en-US`;
+        const movieRes = await fetch(movieUrl);
+        if (movieRes.ok) {
+          const movieData = await movieRes.json();
+          if (movieData.results && movieData.results.length > 0) {
+            r = movieData.results[0];
+            mediaType = 'movie';
+          }
+        }
+      }
+      
+      if (!r && year) {
+        const tvUrl = `https://api.themoviedb.org/3/search/tv?api_key=${key}&query=${q}&first_air_date_year=${year}&include_adult=false&language=en-US`;
+        const tvRes = await fetch(tvUrl);
+        if (tvRes.ok) {
+          const tvData = await tvRes.json();
+          if (tvData.results && tvData.results.length > 0) {
+            r = tvData.results[0];
+            mediaType = 'tv';
+          }
+        }
+      }
+      
+      if (!r) {
+        const multiUrl = `https://api.themoviedb.org/3/search/multi?api_key=${key}&query=${q}&include_adult=false&language=en-US`;
+        const res = await fetch(multiUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        r = (data.results||[])[0];
+        if (r) mediaType = r.media_type || (r.title ? 'movie' : 'tv');
+      }
+      
+      if (!r) return 'No TMDB result.';
+      movieId = r.id;
+    }
+    
+    // Fetch credits
+    const creditsUrl = `https://api.themoviedb.org/3/${mediaType}/${movieId}/credits?api_key=${key}`;
+    const creditsRes = await fetch(creditsUrl);
+    if (!creditsRes.ok) throw new Error(`HTTP ${creditsRes.status}`);
+    const creditsData = await creditsRes.json();
+    
+    const cast = creditsData.cast || [];
+    if (!cast.length) return 'No cast information available.';
+    
+    // Get top 8 cast members
+    const top8 = cast.slice(0, 8);
+    const castList = top8.map(actor => {
+      const character = actor.character ? ` (${actor.character})` : '';
+      return `${actor.name}${character}`;
+    }).join(', ');
+    
+    return `col:#87ceeb:Cast: ${castList}`;
+  } catch(e){ 
+    console.error('[cast] TMDB error', e); 
+    return `TMDB error: ${e.message||e}`; 
+  }
+}
   // ---------- Channel Emotes (for !sm) ----------
   function getChannelEmotes(){
     try {
@@ -313,7 +400,15 @@ function sanitizeTitleForSearch(t){
   sendChat(out);
   return "";
 }, { desc:"TMDB summary for current or given title", usage:"!summary [title]" });
-
+addCommand("cast", async (ctx)=>{
+  const raw = ctx.args.length ? ctx.args.join(" ") : getCurrentTitle();
+  if (!raw) return "No current title, try: !cast <title>";
+  const q = sanitizeTitleForSearch(raw);
+  const out = await fetchTMDBCast(q);
+  sendChat(out);
+  return "";
+}, { desc:"Show cast for current or given title", usage:"!cast [title]" });
+  
   addCommand("pick",  (ctx)=>{ const raw=ctx.args.join(" "); const parts=raw.split(/[,|]/).map(s=>s.trim()).filter(Boolean); if (parts.length<2) return "Usage: !pick a, b, c"; sendChat(`🎯 I choose: ${parts[Math.floor(Math.random()*parts.length)]}`); return ""; }, { desc:"Pick randomly", usage:"!pick a, b, c" });
   addCommand("ask",   ()=>{ const a=["Yes.","No.","Maybe.","Probably.","Probably not.","Absolutely.","Definitely not.","Ask again later."]; sendChat(a[Math.floor(Math.random()*a.length)]); return ""; }, { desc:"Magic-8", usage:"!ask <q>" });
   addCommand("time",  ()=>{ const d=new Date(); sendChat(`[${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}]`); return ""; }, { desc:"Current time", usage:"!time" });
@@ -465,6 +560,7 @@ function sanitizeTitleForSearch(t){
 
   return { name:"feature:chat-commands" };
 });
+
 
 
 
