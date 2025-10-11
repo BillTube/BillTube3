@@ -184,13 +184,15 @@ async function fetchTMDBSummary(title){
     
     if (!overview) overview = 'No summary available.';
     
-    // Build poster URL (w342 size is good for chat)
-    const posterUrl = r.poster_path 
-      ? `https://image.tmdb.org/t/p/w342${r.poster_path}`
-      : '';
+if (overview.length > 150) {
+  overview = overview.substring(0, 147) + '...';
+}
     
-    // Return special format that filter will parse
-    return `[tmdbcard]${posterUrl}|${name}|${year}|${rating}|${overview}[/tmdbcard]`;
+overview = overview.replace(/\|/g, '&#124;');
+    
+    const posterPath = r.poster_path || '';
+    
+    return `[tmdbcard]${name}|${year}|${rating}|${overview}|${posterPath}[/tmdbcard]`;
   } catch(e){ 
     console.error('[summary] TMDB error', e); 
     return `TMDB error: ${e.message||e}`; 
@@ -463,6 +465,7 @@ function sanitizeTitleForSearch(t){
 
   return { name:"feature:chat-commands" };
 });
+
 
 
 
