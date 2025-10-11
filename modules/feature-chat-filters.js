@@ -1,22 +1,23 @@
 /* BillTube Framework — feature:chat-filters (imports required CyTube chat filters) */
 BTFW.define("feature:chat-filters", [], async () => {
-  const customFilters = [
-    { name: "monospace", source: "`(.+?)`", flags: "g", replace: "<code>\\1</code>", active: true, filterlinks: false },
-    { name: "bold", source: "\\*(.+?)\\*", flags: "g", replace: "<strong>\\1</strong>", active: true, filterlinks: false },
-    { name: "italic", source: "_(.+?)_", flags: "g", replace: "<em>\\1</em>", active: true, filterlinks: false },
-    { name: "strike", source: "~~(.+?)~~", flags: "g", replace: "<s>\\1</s>", active: true, filterlinks: false },
-    { name: "inline spoiler", source: "\\[sp\\](.*?)\\[/sp\\]", flags: "gi", replace: "<span class=\"spoiler\">\\1</span>", active: true, filterlinks: false },
-    { name: "partial quote", source: "&gt;(.+?)$", flags: "g", replace: "<span class=\"quote\">&gt;\\1 </span>", active: true, filterlinks: false },
-    { name: "italic text", source: "\\[i\\](.+?)\\[/i\\]", flags: "g", replace: "<em>\\1</em>", active: true, filterlinks: false },
-    { name: "monospace text", source: "\\[code\\](.+?)\\[/code\\]", flags: "gi", replace: "<code>\\1</code>", active: true, filterlinks: false },
-    { name: "bold text", source: "\\[b\\](.+?)\\[/b\\]", flags: "gi", replace: "<strong>\\1</strong>", active: true, filterlinks: false },
-    { name: "striked text", source: "\\[s\\](.+?)\\[/s\\]", flags: "gi", replace: "<s>\\1</s>", active: true, filterlinks: false },
-    { name: "short spoiler", source: "\\[sp\\]", flags: "g", replace: "<span class=\"spoiler\">", active: true, filterlinks: false },
-    { name: "closing font style", source: "\\[\\/\\]", flags: "g", replace: "<span>", active: true, filterlinks: false },
-    { name: "chat colors (premium)", source: "col:(.*?):", flags: "g", replace: "<span style=\"color:\\1\" class=\"chatcolor\">", active: true, filterlinks: false },
-    { name: "giphy", source: "https?://(?|media\\d\\.giphy\\.com/media/(?:[^/]+/)?([^ /\\n]+)/giphy\\.gif|i\\.giphy\\.com/([^ /\\n]+)\\.gif|giphy\\.com/gifs/(?:.*-)?([^ /\\n]+))", flags: "gi", replace: "<img class=\"giphy chat-picture\" src=\"https://media.giphy.com/media/\\1/200_s.gif\" />", active: true, filterlinks: true },
-    { name: "tenor", source: "(https?://media\\.tenor\\.com/[^\\s]+\\.gif)", flags: "gi", replace: "<img class=\"tenor chat-picture\" src=\"\\0\" />", active: true, filterlinks: true }
-  ];
+const customFilters = [
+  { name: "monospace", source: "`(.+?)`", flags: "g", replace: "<code>\\1</code>", active: true, filterlinks: false },
+  { name: "bold", source: "\\*(.+?)\\*", flags: "g", replace: "<strong>\\1</strong>", active: true, filterlinks: false },
+  { name: "italic", source: "_(.+?)_", flags: "g", replace: "<em>\\1</em>", active: true, filterlinks: false },
+  { name: "strike", source: "~~(.+?)~~", flags: "g", replace: "<s>\\1</s>", active: true, filterlinks: false },
+  { name: "inline spoiler", source: "\\[sp\\](.*?)\\[\\/sp\\]", flags: "gi", replace: "<span class=\"spoiler\">\\1</span>", active: true, filterlinks: false },
+  { name: "partial quote", source: "&gt;(.+?)$", flags: "g", replace: "<span class=\"quote\">&gt;\\1 </span>", active: true, filterlinks: false },
+  { name: "italic text", source: "\\[i\\](.+?)\\[\\/i\\]", flags: "g", replace: "<em>\\1</em>", active: true, filterlinks: false },
+  { name: "monospace text", source: "\\[code\\](.+?)\\[\\/code\\]", flags: "gi", replace: "<code>\\1</code>", active: true, filterlinks: false },
+  { name: "bold text", source: "\\[b\\](.+?)\\[\\/b\\]", flags: "gi", replace: "<strong>\\1</strong>", active: true, filterlinks: false },
+  { name: "striked text", source: "\\[s\\](.+?)\\[\\/s\\]", flags: "gi", replace: "<s>\\1</s>", active: true, filterlinks: false },
+  { name: "short spoiler", source: "\\[sp\\]", flags: "g", replace: "<span class=\"spoiler\">", active: true, filterlinks: false },
+  { name: "closing font style", source: "\\[\\/\\]", flags: "g", replace: "<span>", active: true, filterlinks: false },
+  { name: "chat colors (premium)", source: "col:(.*?):", flags: "g", replace: "<span style=\"color:\\1\" class=\"chatcolor\">", active: true, filterlinks: false },
+  { name: "giphy", source: "https?://(?|media\\d\\.giphy\\.com/media/(?:[^/]+/)?([^ /\\n]+)/giphy\\.gif|i\\.giphy\\.com/([^ /\\n]+)\\.gif|giphy\\.com/gifs/(?:.*-)?([^ /\\n]+))", flags: "gi", replace: "<img class=\"giphy chat-picture\" src=\"https://media.giphy.com/media/\\1/200_s.gif\" />", active: true, filterlinks: true },
+  { name: "tenor", source: "(https?://media\\.tenor\\.com/[^\\s]+\\.gif)", flags: "gi", replace: "<img class=\"tenor chat-picture\" src=\"\\0\" />", active: true, filterlinks: true },
+  { name: "TMDB", source: "\\[tmdbcard\\]([^|]+)\\|([^|]+)\\|([^|]+)\\|([^|]+)\\|([^\\[]+)\\[\\/tmdbcard\\]", flags: "g", replace: "<div class=\"tmdb-card\"><img class=\"tmdb-card__poster\" src=\"https://image.tmdb.org/t/p/w342\\5\" alt=\"\\1 poster\" onerror=\"this.style.display='none'\"><div class=\"tmdb-card__content\"><div class=\"tmdb-card__title\">\\1 <span class=\"tmdb-card__year\">(\\2)</span></div><div class=\"tmdb-card__rating\">★ \\3</div><div class=\"tmdb-card__overview\">\\4</div></div></div>", active: true, filterlinks: true }
+];
 
   function getjQuery() {
     if (window.jQuery && typeof window.jQuery === "function") {
