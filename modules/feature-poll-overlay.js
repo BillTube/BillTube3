@@ -585,33 +585,42 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function wireSocketEvents() {
-    if (socketEventsWired || !window.socket) return;
+  if (socketEventsWired || !window.socket) return;
 
-    try {
-      // Listen for new polls
-      window.socket.on("newPoll", (poll) => {
-        if (poll && poll.title) {
-          showVideoOverlay(poll);
-        }
-      });
+  try {
+    // Listen for new polls
+    window.socket.on("newPoll", (poll) => {
+      if (poll && poll.title) {
+        showVideoOverlay(poll);
+      }
+    });
 
-      // Listen for poll updates (vote counts)
-      window.socket.on("updatePoll", (poll) => {
-        if (poll && currentPoll) {
-          updateVoteDisplay(poll);
-        }
-      });
+    // Listen for poll updates (vote counts)
+    window.socket.on("updatePoll", (poll) => {
+      if (poll && currentPoll) {
+        updateVoteDisplay(poll);
+      }
+    });
 
-      // Listen for poll closure
-      window.socket.on("closePoll", () => {
-        hideVideoOverlay();
-      });
+    // Listen for poll closure
+    window.socket.on("closePoll", () => {
+      hideVideoOverlay();
+    });
 
-      socketEventsWired = true;
-    } catch (e) {
-      console.warn("[poll-overlay] Socket event wiring failed:", e);
-    }
+    // Handle socket reconnection
+    window.socket.on("connect", () => {
+      console.log("[poll-overlay] Socket reconnected, re-wiring events");
+      socketEventsWired = false;
+      setTimeout(() => {
+        wireSocketEvents();
+      }, 500);
+    });
+
+    socketEventsWired = true;
+  } catch (e) {
+    console.warn("[poll-overlay] Socket event wiring failed:", e);
   }
+}
 
   function waitForSocket() {
     return new Promise((resolve) => {
