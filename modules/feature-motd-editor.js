@@ -1,4 +1,7 @@
-
+/* BTFW — feature:motd-editor
+   Replaces the default MOTD edit with a Bulma modal + Quill editor (lazy-loaded).
+   Saves via socket.emit("setMotd", { motd: "<html>" }) with graceful fallback.
+*/
 BTFW.define("feature:motd-editor", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -41,10 +44,38 @@ BTFW.define("feature:motd-editor", [], async () => {
     return false;
   }
 
+  function getMotdContent(){
+    // Priority 1: Channel settings textarea (source of truth)
+    const csMotd = $("#cs-motdtext");
+    if (csMotd && csMotd.value && csMotd.value.trim()) {
+      console.log('[motd-editor] Content from #cs-motdtext:', csMotd.value.length);
+      return csMotd.value;
+    }
+    
+    // Priority 2: Rendered MOTD display
+    const motdDisplay = $("#motd");
+    if (motdDisplay && motdDisplay.innerHTML && motdDisplay.innerHTML.trim()) {
+      console.log('[motd-editor] Content from #motd:', motdDisplay.innerHTML.length);
+      return motdDisplay.innerHTML;
+    }
+    
+    // Priority 3: MOTD wrap
+    const motdWrap = $("#motdwrap");
+    if (motdWrap && motdWrap.innerHTML && motdWrap.innerHTML.trim()) {
+      console.log('[motd-editor] Content from #motdwrap:', motdWrap.innerHTML.length);
+      return motdWrap.innerHTML;
+    }
+    
+    console.log('[motd-editor] No MOTD content found');
+    return "";
+  }
+
   function buildModal(){
-    let m = $("#btfw-motd-modal");
-    if (m) return m;
-    m = document.createElement("div");
+    // Always remove existing to prevent stacking
+    const existing = $("#btfw-motd-modal");
+    if (existing) existing.remove();
+    
+    const m = document.createElement("div");
     m.id = "btfw-motd-modal";
     m.className = "modal";
     m.innerHTML = `
@@ -63,81 +94,117 @@ BTFW.define("feature:motd-editor", [], async () => {
         </footer>
       </div>`;
     document.body.appendChild(m);
-    $(".modal-background", m).addEventListener("click", ()=> m.classList.remove("is-active"));
-    $(".delete", m).addEventListener("click", ()=> m.classList.remove("is-active"));
-    $("#btfw-motd-cancel", m).addEventListener("click", ()=> m.classList.remove("is-active"));
+    
+    $(".modal-background", m).addEventListener("click", ()=> {
+      m.classList.remove("is-active");
+    });
+    $(".delete", m).addEventListener("click", ()=> {
+      m.classList.remove("is-active");
+    });
+    $("#btfw-motd-cancel", m).addEventListener("click", ()=> {
+      m.classList.remove("is-active");
+    });
+    
     return m;
   }
 
-let quill = null;
-async function openEditor(){
-  const m = buildModal();
+  let quill = null;
   
-  // Lazy load Quill
-  try { 
-    await loadOnce(QUILL_CSS, "stylesheet"); 
-    await loadOnce(QUILL_JS, "script"); 
-  } catch(e){ 
-    console.warn("[motd-editor] quill load failed", e); 
-  }
-  
-  const host = $("#btfw-motd-editor", m);
-  if (!host) return;
-
-  // Get initial content
-  const motdEl = $("#motd"); 
-  const initialHTML = motdEl ? motdEl.innerHTML : "";
-
-  // ✅ FIX: Destroy stale Quill instance and always create fresh
-  if (quill) {
-    try { 
-      if (quill.container && quill.container.parentNode) {
+  async function openEditor(){
+    // Destroy any existing Quill instance
+    if (quill) {
+      try { 
         quill.disable(); 
-      }
-    } catch(_){}
-    quill = null;
-  }
-
-  // Clear host and reinitialize
-  host.innerHTML = '';
-
-  if (window.Quill) {
-    quill = new Quill(host, {
-      theme: "snow",
-      modules: { 
-        toolbar: [ 
-          ["bold","italic","underline","strike"], 
-          ["link","blockquote","code-block"], 
-          [{ 'list': 'ordered'}, { 'list': 'bullet' }], 
-          [{ 'header': [1,2,3,false] }], 
-          [{ 'align': [] }], 
-          ["clean"] 
-        ] 
-      }
-    });
-    
-    // Set content after initialization
-    if (quill.root) {
-      quill.root.innerHTML = initialHTML;
+      } catch(_){}
+      quill = null;
     }
-  } else {
-    // Fallback: contenteditable (if CDN blocked)
-    host.innerHTML = `<div id="btfw-motd-fallback" contenteditable="true" class="box" style="height:100%; overflow:auto;">${initialHTML}</div>`;
+    
+    // Get content before building modal
+    const initialHTML = getMotdContent();
+    
+    // Build fresh modal
+    const m = buildModal();
+    
+    // Load Quill library
+    try { 
+      await loadOnce(QUILL_CSS, "stylesheet"); 
+      await loadOnce(QUILL_JS, "script"); 
+    } catch(e){ 
+      console.warn("[motd-editor] Quill load failed", e); 
+      // Fall back to plain textarea
+      const host = $("#btfw-motd-editor", m);
+      if (host) {
+        host.innerHTML = `<textarea class="textarea" style="height:100%; font-family:monospace;">${initialHTML}</textarea>`;
+      }
+      m.classList.add("is-active");
+      return;
+    }
+    
+    const host = $("#btfw-motd-editor", m);
+    if (!host) {
+      console.error('[motd-editor] Editor host not found');
+      return;
+    }
+
+    // Initialize Quill
+    if (window.Quill) {
+      quill = new Quill(host, {
+        theme: "snow",
+        modules: { 
+          toolbar: [ 
+            ["bold","italic","underline","strike"], 
+            ["link","blockquote","code-block"], 
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }], 
+            [{ 'header': [1,2,3,false] }], 
+            [{ 'align': [] }], 
+            ["clean"] 
+          ] 
+        }
+      });
+      
+      // Set content
+      if (quill.root) {
+        quill.root.innerHTML = initialHTML;
+        console.log('[motd-editor] Quill initialized, content length:', quill.root.innerHTML.length);
+      }
+    } else {
+      // Fallback without Quill
+      host.innerHTML = `<div id="btfw-motd-fallback" contenteditable="true" class="box" style="height:100%; overflow:auto;">${initialHTML}</div>`;
+    }
+
+    // Save handler
+    const saveBtn = $("#btfw-motd-save", m);
+    if (saveBtn) {
+      saveBtn.onclick = ()=>{
+        const html = quill ? quill.root.innerHTML : $("#btfw-motd-fallback")?.innerHTML || "";
+        
+        console.log('[motd-editor] Saving MOTD, length:', html.length);
+        
+        // Emit to server
+        try {
+          if (window.socket?.emit) {
+            socket.emit("setMotd", { motd: html });
+            console.log('[motd-editor] Emitted setMotd to server');
+          }
+        } catch(e){ 
+          console.warn("[motd-editor] setMotd emit failed", e); 
+        }
+        
+        // Update display optimistically
+        const motdDisplay = $("#motd"); 
+        if (motdDisplay) motdDisplay.innerHTML = html;
+        
+        // Update channel settings textarea if present
+        const csMotd = $("#cs-motdtext");
+        if (csMotd) csMotd.value = html;
+        
+        m.classList.remove("is-active");
+      };
+    }
+
+    // Show modal
+    m.classList.add("is-active");
   }
-
-  $("#btfw-motd-save", m).onclick = ()=>{
-    const html = quill ? quill.root.innerHTML : $("#btfw-motd-fallback")?.innerHTML || "";
-    try {
-      if (window.socket?.emit) socket.emit("setMotd", { motd: html });
-    } catch(e){ console.warn("[motd-editor] setMotd emit failed", e); }
-    // Optimistic update
-    const motd = $("#motd"); 
-    if (motd) motd.innerHTML = html;
-    m.classList.remove("is-active");
-  };
-
-  m.classList.add("is-active");
-}
 
   function injectButton(){
     const existingBtn = document.getElementById("btfw-motd-editbtn");
@@ -188,6 +255,5 @@ async function openEditor(){
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
-  return { name:"feature:motd-editor" };
+  return { name:"feature:motd-editor", openEditor };
 });
-
