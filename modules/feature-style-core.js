@@ -1,14 +1,5 @@
-/* BTFW — feature:styleCore
-   - Ensures Bootswatch Slate (Bootstrap 3) is present (dark baseline)
-   - Ensures Font Awesome 6 is present (icons)
-   - Ensures Bulma (for modals/buttons/etc.) if not already loaded
-   - Applies global z-index fixes (navbar always on top; Bulma modal layering)
-   - Provides CSS rule to keep userlist overlay CLOSED by default
-   - Forces CyTube "fluid" layout preference
-*/
 BTFW.define("feature:styleCore", [], async () => {
 
-  // --- Keep Bootswatch Slate present (dark baseline over Bootstrap 3) ---
   function ensureSlate() {
     const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
     const hasBootSlate = links.some(l => /(bootstrap.*\.css|bootswatch.*slate)/i.test(l.href || ""));
@@ -23,7 +14,6 @@ BTFW.define("feature:styleCore", [], async () => {
 
   // --- UI deps + z-index layering (once) ---
   function ensureUiDepsAndZ() {
-    // Bulma (only if not already provided by your bulma-layer or page)
     if (!document.querySelector('link[href*="bulma.min.css"]') &&
         !document.querySelector('link[data-btfw-bulma]')) {
       const l = document.createElement('link');
@@ -33,12 +23,11 @@ BTFW.define("feature:styleCore", [], async () => {
       document.head.appendChild(l);
     }
 
-    // Font Awesome 6 (skip if already present)
     if (!document.querySelector('link[data-btfw-fa6]') &&
         !document.querySelector('link[href*="fontawesome"]')) {
       const fa = document.createElement("link");
       fa.rel = "stylesheet";
-      fa.href = "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css";
+      fa.href = "https://cdn.jsdelivr.net/gh/ElBeyonder/font-awesome-6.5.2-pro-full@master/css/all.css";
       fa.dataset.btfwFa6 = "1";
       document.head.appendChild(fa);
     }
@@ -70,12 +59,10 @@ BTFW.define("feature:styleCore", [], async () => {
     }
   }
 
-  // Run once now and again shortly after first paint (in case other CSS arrives late)
   ensureSlate();
   setTimeout(ensureSlate, 400);
 
   ensureUiDepsAndZ();
-  // second pass after initial layout settles
   setTimeout(ensureUiDepsAndZ, 300);
 
   // Persist "fluid" layout so CyTube renders consistently for all users
