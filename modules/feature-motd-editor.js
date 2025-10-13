@@ -1,7 +1,4 @@
-/* BTFW — feature:motd-editor
-   Replaces the default MOTD edit with a Bulma modal + Quill editor (lazy-loaded).
-   Saves via socket.emit("setMotd", { motd: "<html>" }) with graceful fallback.
-*/
+
 BTFW.define("feature:motd-editor", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -45,21 +42,18 @@ BTFW.define("feature:motd-editor", [], async () => {
   }
 
   function getMotdContent(){
-    // Priority 1: Channel settings textarea (source of truth)
     const csMotd = $("#cs-motdtext");
     if (csMotd && csMotd.value && csMotd.value.trim()) {
       console.log('[motd-editor] Content from #cs-motdtext:', csMotd.value.length);
       return csMotd.value;
     }
     
-    // Priority 2: Rendered MOTD display
     const motdDisplay = $("#motd");
     if (motdDisplay && motdDisplay.innerHTML && motdDisplay.innerHTML.trim()) {
       console.log('[motd-editor] Content from #motd:', motdDisplay.innerHTML.length);
       return motdDisplay.innerHTML;
     }
     
-    // Priority 3: MOTD wrap
     const motdWrap = $("#motdwrap");
     if (motdWrap && motdWrap.innerHTML && motdWrap.innerHTML.trim()) {
       console.log('[motd-editor] Content from #motdwrap:', motdWrap.innerHTML.length);
@@ -71,7 +65,6 @@ BTFW.define("feature:motd-editor", [], async () => {
   }
 
   function buildModal(){
-    // Always remove existing to prevent stacking
     const existing = $("#btfw-motd-modal");
     if (existing) existing.remove();
     
@@ -95,15 +88,9 @@ BTFW.define("feature:motd-editor", [], async () => {
       </div>`;
     document.body.appendChild(m);
     
-    $(".modal-background", m).addEventListener("click", ()=> {
-      m.classList.remove("is-active");
-    });
-    $(".delete", m).addEventListener("click", ()=> {
-      m.classList.remove("is-active");
-    });
-    $("#btfw-motd-cancel", m).addEventListener("click", ()=> {
-      m.classList.remove("is-active");
-    });
+    $(".modal-background", m).addEventListener("click", ()=> m.classList.remove("is-active"));
+    $(".delete", m).addEventListener("click", ()=> m.classList.remove("is-active"));
+    $("#btfw-motd-cancel", m).addEventListener("click", ()=> m.classList.remove("is-active"));
     
     return m;
   }
@@ -111,27 +98,19 @@ BTFW.define("feature:motd-editor", [], async () => {
   let quill = null;
   
   async function openEditor(){
-    // Destroy any existing Quill instance
     if (quill) {
-      try { 
-        quill.disable(); 
-      } catch(_){}
+      try { quill.disable(); } catch(_){}
       quill = null;
     }
     
-    // Get content before building modal
     const initialHTML = getMotdContent();
-    
-    // Build fresh modal
     const m = buildModal();
     
-    // Load Quill library
     try { 
       await loadOnce(QUILL_CSS, "stylesheet"); 
       await loadOnce(QUILL_JS, "script"); 
     } catch(e){ 
       console.warn("[motd-editor] Quill load failed", e); 
-      // Fall back to plain textarea
       const host = $("#btfw-motd-editor", m);
       if (host) {
         host.innerHTML = `<textarea class="textarea" style="height:100%; font-family:monospace;">${initialHTML}</textarea>`;
@@ -146,7 +125,6 @@ BTFW.define("feature:motd-editor", [], async () => {
       return;
     }
 
-    // Initialize Quill
     if (window.Quill) {
       quill = new Quill(host, {
         theme: "snow",
@@ -162,17 +140,32 @@ BTFW.define("feature:motd-editor", [], async () => {
         }
       });
       
-      // Set content
-      if (quill.root) {
-        quill.root.innerHTML = initialHTML;
-        console.log('[motd-editor] Quill initialized, content length:', quill.root.innerHTML.length);
+      // ✅ FIX: Use Quill's clipboard API to properly parse HTML
+      if (initialHTML && initialHTML.trim()) {
+        try {
+          // Method 1: dangerouslyPasteHTML (keeps most formatting)
+          quill.clipboard.dangerouslyPasteHTML(initialHTML);
+          console.log('[motd-editor] Content loaded via clipboard API');
+        } catch(e) {
+          console.warn('[motd-editor] Clipboard paste failed, trying delta conversion', e);
+          // Method 2: Convert to Delta format
+          try {
+            const delta = quill.clipboard.convert(initialHTML);
+            quill.setContents(delta);
+            console.log('[motd-editor] Content loaded via delta conversion');
+          } catch(e2) {
+            console.error('[motd-editor] Both methods failed', e2);
+            // Last resort: plain text
+            quill.setText(initialHTML);
+          }
+        }
       }
+      
+      console.log('[motd-editor] Quill editor ready, content loaded');
     } else {
-      // Fallback without Quill
       host.innerHTML = `<div id="btfw-motd-fallback" contenteditable="true" class="box" style="height:100%; overflow:auto;">${initialHTML}</div>`;
     }
 
-    // Save handler
     const saveBtn = $("#btfw-motd-save", m);
     if (saveBtn) {
       saveBtn.onclick = ()=>{
@@ -180,7 +173,6 @@ BTFW.define("feature:motd-editor", [], async () => {
         
         console.log('[motd-editor] Saving MOTD, length:', html.length);
         
-        // Emit to server
         try {
           if (window.socket?.emit) {
             socket.emit("setMotd", { motd: html });
@@ -190,11 +182,9 @@ BTFW.define("feature:motd-editor", [], async () => {
           console.warn("[motd-editor] setMotd emit failed", e); 
         }
         
-        // Update display optimistically
         const motdDisplay = $("#motd"); 
         if (motdDisplay) motdDisplay.innerHTML = html;
         
-        // Update channel settings textarea if present
         const csMotd = $("#cs-motdtext");
         if (csMotd) csMotd.value = html;
         
@@ -202,7 +192,6 @@ BTFW.define("feature:motd-editor", [], async () => {
       };
     }
 
-    // Show modal
     m.classList.add("is-active");
   }
 
