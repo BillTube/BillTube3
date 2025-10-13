@@ -180,19 +180,21 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
   function shouldAllowClick(target) {
     if (!target) return false;
 
-    const allowSelectors = [
-      ".vjs-control-bar",
-      ".vjs-control",
-      ".vjs-menu",
-      ".vjs-menu-content",
-      ".vjs-slider",
-      ".vjs-volume-panel",
-      ".vjs-tech .alert",
-      ".vjs-tech [role=\"alert\"]",
-      ".vjs-tech [role=\"dialog\"]",
-      ".vjs-tech .modal",
-      ".vjs-tech .modal-dialog"
-    ].join(",");
+const allowSelectors = [
+  ".vjs-control-bar",
+  ".vjs-control",
+  ".vjs-menu",
+  ".vjs-menu-content",
+  ".vjs-slider",
+  ".vjs-volume-panel",
+  ".vjs-text-track-settings",  
+  ".vjs-tech .alert",
+  ".vjs-tech [role=\"alert\"]",
+  ".vjs-tech [role=\"dialog\"]",
+  ".vjs-tech .modal",
+  ".vjs-tech .modal-dialog"
+].join(",");
+
 
     if (target.closest(allowSelectors)) {
       return true;
