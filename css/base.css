@@ -1501,3 +1501,155 @@ body:not(.is-scrolling) #queue li {
 .btfw-stack-item[data-open="false"] .btfw-stack-item__body {
   display: none !important;
 }
+/* Quill Dark Theme for BTFW */
+
+/* Container & Editor Background */
+#btfw-motd-modal .ql-container.ql-snow {
+  background: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
+  border-color: var(--btfw-border);
+}
+
+#btfw-motd-modal .ql-editor {
+  color: var(--btfw-color-text);
+  background: transparent;
+}
+
+#btfw-motd-modal .ql-editor.ql-blank::before {
+  color: color-mix(in srgb, var(--btfw-color-text) 48%, transparent 52%);
+}
+
+/* Toolbar Background */
+#btfw-motd-modal .ql-toolbar.ql-snow {
+  background: color-mix(in srgb, var(--btfw-color-surface) 94%, transparent 6%);
+  border-color: var(--btfw-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-border) 70%, transparent 30%);
+}
+
+/* Toolbar Buttons */
+#btfw-motd-modal .ql-toolbar .ql-stroke {
+  stroke: color-mix(in srgb, var(--btfw-color-text) 88%, transparent 12%);
+}
+
+#btfw-motd-modal .ql-toolbar .ql-fill {
+  fill: color-mix(in srgb, var(--btfw-color-text) 88%, transparent 12%);
+}
+
+#btfw-motd-modal .ql-toolbar button:hover .ql-stroke,
+#btfw-motd-modal .ql-toolbar button:focus .ql-stroke,
+#btfw-motd-modal .ql-toolbar button.ql-active .ql-stroke {
+  stroke: var(--btfw-color-accent);
+}
+
+#btfw-motd-modal .ql-toolbar button:hover .ql-fill,
+#btfw-motd-modal .ql-toolbar button:focus .ql-fill,
+#btfw-motd-modal .ql-toolbar button.ql-active .ql-fill {
+  fill: var(--btfw-color-accent);
+}
+
+#btfw-motd-modal .ql-toolbar button:hover,
+#btfw-motd-modal .ql-toolbar button:focus {
+  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+  border-radius: 4px;
+}
+
+/* Picker Labels */
+#btfw-motd-modal .ql-picker-label {
+  color: color-mix(in srgb, var(--btfw-color-text) 88%, transparent 12%);
+}
+
+#btfw-motd-modal .ql-picker-label:hover,
+#btfw-motd-modal .ql-picker.ql-expanded .ql-picker-label {
+  color: var(--btfw-color-accent);
+}
+
+/* Dropdown Menus */
+#btfw-motd-modal .ql-picker-options {
+  background: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
+  border: 1px solid var(--btfw-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--btfw-color-bg) 60%, transparent 40%);
+  padding: 4px;
+}
+
+#btfw-motd-modal .ql-picker-item {
+  color: var(--btfw-color-text);
+}
+
+#btfw-motd-modal .ql-picker-item:hover {
+  background: color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%);
+  color: var(--btfw-color-text);
+  border-radius: 4px;
+}
+
+/* Color Picker Swatches */
+#btfw-motd-modal .ql-color-picker .ql-picker-options {
+  padding: 8px;
+  width: 160px;
+}
+
+#btfw-motd-modal .ql-color-picker .ql-picker-item {
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 40%);
+}
+
+/* Tooltip */
+#btfw-motd-modal .ql-tooltip {
+  background: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
+  border: 1px solid var(--btfw-border);
+  color: var(--btfw-color-text);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--btfw-color-bg) 60%, transparent 40%);
+  border-radius: 8px;
+}
+
+#btfw-motd-modal .ql-tooltip input[type="text"] {
+  background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);
+  border: 1px solid var(--btfw-border);
+  color: var(--btfw-color-text);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+#btfw-motd-modal .ql-tooltip input[type="text"]:focus {
+  border-color: var(--btfw-color-accent);
+  outline: none;
+}
+
+#btfw-motd-modal .ql-tooltip a {
+  color: var(--btfw-color-accent);
+}
+
+#btfw-motd-modal .ql-tooltip .ql-action,
+#btfw-motd-modal .ql-tooltip .ql-remove {
+  color: var(--btfw-color-text);
+}
+
+#btfw-motd-modal .ql-tooltip .ql-action:hover,
+#btfw-motd-modal .ql-tooltip .ql-remove:hover {
+  color: var(--btfw-color-accent);
+}
+
+/* Code Block in Editor */
+#btfw-motd-modal .ql-editor pre.ql-syntax {
+  background: color-mix(in srgb, var(--btfw-color-bg) 70%, transparent 30%);
+  color: color-mix(in srgb, var(--btfw-color-text) 92%, #4af 8%);
+  border: 1px solid var(--btfw-border);
+  border-radius: 6px;
+}
+
+/* Blockquote */
+#btfw-motd-modal .ql-editor blockquote {
+  border-left: 4px solid var(--btfw-color-accent);
+  color: color-mix(in srgb, var(--btfw-color-text) 88%, transparent 12%);
+  background: color-mix(in srgb, var(--btfw-color-accent) 8%, transparent 92%);
+  padding: 12px 16px;
+  border-radius: 0 6px 6px 0;
+}
+
+/* Links in Editor */
+#btfw-motd-modal .ql-editor a {
+  color: var(--btfw-color-accent);
+}
+
+/* Selection */
+#btfw-motd-modal .ql-editor ::selection {
+  background: color-mix(in srgb, var(--btfw-color-accent) 36%, transparent 64%);
+}
