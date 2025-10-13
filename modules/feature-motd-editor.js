@@ -81,7 +81,7 @@ BTFW.define("feature:motd-editor", [], async () => {
     if (!host) return;
 
     // initial content is current MOTD HTML (server-rendered)
-    const motdEl = $("#motd"); 
+    const motdEl = $("#motd") || $("#motdwrap");
     const initialHTML = motdEl ? motdEl.innerHTML : "";
     if (!quill && window.Quill) {
       quill = new Quill(host, {
@@ -102,7 +102,12 @@ BTFW.define("feature:motd-editor", [], async () => {
         if (window.socket?.emit) socket.emit("setMotd", { motd: html });
       } catch(e){ console.warn("[motd-editor] setMotd emit failed", e); }
       // Optimistic update
-      const motd = $("#motd"); if (motd) motd.innerHTML = html;
+      const motd = $("#motd");
+      if (motd) motd.innerHTML = html;
+      else {
+        const wrap = $("#motdwrap");
+        if (wrap) wrap.innerHTML = html;
+      }
       m.classList.remove("is-active");
     };
 
