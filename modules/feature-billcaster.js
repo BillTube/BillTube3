@@ -155,7 +155,7 @@ $(document).ready(function () {
       '<button id="btfw-vo-cast" ' +
         'class="btn btn-sm btn-default btfw-vo-adopted" ' +
         'title="Cast to device" data-btfw-overlay="1">' +
-        '<span class="glyphicon glyphicon-signal"></span>' +
+        '<i class="fa-brands fa-chromecast"></i>' +
       '</button>'
     );
 
@@ -177,7 +177,7 @@ $(document).ready(function () {
       '<button id="btfw-vo-cast-fallback" ' +
         'class="btn btn-sm btn-default btfw-vo-adopted" ' +
         'title="Casting not available" data-btfw-overlay="1">' +
-        '<span class="glyphicon glyphicon-info-sign"></span>' +
+        '<i class="fa-solid fa-circle-info"></i>' +
       '</button>'
     );
 
@@ -405,3 +405,4 @@ $(document).ready(function () {
   initializePlayer();
   whenVoBarReady(initializeCastButton);
 });
+
