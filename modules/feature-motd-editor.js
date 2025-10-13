@@ -126,19 +126,25 @@ BTFW.define("feature:motd-editor", [], async () => {
     }
 
     if (window.Quill) {
-      quill = new Quill(host, {
-        theme: "snow",
-        modules: { 
-          toolbar: [ 
-            ["bold","italic","underline","strike"], 
-            ["link","blockquote","code-block"], 
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }], 
-            [{ 'header': [1,2,3,false] }], 
-            [{ 'align': [] }], 
-            ["clean"] 
-          ] 
-        }
-      });
+  quill = new Quill(host, {
+    theme: "snow",
+    modules: { 
+      toolbar: [ 
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        [{ 'font': [] }],
+        [{ 'size': ['small', false, 'large', 'huge'] }],
+        ["bold", "italic", "underline", "strike"],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'script': 'sub'}, { 'script': 'super' }],
+        ["blockquote", "code-block"],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
+        [{ 'align': [] }],
+        ["link", "image", "video"],
+        ["clean"]
+      ] 
+    }
+  });
+
       
       // ✅ FIX: Use Quill's clipboard API to properly parse HTML
       if (initialHTML && initialHTML.trim()) {
@@ -246,3 +252,4 @@ BTFW.define("feature:motd-editor", [], async () => {
 
   return { name:"feature:motd-editor", openEditor };
 });
+
