@@ -10,6 +10,51 @@ BTFW.define("feature:videoEnhancements", [], async () => {
     });
   }
 
+  // Remove the fullscreen button if present
+  function removeVjsFullscreenButton(){
+    const fullscreenBtn = document.querySelector(".vjs-fullscreen-control");
+    if (fullscreenBtn) {
+      fullscreenBtn.remove();
+    }
+  }
+
+  // Hide the quality button when there are no real options
+  function handleQualityButton(){
+    const qualityBtn = document.querySelector(".vjs-resolution-button");
+    if (!qualityBtn) return;
+
+    const qualityMenu = qualityBtn.querySelector(".vjs-menu");
+    if (!qualityMenu) {
+      qualityBtn.style.display = "none";
+      return;
+    }
+
+    const menuItems = qualityMenu.querySelectorAll(".vjs-menu-item");
+    if (menuItems.length <= 1) {
+      qualityBtn.style.display = "none";
+    }
+  }
+
+  // Ensure the fullscreen button is hidden via CSS as a fallback
+  function ensureFullscreenCss(){
+    if (document.getElementById("btfw-video-enhancements-style")) return;
+
+    const style = document.createElement("style");
+    style.id = "btfw-video-enhancements-style";
+    style.textContent = `
+      .vjs-fullscreen-control {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Try to remove fullscreen controls and hide unused quality options
+  function tryHideQuality(){
+    removeVjsFullscreenButton();
+    handleQualityButton();
+  }
+
   // Media URL processing and title extraction
   function processMediaUrl(urlInput){
     if (!urlInput || !urlInput.value) return;
@@ -77,6 +122,10 @@ BTFW.define("feature:videoEnhancements", [], async () => {
     setTimeout(() => {
       updateTitleLength();
     }, 100);
+
+    setTimeout(tryHideQuality, 500);
+    setTimeout(tryHideQuality, 1000);
+    setTimeout(tryHideQuality, 2000);
   }
 
   // Initialize
@@ -84,6 +133,11 @@ BTFW.define("feature:videoEnhancements", [], async () => {
     // Initial setup
     updateTitleLength();
     bindMediaUrlProcessing();
+    ensureFullscreenCss();
+    tryHideQuality();
+    setTimeout(tryHideQuality, 500);
+    setTimeout(tryHideQuality, 1000);
+    setTimeout(tryHideQuality, 2000);
 
     // Bind to changeMedia event
     if (window.socket) {
