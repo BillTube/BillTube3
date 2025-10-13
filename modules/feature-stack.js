@@ -271,7 +271,17 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
       }
       motd.remove();
     }
-    
+
+    // Ensure the merged container still exposes an element with id="motd"
+    if (container && !container.querySelector("#motd")) {
+      const host = document.createElement("div");
+      host.id = "motd";
+      while (container.firstChild) {
+        host.appendChild(container.firstChild);
+      }
+      container.appendChild(host);
+    }
+
     // Remove duplicate motdrow if we're using motdwrap (avoid circular reference)
     if (motdwrap && motdrow && motdrow !== motdwrap && !motdwrap.contains(motdrow) && !motdrow.contains(motdwrap)) {
       while (motdrow.firstChild) {
