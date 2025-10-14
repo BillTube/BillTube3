@@ -63,37 +63,37 @@ const MP3_SOUND_PRESETS = [
     duration: 1.0
   },
   {
-    id: "github-sound-2",
-    name: "Sound 2",
+    id: "blip",
+    name: "blip",
     url: GITHUB_SOUNDS_BASE + "146718_2437358-lq.mp3",
     duration: 1.0
   },
   {
-    id: "github-sound-3",
-    name: "Sound 3",
+    id: "dingding",
+    name: "dingding",
     url: GITHUB_SOUNDS_BASE + "264447_4322723-lq.mp3",
-    duration: 1.0
+    duration: 2.0
   },
   {
-    id: "github-sound-4",
-    name: "Sound 4",
+    id: "nyan",
+    name: "nyan",
     url: GITHUB_SOUNDS_BASE + "336012_5953264-lq.mp3",
-    duration: 1.0
+    duration: 2.0
   },
   {
-    id: "github-sound-5",
-    name: "Sound 5",
+    id: "knocks",
+    name: "knocks",
     url: GITHUB_SOUNDS_BASE + "383757_7146007-lq.mp3",
-    duration: 1.0
+    duration: 5.0
   },
   {
-    id: "github-sound-6",
-    name: "Sound 6",
+    id: "scary",
+    name: "scary",
     url: GITHUB_SOUNDS_BASE + "419673_1904290-lq.mp3",
     duration: 1.0
   },
   {
-    id: "github-sound-7",
+    id: "ping",
     name: "Sound 7",
     url: GITHUB_SOUNDS_BASE + "506052_10991815-lq.mp3",
     duration: 1.0
@@ -132,8 +132,8 @@ const MP3_SOUND_PRESETS = [
 
   const DEFAULTS = {
     join:    { muted: true,  volume: 0.6,  sound: "soft-chime" },
-    mention: { muted: true,  volume: 0.75, sound: "bright-ping" },
-    poll:    { muted: false, volume: 0.85, sound: "harmony-rise" },
+    mention: { muted: false,  volume: 0.75, sound: "bright-ping" },
+    poll:    { muted: false, volume: 0.85, sound: "knocks" },
     video:   { muted: true,  volume: 0.65, sound: "airy-bell" }
   };
 
