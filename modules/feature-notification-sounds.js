@@ -100,10 +100,7 @@ const MP3_SOUND_PRESETS = [
   }
 ];
   SOUND_PRESETS.push(...MP3_SOUND_PRESETS);
-SOUND_LOOKUP.clear();
-SOUND_PRESETS.forEach(preset => {
-  SOUND_LOOKUP.set(preset.id, preset);
-});
+
   const SOUND_LOOKUP = new Map(SOUND_PRESETS.map(p => [p.id, p]));
 
   const EVENT_CONFIG = [
