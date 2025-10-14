@@ -132,7 +132,7 @@ const MP3_SOUND_PRESETS = [
 
   const DEFAULTS = {
     join:    { muted: true,  volume: 0.6,  sound: "soft-chime" },
-    mention: { muted: false,  volume: 0.75, sound: "bright-ping" },
+    mention: { muted: false,  volume: 0.75, sound: "blip" },
     poll:    { muted: false, volume: 0.85, sound: "knocks" },
     video:   { muted: true,  volume: 0.65, sound: "airy-bell" }
   };
