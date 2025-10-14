@@ -1,5 +1,76 @@
-
 *, *::before, *::after { box-sizing: border-box; }
+
+/* ==BTFW_THEME_ADMIN_START== */
+:root {
+  --btfw-theme-bg: #110802;
+  --btfw-theme-surface: #190d05;
+  --btfw-theme-panel: #211b17;
+  --btfw-theme-text: #fbe3c9;
+  --btfw-theme-chat-text: #e6caad;
+  --btfw-theme-accent: #d97436;
+  --btfw-theme-font-family: 'Nunito', 'Segoe UI', sans-serif;
+}
+/* ==BTFW_THEME_ADMIN_END== */
+
+#btfw-navhost .navbar-brand {
+    font-size: clamp(1.02rem, 1.6vw, 2.15rem)!important;
+}
+.tmdb-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--btfw-color-surface, #1a1a1a) 80%, transparent 20%);
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent, #4a90e2) 30%, transparent 70%);
+  margin: 8px 0;
+  max-width: 600px;
+}
+
+.tmdb-card__poster {
+  width: 92px;
+  min-width: 92px;
+  height: auto;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.tmdb-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tmdb-card__title {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--btfw-color-text, #e8ecfb);
+  line-height: 1.3;
+}
+
+.tmdb-card__year {
+  font-weight: 400;
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+
+.tmdb-card__rating {
+  color: #ffd700;
+  font-size: 0.95em;
+  font-weight: 500;
+}
+
+.tmdb-card__overview {
+  font-size: 0.9em;
+  line-height: 1.5;
+  color: var(--btfw-color-text-soft, #b8c5e0);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
 
 html, body {
   min-height: 100%;
