@@ -17,7 +17,164 @@ BTFW.define("feature:motd-editor", [], async () => {
     ["link", "image", "video"],
     ["clean"]
   ];
-  const QUILL_MODULES = { toolbar: QUILL_TOOLBAR };
+  function promptImageURL(){
+    const existing = document.getElementById("btfw-motd-image-url-prompt");
+    if (existing) existing.remove();
+
+    const modal = document.createElement("div");
+    modal.id = "btfw-motd-image-url-prompt";
+    modal.className = "modal is-active";
+    modal.innerHTML = `
+      <div class="modal-background"></div>
+      <div class="modal-card btfw-modal">
+        <header class="modal-card-head">
+          <p class="modal-card-title">Insert Image</p>
+          <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+          <div class="field">
+            <label class="label" for="btfw-motd-image-url-input">Image URL</label>
+            <div class="control">
+              <input id="btfw-motd-image-url-input" class="input" type="url" placeholder="https://example.com/image.png" />
+            </div>
+            <p class="help">Paste a direct link to an image that is already hosted elsewhere.</p>
+          </div>
+        </section>
+        <footer class="modal-card-foot">
+          <button class="button is-link" id="btfw-motd-image-url-insert">Insert</button>
+          <button class="button" id="btfw-motd-image-url-cancel">Cancel</button>
+        </footer>
+      </div>`;
+
+    const close = ()=>{
+      modal.classList.remove("is-active");
+      setTimeout(()=> modal.remove(), 150);
+    };
+
+    modal.querySelectorAll(".modal-background, .delete, #btfw-motd-image-url-cancel").forEach(el =>
+      el.addEventListener("click", close)
+    );
+
+    document.body.appendChild(modal);
+
+    const input = modal.querySelector("#btfw-motd-image-url-input");
+    if (input) {
+      input.value = "";
+      requestAnimationFrame(()=> input.focus());
+    }
+
+    return new Promise(resolve => {
+      const insertBtn = modal.querySelector("#btfw-motd-image-url-insert");
+      const finish = (value)=>{
+        resolve(value);
+        close();
+      };
+
+      if (insertBtn) {
+        insertBtn.addEventListener("click", ()=>{
+          const url = input?.value?.trim();
+          finish(url || null);
+        });
+      }
+
+      if (input) {
+        input.addEventListener("keydown", (ev)=>{
+          if (ev.key === "Enter") {
+            ev.preventDefault();
+            const url = input.value.trim();
+            finish(url || null);
+          }
+          if (ev.key === "Escape") {
+            ev.preventDefault();
+            finish(null);
+          }
+        });
+      }
+    });
+  }
+
+  function normaliseImageURL(url){
+    if (!url) return null;
+    try {
+      const parsed = new URL(url, window.location.href);
+      if (!/^https?:$/i.test(parsed.protocol)) return null;
+      return parsed.href;
+    } catch(_){
+      return null;
+    }
+  }
+
+  function ensureImageInteractivity(root){
+    if (!root) return;
+    root.querySelectorAll("img").forEach(img => {
+      if (!img.getAttribute("draggable")) {
+        img.setAttribute("draggable", "true");
+      }
+      if (!img.dataset.btfwMotdDragListener) {
+        img.dataset.btfwMotdDragListener = "1";
+        img.addEventListener("dragstart", ev => {
+          try {
+            ev.dataTransfer?.setData("text/plain", img.src || "");
+          } catch(_){}
+        });
+      }
+    });
+  }
+
+  function createQuillModules(){
+    return {
+      toolbar: {
+        container: QUILL_TOOLBAR,
+        handlers: {
+          image: async function(){
+            const quill = this.quill;
+            const existingRange = quill.getSelection(true);
+            const inputURL = await promptImageURL();
+            const url = normaliseImageURL(inputURL);
+            if (!url) {
+              if (existingRange) quill.setSelection(existingRange.index, existingRange.length || 0);
+              return;
+            }
+
+            const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
+            quill.insertEmbed(range.index, "image", url, "user");
+            quill.setSelection(range.index + 1, 0);
+            ensureImageInteractivity(quill.root);
+          }
+        }
+      }
+    };
+  }
+
+  function attachQuillEnhancements(quill){
+    if (!quill || !quill.root) return;
+
+    const root = quill.root;
+    const updateImages = ()=> ensureImageInteractivity(root);
+
+    if (!root.dataset.btfwMotdEnhancements) {
+      root.dataset.btfwMotdEnhancements = "1";
+
+      const preventFiles = ev => {
+        if (ev.dataTransfer?.files?.length) {
+          ev.preventDefault();
+        }
+      };
+
+      const preventPasteFiles = ev => {
+        if (ev.clipboardData?.files?.length) {
+          ev.preventDefault();
+        }
+      };
+
+      root.addEventListener("drop", preventFiles);
+      root.addEventListener("dragover", preventFiles);
+      root.addEventListener("paste", preventPasteFiles);
+    }
+
+    updateImages();
+    quill.on("text-change", updateImages);
+  }
 
   function loadOnce(href, rel="stylesheet"){
     return new Promise((res,rej)=>{
@@ -34,6 +191,7 @@ BTFW.define("feature:motd-editor", [], async () => {
     if (!instance) return;
     if (!html || !html.trim()) {
       instance.setText("");
+      ensureImageInteractivity(instance?.root);
       return;
     }
 
@@ -51,6 +209,7 @@ BTFW.define("feature:motd-editor", [], async () => {
         instance.setText(html);
       }
     }
+    ensureImageInteractivity(instance?.root);
   }
 
   function canEditMotd(){
@@ -234,8 +393,10 @@ BTFW.define("feature:motd-editor", [], async () => {
 
       csQuill = new Quill(csEditorHost, {
         theme: "snow",
-        modules: QUILL_MODULES
+        modules: createQuillModules()
       });
+
+      attachQuillEnhancements(csQuill);
 
       const syncFromTextarea = ()=>{
         if (!csQuill || !csTextarea) return;
@@ -334,8 +495,10 @@ BTFW.define("feature:motd-editor", [], async () => {
     if (window.Quill) {
       modalQuill = new Quill(host, {
         theme: "snow",
-        modules: QUILL_MODULES
+        modules: createQuillModules()
       });
+
+      attachQuillEnhancements(modalQuill);
 
       setQuillHTML(modalQuill, initialHTML, { logSuccess: true });
       console.log('[motd-editor] Quill editor ready, content loaded');
