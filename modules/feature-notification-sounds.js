@@ -54,6 +54,19 @@ BTFW.define("feature:notification-sounds", [], async () => {
     }
   ];
 
+  const GITHUB_SOUNDS_BASE = "https://raw.githubusercontent.com/BillTube/BillTube2/master/sounds/";
+  const MP3_SOUND_PRESETS = [
+    { id: "bongo-cat", name: "Bongo Cat", url: GITHUB_SOUNDS_BASE + "bongo_cat.mp3", duration: 1.0 },
+    { id: "coins", name: "Coins", url: GITHUB_SOUNDS_BASE + "coins.mp3", duration: 0.8 },
+    { id: "cute-ding", name: "Cute Ding", url: GITHUB_SOUNDS_BASE + "cute_ding.mp3", duration: 0.6 },
+    { id: "discord-join", name: "Discord Join", url: GITHUB_SOUNDS_BASE + "discord_join.mp3", duration: 0.5 },
+    { id: "discord-leave", name: "Discord Leave", url: GITHUB_SOUNDS_BASE + "discord_leave.mp3", duration: 0.5 },
+    { id: "discord-notification", name: "Discord Notification", url: GITHUB_SOUNDS_BASE + "discord_notification.mp3", duration: 0.4 },
+    { id: "pop", name: "Pop", url: GITHUB_SOUNDS_BASE + "pop.mp3", duration: 0.3 },
+    { id: "squeak", name: "Squeak", url: GITHUB_SOUNDS_BASE + "squeak.mp3", duration: 0.4 }
+  ];
+  SOUND_PRESETS.push(...MP3_SOUND_PRESETS);
+
   const SOUND_LOOKUP = new Map(SOUND_PRESETS.map(p => [p.id, p]));
 
   const EVENT_CONFIG = [
@@ -98,6 +111,7 @@ BTFW.define("feature:notification-sounds", [], async () => {
   let draftSettings = cloneSettings(liveSettings);
 
   let audioCtx = null;
+  const audioBufferCache = new Map();
 
   function getAudioCtor(){
     return window.AudioContext || window.webkitAudioContext || null;
@@ -206,9 +220,46 @@ BTFW.define("feature:notification-sounds", [], async () => {
     return stopAt;
   }
 
-  function playPresetById(id, volume){
+  async function loadAudioBuffer(url){
+    if (audioBufferCache.has(url)) return audioBufferCache.get(url);
+    const ctx = ensureAudioContext();
+    if (!ctx) return null;
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      audioBufferCache.set(url, audioBuffer);
+      return audioBuffer;
+    } catch (error) {
+      console.error(`Failed to load sound from ${url}:`, error);
+      return null;
+    }
+  }
+
+  function playAudioBuffer(buffer, volume){
+    const ctx = resumeAudio();
+    if (!ctx || !buffer) return;
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = clamp01(volume);
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    source.start(0);
+    setTimeout(() => { try { gainNode.disconnect(); } catch (_) {} }, (buffer.duration + 0.1) * 1000);
+  }
+
+  async function playPresetById(id, volume){
     const preset = SOUND_LOOKUP.get(id) || SOUND_PRESETS[0];
     if (!preset) return;
+
+    if (preset.url) {
+      const buffer = await loadAudioBuffer(preset.url);
+      if (buffer) playAudioBuffer(buffer, volume);
+      return;
+    }
+
     const ctx = resumeAudio();
     if (!ctx) return;
 
