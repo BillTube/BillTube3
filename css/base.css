@@ -1511,6 +1511,7 @@ nav.pagination.is-centered.btfw-gif-pager {
 
 #btfw-theme-modal .btfw-checkbox span{
   user-select: none;
+  margin-left: 25px;
 }
 
 @media (max-width: 768px){
