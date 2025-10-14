@@ -2,7 +2,7 @@
 BTFW.define("feature:notification-sounds", [], async () => {
   const $ = (s, r=document) => r.querySelector(s);
 
-  const STORAGE_KEY = "btfw:notify:sounds:v1";
+  const STORAGE_KEY = "btfw:notify:sounds:v2";
 
   const SOUND_PRESETS = [
     {
@@ -100,7 +100,10 @@ const MP3_SOUND_PRESETS = [
   }
 ];
   SOUND_PRESETS.push(...MP3_SOUND_PRESETS);
-
+SOUND_LOOKUP.clear();
+SOUND_PRESETS.forEach(preset => {
+  SOUND_LOOKUP.set(preset.id, preset);
+});
   const SOUND_LOOKUP = new Map(SOUND_PRESETS.map(p => [p.id, p]));
 
   const EVENT_CONFIG = [
