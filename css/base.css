@@ -1242,6 +1242,87 @@ nav.pagination.is-centered.btfw-gif-pager {
   gap: 14px;
 }
 
+#btfw-theme-modal .btfw-notify-sound-list{
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#btfw-theme-modal .btfw-notify-sound{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 74%, transparent 26%);
+  background: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-color-text) 7%, transparent 93%);
+  transition: border-color 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+}
+
+#btfw-theme-modal .btfw-notify-sound.is-muted{
+  opacity: 0.72;
+}
+
+#btfw-theme-modal .btfw-notify-sound__meta h4{
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--btfw-color-text) 92%, transparent 8%);
+}
+
+#btfw-theme-modal .btfw-notify-sound__meta p{
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--btfw-color-text) 64%, transparent 36%);
+}
+
+#btfw-theme-modal .btfw-notify-sound__controls{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  align-items: flex-end;
+}
+
+#btfw-theme-modal .btfw-notify-sound__controls .btfw-input__label{
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--btfw-color-text) 58%, transparent 42%);
+}
+
+#btfw-theme-modal .btfw-notify-sound__controls .select select{
+  min-width: 160px;
+}
+
+#btfw-theme-modal .btfw-notify-volume{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+#btfw-theme-modal .btfw-notify-volume-range{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#btfw-theme-modal .btfw-notify-volume-range input[type=range]{
+  flex: 1;
+}
+
+#btfw-theme-modal .btfw-notify-volume-value{
+  font-size: 0.85rem;
+  min-width: 38px;
+  text-align: right;
+  color: color-mix(in srgb, var(--btfw-color-text) 70%, transparent 30%);
+}
+
+#btfw-theme-modal .btfw-notify-preview{
+  align-self: flex-start;
+}
+
 #btfw-theme-modal .btfw-compact-stack-btn{
   align-self: flex-start;
   display: inline-flex;
