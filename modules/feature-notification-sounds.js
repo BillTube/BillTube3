@@ -55,16 +55,50 @@ BTFW.define("feature:notification-sounds", [], async () => {
   ];
 
   const GITHUB_SOUNDS_BASE = "https://raw.githubusercontent.com/BillTube/BillTube2/master/sounds/";
-  const MP3_SOUND_PRESETS = [
-    { id: "bongo-cat", name: "Bongo Cat", url: GITHUB_SOUNDS_BASE + "bongo_cat.mp3", duration: 1.0 },
-    { id: "coins", name: "Coins", url: GITHUB_SOUNDS_BASE + "coins.mp3", duration: 0.8 },
-    { id: "cute-ding", name: "Cute Ding", url: GITHUB_SOUNDS_BASE + "cute_ding.mp3", duration: 0.6 },
-    { id: "discord-join", name: "Discord Join", url: GITHUB_SOUNDS_BASE + "discord_join.mp3", duration: 0.5 },
-    { id: "discord-leave", name: "Discord Leave", url: GITHUB_SOUNDS_BASE + "discord_leave.mp3", duration: 0.5 },
-    { id: "discord-notification", name: "Discord Notification", url: GITHUB_SOUNDS_BASE + "discord_notification.mp3", duration: 0.4 },
-    { id: "pop", name: "Pop", url: GITHUB_SOUNDS_BASE + "pop.mp3", duration: 0.3 },
-    { id: "squeak", name: "Squeak", url: GITHUB_SOUNDS_BASE + "squeak.mp3", duration: 0.4 }
-  ];
+const MP3_SOUND_PRESETS = [
+  {
+    id: "boop",
+    name: "boop",
+    url: GITHUB_SOUNDS_BASE + "146717_2437358-lq.mp3",
+    duration: 1.0
+  },
+  {
+    id: "github-sound-2",
+    name: "Sound 2",
+    url: GITHUB_SOUNDS_BASE + "146718_2437358-lq.mp3",
+    duration: 1.0
+  },
+  {
+    id: "github-sound-3",
+    name: "Sound 3",
+    url: GITHUB_SOUNDS_BASE + "264447_4322723-lq.mp3",
+    duration: 1.0
+  },
+  {
+    id: "github-sound-4",
+    name: "Sound 4",
+    url: GITHUB_SOUNDS_BASE + "336012_5953264-lq.mp3",
+    duration: 1.0
+  },
+  {
+    id: "github-sound-5",
+    name: "Sound 5",
+    url: GITHUB_SOUNDS_BASE + "383757_7146007-lq.mp3",
+    duration: 1.0
+  },
+  {
+    id: "github-sound-6",
+    name: "Sound 6",
+    url: GITHUB_SOUNDS_BASE + "419673_1904290-lq.mp3",
+    duration: 1.0
+  },
+  {
+    id: "github-sound-7",
+    name: "Sound 7",
+    url: GITHUB_SOUNDS_BASE + "506052_10991815-lq.mp3",
+    duration: 1.0
+  }
+];
   SOUND_PRESETS.push(...MP3_SOUND_PRESETS);
 
   const SOUND_LOOKUP = new Map(SOUND_PRESETS.map(p => [p.id, p]));
