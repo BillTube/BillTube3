@@ -99,6 +99,7 @@ BTFW.define("feature:themeSettings", [], async () => {
             <ul>
               <li class="is-active" data-tab="general"><a>General</a></li>
               <li data-tab="chat"><a>Chat</a></li>
+              <li data-tab="notifications"><a>Notifications</a></li>
               <li data-tab="video"><a>Video</a></li>
             </ul>
           </div>
@@ -177,16 +178,32 @@ BTFW.define("feature:themeSettings", [], async () => {
                   </div>
                 </section>
 
+              </div>
+            </div>
+
+            <!-- Notifications -->
+            <div class="btfw-ts-panel" data-tab="notifications" style="display:none;">
+              <div class="btfw-ts-grid">
                 <section class="btfw-ts-card">
                   <header class="btfw-ts-card__header">
-                    <h3>Notifications</h3>
-                    <p>Decide which chat popups show up for you.</p>
+                    <h3>Join alerts</h3>
+                    <p>Decide whether to show join popups for new users.</p>
                   </header>
                   <div class="btfw-ts-card__body">
                     <label class="checkbox btfw-checkbox">
                       <input type="checkbox" id="btfw-chat-join-notices"> <span>Show notifications when users join</span>
                     </label>
                     <p class="btfw-help">Affects the “Joined” popups triggered by users entering the channel.</p>
+                  </div>
+                </section>
+
+                <section class="btfw-ts-card">
+                  <header class="btfw-ts-card__header">
+                    <h3>Notification sounds</h3>
+                    <p>Pick custom audio cues for channel activity.</p>
+                  </header>
+                  <div class="btfw-ts-card__body" id="btfw-notify-sounds-body">
+                    <p class="btfw-help">Open this panel to configure alert tones for joins, mentions, polls, and new videos.</p>
                   </div>
                 </section>
               </div>
