@@ -1212,6 +1212,10 @@ nav.pagination.is-centered.btfw-gif-pager {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
+#btfw-theme-modal .btfw-ts-panel[data-tab="notifications"] .btfw-ts-grid{
+  grid-template-columns: minmax(0, 1fr);
+}
+
 #btfw-theme-modal .btfw-ts-card{
   background: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
   border: 1px solid color-mix(in srgb, var(--btfw-border) 78%, transparent 22%);
