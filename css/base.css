@@ -1525,6 +1525,7 @@ nav.pagination.is-centered.btfw-gif-pager {
   cursor: pointer;
   width: 16px;
   height: 16px;
+  position: relative;
   accent-color: var(--btfw-color-accent);
 }
 
