@@ -130,7 +130,7 @@
   gap: 10px;
   padding:8px 10px;
   margin:0 0 8px 0;
-  border:1px solid var(--btfw-border);
+  border:0px solid var(--btfw-border);
   border-radius: var(--btfw-radius);
   flex-shrink: 0; /* Don't shrink these bars */
 }
@@ -315,7 +315,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(60% 80% at 12% 46%, color-mix(in srgb, var(--btfw-color-accent) 44%, transparent 56%), transparent 58%);
+  background: radial-gradient(80% 90% at 12% 46%, color-mix(in srgb, var(--btfw-color-accent) 44%, transparent 96%), transparent 48%);
   opacity: .65;
   pointer-events: none;
   z-index: 0;
@@ -613,9 +613,9 @@
 #chatline{
   flex: 1 1 auto;
   min-width: 0;
-  background: color-mix(in srgb, var(--btfw-color-panel) 74%, transparent 26%);
+  background: color-mix(in srgb, var(--btfw-color-panel) 74%, transparent 26%)!important;
   color: var(--btfw-color-text);
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 40%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 80%);
   border-radius: 999px;
   padding: 10px 16px;
   min-height: 44px;
