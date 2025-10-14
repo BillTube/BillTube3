@@ -94,7 +94,7 @@ const MP3_SOUND_PRESETS = [
   },
   {
     id: "ping",
-    name: "Sound 7",
+    name: "ping",
     url: GITHUB_SOUNDS_BASE + "506052_10991815-lq.mp3",
     duration: 1.0
   }
