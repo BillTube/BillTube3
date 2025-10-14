@@ -1182,25 +1182,44 @@ nav.pagination.is-centered.btfw-gif-pager {
 }
 
 #btfw-theme-modal .btfw-ts-tabs{
-  position: relative;
-  z-index: 10;
-  border-bottom: 0;
-  margin-bottom: 4px;
+  position: relative !important;
+  z-index: 999 !important;
+  background: color-mix(in srgb, var(--btfw-color-surface) 94%, transparent 6%) !important;
+  padding-bottom: 8px !important;
+  margin: 0 0 16px 0 !important;
+  flex-shrink: 0 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  min-height: 44px !important;
+  height: auto !important;
+  max-height: none !important;
 }
 
 #btfw-theme-modal .btfw-ts-tabs ul{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  width: 100%;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  min-height: 36px !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  width: 100% !important;
 }
 
 #btfw-theme-modal .btfw-ts-tabs li{
-  margin: 0;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
   flex: 0 0 auto;
+  margin: 0;
 }
 
 #btfw-theme-modal .btfw-ts-tabs li a{
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
   border-radius: 999px;
   border: 1px solid transparent;
   background: color-mix(in srgb, var(--btfw-color-panel) 80%, transparent 20%);
@@ -1511,7 +1530,6 @@ nav.pagination.is-centered.btfw-gif-pager {
 
 #btfw-theme-modal .btfw-checkbox span{
   user-select: none;
-  margin-left: 25px;
 }
 
 @media (max-width: 768px){
