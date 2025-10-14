@@ -229,12 +229,10 @@
    ====================================================================== */
 
 .btfw-chat-topbar {
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--btfw-overlay-bg) 88%, transparent 12%),
-    color-mix(in srgb, var(--btfw-overlay-elevated) 88%, transparent 12%));
-  border: 1px solid var(--btfw-border);
-  border-radius: var(--btfw-radius);
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 48%, transparent 52%);
+  background: color-mix(in srgb, var(--btfw-color-panel) 60%, transparent 40%) !important;
+  border: 0px solid var(--btfw-border);
+  border-radius: 50px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .btfw-chat-bottombar {
@@ -1150,6 +1148,7 @@ html[data-btfw-theme="dark"] .panel {
 #chatheader {
     display: none;
 }
+
 
 
 
