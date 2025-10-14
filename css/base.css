@@ -1176,12 +1176,15 @@ nav.pagination.is-centered.btfw-gif-pager {
 }
 
 #btfw-theme-modal .btfw-ts-tabs ul{
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  width: 100%;
 }
 
 #btfw-theme-modal .btfw-ts-tabs li{
   margin: 0;
+  flex: 0 0 auto;
 }
 
 #btfw-theme-modal .btfw-ts-tabs li a{
