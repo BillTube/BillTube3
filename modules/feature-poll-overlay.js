@@ -175,6 +175,17 @@ BTFW.define("feature:poll-overlay", [], async () => {
     return ENTITY_DECODER.value;
   }
 
+  function resolvePollTitle(rawTitle) {
+    const decoded = decodeHtmlEntities(rawTitle);
+    if (typeof decoded === "string") {
+      const trimmed = decoded.trim();
+      if (trimmed.length) {
+        return trimmed;
+      }
+    }
+    return "Poll";
+  }
+
   function injectCSS() {
     if (document.getElementById(CSS_ID)) return;
     const style = document.createElement("style");
@@ -404,8 +415,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (!overlay || !poll) return;
 
     // FIXED: Create fresh poll data without contamination from previous polls
+    const resolvedTitle = resolvePollTitle(poll.title);
+
     currentPoll = {
       ...poll,
+      title: resolvedTitle,
       votes: poll.votes ? [...poll.votes] : new Array(poll.options?.length || 0).fill(0)
     };
     userVotes.clear(); // Reset user votes for new poll
@@ -416,7 +430,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const votesSpan = overlay.querySelector(".btfw-poll-votes");
     const endBtn = overlay.querySelector(".btfw-poll-end-btn");
 
-    if (title) title.textContent = decodeHtmlEntities(poll.title || "Poll");
+    if (title) title.textContent = resolvedTitle;
     
     // Show/hide end poll button based on permissions
     if (endBtn) {
@@ -594,7 +608,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     try {
       // Listen for new polls
       window.socket.on("newPoll", (poll) => {
-        if (poll && poll.title) {
+        if (poll) {
           showVideoOverlay(poll);
         }
       });
