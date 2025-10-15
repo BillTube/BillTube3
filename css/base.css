@@ -1606,7 +1606,10 @@ nav.pagination.is-centered.btfw-gif-pager {
     padding: 22px 18px 26px;
   }
 }
-
+.buttons.is-right.btfw-motd-editrow {
+    background: none;
+    border: 0px;
+}
 /* Ensure videowrap doesn't collapse during load */
 #videowrap {
   min-height: 300px; /* Prevent collapse during load */
