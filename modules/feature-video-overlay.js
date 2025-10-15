@@ -8,6 +8,84 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
   ];
 
   const LS = { localSubs: "btfw:video:localsubs" };
+  const DEFAULT_OWNER_RANK = 5; // Cytube owners default to rank 5 when CHANNEL perms are unavailable
+  const PERMISSION_KEYS = {
+    owner: ["chanowner", "owner", "founder", "admin", "administrator"]
+  };
+
+  function getClient() {
+    try {
+      return window.CLIENT || window.client || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getChannel() {
+    try {
+      return window.CHANNEL || window.channel || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getChannelPermissions() {
+    const channel = getChannel();
+    if (channel && typeof channel.perms === "object" && channel.perms) {
+      return channel.perms;
+    }
+    try {
+      return window.CHANNEL_PERMS || window.channelPermissions || {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function getPermissionThreshold(keys = []) {
+    const perms = getChannelPermissions();
+    for (const key of keys) {
+      const value = perms?.[key];
+      if (typeof value === "number") return value;
+    }
+    return undefined;
+  }
+
+  function getOwnerRankThreshold() {
+    const ownerRank = getPermissionThreshold(PERMISSION_KEYS.owner);
+    return typeof ownerRank === "number" ? ownerRank : DEFAULT_OWNER_RANK;
+  }
+
+  function hasOwnerPermission(client) {
+    if (!client) return false;
+    try {
+      if (typeof client.hasPermission === "function" && client.hasPermission("chanowner")) {
+        return true;
+      }
+    } catch (_) {}
+    try {
+      if (typeof window.hasPermission === "function" && window.hasPermission("chanowner")) {
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  function isChannelOwner() {
+    const client = getClient();
+    if (!client) return false;
+    const rank = Number(client.rank);
+    if (!Number.isFinite(rank)) return false;
+
+    if (rank >= getOwnerRankThreshold()) return true;
+
+    if (hasOwnerPermission(client)) return true;
+
+    return false;
+  }
+
+  function shouldShowAmbientButton() {
+    return isChannelOwner();
+  }
   const localSubsEnabled = () => {
     try {
       return localStorage.getItem(LS.localSubs) !== "0";
@@ -418,11 +496,28 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       customButtons.push({ id: "btfw-fullscreen", icon: "fas fa-expand", tooltip: "Fullscreen", action: toggleFullscreen, section: "right" });
     }
 
-    customButtons.push(
-      { id: "btfw-ambient", icon: "fas fa-sun", tooltip: "Ambient Mode", action: toggleAmbient, section: "left" },
+    if (shouldShowAmbientButton()) {
+      customButtons.push({
+        id: "btfw-ambient",
+        icon: "fas fa-sun",
+        tooltip: "Ambient Mode",
+        action: toggleAmbient,
+        section: "left"
+      });
+    } else {
+      const ambientButton = document.querySelector("#btfw-ambient");
+      if (ambientButton?.parentElement) {
+        ambientButton.parentElement.removeChild(ambientButton);
+      }
+    }
 
-      { id: "btfw-airplay", icon: "fas fa-cast", tooltip: "AirPlay", action: enableAirplay, section: "right" }
-    );
+    customButtons.push({
+      id: "btfw-airplay",
+      icon: "fas fa-cast",
+      tooltip: "AirPlay",
+      action: enableAirplay,
+      section: "right"
+    });
 
     customButtons.forEach((btnConfig) => {
       let btn = document.querySelector(`#${btnConfig.id}`);
