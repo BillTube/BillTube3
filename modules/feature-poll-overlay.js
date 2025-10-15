@@ -72,10 +72,14 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
 
     .btfw-poll-options-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 16px;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 1rem !important;
+    align-items: stretch;
+    margin: 20px 0 !important;
+    justify-content: center;
+    flex-wrap: nowrap;
+    overflow: auto;
     }
 
     .btfw-poll-option-row {
