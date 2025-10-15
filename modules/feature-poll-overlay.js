@@ -237,7 +237,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function getOriginalPollButtons() {
-    return document.querySelectorAll("#pollwrap .well .option button");
+    // Only look at the active poll (previous polls remain in the DOM as history)
+    // Using .well without the .active qualifier would pick up historical poll
+    // buttons too, which changes the length of the NodeList once a poll has
+    // been closed. That caused syncOverlayFromDom to abort on subsequent polls
+    // because the overlay button count and source button count no longer
+    // matched, leaving vote counts frozen until a page refresh.
+    return document.querySelectorAll("#pollwrap .well.active .option button");
   }
 
   function stopPollDomObserver() {
