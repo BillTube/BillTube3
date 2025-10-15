@@ -128,14 +128,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
         z-index: 1000;
         opacity: 0;
         transition: opacity 0.3s ease;
-        background: linear-gradient(
-          to bottom,
-          rgba(0, 0, 0, 0.45) 0%,
-          rgba(0, 0, 0, 0.35) 12%,
-          rgba(0, 0, 0, 0.18) 32%,
-          rgba(0, 0, 0, 0.08) 55%,
-          transparent 75%
-        );
+        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.15) 12%, rgba(0, 0, 0, 0) 32%, rgba(0, 0, 0, 0) 55%, transparent 75%);
       }
 
       #btfw-video-overlay.btfw-vo-visible {
