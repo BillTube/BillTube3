@@ -79,7 +79,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
     margin: 20px 0 !important;
     justify-content: center;
     flex-wrap: nowrap;
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
     }
 
     .btfw-poll-option-row {
