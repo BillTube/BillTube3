@@ -140,14 +140,12 @@ BTFW.define("feature:channels", [], async () => {
         background: linear-gradient(135deg,
           color-mix(in srgb, var(--btfw-theme-surface, #0b111d) 94%, transparent 6%),
           color-mix(in srgb, var(--btfw-theme-panel, #141f36) 86%, black 14%));
-        padding: 18px 52px;
+        padding: 10px 30px;
         display: flex;
         align-items: center;
         gap: 14px;
         width: 100%;
         color: var(--btfw-theme-text, #e8ecfb);
-        box-shadow: 0 24px 48px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 30%, transparent 70%);
-        backdrop-filter: blur(14px);
       }
 
       .btfw-channels__viewport {
