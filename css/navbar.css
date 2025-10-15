@@ -1,9 +1,3 @@
-/* ======================================================================
-   BillTube Framework — navbar.css
-   Desktop layout stays true to original CyTube nav while adding a
-   collapsed mobile drawer that is hidden by default.
-   ====================================================================== */
-
 #btfw-navhost {
   width: 100%;
 }
@@ -19,7 +13,6 @@
   border-radius: 0 !important;
   background: var(--btfw-navbar-bg, var(--btfw-color-panel)) !important;
   background-image: none !important;
-  box-shadow: 0 12px 32px color-mix(in srgb, var(--btfw-color-bg) 60%, transparent 40%);
   min-height: var(--btfw-navbar-height);
   box-sizing: border-box;
   display: flex;
