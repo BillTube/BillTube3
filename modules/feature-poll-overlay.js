@@ -161,7 +161,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let pollDomObserver = null;
   let observedPollElement = null;
 
-
   const ENTITY_DECODER = document.createElement("textarea");
 
   function decodeHtmlEntities(value) {
@@ -398,7 +397,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const overlay = createVideoOverlay();
     if (!overlay || !poll) return;
 
-    currentPoll = poll;
+    // FIXED: Create fresh poll data without contamination from previous polls
+    currentPoll = {
+      ...poll,
+      votes: poll.votes ? [...poll.votes] : new Array(poll.options?.length || 0).fill(0)
+    };
     userVotes.clear(); // Reset user votes for new poll
     
     // Update overlay content
@@ -428,8 +431,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
         optionText.className = "btfw-poll-option-text";
         optionText.textContent = decodeHtmlEntities(option);
         
-        // Set initial vote count
-        const voteCount = poll.votes && poll.votes[index] ? poll.votes[index] : 0;
+        // FIXED: Use currentPoll.votes (cleaned data) instead of poll.votes
+        const voteCount = currentPoll.votes[index] || 0;
         btn.textContent = voteCount.toString();
         
         btn.addEventListener("click", () => {
@@ -466,8 +469,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
       });
     }
 
-    // Update vote count
-    updateVoteDisplay(poll);
+    // FIXED: Use currentPoll instead of poll parameter
+    updateVoteDisplay(currentPoll);
 
     overlay.classList.add("btfw-poll-active");
 
@@ -475,7 +478,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
     setTimeout(() => {
       syncOverlayFromDom();
       startPollDomObserver();
-
     }, 200);
   }
 
@@ -485,19 +487,15 @@ BTFW.define("feature:poll-overlay", [], async () => {
       currentPoll = null;
       userVotes.clear();
       stopPollDomObserver();
-
     }
   }
 
   function updateVoteDisplay(poll) {
     if (!videoOverlay || !poll) return;
 
-    if (currentPoll) {
-      currentPoll = {
-        ...currentPoll,
-        ...poll,
-        votes: Array.isArray(poll.votes) ? poll.votes : currentPoll.votes
-      };
+    // FIXED: Don't merge with old currentPoll data - just update votes
+    if (currentPoll && poll.votes) {
+      currentPoll.votes = [...poll.votes]; // Fresh copy, no contamination
     }
     
     const votesSpan = videoOverlay.querySelector(".btfw-poll-votes");
@@ -585,42 +583,42 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function wireSocketEvents() {
-  if (socketEventsWired || !window.socket) return;
+    if (socketEventsWired || !window.socket) return;
 
-  try {
-    // Listen for new polls
-    window.socket.on("newPoll", (poll) => {
-      if (poll && poll.title) {
-        showVideoOverlay(poll);
-      }
-    });
+    try {
+      // Listen for new polls
+      window.socket.on("newPoll", (poll) => {
+        if (poll && poll.title) {
+          showVideoOverlay(poll);
+        }
+      });
 
-    // Listen for poll updates (vote counts)
-    window.socket.on("updatePoll", (poll) => {
-      if (poll && currentPoll) {
-        updateVoteDisplay(poll);
-      }
-    });
+      // Listen for poll updates (vote counts)
+      window.socket.on("updatePoll", (poll) => {
+        if (poll && currentPoll) {
+          updateVoteDisplay(poll);
+        }
+      });
 
-    // Listen for poll closure
-    window.socket.on("closePoll", () => {
-      hideVideoOverlay();
-    });
+      // Listen for poll closure
+      window.socket.on("closePoll", () => {
+        hideVideoOverlay();
+      });
 
-    // Handle socket reconnection
-    window.socket.on("connect", () => {
-      console.log("[poll-overlay] Socket reconnected, re-wiring events");
-      socketEventsWired = false;
-      setTimeout(() => {
-        wireSocketEvents();
-      }, 500);
-    });
+      // Handle socket reconnection
+      window.socket.on("connect", () => {
+        console.log("[poll-overlay] Socket reconnected, re-wiring events");
+        socketEventsWired = false;
+        setTimeout(() => {
+          wireSocketEvents();
+        }, 500);
+      });
 
-    socketEventsWired = true;
-  } catch (e) {
-    console.warn("[poll-overlay] Socket event wiring failed:", e);
+      socketEventsWired = true;
+    } catch (e) {
+      console.warn("[poll-overlay] Socket event wiring failed:", e);
+    }
   }
-}
 
   function waitForSocket() {
     return new Promise((resolve) => {
