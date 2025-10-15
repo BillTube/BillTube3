@@ -1,14 +1,11 @@
 
-/* ---------- Navbar should stay above app content ---------- */
 #nav-collapsible,
 .navbar,
 #navbar,
 .navbar-fixed-top {
-  /* Don’t force position here (CyTube/Bootswatch handles it). */
   z-index: 5000 !important;
 }
 
-/* ---------- Bulma/CyTube modal layering (card above backdrop) ---------- */
 .modal { z-index: 6000 !important; }
 .modal .modal-background { z-index: 6001 !important; }
 .modal .modal-card,
@@ -899,8 +896,6 @@ html[data-btfw-theme="dark"] .panel {
 }
 
 .btfw-notice--success{
-  --btfw-notice-bg: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
-  --btfw-notice-border: color-mix(in srgb, var(--btfw-color-accent) 46%, transparent 54%);
   --btfw-notice-accent: var(--btfw-color-accent);
   --btfw-notice-icon-bg: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
   --btfw-notice-icon-color: var(--btfw-color-on-accent);
@@ -925,7 +920,7 @@ html[data-btfw-theme="dark"] .panel {
 .btfw-notice-shell{
   display: flex;
   gap: 14px;
-  padding: 16px 18px 14px;
+  padding: 10px 15px 10px;
 }
 
 .btfw-notice-iconwrap{
@@ -1029,6 +1024,7 @@ html[data-btfw-theme="dark"] .panel {
 
 .btfw-notice-timer.is-stopped{
   color: color-mix(in srgb, var(--btfw-color-text) 92%, white 8%);
+  font-size: 10px;
 }
 
 .btfw-notice-stop{
@@ -1148,6 +1144,7 @@ html[data-btfw-theme="dark"] .panel {
 #chatheader {
     display: none;
 }
+
 
 
 
