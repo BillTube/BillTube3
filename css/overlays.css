@@ -396,7 +396,7 @@
 /* Fixed grid: constant tile size & no hover-jump */
 #btfw-emotes-grid {
   flex: 1 1 auto;
-  overflow-y: auto;
+  overflow-y: clip;
   padding: 10px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
@@ -1188,6 +1188,7 @@ html[data-btfw-theme="dark"] .panel {
 #chatheader {
     display: none;
 }
+
 
 
 
