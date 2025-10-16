@@ -396,7 +396,7 @@
 /* Fixed grid: constant tile size & no hover-jump */
 #btfw-emotes-grid {
   flex: 1 1 auto;
-  overflow-y: clip;
+  overflow-y: auto;
   padding: 10px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
@@ -408,14 +408,24 @@
 }
 
 #btfw-emotes-grid .btfw-emote-tile {
-  display:flex; align-items:center; justify-content:center;
+  position: relative;
+  display: grid;
+  place-items: center;
   border: 1px solid var(--btfw-border);
   border-radius: 10px; cursor: pointer;
   background: color-mix(in srgb, var(--btfw-color-panel) 80%, transparent 20%);
   /* keep size constant: no transform on hover */
   transition: background .12s ease, border-color .12s ease;
-  aspect-ratio: 1 / 1;
   overflow: hidden;
+}
+#btfw-emotes-grid .btfw-emote-tile::before {
+  content: "";
+  display: block;
+  padding-bottom: 100%;
+  grid-area: 1 / 1;
+}
+#btfw-emotes-grid .btfw-emote-tile > * {
+  grid-area: 1 / 1;
 }
 #btfw-emotes-grid .btfw-emote-tile:hover {
   background: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
