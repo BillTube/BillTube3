@@ -396,36 +396,26 @@
 /* Fixed grid: constant tile size & no hover-jump */
 #btfw-emotes-grid {
   flex: 1 1 auto;
-  overflow-y: auto;
+  overflow: visible;
+  overflow-y: visible;
   padding: 10px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 5px;
   content-visibility: auto;
   contain-intrinsic-size: 320px 320px;
   scrollbar-gutter: stable;
-  overscroll-behavior: contain;
 }
 
 #btfw-emotes-grid .btfw-emote-tile {
-  position: relative;
-  display: grid;
-  place-items: center;
+  display:flex; align-items:center; justify-content:center;
   border: 1px solid var(--btfw-border);
   border-radius: 10px; cursor: pointer;
   background: color-mix(in srgb, var(--btfw-color-panel) 80%, transparent 20%);
   /* keep size constant: no transform on hover */
   transition: background .12s ease, border-color .12s ease;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
-}
-#btfw-emotes-grid .btfw-emote-tile::before {
-  content: "";
-  display: block;
-  padding-bottom: 100%;
-  grid-area: 1 / 1;
-}
-#btfw-emotes-grid .btfw-emote-tile > * {
-  grid-area: 1 / 1;
 }
 #btfw-emotes-grid .btfw-emote-tile:hover {
   background: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
@@ -472,6 +462,10 @@
     justify-content: flex-start;
   }
 }
+
+/* Compact on narrow chat columns */
+@media (max-width: 800px){ #btfw-emotes-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 560px){ #btfw-emotes-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 
 /* Virtualized grid: avoid layout on offscreen parts */
