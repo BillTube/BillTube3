@@ -1,0 +1,9 @@
+# Cursor rules
+.cursor/
+
+# npm
+node_modules/
+package-lock.json
+
+# Husky
+.husky/_/

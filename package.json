@@ -1,0 +1,31 @@
+{
+  "name": "billtube3-slim",
+  "version": "3.4.0",
+  "description": "Modular UI enhancement framework for CyTube",
+  "type": "module",
+  "scripts": {
+    "prepare": "husky install",
+    "lint": "npm run lint:js && npm run lint:css",
+    "lint:js": "eslint \"**/*.js\"",
+    "lint:css": "stylelint \"**/*.css\"",
+    "lint:fix": "npm run lint:js -- --fix && npm run lint:css -- --fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/intentionallyIncomplete/BillTube3-slim.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "stylelint": "^16.2.1",
+    "stylelint-config-standard": "^36.0.0"
+  },
+  "lint-staged": {
+    "*.js": "eslint --fix",
+    "*.css": "stylelint --fix"
+  }
+}
+

@@ -1,5 +1,5 @@
 
-BTFW.define("feature:local-subs", [], async () => {
+BTFW.define("feature:local-subs", ["feature:videoOverlay"], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
@@ -37,7 +37,6 @@ BTFW.define("feature:local-subs", [], async () => {
   function removeOldTracksFromVJS(vjs){
     try {
       const list = vjs.remoteTextTracks();
-      // vjs.remoteTextTracks() returns a TextTrackList; you can't iterate directly in some versions
       for (let i = list.length - 1; i >= 0; i--) {
         vjs.removeRemoteTextTrack(list[i]);
       }

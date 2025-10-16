@@ -12,7 +12,7 @@ window.BTFW_THEME_ADMIN = {
     },
     "slider": {
       "enabled": true,
-      "feedUrl": "https://cdn.jsdelivr.net/gh/IntentionallyIncomplete/BadMoviesCytube@dev/channels.json"
+      "feedUrl": "https://cdn.jsdelivr.net/gh/IntentionallyIncomplete/BadMovieCytube@dev/channels.json"
     },
     "typography": {
       "preset": "nunito",
@@ -45,7 +45,7 @@ window.BTFW_THEME_ADMIN = {
   /* BillTube3 one-shot loader for CyTube Channel JS */
   (function (W, D) {
     // --- configurable bits ---
-    var CDN_BASE = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-slim";
+    var CDN_BASE = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete@dev/BillTube3-slim";
     var FILE     = "billtube-fw.js";
     var VERSION  = "dev-000";
     var DEV_NOCACHE = false;
@@ -76,6 +76,6 @@ window.BTFW_THEME_ADMIN = {
     // Fallback to rawcdn.githack if jsDelivr fails
     tag.onerror = function () {
       console.warn("[BTFW] primary failed, trying fallback");
-      inject("https://raw.githack.com/intentionallyIncomplete/BillTube3-slim/main/" + FILE + "?" + Date.now(), { "data-btfw-fallback": "1" });
+      inject("https://raw.githack.com/intentionallyIncomplete/BillTube3-slim/dev/" + FILE + "?" + Date.now(), { "data-btfw-fallback": "1" });
     };
   })(window, document);

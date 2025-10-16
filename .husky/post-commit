@@ -1,0 +1,5 @@
+# Purge jsDelivr CDN cache after commit
+echo "Purging jsDelivr CDN cache..."
+curl -s -X GET "https://purge.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-slim@dev/billtube-fw.js"
+echo "✓ CDN cache purged"
+
