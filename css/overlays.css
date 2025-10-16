@@ -404,6 +404,7 @@
     contain-intrinsic-size: 320px 320px;
     scrollbar-gutter: stable;
     overflow-y: clip;
+    margin-bottom: 60px;
 }
 
 #btfw-emotes-grid .btfw-emote-tile {
@@ -1172,6 +1173,7 @@ html[data-btfw-theme="dark"] .panel {
 #chatheader {
     display: none;
 }
+
 
 
 
