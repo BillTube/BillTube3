@@ -12,7 +12,7 @@ html, body {
 
 :root {
   --btfw-scrollbar-track: color-mix(in srgb, var(--btfw-color-bg) 88%, black 12%);
-  --btfw-scrollbar-thumb: color-mix(in srgb, var(--btfw-color-panel) 78%, black 22%);
+  --btfw-scrollbar-thumb: color-mix(in srgb, var(--btfw-color-accent) 32%, var(--btfw-color-panel) 68%);
   --btfw-scrollbar-thumb-hover: color-mix(in srgb, var(--btfw-color-accent) 32%, var(--btfw-color-panel) 68%);
   --btfw-scrollbar-thumb-active: color-mix(in srgb, var(--btfw-color-accent) 38%, var(--btfw-color-panel) 62%);
 }
