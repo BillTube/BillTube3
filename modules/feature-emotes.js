@@ -127,8 +127,8 @@ BTFW.define("feature:emotes", [], async () => {
           <button class="btfw-tab" data-tab="recent">Recent</button>
         </div>
         <div class="btfw-emotes-search">
-          <input id="btfw-emotes-search" type="text" placeholder="Search…">
-          <button id="btfw-emotes-clear" title="Clear">Clear</button>
+          <input id="btfw-emotes-search" type="search" placeholder="Search…" autocomplete="off" />
+          <button id="btfw-emotes-clear" class="btfw-emotes-clear" type="button" title="Clear search" aria-label="Clear search" aria-hidden="true" tabindex="-1">×</button>
         </div>
         <button class="btfw-emotes-close" title="Close">×</button>
       </div>
@@ -144,12 +144,23 @@ BTFW.define("feature:emotes", [], async () => {
     }
 
     // Tabs
+    const syncSearchClear = ()=>{
+      const input = $("#btfw-emotes-search", pop);
+      const btn   = $("#btfw-emotes-clear", pop);
+      if (!input || !btn) return;
+      const hasValue = input.value.length > 0;
+      btn.classList.toggle("is-visible", hasValue);
+      btn.setAttribute("aria-hidden", hasValue ? "false" : "true");
+      btn.tabIndex = hasValue ? 0 : -1;
+    };
+
     pop.querySelector(".btfw-emotes-tabs").addEventListener("click", ev=>{
       const btn = ev.target.closest(".btfw-tab");
       if (!btn) return;
       pop.querySelectorAll(".btfw-tab").forEach(x=>x.classList.toggle("is-active", x===btn));
       state.tab = btn.getAttribute("data-tab");
       state.search = ""; $("#btfw-emotes-search").value = "";
+      syncSearchClear();
       if (state.tab === "emoji" && !state.emojiReady) loadEmoji();
       render(true);
       focusGrid();
@@ -160,12 +171,14 @@ BTFW.define("feature:emotes", [], async () => {
       let t = 0;
       $("#btfw-emotes-search", pop).addEventListener("input", e=>{
         state.search = e.target.value.trim();
+        syncSearchClear();
         clearTimeout(t);
         t = setTimeout(()=> render(true), 120);
       });
     })();
     $("#btfw-emotes-clear", pop).addEventListener("click", ()=>{
       state.search = ""; $("#btfw-emotes-search").value = "";
+      syncSearchClear();
       render(true); focusGrid();
     });
 
@@ -206,6 +219,9 @@ BTFW.define("feature:emotes", [], async () => {
 
     // First position & fixed height
     positionPopover(true);
+
+    syncSearchClear();
+    pop._btfwSyncSearchClear = syncSearchClear;
 
     return pop;
   }
@@ -459,6 +475,7 @@ c.addEventListener("click", ev=>{
     loadRecent();
     state.tab="emotes"; state.search=""; state.highlight=0;
     $("#btfw-emotes-search").value = "";
+    pop?._btfwSyncSearchClear?.();
     // activate correct tab styling
     pop.querySelectorAll(".btfw-tab").forEach(b=>b.classList.toggle("is-active", b.getAttribute("data-tab")==="emotes"));
     positionPopover(true);            // compute fixed height once per open
