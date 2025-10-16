@@ -395,16 +395,15 @@
 
 /* Fixed grid: constant tile size & no hover-jump */
 #btfw-emotes-grid {
-  flex: 1 1 auto;
-  overflow: visible;
-  overflow-y: visible;
-  padding: 10px;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 5px;
-  content-visibility: auto;
-  contain-intrinsic-size: 320px 320px;
-  scrollbar-gutter: stable;
+    flex: 1 1 auto;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+    content-visibility: auto;
+    contain-intrinsic-size: 320px 320px;
+    scrollbar-gutter: stable;
+    overflow-y: clip;
 }
 
 #btfw-emotes-grid .btfw-emote-tile {
@@ -1130,32 +1129,15 @@ html[data-btfw-theme="dark"] .panel {
 }
 .btfw-pop.btfw-pop--open{ display: block; }
 
-
-
-
-
-
-
-
-
-
-
-
-
-/* 1) Make #chatwrap a size container so children can size relative to it */
 #chatwrap {
   container-type: inline-size;  /* modern Chrome/Edge/Firefox/Safari support this */
 }
-
-/* 2) Widths follow #chatwrap (with sensible min/max clamps) */
 #btfw-ct-modal .btfw-ct-card {
-  /* Tools: 360px–640px, otherwise up to ~92% of the chatwrap width */
   width: clamp(360px, 92cqi, 640px);
   max-width: calc(100cqi - 16px);   /* keep a little side margin */
 }
 
 #btfw-emotes-pop {
-  /* Emotes: allow a little wider range */
   width: clamp(280px, 92cqi, 720px);
   max-width: calc(100cqi - 16px);
 }
@@ -1173,14 +1155,12 @@ html[data-btfw-theme="dark"] .panel {
   gap: 6px;
 }
 
-/* 4) (Optional) Small polishing so pop-ins never overflow the viewport height */
 #btfw-ct-modal .btfw-ct-card,
 #btfw-emotes-pop {
   max-height: min(80vh, 560px);
-  overflow: hidden;
+  overflow: auto;
 }
 
-/* 5) Backward-compatible fallback when container queries aren’t supported */
 @supports not (container-type: inline-size) {
   #btfw-ct-modal .btfw-ct-card { width: min(92vw, 640px); }
   #btfw-emotes-pop { width: min(92vw, 720px); }
@@ -1192,15 +1172,6 @@ html[data-btfw-theme="dark"] .panel {
 #chatheader {
     display: none;
 }
-
-
-
-
-
-
-
-
-
 
 
 
