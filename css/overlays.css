@@ -286,8 +286,8 @@
   right: 8px;
   bottom: 56px;            /* JS overrides; keep as safe fallback */
   width: min(520px, calc(100vw - 16px));
-  height: 360px;           /* fallback; JS sets exact height per open */
   max-width: calc(100vw - 16px);
+  min-width: min(280px, calc(100vw - 16px));
   display: flex;
   flex-direction: column;
   background: color-mix(in srgb, var(--btfw-overlay-bg) 94%, transparent 6%);
@@ -300,7 +300,11 @@
 #btfw-emotes-pop.hidden { display: none; }
 
 #btfw-emotes-pop .btfw-emotes-head {
-  display: flex; align-items: center; gap: 8px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "tabs search close";
+  align-items: center;
+  gap: 8px;
   padding: 8px 10px;
   border-bottom: 1px solid var(--btfw-border);
   position: sticky;
@@ -311,7 +315,12 @@
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.18);
 }
 
-#btfw-emotes-pop .btfw-emotes-tabs { display: inline-flex; gap: 4px; }
+#btfw-emotes-pop .btfw-emotes-tabs {
+  grid-area: tabs;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 #btfw-emotes-pop .btfw-tab {
   background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
   color: var(--btfw-color-text-soft);
@@ -327,30 +336,55 @@
 }
 
 #btfw-emotes-pop .btfw-emotes-search {
-  margin-left: auto;
-  display: inline-flex; align-items: center; gap: 6px;
+  grid-area: search;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
 }
 #btfw-emotes-pop #btfw-emotes-search {
   background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);
   border: 1px solid var(--btfw-border);
   color: var(--btfw-color-text);
   border-radius: 8px;
-  font-size: 12px; padding: 6px 8px; width: 180px;
+  font-size: 12px;
+  padding: 6px 28px 6px 10px;
+  width: 100%;
 }
 #btfw-emotes-pop #btfw-emotes-clear {
-    background: 
- color-mix(in srgb, var(--btfw-color-panel) 84%, transparent 16%);
-    border: 1px solid var(--btfw-border);
-    color: var(--btfw-color-text-soft);
-    border-radius: 8px;
-    width: 53px;
-    font-size: 12px;
-    height: 30px;
-    line-height: 1;
-    cursor: pointer;
+  position: absolute;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: var(--btfw-color-text-soft);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease, color .12s ease;
+}
+#btfw-emotes-pop #btfw-emotes-clear.is-visible {
+  opacity: 0.72;
+  pointer-events: auto;
+}
+#btfw-emotes-pop #btfw-emotes-clear.is-visible:hover {
+  color: var(--btfw-color-text);
+  opacity: 1;
+}
+#btfw-emotes-pop #btfw-emotes-clear:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 68%, transparent 32%);
+  outline-offset: 1px;
+  opacity: 1;
 }
 #btfw-emotes-pop .btfw-emotes-close {
-  margin-left: 8px;
+  grid-area: close;
   width: 28px; height: 28px;
   border-radius: 8px;
   border: 1px solid var(--btfw-border);
@@ -413,6 +447,20 @@
 #btfw-emotes-grid .btfw-emote-tile--emoji:hover .btfw-emoji,
 #btfw-emotes-grid .btfw-emote-tile--emoji.is-active .btfw-emoji {
   transform: translateY(-1px) scale(1.04);
+}
+
+@media (max-width: 640px){
+  #btfw-emotes-pop .btfw-emotes-head {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "tabs close"
+      "search search";
+    align-items: start;
+  }
+
+  #btfw-emotes-pop .btfw-emotes-tabs {
+    justify-content: flex-start;
+  }
 }
 
 /* Compact on narrow chat columns */
@@ -1108,7 +1156,7 @@ html[data-btfw-theme="dark"] .panel {
 
 #btfw-emotes-pop {
   /* Emotes: allow a little wider range */
-  width: clamp(360px, 92cqi, 720px);
+  width: clamp(280px, 92cqi, 720px);
   max-width: calc(100cqi - 16px);
 }
 
@@ -1128,8 +1176,8 @@ html[data-btfw-theme="dark"] .panel {
 /* 4) (Optional) Small polishing so pop-ins never overflow the viewport height */
 #btfw-ct-modal .btfw-ct-card,
 #btfw-emotes-pop {
-  max-height: min(70vh, 560px);
-  overflow: auto;
+  max-height: min(80vh, 560px);
+  overflow: hidden;
 }
 
 /* 5) Backward-compatible fallback when container queries aren’t supported */
