@@ -5,16 +5,16 @@
   "type": "module",
   "scripts": {
     "prepare": "husky install",
-    "lint": "npm run lint:js && npm run lint:css",
-    "lint:js": "eslint \"**/*.js\"",
-    "lint:css": "stylelint \"**/*.css\"",
-    "lint:fix": "npm run lint:js -- --fix && npm run lint:css -- --fix"
+    "lint-staged": "lint-staged",
+    "lint": "eslint . --ext .js,.css,.md,.json",
+    "lint:fix": "npm run lint:js -- --fix && npm run lint:css -- --fix",
+    "purge-cdn": "curl -s -X GET \"https://purge.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-slim@dev/billtube-fw.js\" && echo \"✓ CDN cache purged\""
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/intentionallyIncomplete/BillTube3-slim.git"
   },
-  "author": "",
+  "author": "Quigly",
   "license": "MIT",
   "devDependencies": {
     "eslint": "^8.57.0",
@@ -24,8 +24,7 @@
     "stylelint-config-standard": "^36.0.0"
   },
   "lint-staged": {
-    "*.js": "eslint --fix",
-    "*.css": "stylelint --fix"
+    "*": "npm run lint"
   }
 }
 

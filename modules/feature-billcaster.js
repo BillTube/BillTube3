@@ -318,7 +318,7 @@ $(document).ready(function () {
   }
 
   function getMimeType(url) {
-    var ext = url.split('.').pop().split(/\#|\?/)[0].toLowerCase();
+    var ext = url.split('.').pop().split(/#|\?/)[0].toLowerCase();
     switch (ext) {
       case 'mp4':  return 'video/mp4';
       case 'webm': return 'video/webm';

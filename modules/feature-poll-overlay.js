@@ -404,7 +404,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     // Update overlay content
     const title = overlay.querySelector(".btfw-poll-video-title");
     const optionsGrid = overlay.querySelector(".btfw-poll-options-grid");
-    const votesSpan = overlay.querySelector(".btfw-poll-votes");
+    //const votesSpan = overlay.querySelector(".btfw-poll-votes");
     const endBtn = overlay.querySelector(".btfw-poll-end-btn");
 
     if (title) title.textContent = decodeHtmlEntities(poll.title || "Poll");

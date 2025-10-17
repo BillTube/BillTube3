@@ -1,3 +1,1 @@
-# Lint staged files (skip with --no-verify flag)
-npx lint-staged
-
+npm run lint-staged

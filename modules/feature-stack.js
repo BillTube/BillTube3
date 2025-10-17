@@ -239,15 +239,15 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     };
   }
   
-  function normalizeId(el){ 
-    if(!el) return null; 
-    if(!el.id) el.id="stackitem-"+Math.random().toString(36).slice(2,7); 
-    return el.id; 
-  }
+  // function normalizeId(el){ 
+  //   if(!el) return null; 
+  //   if(!el.id) el.id="stackitem-"+Math.random().toString(36).slice(2,7); 
+  //   return el.id; 
+  // }
   
-  function titleOf(el){ 
-    return el.getAttribute("data-title")||el.getAttribute("title")||el.id; 
-  }
+  // function titleOf(el){ 
+  //   return el.getAttribute("data-title")||el.getAttribute("title")||el.id; 
+  // }
   
   function mergeMotdElements() {
     const motdwrap = document.getElementById("motdwrap");

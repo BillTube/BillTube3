@@ -1,18 +1,18 @@
 /* BTFW — feature:playlist-tools (merged helpers: search, scroll-to-current, poll add) */
 BTFW.define("feature:playlist-tools", [], async () => {
-  const $  = (s,r=document)=>r.querySelector(s);
-  const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
   /* ---------- Toolbar injection ---------- */
-  function injectToolbar(){
+  function injectToolbar() {
     if ($("#btfw-plbar")) return; // already added
 
     // Try to anchor near the playlist controls
     const header = $("#playlistwrap")
-               || $("#ploptions")
-               || $("#queue")?.parentElement
-               || $("#queue")?.closest(".well")
-               || $("#btfw-leftpad");
+      || $("#ploptions")
+      || $("#queue")?.parentElement
+      || $("#queue")?.closest(".well")
+      || $("#btfw-leftpad");
     if (!header) return;
 
     const bar = document.createElement("div");
@@ -45,7 +45,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
   let copyTitlesEnabled = false;
   let copyTitlesToggle = null;
 
-  function ensureCopyTitlesToggle(){
+  function ensureCopyTitlesToggle() {
     const bar = $("#btfw-plbar");
     if (!bar) return;
 
@@ -79,7 +79,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     updateCopyTitlesToggleAppearance();
   }
 
-  function updateCopyTitlesToggleAppearance(){
+  function updateCopyTitlesToggleAppearance() {
     if (!copyTitlesToggle) return;
     copyTitlesToggle.setAttribute("aria-pressed", copyTitlesEnabled ? "true" : "false");
     copyTitlesToggle.classList.toggle("is-success", copyTitlesEnabled);
@@ -87,7 +87,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     copyTitlesToggle.classList.toggle("is-outlined", copyTitlesEnabled);
   }
 
-  function ensureCopyTitleButtons(){
+  function ensureCopyTitleButtons() {
     const entries = $$("#queue > .queue_entry");
     if (!entries.length) return;
 
@@ -109,7 +109,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     });
   }
 
-  async function copyTitleForEntry(entry){
+  async function copyTitleForEntry(entry) {
     if (!entry) return false;
     const titleAnchor = entry.querySelector(".qe_title") || entry.querySelector("a");
     if (!titleAnchor) return false;
@@ -120,12 +120,12 @@ BTFW.define("feature:playlist-tools", [], async () => {
     const formattedTitle = formatTitleForCopy(rawTitle);
     const payload = formattedTitle ? `${href} ${formattedTitle}` : href;
     const ok = await copyToClipboard(payload);
-    if (ok) toast(`Copied \"${formattedTitle}\"`, "success");
+    if (ok) toast(`Copied "${formattedTitle}"`, "success");
     else toast("Unable to copy to clipboard", "warn");
     return ok;
   }
 
-  function formatTitleForCopy(raw){
+  function formatTitleForCopy(raw) {
     if (!raw) return "";
     let text = String(raw).trim();
     if (!text) return "";
@@ -150,14 +150,14 @@ BTFW.define("feature:playlist-tools", [], async () => {
     return year ? `${titled}${titled ? " " : ""}(${year})` : titled;
   }
 
-  async function copyToClipboard(text){
+  async function copyToClipboard(text) {
     if (!text) return false;
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
         return true;
       }
-    } catch(_){}
+    } catch (_) { }
 
     try {
       const ta = document.createElement("textarea");
@@ -170,12 +170,12 @@ BTFW.define("feature:playlist-tools", [], async () => {
       const ok = document.execCommand("copy");
       document.body.removeChild(ta);
       return ok;
-    } catch(_){}
+    } catch (_) { }
 
     return false;
   }
 
-  function wireCopyTitleButtons(){
+  function wireCopyTitleButtons() {
     const queue = $("#queue");
     if (!queue || queue._btfwCopyTitleDelegated) return;
     queue._btfwCopyTitleDelegated = true;
@@ -191,7 +191,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
 
   /* ---------- Filter logic (client-side) ---------- */
   let lastQ = "";
-  function applyFilter(q){
+  function applyFilter(q) {
     const queue = $("#queue");
     if (!queue) return;
     let visible = 0;
@@ -205,8 +205,8 @@ BTFW.define("feature:playlist-tools", [], async () => {
     });
     updateCount(visible);
   }
-  
-  function wireFilter(){
+
+  function wireFilter() {
     const input = $("#btfw-pl-filter");
     const clear = $("#btfw-pl-clear");
     if (!input) return;
@@ -219,7 +219,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     }, 120);
 
     input.addEventListener("input", debounced);
-    clear.addEventListener("click", (e)=>{
+    clear.addEventListener("click", (e) => {
       e.preventDefault();
       input.value = "";
       lastQ = "";
@@ -227,22 +227,22 @@ BTFW.define("feature:playlist-tools", [], async () => {
       input.focus();
     });
   }
-  
-  function updateCount(known){
+
+  function updateCount(known) {
     const count = $("#btfw-pl-count");
     const queue = $("#queue");
     if (!count || !queue) return;
     const n = (known != null) ? known :
       $$("#queue > .queue_entry").filter(li => li.style.display !== "none").length;
-    count.textContent = n ? `${n} item${n===1?"":"s"}` : "";
+    count.textContent = n ? `${n} item${n === 1 ? "" : "s"}` : "";
   }
 
   /* ---------- Scroll to current ---------- */
-  function wireScrollToCurrent(){
+  function wireScrollToCurrent() {
     const btn = $("#btfw-pl-scroll");
     const queue = $("#queue");
     if (!btn || !queue) return;
-    btn.addEventListener("click", (e)=>{
+    btn.addEventListener("click", (e) => {
       e.preventDefault();
       const active = $("#queue .queue_active");
       if (!active) return;
@@ -263,20 +263,20 @@ BTFW.define("feature:playlist-tools", [], async () => {
         return style.display !== 'none' && style.visibility !== 'hidden';
       })
       .slice(0, 50); // Only process first 50 visible items for performance
-    
+
     visibleItems.forEach(li => {
       if (!li) return;
       const group = li.querySelector(".btn-group");
       if (!group) return;
       if (group.querySelector(".btfw-qbtn-pollcopy")) return; // Already has button
-      
+
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "btn btn-xs btn-default qbtn-pollcopy btfw-qbtn-pollcopy";
       btn.setAttribute("title", "Add this title to the poll");
       // Use simple text instead of icon for better performance
       btn.textContent = "Poll";
-      
+
       const queueNext = group.querySelector(".qbtn-next");
       if (queueNext && queueNext.nextSibling) {
         group.insertBefore(btn, queueNext.nextSibling);
@@ -288,7 +288,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     });
   }
 
-  function findOpenPollInputs(){
+  function findOpenPollInputs() {
     const wrap = document.getElementById("pollwrap");
     if (!wrap || !wrap.isConnected) return null;
     const menu = wrap.querySelector(".poll-menu");
@@ -303,7 +303,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     return inputs;
   }
 
-  function wireQueuePollCopy(){
+  function wireQueuePollCopy() {
     const queue = $("#queue");
     if (!queue || queue._btfwPollCopyDelegated) return;
     queue._btfwPollCopyDelegated = true;
@@ -335,7 +335,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
   const scrubPattern = new RegExp(`\\b(?:${scrubTokens.join("|")})\\b`, "gi");
   const titleInputSelectors = ["#addfromurl-title-val", "#mediaurl-title", ".media-title-input"];
 
-  function sanitiseTitleInput(value){
+  function sanitiseTitleInput(value) {
     if (!value) return "";
 
     let title = String(value);
@@ -360,7 +360,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
   }
 
   let titleFilterObserver = null;
-  function ensureAddFromUrlTitleFilter(){
+  function ensureAddFromUrlTitleFilter() {
     let anyBound = false;
     titleInputSelectors
       .flatMap(sel => Array.from(document.querySelectorAll(sel)))
@@ -382,7 +382,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
             const delta = cleaned.length - raw.length;
             const newStart = Math.max(0, start + delta);
             const newEnd = Math.max(0, end + delta);
-            try { input.setSelectionRange(newStart, newEnd); } catch(_){}
+            try { input.setSelectionRange(newStart, newEnd); } catch (_) { }
           }
         };
 
@@ -407,7 +407,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
 
   const tempCheckboxKey = "btfw:addfromurl:addTemp";
   let addTempObserver = null;
-  function ensureAddTempPreference(){
+  function ensureAddTempPreference() {
     const checkbox = document.querySelector("#addfromurl input.add-temp");
     if (!(checkbox instanceof HTMLInputElement)) {
       if (!addTempObserver) {
@@ -422,11 +422,11 @@ BTFW.define("feature:playlist-tools", [], async () => {
     try {
       const stored = localStorage.getItem(tempCheckboxKey);
       if (stored != null) checkbox.checked = stored === "true";
-    } catch(_){}
+    } catch (_) { }
 
     checkbox.addEventListener("change", () => {
       try { localStorage.setItem(tempCheckboxKey, checkbox.checked ? "true" : "false"); }
-      catch(_){}
+      catch (_) { }
     });
 
     checkbox._btfwTempPersistBound = true;
@@ -435,9 +435,9 @@ BTFW.define("feature:playlist-tools", [], async () => {
   }
 
   /* ---------- Utils ---------- */
-  function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
-  
-  function toast(msg, kind="info"){
+  function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+  function toast(msg, kind = "info") {
     const text = (msg == null) ? "" : String(msg).trim();
     if (!text) return;
     try {
@@ -454,14 +454,17 @@ BTFW.define("feature:playlist-tools", [], async () => {
         });
         return;
       }
-    } catch(_){}
+    } catch (_) { }
     try {
-      if (window.makeAlert) { makeAlert("Playlist", text).insertBefore("#motdrow"); return; }
-    } catch(_){}
+      if (window.makeAlert) {
+        makeAlert("Playlist", text).insertBefore("#motdrow");
+        return;
+      }
+    } catch (_) { }
     console.log("[playlist-tools]", text);
   }
-  
-  function escapeHtml(str){
+
+  function escapeHtml(str) {
     return str.replace(/[&<>"']/g, (c) => ({
       "&": "&amp;",
       "<": "&lt;",
@@ -477,7 +480,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     const container = $("#queuecontainer") || $("#playlistwrap") || document.body;
     if (container && !container._btfw_pl_obs_optimized) {
       container._btfw_pl_obs_optimized = true;
-      
+
       let observerTimeout;
       const debouncedCallback = () => {
         clearTimeout(observerTimeout);
@@ -490,18 +493,18 @@ BTFW.define("feature:playlist-tools", [], async () => {
           ensureAddTempPreference();
         }, 100); // Wait 100ms after last mutation
       };
-      
-      new MutationObserver(debouncedCallback).observe(container, { 
-        childList: true, 
-        subtree: true 
+
+      new MutationObserver(debouncedCallback).observe(container, {
+        childList: true,
+        subtree: true
       });
     }
-    
+
     // Queue observer for count updates (also debounced)
     const queue = $("#queue");
     if (queue && !queue._btfw_pl_count_obs_optimized) {
       queue._btfw_pl_count_obs_optimized = true;
-      
+
       let queueTimeout;
       const debouncedQueueCallback = () => {
         clearTimeout(queueTimeout);
@@ -512,15 +515,15 @@ BTFW.define("feature:playlist-tools", [], async () => {
         }, 100);
       };
 
-      new MutationObserver(debouncedQueueCallback).observe(queue, { 
-        childList: true, 
+      new MutationObserver(debouncedQueueCallback).observe(queue, {
+        childList: true,
         subtree: false // Don't need subtree for direct children
       });
     }
   }
 
   /* ---------- Boot & observe ---------- */
-  function boot(){
+  function boot() {
     injectToolbar();
     ensureCopyTitlesToggle();
     ensureQueuePollButtons();
@@ -529,7 +532,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     wireQueuePollCopy();
     ensureAddFromUrlTitleFilter();
     ensureAddTempPreference();
-    
+
     // Set up optimized observers instead of the old ones
     setupOptimizedObservers();
   }
@@ -538,5 +541,5 @@ BTFW.define("feature:playlist-tools", [], async () => {
   else boot();
   document.addEventListener("btfw:layoutReady", boot);
 
-  return { name:"feature:playlist-tools" };
+  return { name: "feature:playlist-tools" };
 });
