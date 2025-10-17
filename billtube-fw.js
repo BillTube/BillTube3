@@ -1,7 +1,7 @@
 /*! BillTube Framework — v3.4f */
 (function(){
   var scripts=document.getElementsByTagName('script');
-  var BASE=(document.currentScript&&document.currentScript.src)||scripts[scripts.length-1].src; BASE=BASE.replace(/\/[^]*$/, "");
+  var BASE=(document.currentScript&&document.currentScript.src)||scripts[scripts.length-1].src; BASE=BASE.replace(/\/[^/]*$/, "");
 
   var Registry=Object.create(null);
   function define(name,deps,factory){ Registry[name]={deps:deps||[],factory:factory,instance:null}; }
