@@ -20,6 +20,28 @@ BTFW.define("feature:themeSettings", [], async () => {
   const get = (k, d) => { try { const v = localStorage.getItem(k); return v==null? d : v; } catch(_) { return d; } };
   const set = (k, v) => { try { localStorage.setItem(k, v); } catch(_){} };
 
+  const IGNORE_KEY = "btfw:chat:ignore";
+
+  function normalizeName(name){
+    return (name || "").trim().replace(/^@+/, "");
+  }
+
+  function loadIgnoreNames(){
+    try {
+      const raw = localStorage.getItem(IGNORE_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
+      return arr.map(v => normalizeName(String(v))).filter(Boolean);
+    } catch(_) {
+      return [];
+    }
+  }
+
+  function persistIgnoreNames(list){
+    try { localStorage.setItem(IGNORE_KEY, JSON.stringify(list)); } catch(_){}
+  }
+
   // apply CSS variables immediately (used by chat/emote sizing)
   function applyChatTextPx(px){
     const wrap = $("#chatwrap");
@@ -53,6 +75,7 @@ BTFW.define("feature:themeSettings", [], async () => {
 
   let avatarsModule = null;
   let stackModule = null;
+  let ignoreModule = null;
 
   function resolveAvatars(){
     if (avatarsModule) return Promise.resolve(avatarsModule);
@@ -75,6 +98,60 @@ BTFW.define("feature:themeSettings", [], async () => {
     });
   }
   resolveStack();
+
+  function resolveIgnore(){
+    if (ignoreModule) return Promise.resolve(ignoreModule);
+    return getModule("feature:chat-ignore").then(mod => {
+      if (mod) ignoreModule = mod;
+      return ignoreModule;
+    });
+  }
+  resolveIgnore();
+
+  function getIgnoreNames(){
+    if (ignoreModule?.list) {
+      try {
+        const list = ignoreModule.list();
+        if (Array.isArray(list)) return list.map(v => normalizeName(String(v))).filter(Boolean);
+      } catch(_){}
+    }
+    return loadIgnoreNames();
+  }
+
+  function addIgnoreName(name){
+    const normalized = normalizeName(name);
+    if (!normalized) return false;
+    const key = normalized.toLowerCase();
+    const current = new Set(getIgnoreNames().map(n => n.toLowerCase()));
+    if (current.has(key)) return false;
+
+    if (ignoreModule?.add) {
+      try { ignoreModule.add(normalized); } catch(_){}
+    } else {
+      const list = loadIgnoreNames();
+      list.push(key);
+      persistIgnoreNames(list);
+      resolveIgnore().then(mod => { try { mod?.add?.(normalized); } catch(_){} });
+    }
+    return true;
+  }
+
+  function removeIgnoreName(name){
+    const normalized = normalizeName(name);
+    if (!normalized) return false;
+    const key = normalized.toLowerCase();
+    const current = getIgnoreNames();
+    if (!current.some(n => n.toLowerCase() === key)) return false;
+
+    if (ignoreModule?.remove) {
+      try { ignoreModule.remove(normalized); } catch(_){}
+    } else {
+      const next = loadIgnoreNames().filter(n => n.toLowerCase() !== key);
+      persistIgnoreNames(next);
+      resolveIgnore().then(mod => { try { mod?.remove?.(normalized); } catch(_){} });
+    }
+    return true;
+  }
 
   // --- modal creation ---
   function ensureModal(){
@@ -101,6 +178,7 @@ BTFW.define("feature:themeSettings", [], async () => {
               <li data-tab="chat"><a>Chat</a></li>
               <li data-tab="notifications"><a>Notifications</a></li>
               <li data-tab="video"><a>Video</a></li>
+              <li data-tab="ignore"><a>Ignore</a></li>
             </ul>
           </div>
 
@@ -248,6 +326,31 @@ BTFW.define("feature:themeSettings", [], async () => {
                 </section>
               </div>
             </div>
+
+            <!-- Ignore -->
+            <div class="btfw-ts-panel" data-tab="ignore" style="display:none;">
+              <div class="btfw-ts-grid">
+                <section class="btfw-ts-card">
+                  <header class="btfw-ts-card__header">
+                    <h3>Ignored users</h3>
+                    <p>Hide messages from specific usernames. Changes apply instantly.</p>
+                  </header>
+                  <div class="btfw-ts-card__body">
+                    <form class="btfw-ignore-form" id="btfw-ignore-form">
+                      <div class="field has-addons">
+                        <div class="control is-expanded">
+                          <input class="input is-small" id="btfw-ignore-input" type="text" placeholder="Enter username">
+                        </div>
+                        <div class="control">
+                          <button class="button is-link is-small" type="submit">Add</button>
+                        </div>
+                      </div>
+                    </form>
+                    <div class="btfw-ignore-list" id="btfw-ignore-list" aria-live="polite"></div>
+                  </div>
+                </section>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -303,6 +406,73 @@ BTFW.define("feature:themeSettings", [], async () => {
 
     // Open via event
     document.addEventListener("btfw:openThemeSettings", open);
+
+    const ignoreListEl = $("#btfw-ignore-list", m);
+    const ignoreForm = $("#btfw-ignore-form", m);
+    const ignoreInput = $("#btfw-ignore-input", m);
+
+    const renderIgnoreList = () => {
+      if (!ignoreListEl) return;
+      const names = getIgnoreNames();
+      ignoreListEl.innerHTML = "";
+      if (!names.length) {
+        const empty = document.createElement("p");
+        empty.className = "btfw-help";
+        empty.textContent = "No ignored users yet.";
+        ignoreListEl.appendChild(empty);
+        return;
+      }
+      const list = document.createElement("ul");
+      list.className = "btfw-ignore-items";
+      names
+        .slice()
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+        .forEach(name => {
+          const li = document.createElement("li");
+          li.className = "btfw-ignore-item";
+
+          const label = document.createElement("span");
+          label.className = "btfw-ignore-name";
+          label.textContent = name;
+
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.className = "button is-small is-light";
+          removeBtn.setAttribute("data-ignore-remove", name);
+          removeBtn.textContent = "Remove";
+
+          li.appendChild(label);
+          li.appendChild(removeBtn);
+          list.appendChild(li);
+        });
+      ignoreListEl.appendChild(list);
+    };
+
+    if (ignoreForm && !ignoreForm._btfwIgnoreBound) {
+      ignoreForm._btfwIgnoreBound = true;
+      ignoreForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const value = normalizeName(ignoreInput?.value || "");
+        if (!value) return;
+        const added = addIgnoreName(value);
+        if (added && ignoreInput) ignoreInput.value = "";
+        renderIgnoreList();
+      });
+    }
+
+    if (ignoreListEl && !ignoreListEl._btfwIgnoreBound) {
+      ignoreListEl._btfwIgnoreBound = true;
+      ignoreListEl.addEventListener("click", (event) => {
+        const button = event.target?.closest?.("[data-ignore-remove]");
+        if (!button) return;
+        const name = button.getAttribute("data-ignore-remove") || "";
+        if (removeIgnoreName(name)) {
+          renderIgnoreList();
+        }
+      });
+    }
+
+    m._btfwRenderIgnoreList = renderIgnoreList;
 
     return m;
   }
@@ -397,6 +567,8 @@ BTFW.define("feature:themeSettings", [], async () => {
     const layoutSelect = $("#btfw-chat-side", m);
     const sideNow = get(TS_KEYS.layoutSide, "right");
     if (layoutSelect) layoutSelect.value = ["left","right"].includes(sideNow) ? sideNow : "right";
+
+    if (typeof m._btfwRenderIgnoreList === "function") m._btfwRenderIgnoreList();
 
     m.classList.add("is-active");
     document.dispatchEvent(new CustomEvent("btfw:themeSettings:open"));

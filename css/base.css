@@ -1285,6 +1285,33 @@ nav.pagination.is-centered.btfw-gif-pager {
   gap: 14px;
 }
 
+#btfw-theme-modal .btfw-ignore-items{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#btfw-theme-modal .btfw-ignore-item{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 78%, transparent 22%);
+}
+
+#btfw-theme-modal .btfw-ignore-name{
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--btfw-color-text) 82%, transparent 18%);
+  word-break: break-word;
+}
+
 #btfw-theme-modal .btfw-notify-sound-list{
   display: flex;
   flex-direction: column;
