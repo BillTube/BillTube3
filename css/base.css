@@ -700,10 +700,12 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 
 .btfw-plbar__primary {
     flex: 1 1 320px;
-    min-width: 235px;
+    min-width: 233px;
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: row;
     gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 .btfw-plbar__search {
@@ -751,12 +753,14 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 }
 
 .btfw-plbar__actions {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
-  justify-content: flex-start;
-  width: 100%;
-  align-self: stretch;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+    width: 100%;
+    align-self: stretch;
+    flex-direction: row;
+    align-items: center;
 }
 
 .btfw-plbar__actions > * {
