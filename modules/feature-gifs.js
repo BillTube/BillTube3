@@ -246,6 +246,9 @@ BTFW.define("feature:gifs", [], async () => {
     for (let i = 0; i < PER_PAGE; i++){
       const sk = document.createElement("div");
       sk.className = "btfw-gif-cell is-skeleton";
+      const frame = document.createElement("div");
+      frame.className = "btfw-gif-thumb";
+      sk.appendChild(frame);
       frag.appendChild(sk);
     }
 
@@ -386,6 +389,9 @@ BTFW.define("feature:gifs", [], async () => {
     cell.dataset.url = item.urlClassic || "";
     cell.dataset.id = item.id || "";
 
+    const frame = document.createElement("div");
+    frame.className = "btfw-gif-thumb";
+
     const img = document.createElement("img");
     img.src = item.thumb;
     img.alt = "gif";
@@ -393,7 +399,8 @@ BTFW.define("feature:gifs", [], async () => {
     img.decoding = "async";
     prepareImageLoadingState(cell, img);
 
-    cell.appendChild(img);
+    frame.appendChild(img);
+    cell.appendChild(frame);
 
     return cell;
   }
