@@ -1,0 +1,17 @@
+---
+description: "Core development principles"
+alwaysApply: true
+---
+
+# Technical Standards
+- Prove claims with sources or state uncertainty
+- Present multiple viewpoints on technical decisions
+- Reference documentation before implementing
+- Use descriptive variable names
+- Handle errors explicitly
+
+# Tool Usage
+- Use @sequentialthinking for multi-step reasoning
+- Use @context7 for "lookup library..." requests  
+- Use @fetch for current web information
+- Use @git for "commit changes" or diff requests

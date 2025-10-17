@@ -1,0 +1,84 @@
+---
+description: "Testing strategies for vanilla JS modular systems"
+tags: ["testing", "modules", "vanilla-js"]
+---
+
+# Testing Philosophy  
+Test like a **quality inspector** - verify each component independently, then test their interactions, always with real-world scenarios in mind.
+
+## Module Testing Strategy
+```
+// Test module definitions and factory functions
+describe("Module: feature:name", () => {
+it("should define module with correct dependencies", () => {
+const module = BTFW._registry.get("feature:name");
+expect(module.deps).toEqual(["dep1", "dep2"]);
+});
+
+it("should initialize with injected dependencies", async () => {
+const mockDeps = {dep1: {}, dep2: {}, BASE: {}};
+const result = await module.factory(mockDeps);
+expect(result.name).toBe("feature:name");
+});
+});
+```
+
+## Dependency Injection Testing
+- Mock dependencies at the module factory level
+- Test modules in isolation before integration testing
+- Verify dependency resolution order matches expectations
+- Use `@context7` to lookup testing framework documentation
+
+## DOM Integration Testing
+```
+// Test CyTube DOM interactions with jsdom or browser environment
+import { JSDOM } from 'jsdom';
+
+describe("DOM Integration", () => {
+beforeEach(() => {
+const dom = new JSDOM(<!DOCTYPE html><div id="cytube-container"></div>);
+global.document = dom.window.document;
+global.window = dom.window;
+});
+
+it("should attach event listeners without conflicts", () => {
+// Test event delegation setup
+});
+});
+```
+
+## Async Loading Testing
+- Test module loading timeouts and error handling
+- Verify CSS load order using document.styleSheets inspection
+- Test Promise.all() failure scenarios in feature initialization
+- Mock network delays to test loading resilience
+
+## Integration Testing Patterns
+- Test socket.io event handler integration with CyTube
+- Verify MutationObserver callbacks don't interfere
+- Test graceful degradation when CyTube updates break assumptions
+- Use headless browser testing for CSS cascade verification
+
+## Performance Testing
+```
+// Test module loading performance
+it("should load all modules within acceptable time", async () => {
+const startTime = performance.now();
+await BTFW.init("app");
+const loadTime = performance.now() - startTime;
+expect(loadTime).toBeLessThan(2000); // 2 second max
+});
+```
+
+## Evidence-Based Testing Requirements
+- Prove DOM manipulation timing with actual browser testing
+- Document browser compatibility test results
+- State uncertainty when testing depends on CyTube's internal changes
+- Use `@sequentialthinking` for complex test scenario analysis
+- Reference CyTube's test patterns when available
+
+## Testing Tool Integration
+- Use Node.js built-in test runner for module logic
+- Add Playwright/Puppeteer for DOM integration testing  
+- Use `@fetch` to get current testing best practices
+- Implement CI/CD integration with `@git` for automated test runs

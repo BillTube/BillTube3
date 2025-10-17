@@ -1,9 +1,5 @@
-# Cursor rules
-.cursor/
-
-# npm
 node_modules/
-package-lock.json
-
-# Husky
-.husky/_/
+dist/
+scripts/bundles/
+*.log
+.DS_Store

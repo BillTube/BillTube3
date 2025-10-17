@@ -1,0 +1,46 @@
+---
+description: "Debugging strategies for custom module loader systems"
+tags: ["debugging", "modules", "async"]
+---
+
+# Debugging Philosophy
+Debug like an **archaeologist** - dig systematically through layers, document findings, and trace the chain of dependencies back to origin.
+
+## Module Loading Debug Strategy
+- Use `BTFW._registry` to inspect module states (pending/loaded/failed)
+- Add debug flags to module definitions: `BTFW.define("module", deps, factory, {debug: true})`
+- Log dependency resolution order to identify circular dependencies
+- Monitor async factory completion timing with performance marks
+
+## Sequential Loading Debugging
+```
+// Debug sequential loading bottlenecks
+const loadTiming = new Map();
+BTFW.define.original = BTFW.define;
+BTFW.define = function(name, deps, factory) {
+loadTiming.set(name, performance.now());
+return BTFW.define.original(name, deps, factory);
+}
+```
+
+## DOM Integration Debug Patterns
+- Use `@sequentialthinking` for tracing MutationObserver callback chains
+- Add breakpoints in socket.io event handlers with conditional logging
+- Debug CyTube DOM hooks by temporarily disabling other modules
+- Track event delegation paths using `event.composedPath()`
+
+## CSS Loading Debug Protocol
+- Verify CSS file load order matches: tokens → base → navbar → chat → overlays → player → mobile
+- Check for CSS cascade conflicts using computed styles inspection
+- Use browser's Coverage tab to identify unused CSS rules
+
+## Async Factory Debugging
+- Wrap factory functions to catch unhandled promise rejections
+- Use Chrome DevTools' async stack traces for Promise.all() failures
+- Log module initialization timing to identify bottlenecks
+
+## Evidence-Based Debugging Rules
+- Prove CSS/JS load timing with Performance Timeline API
+- Document socket.io message flow with actual packet inspection
+- State uncertainty when DOM manipulation timing is browser-dependent
+- Reference CyTube source code when debugging integration points

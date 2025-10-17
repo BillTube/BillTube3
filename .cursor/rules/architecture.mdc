@@ -1,0 +1,52 @@
+---
+description: "Architecture patterns for modular UI enhancement frameworks"  
+tags: ["architecture", "modules", "patterns"]
+---
+
+# Architecture Philosophy
+Build like **Lego blocks** - each module should connect predictably, be replaceable individually, and contribute to a greater whole without knowing about siblings.
+
+## Module Boundary Principles
+- Each feature module exports a single capability
+- Dependencies flow inward: feature → core → framework
+- No direct feature-to-feature communication (use event bus)
+- Modules declare their CyTube DOM requirements explicitly
+
+## Dependency Injection Pattern
+```
+/ Use factory pattern for clean dependency injection
+BTFW.define("feature:name", ["dep1", "dep2"], async ({dep1, dep2, BASE}) => {
+// Feature implementation uses injected dependencies
+return {
+name: "feature:name",
+init: () => dep1.setup(dep2.config)
+};
+});
+```
+
+## Event-Driven Communication
+- Use `btfw:ready` for system-wide initialization signals
+- Implement module-to-module communication via custom events
+- Avoid global state sharing between feature modules
+- Use CyTube's existing socket.io events when possible
+
+## DOM Interaction Patterns
+- Prefer MutationObserver over direct DOM polling
+- Use event delegation for dynamically added elements  
+- Implement graceful degradation when CyTube DOM changes
+- Cache DOM queries within module scope, not globally
+
+## Load Strategy Architecture
+1. **Bootstrap Phase**: Overlay + audio suppression
+2. **CSS Preload Phase**: Sequential stylesheet injection
+3. **Module Load Phase**: Script injection with dependency tracking
+4. **Core Init Phase**: Style-core, bulma-layer initialization  
+5. **Layout Phase**: 100ms DOM settle wait
+6. **Feature Init Phase**: Parallel Promise.all() initialization
+7. **Ready Phase**: Event dispatch + overlay removal
+
+## Prove Architecture Decisions
+- Benchmark module loading performance vs alternatives
+- Document DOM hook reliability across CyTube versions
+- State when event timing depends on browser implementation
+- Reference specific CyTube API documentation for integration choices
