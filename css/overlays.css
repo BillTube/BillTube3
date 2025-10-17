@@ -621,6 +621,7 @@
   min-height: 320px;
   align-items: stretch;
   justify-items: stretch;
+  height: 28rem;
 }
 
 #btfw-gif-modal .btfw-gif-cell {
@@ -1199,6 +1200,7 @@ html[data-btfw-theme="dark"] .panel {
 #chatheader {
     display: none;
 }
+
 
 
 
