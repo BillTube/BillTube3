@@ -598,7 +598,7 @@
 .modal-card-body .field { margin-bottom: 1rem; }
 /* ===== GIF modal grid ===== */
 .btfw-gif-toolbar {
-  display:flex; align-items:center; gap:10px; margin-bottom:10px;
+  display:flex; align-items:flex-start; gap:10px; margin-bottom:10px;
 }
 .btfw-gif-toolbar .btfw-gif-search {
   margin-left:auto; display:flex; gap:8px; align-items:center;
@@ -616,9 +616,11 @@
 
 #btfw-gif-modal #btfw-gif-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   min-height: 320px;
+  align-items: stretch;
+  justify-items: stretch;
 }
 
 #btfw-gif-modal .btfw-gif-cell {
@@ -630,6 +632,8 @@
   background: color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%);
   cursor: pointer;
   padding: 0;
+  display: block;
+  min-inline-size: 0;
 }
 
 #btfw-gif-modal .btfw-gif-cell:hover {
@@ -667,7 +671,20 @@
   filter: brightness(0.55);
 }
 
-#btfw-gif-modal .btfw-gif-cell img {
+#btfw-gif-modal .btfw-gif-thumb {
+  position: relative;
+  width: 100%;
+}
+
+#btfw-gif-modal .btfw-gif-thumb::before {
+  content: "";
+  display: block;
+  padding-bottom: 100%;
+}
+
+#btfw-gif-modal .btfw-gif-thumb img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   min-width: 100%;
