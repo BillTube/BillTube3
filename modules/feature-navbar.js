@@ -220,6 +220,34 @@ BTFW.define("feature:navbar", [], async () => {
     dispatchMobileState(open);
   }
 
+  function ensureMobileCloseButton(){
+    const host = document.getElementById("btfw-navhost");
+    if (!host) return;
+    const nav = host.querySelector(":is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)");
+    if (!nav) return;
+
+    let btn = document.getElementById("btfw-mobile-nav-close");
+    if (btn && btn.closest(":is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)") !== nav) {
+      btn.remove();
+      btn = null;
+    }
+
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "btfw-mobile-nav-close";
+      btn.className = "btfw-mobile-nav-close";
+      btn.setAttribute("aria-label", "Close navigation menu");
+      btn.innerHTML = "<span aria-hidden=\"true\">&times;</span>";
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        setMobileNavOpen(false);
+      });
+      nav.insertBefore(btn, nav.firstChild);
+    }
+  }
+
   function toggleMobileNav(){
     const host = document.getElementById("btfw-navhost");
     if (!host) return;
@@ -252,6 +280,7 @@ BTFW.define("feature:navbar", [], async () => {
   function setupMobileNav(){
     const host = document.getElementById("btfw-navhost");
     if (!host) return;
+    ensureMobileCloseButton();
     updateMobileNavState();
     if (mobileNavHandlersBound) return;
     mobileNavHandlersBound = true;
