@@ -237,6 +237,11 @@
   border-radius: 18px;
 }
 
+#btfw-navhost.btfw-navhost--mobile[data-mobile-open="true"] :is(#nav-collapsible, .navbar-collapse) {
+  display: flex !important;
+  visibility: visible !important;
+}
+
 #btfw-navhost.btfw-navhost--mobile :is(#nav-collapsible, .navbar-collapse) {
   width: 100%;
   flex-direction: column;
