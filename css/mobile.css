@@ -19,86 +19,9 @@
   }
 }
 
-/* Mobile module drawer (shown when layout switches to vertical) */
-#btfw-mobile-stack{
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: flex-start;
-  justify-content: center;
-  z-index: 7000;
-  padding: calc(var(--btfw-top,48px) + 10px) 16px 18px;
-  overflow-y: auto;
-}
-
-#btfw-mobile-stack::before{
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: color-mix(in srgb, var(--btfw-color-bg) 80%, transparent 20%);
-  backdrop-filter: blur(10px);
-}
-
-#btfw-mobile-stack .btfw-mobile-stack__panel{
-  position: relative;
-  width: min(560px, 94vw);
-  max-height: calc(100vh - var(--btfw-top,48px) - 40px);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  border-radius: calc(var(--btfw-radius) + 4px);
-  border: 1px solid var(--btfw-border);
-  background: color-mix(in srgb, var(--btfw-overlay-bg) 94%, transparent 6%);
-  box-shadow: var(--btfw-overlay-shadow);
+body.btfw-mobile-nav-open{
   overflow: hidden;
 }
-
-#btfw-mobile-stack .btfw-mobile-stack__header{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-#btfw-mobile-stack .btfw-mobile-stack__title{
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-#btfw-mobile-stack .btfw-mobile-stack__close{
-  border: 0;
-  background: color-mix(in srgb, var(--btfw-color-panel) 84%, transparent 16%);
-  color: var(--btfw-color-text);
-  border-radius: 10px;
-  padding: 6px 10px;
-  font-size: 0.95rem;
-  cursor: pointer;
-}
-
-#btfw-mobile-stack .btfw-mobile-stack__close:hover{
-  background: color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%);
-}
-
-#btfw-mobile-stack .btfw-mobile-stack__body{
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  padding-right: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--btfw-gap, 10px);
-}
-
-#btfw-mobile-stack .btfw-stack{
-  width: 100%;
-}
-
-#btfw-mobile-stack.btfw-mobile-stack--open{ display:flex; }
-
-body.btfw-mobile-stack-open{ overflow: hidden; }
-
-body:not(.btfw-mobile-stack-enabled) #btfw-mobile-stack{ display:none !important; }
 
 /* --------- Phones (<= 768px): larger touch targets, overlay sizes ---------- */
 @media (max-width: 768px){
