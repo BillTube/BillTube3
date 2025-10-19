@@ -182,7 +182,7 @@ function load(src){
 }
 
   // Detect if we're using bundled or dev mode
-  var USE_BUNDLES = location.search.indexOf('dev=1') === -1;
+  var USE_BUNDLES = true;
   
   // Preload CSS in proper order for layout stability
   Promise.all([
