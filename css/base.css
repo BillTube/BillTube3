@@ -481,8 +481,7 @@ a:hover {
   pointer-events: none;
 }
 
-#btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top),
-#btfw-navhost #btfw-nav-toggle {
+#btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
   pointer-events: auto;
 }
 
