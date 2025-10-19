@@ -35,9 +35,7 @@ window.BTFW_THEME_ADMIN = {
       ]
     },
     "branding": {
-      "headerName": "BillTube3 Slim (Experimental)",
-      "faviconUrl": "https://icons8.com/icon/19706/experiment",
-      "posterUrl": "https://tinyurl.com/332v25ny"
+      "headerName": "BillTube3 Slim (Experimental)"
     }
   };
   // ==BTFW_THEME_ADMIN_END==
