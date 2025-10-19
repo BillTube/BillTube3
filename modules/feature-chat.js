@@ -931,8 +931,8 @@ const scheduleNormalizeChatActions = (() => {
       const btn = document.createElement("button");
       btn.id = "btfw-mobile-modules-toggle";
       btn.className = "button is-dark is-small btfw-chatbtn";
-      btn.title = "Modules";
-      btn.setAttribute("aria-label", "Toggle modules stack");
+      btn.title = "Open navigation menu";
+      btn.setAttribute("aria-label", "Open navigation menu");
       btn.innerHTML = '<i class="fa fa-bars"></i>';
       topActions.appendChild(btn);
     }
