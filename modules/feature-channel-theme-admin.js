@@ -107,7 +107,7 @@ background: "#0d0d0d",
     }
   };
 
-  const CRITICAL_FONT_WEIGHTS = ["400", "600"];
+  const CRITICAL_FONT_WEIGHTS = [400, 500, 600];
   const GOOGLE_FONT_WEIGHT_QUERY = CRITICAL_FONT_WEIGHTS.join(";");
 
   const FONT_PRESETS = {
@@ -641,12 +641,26 @@ background: "#0d0d0d",
     return FONT_PRESETS[key] || null;
   }
 
-  function buildGoogleFontUrl(name){
+  function buildPresetFontUrl(preset, weights = null){
+    if (!preset || !preset.google) return "";
+
+    const weightQuery = weights
+      ? (Array.isArray(weights) ? weights.join(";") : weights)
+      : CRITICAL_FONT_WEIGHTS.join(";");
+
+    return `https://fonts.googleapis.com/css2?family=${preset.google.replace(/wght@[^&]+/, `wght@${weightQuery}`)}&display=swap`;
+  }
+
+  function buildGoogleFontUrl(name, weights = null){
     if (!name) return "";
     const trimmed = name.trim();
     if (!trimmed) return "";
     const encoded = trimmed.replace(/\s+/g, "+");
-    return `https://fonts.googleapis.com/css2?family=${encoded}:wght@${GOOGLE_FONT_WEIGHT_QUERY}&display=swap`;
+    const weightQuery = weights
+      ? (Array.isArray(weights) ? weights.join(";") : weights)
+      : CRITICAL_FONT_WEIGHTS.join(";");
+
+    return `https://fonts.googleapis.com/css2?family=${encoded}:wght@${weightQuery}&display=swap`;
   }
 
   function resolveTypographyConfig(typo){
