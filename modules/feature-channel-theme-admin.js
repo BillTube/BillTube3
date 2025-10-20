@@ -2278,7 +2278,6 @@ setTimeout(() => {
   const modules = normalizeModuleUrls(collectModuleCandidates(cfg));
   renderModuleInputs(panel, modules);
   ensureModuleFieldAvailability(panel);
-  console.log('[theme-admin] Module fields populated with:', modules);
 }, 50);
 
     let dirty = false;
@@ -2302,7 +2301,6 @@ setTimeout(() => {
     setTimeout(() => {
       const container = getModuleContainer(panel);
       if (container) {
-        console.log('[theme-admin] Module container found, initializing fields');
         ensureModuleFieldAvailability(panel);
       } else {
         console.error('[theme-admin] Module container NOT found after panel init');
