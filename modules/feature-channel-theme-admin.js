@@ -1575,7 +1575,7 @@ function replaceBlock(original, startMarker, endMarker, block){
         <h3>Channel Theme Toolkit</h3>
         <p class="lead">Configure your BillTube channel's featured media, theme palette, typography, and resources without editing raw Channel JS or CSS.</p>
 
-        <details class="section" data-section="resources" open>
+        <details class="section" data-section="resources">
           <summary class="section__summary">
             <div class="section__title">
               <h4>Featured Content & Resources</h4>
@@ -1624,7 +1624,7 @@ function replaceBlock(original, startMarker, endMarker, block){
           </div>
         </details>
 
-        <details class="section" data-section="integrations" open>
+        <details class="section" data-section="integrations">
           <summary class="section__summary">
             <div class="section__title">
               <h4>Integrations</h4>
@@ -1644,7 +1644,7 @@ function replaceBlock(original, startMarker, endMarker, block){
           </div>
         </details>
 
-        <details class="section" data-section="palette" open>
+        <details class="section" data-section="palette">
           <summary class="section__summary">
             <div class="section__title">
               <h4>Palette & Tint</h4>
@@ -1705,7 +1705,7 @@ function replaceBlock(original, startMarker, endMarker, block){
           </div>
         </details>
 
-        <details class="section" data-section="typography" open>
+        <details class="section" data-section="typography">
           <summary class="section__summary">
             <div class="section__title">
               <h4>Typography</h4>
