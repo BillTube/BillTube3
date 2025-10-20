@@ -13,6 +13,19 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     owner: ["chanowner", "owner", "founder", "admin", "administrator"]
   };
 
+  function getMediaType() {
+    try {
+      return window.PLAYER?.mediaType || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function isDirectMedia() {
+    const type = (getMediaType() || "").toLowerCase();
+    return type === "fi" || type === "gd";
+  }
+
   function getClient() {
     try {
       return window.CLIENT || window.client || null;
@@ -84,7 +97,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
   }
 
   function shouldShowAmbientButton() {
-    return isChannelOwner();
+    return isChannelOwner() && isDirectMedia();
   }
   const localSubsEnabled = () => {
     try {
@@ -706,6 +719,11 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
   }
 
   async function toggleAmbient() {
+    if (!isDirectMedia()) {
+      showNotification("Ambient mode is only available for direct videos", "warning");
+      updateAmbientButton(false);
+      return;
+    }
     try {
       const ambient = await ensureAmbientModule();
       const enabling = !ambient.isActive();
@@ -898,7 +916,8 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       });
       section.insertBefore(btn, section.firstChild || null);
     }
-    btn.style.display = localSubsEnabled() ? "" : "none";
+    const enabled = localSubsEnabled() && isDirectMedia();
+    btn.style.display = enabled ? "" : "none";
   }
 
   function boot() {
@@ -915,6 +934,14 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     targets.forEach((target) => mo.observe(target, { childList: true, subtree: true }));
 
     document.addEventListener("btfw:video:localsubs:changed", () => ensureOverlay());
+
+    try {
+      if (window.socket && typeof socket.on === "function") {
+        socket.on("changeMedia", () => {
+          setTimeout(() => ensureOverlay(), 0);
+        });
+      }
+    } catch (_) {}
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
