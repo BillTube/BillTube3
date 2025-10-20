@@ -1,4 +1,7 @@
-
+#messagebuffer {
+  contain: layout style paint;
+  content-visibility: auto;
+}
 #messagebuffer > div {
   content-visibility: auto;
   contain-intrinsic-size: auto 60px; /* Estimated height for layout calculations */
