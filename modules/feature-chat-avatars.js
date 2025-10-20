@@ -231,11 +231,32 @@ BTFW.define("feature:chat-avatars", [], async () => {
     reflowAll();
     const buf = document.getElementById("messagebuffer");
     if (buf && !buf._btfwAvMO){
+      const pending = new Set();
+      let mutationTimeout;
+      const flushPending = () => {
+        mutationTimeout = null;
+        pending.forEach(node => {
+          if (node && node.nodeType === 1 && node.isConnected) {
+            processNode(node);
+          }
+        });
+        pending.clear();
+      };
       const mo = new MutationObserver(muts=>{
+        let queued = false;
         for (const m of muts) {
           if (m.type==="childList" && m.addedNodes) {
-            m.addedNodes.forEach(n => { if (n.nodeType===1) processNode(n); });
+            m.addedNodes.forEach(n => {
+              if (n && n.nodeType===1) {
+                pending.add(n);
+                queued = true;
+              }
+            });
           }
+        }
+        if (queued) {
+          clearTimeout(mutationTimeout);
+          mutationTimeout = setTimeout(flushPending, 50);
         }
       });
       mo.observe(buf, { childList:true, subtree:false });

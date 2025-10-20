@@ -27,7 +27,11 @@ BTFW.define("feature:emoji-loader", [], async () => {
     $$(".btfw-emoji-grid .btfw-emoji-cell").forEach(prepCell);
   }
 
-  const mo = new MutationObserver(()=> scan());
+  let scanTimeout;
+  const mo = new MutationObserver(() => {
+    clearTimeout(scanTimeout);
+    scanTimeout = setTimeout(scan, 50);
+  });
   mo.observe(document.body, { childList:true, subtree:true });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", scan);
   else scan();
