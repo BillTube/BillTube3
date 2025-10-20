@@ -218,7 +218,6 @@ BTFW.define("feature:nowplaying", [], async () => {
       ct.style.setProperty("--length", String(cleanTitle.length));
       state.lastCleanTitle = cleanTitle;
       applyLookupMetadata(lookupInfo);
-      console.log('[nowplaying] Set title:', cleanTitle);
       return true;
     }
 
@@ -242,20 +241,15 @@ BTFW.define("feature:nowplaying", [], async () => {
   }
 
   function handleMediaChange(data) {
-    console.log('[nowplaying] Media changed:', data);
-    
     // Handle both object with title and just queue position number
     if (data && typeof data === 'object' && data.title) {
       setTitle(data.title, { force: true });
       mountTitleIntoSlot();
-      
+
       const mediaKey = mediaIdentity(data);
       if (mediaKey) {
         state.lastMediaKey = mediaKey;
       }
-    } else if (typeof data === 'number') {
-      // Just a queue position, ignore for now
-      console.log('[nowplaying] Received queue position:', data);
     }
   }
 
@@ -296,8 +290,6 @@ BTFW.define("feature:nowplaying", [], async () => {
   }
 
   function boot() {
-    console.log('[nowplaying] Initializing...');
-    
     mountTitleIntoSlot();
 
     try {
