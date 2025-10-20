@@ -4,7 +4,51 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   const MESSAGE_SELECTOR = ".chat-msg, .message, [class*=message]";
   const TRIVIA_PREFIX = /^Trivia:\s*/i;
   const BASE = (window.BTFW && BTFW.BASE ? BTFW.BASE.replace(/\/+$/,'') : "");
-  
+
+  const CHAT_PLACEHOLDER = "Type your message here…";
+
+  function applyChatInputPlaceholder(){
+    const input = document.getElementById("chatline");
+    if (!input) return false;
+
+    const existing = (typeof input.getAttribute === "function") ? input.getAttribute("placeholder") : input.placeholder;
+    if (existing && existing.trim().length > 0) return true;
+
+    try {
+      input.setAttribute("placeholder", CHAT_PLACEHOLDER);
+    } catch (_) {
+      input.placeholder = CHAT_PLACEHOLDER;
+    }
+    return true;
+  }
+
+  let chatPlaceholderObserver = null;
+  function ensureChatInputPlaceholder(){
+    if (applyChatInputPlaceholder()) return;
+    if (chatPlaceholderObserver || !document.body) return;
+
+    chatPlaceholderObserver = new MutationObserver(() => {
+      if (applyChatInputPlaceholder() && chatPlaceholderObserver) {
+        chatPlaceholderObserver.disconnect();
+        chatPlaceholderObserver = null;
+      }
+    });
+
+    try {
+      chatPlaceholderObserver.observe(document.body, { childList: true, subtree: true });
+    } catch (_) {
+      chatPlaceholderObserver = null;
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", ensureChatInputPlaceholder, { once: true });
+  } else {
+    ensureChatInputPlaceholder();
+  }
+
+  document.addEventListener("btfw:layoutReady", () => setTimeout(applyChatInputPlaceholder, 0));
+
 /* --- Shared pop-in positioning helper (exports a global for other modules) --- */
 function positionAboveChatBar(el, opts){
   if (!el) return;
