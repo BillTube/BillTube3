@@ -323,6 +323,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     setTimeout(() => {
       ensureInlinePlayback();
       applyPosterUrl();
+      togglePosterVisibility();
     }, 100);
   }
 
@@ -333,8 +334,12 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     ensureTextContentPatch();
     applyPosterUrl();
     togglePosterVisibility();
-    startPosterVisibilityWatcher();
     watchPlayerMount();
+
+    // Periodic check like billtube2.js
+    setInterval(() => {
+      togglePosterVisibility();
+    }, 1000);
 
     if (typeof window !== "undefined" && window.socket && typeof socket.on === "function") {
       try {
