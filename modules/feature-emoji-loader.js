@@ -23,8 +23,36 @@ BTFW.define("feature:emoji-loader", [], async () => {
     }
   }
 
+  const scheduleFrame = typeof requestAnimationFrame === "function"
+    ? requestAnimationFrame
+    : (cb) => setTimeout(cb, 16);
+
+  const supportsIntersectionObserver = typeof IntersectionObserver === "function";
+  const observer = supportsIntersectionObserver ? new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const target = entry.target;
+      if (supportsIntersectionObserver) observer.unobserve(target);
+      prepCell(target);
+    });
+  }) : null;
+
+  let rafId;
   function scan(){
-    $$(".btfw-emoji-grid .btfw-emoji-cell").forEach(prepCell);
+    if (rafId) return;
+    rafId = scheduleFrame(() => {
+      if (!supportsIntersectionObserver) {
+        $$(".btfw-emoji-grid .btfw-emoji-cell").forEach(prepCell);
+        rafId = null;
+        return;
+      }
+
+      $$(".btfw-emoji-grid .btfw-emoji-cell:not([data-observed])").forEach(cell => {
+        cell.dataset.observed = "true";
+        observer.observe(cell);
+      });
+      rafId = null;
+    });
   }
 
   let scanTimeout;
