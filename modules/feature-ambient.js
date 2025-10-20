@@ -3,6 +3,19 @@ BTFW.define("feature:ambient", [], async () => {
 
   const $ = (selector, root = document) => root.querySelector(selector);
 
+  function getMediaType() {
+    try {
+      return window.PLAYER?.mediaType || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function isDirectMedia() {
+    const type = (getMediaType() || "").toLowerCase();
+    return type === "fi" || type === "gd";
+  }
+
   let active = false;
   let wrap = null;
   let monitorTimer = null;
@@ -361,6 +374,11 @@ BTFW.define("feature:ambient", [], async () => {
         socket.on("changeMedia", () => {
           if (!active) return;
           setTimeout(() => {
+            if (!active) return;
+            if (!isDirectMedia()) {
+              disable();
+              return;
+            }
             ensureAmbientRoot();
             attachVideo(findVideoElement());
           }, 400);
@@ -371,6 +389,11 @@ BTFW.define("feature:ambient", [], async () => {
 
   async function enable() {
     if (active) return true;
+
+    if (!isDirectMedia()) {
+      console.warn("[ambient] Ambient mode requires direct media (fi/gd).");
+      return false;
+    }
 
     ensureCSS();
     const wrapEl = $("#videowrap") || (await waitForWrap());

@@ -3,6 +3,19 @@ BTFW.define("feature:local-subs", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
+  function getMediaType(){
+    try {
+      return window.PLAYER?.mediaType || null;
+    } catch(_) {
+      return null;
+    }
+  }
+
+  function isDirectMedia(){
+    const type = (getMediaType() || "").toLowerCase();
+    return type === "fi" || type === "gd";
+  }
+
   function convertSRTtoVTT(srt){
     return "WEBVTT\n\n" + String(srt)
       .replace(/\r+/g, "")
@@ -97,17 +110,28 @@ BTFW.define("feature:local-subs", [], async () => {
     input.click();
   }
 
+  function updateButtonVisibility(){
+    const btn = $("#btfw-btn-localsubs");
+    if (!btn) return;
+    btn.style.display = isDirectMedia() ? "" : "none";
+  }
+
   function injectButton(){
     const overlay = $("#VideoOverlay");
-    if (!overlay || $("#btfw-btn-localsubs")) return;
+    if (!overlay) return;
 
-    const btn = document.createElement("button");
-    btn.id = "btfw-btn-localsubs";
-    btn.className = "button is-dark is-small btfw-vo-btn";
-    btn.title = "Local Subtitles (VTT/SRT)";
-    btn.innerHTML = `<i class="fa fa-closed-captioning"></i>`;
-    btn.addEventListener("click", pickAndLoad);
-    overlay.querySelector(".btfw-vo-buttons")?.appendChild(btn) || overlay.appendChild(btn);
+    let btn = $("#btfw-btn-localsubs");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.id = "btfw-btn-localsubs";
+      btn.className = "button is-dark is-small btfw-vo-btn";
+      btn.title = "Local Subtitles (VTT/SRT)";
+      btn.innerHTML = `<i class="fa fa-closed-captioning"></i>`;
+      btn.addEventListener("click", pickAndLoad);
+      overlay.querySelector(".btfw-vo-buttons")?.appendChild(btn) || overlay.appendChild(btn);
+    }
+
+    updateButtonVisibility();
   }
 
   // Clear tracks on media change
@@ -120,6 +144,7 @@ BTFW.define("feature:local-subs", [], async () => {
           if (vjs) removeOldTracksFromVJS(vjs);
           const v = getActiveHTML5Video();
           if (v) removeOldTracksFromVideoEl(v);
+          setTimeout(updateButtonVisibility, 0);
         });
       }
     } catch(_) {}
@@ -128,8 +153,12 @@ BTFW.define("feature:local-subs", [], async () => {
   function boot(){
     wireChangeMedia();
     injectButton();
+    updateButtonVisibility();
     // Watch for overlay mount/remount
-    const mo = new MutationObserver(()=> injectButton());
+    const mo = new MutationObserver(()=> {
+      injectButton();
+      updateButtonVisibility();
+    });
     mo.observe(document.body, { childList:true, subtree:true });
   }
 
