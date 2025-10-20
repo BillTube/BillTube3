@@ -3,6 +3,19 @@ BTFW.define("feature:billcast", [], async () => {
   const BASE = (window.BTFW && BTFW.BASE ? BTFW.BASE.replace(/\/+$/, "") : "");
   const SRC  = BASE + "/modules/feature-billcaster.js";
 
+  function getMediaType() {
+    try {
+      return window.PLAYER?.mediaType || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function isDirectMedia() {
+    const type = (getMediaType() || "").toLowerCase();
+    return type === "fi" || type === "gd";
+  }
+
   function isEnabled() {
     try {
       const v = localStorage.getItem(KEY);
@@ -55,13 +68,33 @@ BTFW.define("feature:billcast", [], async () => {
     const values = ev && ev.detail && ev.detail.values || {};
     if (typeof values.billcastEnabled === "boolean") {
       setEnabled(values.billcastEnabled);
-      if (values.billcastEnabled) enable(); else disable();
+      applyMediaState();
+    }
+  }
+
+  function applyMediaState() {
+    if (!isEnabled()) {
+      disable();
+      return;
+    }
+    if (isDirectMedia()) {
+      enable();
+    } else {
+      disable();
     }
   }
 
   function boot() {
     document.addEventListener("btfw:themeSettings:apply", onThemeApply);
-    if (isEnabled()) enable();
+    applyMediaState();
+
+    try {
+      if (window.socket && typeof socket.on === "function") {
+        socket.on("changeMedia", () => {
+          setTimeout(() => applyMediaState(), 0);
+        });
+      }
+    } catch (_) {}
   }
 
   if (document.readyState === "loading") {
