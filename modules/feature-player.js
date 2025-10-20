@@ -139,11 +139,11 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     const posterElements = document.querySelectorAll('.vjs-poster');
     
     posterElements.forEach(poster => {
-      if (mediaType === 'yt') {
-        // Hide poster for YouTube videos
+      // Hide poster for embedded video platforms (they have their own thumbnails)
+      if (mediaType === 'yt' || mediaType === 'dm' || mediaType === 'vi' || mediaType === 'tw') {
         poster.classList.add('hidden');
       } else {
-        // Show poster for non-YouTube videos
+        // Show poster for direct files (fi), Google Drive (gd), and other media
         poster.classList.remove('hidden');
       }
     });
