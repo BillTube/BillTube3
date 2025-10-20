@@ -175,6 +175,8 @@ background: "#0d0d0d",
   const MODULE_FIELD_MIN = 3;
   const MODULE_FIELD_MAX = 10;
   const MODULE_INPUT_SELECTOR = '[data-role="module-inputs"]';
+  const moduleWatcherRegistry = new WeakMap();
+  const activeModuleWatchers = new Set();
 
   const LOADER_PATTERNS = [
     /\/\*\s*BillTube[\s\S]*?loader[\s\S]*?\*\//i,
@@ -1091,6 +1093,50 @@ background: "#0d0d0d",
     trimModuleInputs(panel);
   }
 
+  function finalizeModuleWatcher(container, watcher){
+    if (watcher.timeoutId !== null) {
+      clearTimeout(watcher.timeoutId);
+      watcher.timeoutId = null;
+    }
+    if (watcher.observer) {
+      watcher.observer.disconnect();
+      watcher.observer = null;
+    }
+    activeModuleWatchers.delete(watcher);
+    if (moduleWatcherRegistry.get(container) === watcher) {
+      moduleWatcherRegistry.delete(container);
+    }
+    if (container) {
+      delete container._btfwModuleHandlerBound;
+      if (container.dataset && container.dataset.btfwModuleWatcher) {
+        delete container.dataset.btfwModuleWatcher;
+      }
+    }
+  }
+
+  function cleanupModuleWatcher(container, expectedWatcher){
+    if (!container) return;
+    const watcher = moduleWatcherRegistry.get(container);
+    if (!watcher || (expectedWatcher && watcher !== expectedWatcher)) {
+      return;
+    }
+    if (!watcher.controller.signal.aborted) {
+      watcher.controller.abort();
+      return;
+    }
+    finalizeModuleWatcher(container, watcher);
+  }
+
+  if (typeof window !== "undefined" && !window.__btfwModuleWatcherCleanupRegistered) {
+    window.addEventListener('beforeunload', () => {
+      const watchers = Array.from(activeModuleWatchers);
+      for (const watcher of watchers) {
+        cleanupModuleWatcher(watcher.container, watcher);
+      }
+    });
+    window.__btfwModuleWatcherCleanupRegistered = true;
+  }
+
   function bindModuleFieldWatcher(panel, onChange){
     const container = getModuleContainer(panel);
     if (!container) {
@@ -1098,31 +1144,66 @@ background: "#0d0d0d",
       return;
     }
 
-    // Check if already bound - use a property instead of dataset to be more reliable
-    if (container._btfwModuleHandlerBound) {
-      return; // Already bound, skip
-    }
+    cleanupModuleWatcher(container);
+
+    const controller = new AbortController();
+    const watcherRecord = {
+      container,
+      controller,
+      timeoutId: null,
+      observer: null
+    };
+
+    moduleWatcherRegistry.set(container, watcherRecord);
+    activeModuleWatchers.add(watcherRecord);
+
+    controller.signal.addEventListener('abort', () => {
+      if (moduleWatcherRegistry.get(container) === watcherRecord) {
+        finalizeModuleWatcher(container, watcherRecord);
+      }
+    });
 
     const handler = (event) => {
-      // Only respond to events from module inputs
       if (event?.target?.dataset?.role === 'module-input') {
-        // Small delay to ensure input value is updated
-        setTimeout(() => {
-          ensureModuleFieldAvailability(panel);
-          if (typeof onChange === "function") onChange();
+        if (watcherRecord.timeoutId !== null) {
+          clearTimeout(watcherRecord.timeoutId);
+        }
+        watcherRecord.timeoutId = setTimeout(() => {
+          if (!controller.signal.aborted) {
+            ensureModuleFieldAvailability(panel);
+            if (typeof onChange === "function") onChange();
+          }
+          watcherRecord.timeoutId = null;
         }, 10);
       }
     };
 
-    // Use event delegation on the container
-    container.addEventListener('input', handler);
-    container.addEventListener('change', handler);
+    container.addEventListener('input', handler, { signal: controller.signal });
+    container.addEventListener('change', handler, { signal: controller.signal });
 
-    // Mark as bound using a property that survives DOM manipulation
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.removedNodes) {
+          const hasContains = typeof node?.contains === 'function';
+          if (
+            node === panel ||
+            node === container ||
+            (hasContains && (node.contains(panel) || node.contains(container)))
+          ) {
+            cleanupModuleWatcher(container, watcherRecord);
+            return;
+          }
+        }
+      }
+    });
+
+    watcherRecord.observer = observer;
+    observer.observe(document.body, { childList: true, subtree: true });
+
     container._btfwModuleHandlerBound = true;
-    container.dataset.btfwModuleWatcher = "1";
-
-    console.log('[theme-admin] Module field watcher bound successfully');
+    if (container.dataset) {
+      container.dataset.btfwModuleWatcher = "1";
+    }
   }
 
   function readModuleValues(panel){
