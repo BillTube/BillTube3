@@ -110,8 +110,41 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     if (!posterUrl) return;
     
     document.querySelectorAll(PLAYER_SELECTOR).forEach(player => {
+      // Set the poster attribute on the video element
       if (player.poster !== posterUrl) {
         player.poster = posterUrl;
+      }
+      
+      // Update VideoJS poster component if it exists
+      try {
+        const vjsPlayer = player.player || player.player_ || (window.videojs && window.videojs.players && window.videojs.players[player.id]);
+        if (vjsPlayer && typeof vjsPlayer.poster === "function") {
+          vjsPlayer.poster(posterUrl);
+        }
+      } catch (_) {
+        // Fallback: manually update the poster div
+        const posterDiv = player.querySelector('.vjs-poster');
+        if (posterDiv) {
+          posterDiv.style.backgroundImage = `url("${posterUrl}")`;
+        }
+      }
+    });
+  }
+
+  function togglePosterVisibility() {
+    if (typeof window === "undefined") return;
+    
+    // Check if we have a global PLAYER object like in billtube2
+    const mediaType = window.PLAYER?.mediaType;
+    const posterElements = document.querySelectorAll('.vjs-poster');
+    
+    posterElements.forEach(poster => {
+      if (mediaType === 'yt') {
+        // Hide poster for YouTube videos
+        poster.classList.add('hidden');
+      } else {
+        // Show poster for non-YouTube videos
+        poster.classList.remove('hidden');
       }
     });
   }
@@ -274,6 +307,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
         attachGuards();
         ensureInlinePlayback();
         applyPosterUrl();
+        togglePosterVisibility();
       }
     });
     
@@ -298,6 +332,8 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     ensureInlinePlayback();
     ensureTextContentPatch();
     applyPosterUrl();
+    togglePosterVisibility();
+    startPosterVisibilityWatcher();
     watchPlayerMount();
 
     if (typeof window !== "undefined" && window.socket && typeof socket.on === "function") {
@@ -325,6 +361,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     applyCityTheme,
     attachGuards,
     ensureInlinePlayback,
-    applyPosterUrl
+    applyPosterUrl,
+    togglePosterVisibility
   };
 });
