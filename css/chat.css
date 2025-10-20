@@ -563,10 +563,8 @@
 #btfw-ct-modal .btfw-ct-cardhead{
   display:flex; align-items:center; justify-content:space-between;
   padding: 10px 12px;
-  background: linear-gradient(90deg,
-    color-mix(in srgb, var(--btfw-color-accent) 96%, transparent 4%),
-    color-mix(in srgb, var(--btfw-color-accent) 80%, white 20%));
   color: var(--btfw-color-text); font-weight: 600; letter-spacing: .2px;
+  border-bottom: 1px solid var(--btfw-border);
 }
 #btfw-ct-modal .btfw-ct-close{
   background: transparent;
