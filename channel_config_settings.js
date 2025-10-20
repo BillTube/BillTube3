@@ -43,7 +43,7 @@ window.BTFW_THEME_ADMIN = {
   /* BillTube3 one-shot loader for CyTube Channel JS */
   (function (W, D) {
     // --- configurable bits ---
-    var CDN_BASE = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete@dev/BillTube3-slim";
+    var CDN_BASE = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-slim@dev";
     var FILE     = "billtube-fw.js";
     var VERSION  = "dev-000";
     var DEV_NOCACHE = false;
