@@ -99,7 +99,19 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
       }
       if (!player.classList.contains(BIG_PLAY_CLASS)) {
         player.classList.add(BIG_PLAY_CLASS);
+      }
+    });
+  }
 
+  function applyPosterUrl() {
+    if (typeof window === "undefined") return;
+    
+    const posterUrl = window.BTFW?.channelPosterUrl;
+    if (!posterUrl) return;
+    
+    document.querySelectorAll(PLAYER_SELECTOR).forEach(player => {
+      if (player.poster !== posterUrl) {
+        player.poster = posterUrl;
       }
     });
   }
@@ -180,21 +192,20 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
   function shouldAllowClick(target) {
     if (!target) return false;
 
-const allowSelectors = [
-  ".vjs-control-bar",
-  ".vjs-control",
-  ".vjs-menu",
-  ".vjs-menu-content",
-  ".vjs-slider",
-  ".vjs-volume-panel",
-  ".vjs-text-track-settings",  
-  ".vjs-tech .alert",
-  ".vjs-tech [role=\"alert\"]",
-  ".vjs-tech [role=\"dialog\"]",
-  ".vjs-tech .modal",
-  ".vjs-tech .modal-dialog"
-].join(",");
-
+    const allowSelectors = [
+      ".vjs-control-bar",
+      ".vjs-control",
+      ".vjs-menu",
+      ".vjs-menu-content",
+      ".vjs-slider",
+      ".vjs-volume-panel",
+      ".vjs-text-track-settings",  
+      ".vjs-tech .alert",
+      ".vjs-tech [role=\"alert\"]",
+      ".vjs-tech [role=\"dialog\"]",
+      ".vjs-tech .modal",
+      ".vjs-tech .modal-dialog"
+    ].join(",");
 
     if (target.closest(allowSelectors)) {
       return true;
@@ -216,55 +227,38 @@ const allowSelectors = [
 
     el.addEventListener("click", block, true);
     el.addEventListener("pointerdown", (e) => {
-      if (!shouldAllowClick(e.target) && e.button === 0) e.preventDefault();
+      if (!shouldAllowClick(e.target)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
     }, true);
-    el.addEventListener("touchstart", block, true);
+    el.addEventListener("contextmenu", block, true);
   }
 
   function attachGuards() {
-    const candidates = [
-      ...document.querySelectorAll("#ytapiplayer"),
-      ...document.querySelectorAll(".video-js"),
-      ...document.querySelectorAll(".video-js .vjs-tech"),
-      ...document.querySelectorAll(".video-js .vjs-poster"),
-      ...document.querySelectorAll(".video-js .vjs-loading-spinner")
-    ];
-    candidates.forEach(attachGuardsTo);
+    document.querySelectorAll(PLAYER_SELECTOR).forEach(attachGuardsTo);
   }
 
- function watchPlayerMount() {
-  const target = document.getElementById("videowrap") || document.body;
-  if (!target) return;
-  if (watchPlayerMount._mo) {
-    try { watchPlayerMount._mo.disconnect(); } catch (_) {}
-  }
-  
-  const mo = new MutationObserver((mutations) => {
-    // ✅ FIX: Only react to significant changes, not Video.js time updates
-    let shouldReact = false;
+  function watchPlayerMount() {
+    if (watchPlayerMount._mo) return;
     
-    for (const mutation of mutations) {
-      // Ignore textContent changes (Video.js time displays)
-      if (mutation.type === 'characterData') {
-        continue;
-      }
+    const target = document.getElementById("videowrap") || document.body;
+    const mo = new MutationObserver((mutations) => {
+      let shouldReact = false;
       
-      // Only care about added/removed elements that are significant
-      if (mutation.type === 'childList') {
+      for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
-          // React to new video players, but not internal Video.js elements
           if (node.nodeType === 1 && 
               (node.classList?.contains('video-js') || 
-               node.classList?.contains('embed-responsive') ||
                node.tagName === 'VIDEO' ||
-               node.tagName === 'IFRAME')) {
+               node.tagName === 'IFRAME' ||
+               node.querySelector?.(PLAYER_SELECTOR))) {
             shouldReact = true;
             break;
           }
         }
         
         for (const node of mutation.removedNodes) {
-          // React to removed video players
           if (node.nodeType === 1 && 
               (node.classList?.contains('video-js') || 
                node.tagName === 'VIDEO' ||
@@ -275,40 +269,45 @@ const allowSelectors = [
         }
       }
       
-      if (shouldReact) break;
-    }
+      if (shouldReact) {
+        applyCityTheme();
+        attachGuards();
+        ensureInlinePlayback();
+        applyPosterUrl();
+      }
+    });
     
-    if (shouldReact) {
-      applyCityTheme();
-      attachGuards();
-      ensureInlinePlayback();
-    }
-  });
-  
-  mo.observe(target, { 
-    childList: true, 
-    subtree: true,
-    characterData: false  // ✅ Don't watch text changes
-  });
-  watchPlayerMount._mo = mo;
-}
+    mo.observe(target, { 
+      childList: true, 
+      subtree: true,
+      characterData: false
+    });
+    watchPlayerMount._mo = mo;
+  }
 
+  function handleVideoChange() {
+    setTimeout(() => {
+      ensureInlinePlayback();
+      applyPosterUrl();
+    }, 100);
+  }
 
   function boot() {
     applyCityTheme();
     attachGuards();
     ensureInlinePlayback();
     ensureTextContentPatch();
+    applyPosterUrl();
     watchPlayerMount();
 
     if (typeof window !== "undefined" && window.socket && typeof socket.on === "function") {
       try {
         if (typeof socket.off === "function") {
-          socket.off("changeMedia", ensureInlinePlayback);
+          socket.off("changeMedia", handleVideoChange);
         }
-        socket.on("changeMedia", () => setTimeout(ensureInlinePlayback, 0));
+        socket.on("changeMedia", handleVideoChange);
       } catch (err) {
-        console.warn("[feature:player] Unable to bind changeMedia inline handler", err);
+        console.warn("[feature:player] Unable to bind changeMedia handler", err);
       }
     }
   }
@@ -325,6 +324,7 @@ const allowSelectors = [
     name: "feature:player",
     applyCityTheme,
     attachGuards,
-    ensureInlinePlayback
+    ensureInlinePlayback,
+    applyPosterUrl
   };
 });
