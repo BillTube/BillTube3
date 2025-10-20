@@ -183,7 +183,8 @@ function load(src){
 
   // Detect if we're using bundled or dev mode
   var USE_BUNDLES = true;
-  
+  console.log('[BTFW] BASE:', BASE);
+  console.log('[BTFW] USE_BUNDLES:', USE_BUNDLES);
   // Preload CSS in proper order for layout stability
   Promise.all([
     preload(BASE+"/css/tokens.css"),
