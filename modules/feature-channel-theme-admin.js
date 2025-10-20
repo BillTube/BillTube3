@@ -107,8 +107,7 @@ background: "#0d0d0d",
     }
   };
 
-  const CRITICAL_FONT_WEIGHTS = ["400", "500", "600"];
-  const EXTENDED_FONT_WEIGHTS = ["300", "700"];
+  const CRITICAL_FONT_WEIGHTS = ["400", "600"];
   const GOOGLE_FONT_WEIGHT_QUERY = CRITICAL_FONT_WEIGHTS.join(";");
 
   const FONT_PRESETS = {
@@ -165,16 +164,12 @@ background: "#0d0d0d",
   };
   const FONT_DEFAULT_ID = "inter";
   const FONT_FALLBACK_FAMILY = FONT_PRESETS[FONT_DEFAULT_ID].family;
-  const FONT_SYSTEM_FALLBACK = "'Segoe UI', system-ui, -apple-system, sans-serif";
   const THEME_FONT_LINK_ID = "btfw-theme-font";
   const THEME_FONT_PRELOAD_LINK_ID = `${THEME_FONT_LINK_ID}-preload`;
   const THEME_FONT_PREVIEW_LINK_ID = `${THEME_FONT_LINK_ID}-preview`;
-  const THEME_FONT_EXTENDED_LINK_ID = `${THEME_FONT_LINK_ID}-extended`;
-  const PREVIEW_FONT_WEIGHTS = ["300", "400", "500", "600", "700"];
+  const PREVIEW_FONT_WEIGHTS = [...CRITICAL_FONT_WEIGHTS];
   const previewFontLoadCache = new Map();
   const previewStylesheetPromises = new Map();
-  const runtimeStylesheetPromises = new Map();
-  let extendedFontTimeout = null;
 
   const STYLE_ID = "btfw-theme-admin-style";
   const MODULE_FIELD_MIN = 3;
@@ -646,23 +641,12 @@ background: "#0d0d0d",
     return FONT_PRESETS[key] || null;
   }
 
-  function buildGoogleFontUrl(name, weights = CRITICAL_FONT_WEIGHTS){
+  function buildGoogleFontUrl(name){
     if (!name) return "";
     const trimmed = name.trim();
     if (!trimmed) return "";
     const encoded = trimmed.replace(/\s+/g, "+");
-    const weightQuery = Array.isArray(weights) && weights.length
-      ? weights.join(";")
-      : GOOGLE_FONT_WEIGHT_QUERY;
-    return `https://fonts.googleapis.com/css2?family=${encoded}:wght@${weightQuery}&display=swap`;
-  }
-
-  function buildPresetFontUrl(preset, weights = CRITICAL_FONT_WEIGHTS){
-    if (!preset || !preset.google) return "";
-    const weightQuery = Array.isArray(weights) && weights.length
-      ? weights.join(";")
-      : GOOGLE_FONT_WEIGHT_QUERY;
-    return `https://fonts.googleapis.com/css2?family=${preset.google.replace(/wght@[^&]+/, `wght@${weightQuery}`)}&display=swap`;
+    return `https://fonts.googleapis.com/css2?family=${encoded}:wght@${GOOGLE_FONT_WEIGHT_QUERY}&display=swap`;
   }
 
   function resolveTypographyConfig(typo){
@@ -673,26 +657,17 @@ background: "#0d0d0d",
     const family = isCustom && customName
       ? `'${customName.replace(/'/g, "\\'")}', ${FONT_FALLBACK_FAMILY}`
       : (preset?.family || FONT_FALLBACK_FAMILY);
-    const runtimeUrl = isCustom && customName
-      ? buildGoogleFontUrl(customName, CRITICAL_FONT_WEIGHTS)
-      : buildPresetFontUrl(preset, CRITICAL_FONT_WEIGHTS);
-    const previewUrl = isCustom && customName
-      ? buildGoogleFontUrl(customName, PREVIEW_FONT_WEIGHTS)
-      : buildPresetFontUrl(preset, PREVIEW_FONT_WEIGHTS);
-    const extendedUrl = EXTENDED_FONT_WEIGHTS.length
-      ? (isCustom && customName
-        ? buildGoogleFontUrl(customName, EXTENDED_FONT_WEIGHTS)
-        : buildPresetFontUrl(preset, EXTENDED_FONT_WEIGHTS))
+    let url = preset?.google
+      ? `https://fonts.googleapis.com/css2?family=${preset.google}&display=swap`
       : "";
+    if (isCustom && customName) {
+      url = buildGoogleFontUrl(customName);
+    }
     return {
       preset: isCustom ? "custom" : (preset ? normalizeFontId(presetId) : FONT_DEFAULT_ID),
       label: isCustom && customName ? customName : (preset?.name || "Inter"),
       family,
-      url: runtimeUrl || "",
-      runtimeUrl: runtimeUrl || "",
-      previewUrl: previewUrl || "",
-      extendedUrl: extendedUrl || "",
-      customName: isCustom ? customName : ""
+      url: url || ""
     };
   }
 
@@ -740,63 +715,13 @@ background: "#0d0d0d",
     }
   }
 
-  function ensureRuntimeFontStylesheet(url){
-    if (typeof document === "undefined" || !document.head) return Promise.resolve(null);
-    let link = document.getElementById(THEME_FONT_LINK_ID);
-    if (!url) {
-      if (link && link.parentElement) {
-        runtimeStylesheetPromises.delete(link.getAttribute("href") || "");
-        link.parentElement.removeChild(link);
-      }
-      return Promise.resolve(null);
-    }
-    if (link && link.getAttribute("href") === url) {
-      if (link.dataset.btfwLoaded === "1") {
-        return Promise.resolve(link);
-      }
-      if (runtimeStylesheetPromises.has(url)) {
-        return runtimeStylesheetPromises.get(url);
-      }
-    } else if (link && link.parentElement) {
-      runtimeStylesheetPromises.delete(link.getAttribute("href") || "");
-      link.parentElement.removeChild(link);
-      link = null;
-    }
-    if (!link) {
-      link = document.createElement("link");
-      link.id = THEME_FONT_LINK_ID;
-      link.rel = "stylesheet";
-      link.setAttribute("crossorigin", "anonymous");
-      document.head.appendChild(link);
-    }
-    if (link.getAttribute("href") !== url) {
-      link.setAttribute("href", url);
-    }
-    const wait = new Promise(resolve => {
-      const finalize = () => resolve(link);
-      link.addEventListener("load", () => {
-        link.dataset.btfwLoaded = "1";
-        finalize();
-      }, { once: true });
-      link.addEventListener("error", finalize, { once: true });
-    });
-    runtimeStylesheetPromises.set(url, wait);
-    return wait.then(result => {
-      runtimeStylesheetPromises.delete(url);
-      return result;
-    }, error => {
-      runtimeStylesheetPromises.delete(url);
-      throw error;
-    });
-  }
-
   function extractPrimaryFontFamily(family){
     if (!family) return "";
     const first = String(family).split(",")[0] || "";
     return first.replace(/['"]/g, "").trim();
   }
 
-  function waitForFontFamilyLoad(name, weights = CRITICAL_FONT_WEIGHTS){
+  function waitForFontFamilyLoad(name){
     if (!name || typeof document === "undefined") return Promise.resolve(false);
     const fontSet = document.fonts;
     if (!fontSet || typeof fontSet.load !== "function") {
@@ -809,8 +734,7 @@ background: "#0d0d0d",
         }
       } catch (_) {}
     }
-    const weightList = Array.isArray(weights) && weights.length ? weights : ["400"];
-    const requests = weightList.map(weight => {
+    const requests = PREVIEW_FONT_WEIGHTS.map(weight => {
       const spec = `${weight} 1rem "${name}"`;
       try {
         return fontSet.load(spec);
@@ -885,21 +809,14 @@ background: "#0d0d0d",
     });
   }
 
-  function ensurePreviewFontAssets(resolved, options = {}){
-    if (!resolved) return Promise.resolve(false);
-    const root = options.root || null;
-    const url = resolved.previewUrl || resolved.runtimeUrl || resolved.url || "";
+  function ensurePreviewFontAssets(resolved){
+    if (!resolved) return;
+    const url = resolved.url || "";
     if (!url) {
-      if (root && resolved.family) {
-        root.style.setProperty("--btfw-theme-font-family", resolved.family);
-      }
       return ensurePreviewFontStylesheet("");
     }
     const family = extractPrimaryFontFamily(resolved.family);
     if (!family) {
-      if (root && resolved.family) {
-        root.style.setProperty("--btfw-theme-font-family", resolved.family);
-      }
       return ensurePreviewFontStylesheet(url);
     }
     const cacheKey = `${url}::${family}`;
@@ -907,95 +824,35 @@ background: "#0d0d0d",
       return previewFontLoadCache.get(cacheKey);
     }
     const loadPromise = ensurePreviewFontStylesheet(url)
-      .then(() => waitForFontFamilyLoad(family, PREVIEW_FONT_WEIGHTS))
-      .then(result => {
-        if (result && root && resolved.family) {
-          root.style.setProperty("--btfw-theme-font-family", resolved.family);
-        }
-        return result;
-      }, error => {
+      .then(() => waitForFontFamilyLoad(family))
+      .then(result => result, error => {
         console.warn(`[theme-admin] Failed to load preview font "${family}"`, error);
         previewFontLoadCache.delete(cacheKey);
-        if (root) {
-          root.style.setProperty("--btfw-theme-font-family", FONT_SYSTEM_FALLBACK);
-        }
         return false;
       });
     previewFontLoadCache.set(cacheKey, loadPromise);
     return loadPromise;
   }
 
-  function loadExtendedFontAssets(resolved){
-    if (typeof document === "undefined") return;
-    const url = resolved.extendedUrl || "";
-    if (extendedFontTimeout) {
-      clearTimeout(extendedFontTimeout);
-      extendedFontTimeout = null;
-    }
-    if (!url) {
-      const existing = document.getElementById(THEME_FONT_EXTENDED_LINK_ID);
-      if (existing && existing.parentElement) {
-        existing.parentElement.removeChild(existing);
-      }
-      return;
-    }
-    extendedFontTimeout = setTimeout(() => {
-      ensureStylesheetLink(THEME_FONT_EXTENDED_LINK_ID, url);
-      extendedFontTimeout = null;
-    }, 200);
-  }
-
-  function ensureProductionFontAssets(resolved, options = {}){
-    if (!resolved) return Promise.resolve(false);
-    const root = options.root || (typeof document !== "undefined" ? document.documentElement : null);
-    const runtimeUrl = resolved.runtimeUrl || resolved.url || "";
-    const family = extractPrimaryFontFamily(resolved.family);
-    if (root) {
-      root.style.setProperty("--btfw-theme-font-family", FONT_SYSTEM_FALLBACK);
-    }
-    if (typeof document !== "undefined") {
-      const previewLink = document.getElementById(THEME_FONT_PREVIEW_LINK_ID);
-      if (previewLink && previewLink.parentElement) {
-        previewLink.parentElement.removeChild(previewLink);
-      }
-    }
-    ensureFontPreloadLink(THEME_FONT_PRELOAD_LINK_ID, runtimeUrl);
-    if (!runtimeUrl) {
-      if (root && resolved.family) {
-        root.style.setProperty("--btfw-theme-font-family", resolved.family);
-      }
-      loadExtendedFontAssets(resolved);
-      return Promise.resolve(true);
-    }
-    return ensureRuntimeFontStylesheet(runtimeUrl)
-      .then(() => waitForFontFamilyLoad(family, CRITICAL_FONT_WEIGHTS))
-      .then(result => {
-        if (root && resolved.family) {
-          root.style.setProperty("--btfw-theme-font-family", resolved.family);
-        }
-        loadExtendedFontAssets(resolved);
-        return result;
-      }, error => {
-        console.warn(`[theme-admin] Failed to load production font "${family}"`, error);
-        if (root) {
-          root.style.setProperty("--btfw-theme-font-family", FONT_SYSTEM_FALLBACK);
-        }
-        loadExtendedFontAssets({ extendedUrl: "" });
-        return false;
-      });
-  }
-
   function applyLiveTypographyAssets(typography, options = {}){
     const resolved = resolveTypographyConfig(typography);
     const scope = options.scope === "preview" ? "preview" : "runtime";
     const root = options.root || (typeof document !== "undefined" ? document.documentElement : null);
+    if (root && resolved.family) {
+      root.style.setProperty("--btfw-theme-font-family", resolved.family);
+    }
     if (scope === "preview") {
-      if (root && resolved.family) {
-        root.style.setProperty("--btfw-theme-font-family", resolved.family);
-      }
-      ensurePreviewFontAssets(resolved, { root });
+      ensurePreviewFontAssets(resolved);
     } else {
-      ensureProductionFontAssets(resolved, { root });
+      const fontUrl = resolved.url || "";
+      ensureFontPreloadLink(THEME_FONT_PRELOAD_LINK_ID, fontUrl);
+      ensureStylesheetLink(THEME_FONT_LINK_ID, fontUrl);
+      if (typeof document !== "undefined") {
+        const previewLink = document.getElementById(THEME_FONT_PREVIEW_LINK_ID);
+        if (previewLink && previewLink.parentElement) {
+          previewLink.parentElement.removeChild(previewLink);
+        }
+      }
     }
     return resolved;
   }
