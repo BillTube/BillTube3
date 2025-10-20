@@ -13,10 +13,15 @@ BTFW.define("feature:chat-avatars", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
   const AVATAR_KEY = "btfw:chat:avatars";
+  const AVATAR_URL_CACHE_KEY = `${AVATAR_KEY}:urls:v1`;
+  const AVATAR_URL_CACHE_LIMIT = 200;
 
   // ⚡ PERFORMANCE: Cache for generated SVG data URLs
   const avatarCache = new Map();
   const MAX_CACHE_SIZE = 200; // Limit cache to prevent memory bloat
+  const avatarUrlStore = loadAvatarUrlCache();
+  let avatarUrlCachePersistTimer = null;
+  let avatarUrlCacheDirty = false;
 
   function loadMode(){
     try {
@@ -31,6 +36,82 @@ BTFW.define("feature:chat-avatars", [], async () => {
   }
 
   let currentMode = loadMode();
+
+  function cacheKey(name){
+    return (name || "").trim().toLowerCase();
+  }
+
+  function loadAvatarUrlCache(){
+    try {
+      const raw = localStorage.getItem(AVATAR_URL_CACHE_KEY);
+      if (!raw) return new Map();
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return new Map();
+      const map = new Map();
+      parsed.forEach(entry => {
+        if (!Array.isArray(entry) || entry.length < 2) return;
+        const [key, info] = entry;
+        if (typeof key !== "string" || !info || typeof info.url !== "string" || !info.url) return;
+        map.set(key, { url: info.url, ts: info.ts || 0 });
+      });
+      return map;
+    } catch(_) {
+      return new Map();
+    }
+  }
+
+  function scheduleAvatarUrlCachePersist(){
+    if (!avatarUrlCacheDirty) avatarUrlCacheDirty = true;
+    if (avatarUrlCachePersistTimer) return;
+    avatarUrlCachePersistTimer = setTimeout(() => {
+      avatarUrlCachePersistTimer = null;
+      if (!avatarUrlCacheDirty) return;
+      avatarUrlCacheDirty = false;
+      try {
+        const payload = JSON.stringify(Array.from(avatarUrlStore.entries()));
+        localStorage.setItem(AVATAR_URL_CACHE_KEY, payload);
+      } catch(_) {}
+    }, 250);
+  }
+
+  function trimAvatarUrlCache(){
+    while (avatarUrlStore.size > AVATAR_URL_CACHE_LIMIT) {
+      const firstKey = avatarUrlStore.keys().next().value;
+      if (!firstKey) break;
+      avatarUrlStore.delete(firstKey);
+    }
+  }
+
+  function setCachedAvatarUrl(name, url){
+    const key = cacheKey(name);
+    if (!key || !url) return;
+    const existing = avatarUrlStore.get(key);
+    if (existing && existing.url === url) {
+      existing.ts = Date.now();
+      avatarUrlStore.delete(key);
+      avatarUrlStore.set(key, existing);
+    } else {
+      avatarUrlStore.delete(key);
+      avatarUrlStore.set(key, { url, ts: Date.now() });
+      trimAvatarUrlCache();
+    }
+    scheduleAvatarUrlCachePersist();
+  }
+
+  function getCachedAvatarUrlByKey(key){
+    if (!key) return "";
+    const entry = avatarUrlStore.get(key);
+    return entry && entry.url || "";
+  }
+
+  function removeCachedAvatarUrlByKey(key, url){
+    if (!key) return;
+    const entry = avatarUrlStore.get(key);
+    if (entry && (!url || entry.url === url)) {
+      avatarUrlStore.delete(key);
+      scheduleAvatarUrlCachePersist();
+    }
+  }
 
   // Try BillTube2-style: jQuery data('profile').image from userlist
   function getProfileImgFromUserlist(name){
@@ -92,6 +173,55 @@ BTFW.define("feature:chat-avatars", [], async () => {
     return dataUrl;
   }
 
+  function handleAvatarError(evt){
+    const img = evt && evt.currentTarget;
+    if (!img || img.dataset.avatarFallback === "svg") return;
+
+    const key = img.dataset.avatarKey || "";
+    const failedUrl = img.dataset.avatarUrl || "";
+    const size = parseInt(img.dataset.avatarSize || "", 10) || 24;
+    const label = img.dataset.avatarLabel || img.alt || "";
+
+    if (key) removeCachedAvatarUrlByKey(key, failedUrl);
+
+    const fallback = initialsDataURL(label, size);
+    img.dataset.avatarFallback = "svg";
+    img.dataset.avatarUrl = "";
+    img.src = fallback;
+  }
+
+  function applyAvatarSource(img, src, { key, label, size, type }){
+    if (!img || !src) return;
+    const normalizedType = type === "svg" ? "svg" : "url";
+    if (key) img.dataset.avatarKey = key;
+    if (label) {
+      img.dataset.avatarLabel = label;
+      img.alt = label;
+    }
+    if (size !== undefined && size !== null && !Number.isNaN(size)) {
+      img.dataset.avatarSize = `${size}`;
+    }
+    img.dataset.avatarFallback = normalizedType;
+    img.dataset.avatarUrl = normalizedType === "url" ? src : "";
+    img.src = src;
+  }
+
+  function updateExistingAvatars(name, newUrl, size){
+    const key = cacheKey(name);
+    if (!key || !newUrl) return;
+    const imgs = document.querySelectorAll("#messagebuffer .btfw-chat-avatar[data-avatar-key]");
+    imgs.forEach(img => {
+      if (img.dataset.avatarKey === key) {
+        applyAvatarSource(img, newUrl, {
+          key,
+          label: img.dataset.avatarLabel || name,
+          size: size || parseInt(img.dataset.avatarSize || "", 10) || 24,
+          type: "url"
+        });
+      }
+    });
+  }
+
   function ensureAvatar(msgEl){
     if (currentMode === "off") return;
     // find username
@@ -101,26 +231,74 @@ BTFW.define("feature:chat-avatars", [], async () => {
     const name = raw.replace(/:\s*$/,"");
     if (!name) return;
 
-    // Already has our avatar?
-    if (msgEl.querySelector(".btfw-chat-avatar")) return;
+    const px = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--btfw-avatar-size").trim() || "24px", 10) || 24;
 
-    const size = getComputedStyle(document.documentElement).getPropertyValue("--btfw-avatar-size").trim() || "24px";
-    const px = parseInt(size,10) || 24;
+    // Already has our avatar? ensure it has metadata + handlers
+    const existingImg = msgEl.querySelector(".btfw-chat-avatar");
+    if (existingImg) {
+      const key = cacheKey(name);
+      const currentSrc = existingImg.getAttribute("src") || "";
+      const isSvg = currentSrc.startsWith("data:image/svg+xml");
+      applyAvatarSource(existingImg, currentSrc || initialsDataURL(name, px), {
+        key,
+        label: name,
+        size: px,
+        type: isSvg ? "svg" : "url"
+      });
+      if (!isSvg && currentSrc) {
+        setCachedAvatarUrl(name, currentSrc);
+      }
+      if (!existingImg._btfwAvatarErrorBound) {
+        existingImg.addEventListener("error", handleAvatarError);
+        existingImg._btfwAvatarErrorBound = true;
+      }
+      return;
+    }
 
     // pick image
-    let src = getProfileImgFromUserlist(name) || getCyTubeAvatarMaybe(name);
-    if (!src) src = initialsDataURL(name, px);
+    const key = cacheKey(name);
+    const cachedUrl = getCachedAvatarUrlByKey(key);
+    const liveUrl = getProfileImgFromUserlist(name) || getCyTubeAvatarMaybe(name);
+    let chosenSrc = liveUrl || cachedUrl;
+    let sourceType = "url";
+
+    if (liveUrl) {
+      if (cachedUrl !== liveUrl) {
+        setCachedAvatarUrl(name, liveUrl);
+        updateExistingAvatars(name, liveUrl, px);
+      } else {
+        setCachedAvatarUrl(name, liveUrl);
+      }
+    } else if (cachedUrl) {
+      // Use cached URL when user isn't active
+      chosenSrc = cachedUrl;
+      setCachedAvatarUrl(name, cachedUrl);
+    }
+
+    if (!chosenSrc) {
+      chosenSrc = initialsDataURL(name, px);
+      sourceType = "svg";
+    }
 
     const img = document.createElement("img");
     img.className = "btfw-chat-avatar";
-    img.src = src;
-    img.alt = name;
-    
+    applyAvatarSource(img, chosenSrc, {
+      key,
+      label: name,
+      size: px,
+      type: sourceType
+    });
+
     // ⚡ PERFORMANCE: Native browser optimizations
     // Note: No explicit width/height set - CSS variables handle sizing dynamically
     img.loading = "lazy";     // Defer loading of off-screen images
     img.decoding = "async";   // Don't block rendering while decoding
-    
+
+    if (!img._btfwAvatarErrorBound) {
+      img.addEventListener("error", handleAvatarError);
+      img._btfwAvatarErrorBound = true;
+    }
+
     // insert before username
     const wrap = document.createElement("span");
     wrap.className = "btfw-chat-avatarwrap";
@@ -267,15 +445,17 @@ BTFW.define("feature:chat-avatars", [], async () => {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
-  return { 
-    name:"feature:chat-avatars", 
-    reflow: reflowAll, 
-    setMode, 
+  return {
+    name:"feature:chat-avatars",
+    reflow: reflowAll,
+    setMode,
     getMode,
     // ⚡ PERFORMANCE: Expose cache stats for debugging
-    getCacheStats: () => ({ 
-      size: avatarCache.size, 
-      maxSize: MAX_CACHE_SIZE 
+    getCacheStats: () => ({
+      svgCacheSize: avatarCache.size,
+      svgCacheMaxSize: MAX_CACHE_SIZE,
+      urlCacheSize: avatarUrlStore.size,
+      urlCacheLimit: AVATAR_URL_CACHE_LIMIT
     })
   };
 });
