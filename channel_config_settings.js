@@ -74,6 +74,6 @@ window.BTFW_THEME_ADMIN = {
     // Fallback to rawcdn.githack if jsDelivr fails
     tag.onerror = function () {
       console.warn("[BTFW] primary failed, trying fallback");
-      inject("https://raw.githack.com/intentionallyIncomplete/BillTube3-slim/dev/" + FILE + "?" + Date.now(), { "data-btfw-fallback": "1" });
+      inject("https://raw.githack.com/intentionallyIncomplete/BillTube3-slim/tree/dev/" + FILE + "?" + Date.now(), { "data-btfw-fallback": "1" });
     };
   })(window, document);
