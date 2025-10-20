@@ -54,7 +54,6 @@ window.BTFW_THEME_ADMIN = {
     if (D.querySelector('script[data-btfw-loader]')) { console.debug("[BTFW] loader tag exists; skip"); return; }
     if (D.getElementById("btfw-grid")) { console.debug("[BTFW] layout present; skip"); return; }
   
-    // var qs = function (s) { return D.querySelector(s); };
     var stamp = DEV_NOCACHE ? ("&t=" + Date.now()) : "";
     var primary = CDN_BASE + "/" + FILE + "?v=" + encodeURIComponent(VERSION) + stamp;
   
@@ -74,6 +73,6 @@ window.BTFW_THEME_ADMIN = {
     // Fallback to rawcdn.githack if jsDelivr fails
     tag.onerror = function () {
       console.warn("[BTFW] primary failed, trying fallback");
-      inject("https://raw.githack.com/intentionallyIncomplete/BillTube3-slim/tree/dev/" + FILE + "?" + Date.now(), { "data-btfw-fallback": "1" });
+      inject("https://raw.githack.com/intentionallyIncomplete/BillTube3-slim/refs/heads/dev/" + FILE + "?" + Date.now(), { "data-btfw-fallback": "1" });
     };
   })(window, document);
