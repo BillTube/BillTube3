@@ -182,8 +182,12 @@ function load(src){
 }
 
   // Detect if we're using bundled or dev mode
-  var USE_BUNDLES = true;
+  // Check if DEV_MODE is set or if loaded from @dev branch
+  var isDev = (typeof window.DEV_MODE !== 'undefined' && window.DEV_MODE === true) || BASE.indexOf('@dev') !== -1;
+  var USE_BUNDLES = isDev;
+  
   console.log('[BTFW] BASE:', BASE);
+  console.log('[BTFW] isDev:', isDev);
   console.log('[BTFW] USE_BUNDLES:', USE_BUNDLES);
   // Preload CSS in proper order for layout stability
   Promise.all([
@@ -195,7 +199,7 @@ function load(src){
     preload(BASE+"/css/player.css"),
     preload(BASE+"/css/mobile.css")
   ]).then(function(){
-    // Load bundled modules (production) or individual modules (dev)
+    // Load bundled modules (dev for now) or individual modules (main)
     if (USE_BUNDLES) {
       var bundles = [
         "scripts/bundles/core-entry.js",
@@ -207,7 +211,7 @@ function load(src){
       ];
       return Promise.all(bundles.map(f => load(BASE+"/"+f)));
     } else {
-      // Dev mode - load individual modules (must match build.js bundles)
+      // Dev mode for the future (currently the standard) - load individual modules (must match build.js bundles)
       var mods=[
         "modules/feature-style-core.js",
         "modules/feature-bulma-layer.js",
@@ -312,5 +316,4 @@ function load(src){
     console.error("[BTFW v3.4f] boot failed:", e&&e.message||e);
     BootOverlay.fail((e&&e.message)||'Unknown error');
   });
-
 })();

@@ -43,11 +43,15 @@ window.BTFW_THEME_ADMIN = {
   /* BillTube3 one-shot loader for CyTube Channel JS */
   (function (W, D) {
     // --- configurable bits ---
-    var CDN_BASE = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-slim@dev";
+    var CDN_BASE = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-slim";
     var FILE     = "billtube-fw.js";
     var VERSION  = "dev-000";
     var DEV_NOCACHE = false;
+    var DEV_MODE = true;
     // --------------------------
+    
+    // Expose DEV_MODE globally for billtube-fw.js to check
+    W.DEV_MODE = DEV_MODE;
   
     // Already loaded/applied? bail.
     if (W.BTFW && W.BTFW.init) { console.debug("[BTFW] already present; skip"); return; }
@@ -55,7 +59,11 @@ window.BTFW_THEME_ADMIN = {
     if (D.getElementById("btfw-grid")) { console.debug("[BTFW] layout present; skip"); return; }
   
     var stamp = DEV_NOCACHE ? ("&t=" + Date.now()) : "";
-    var primary = CDN_BASE + "/" + FILE + "?v=" + encodeURIComponent(VERSION) + stamp;
+    if (DEV_MODE) {
+      var primary = CDN_BASE + "@dev/" + FILE + "?v=" + encodeURIComponent(VERSION) + stamp;
+    } else {
+      primary = CDN_BASE + "@main/" + FILE + "?v=" + encodeURIComponent(VERSION) + stamp;
+    }
   
     function inject(src, attr) {
       var s = D.createElement("script");
