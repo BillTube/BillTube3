@@ -91,13 +91,20 @@ if (!fs.existsSync(distDir)) {
 
 // Simple concatenation and minification
 function minifyJS(code) {
-  // Basic minification: remove comments and extra whitespace
-  return code
-    .replace(/\/\*[\s\S]*?\*\//g, '') // Remove block comments
-    .replace(/\/\/.*/g, '') // Remove line comments
-    .replace(/\s+/g, ' ') // Collapse whitespace
-    .replace(/\s*([{};,:])\s*/g, '$1') // Remove space around punctuation
-    .trim();
+  // Basic minification: remove block comments and collapse whitespace
+  // Note: We skip line comment removal to avoid breaking URLs (https://)
+  let result = code;
+  
+  // Remove block comments (/* ... */)
+  result = result.replace(/\/\*[\s\S]*?\*\//g, '');
+  
+  // Collapse whitespace
+  result = result.replace(/\s+/g, ' ');
+  
+  // Remove space around punctuation
+  result = result.replace(/\s*([{};,:])\s*/g, '$1');
+  
+  return result.trim();
 }
 
 function buildBundle(bundle) {

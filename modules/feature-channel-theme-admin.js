@@ -176,13 +176,16 @@ background: "#0d0d0d",
   const MODULE_FIELD_MAX = 10;
   const MODULE_INPUT_SELECTOR = '[data-role="module-inputs"]';
 
-  const LOADER_PATTERNS = [
-    /\/\*\s*BillTube[\s\S]*?loader[\s\S]*?\*\//i,
-    /\/\/\s*BillTube[\s\S]*?loader/i,
-    /https?:\/\/billtube\.github\.io\/BillTube3\//i,
-    /billtube-fw\.js/i,
-    /\(function\s*\(\s*(?:W\s*,\s*D|window\s*,\s*document)\s*\)\s*\{[\s\S]*?CDN_BASE/i,
+  // Loader patterns as strings to survive minification, compiled on use
+  const LOADER_PATTERN_STRINGS = [
+    String.raw`\/\*\s*BillTube[\s\S]*?loader[\s\S]*?\*\/`,
+    String.raw`\/\/\s*BillTube[\s\S]*?loader`,
+    String.raw`https?:\/\/billtube\.github\.io\/BillTube3\/`,
+    String.raw`billtube-fw\.js`,
+    String.raw`\(function\s*\(\s*(?:W\s*,\s*D|window\s*,\s*document)\s*\)\s*\{[\s\S]*?CDN_BASE`
   ];
+  
+  const LOADER_PATTERNS = LOADER_PATTERN_STRINGS.map(p => new RegExp(p, 'i'));
 
   function findLoaderStart(source){
     if (!source) return -1;
