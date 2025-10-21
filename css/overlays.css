@@ -289,8 +289,11 @@
   transform-origin: 50% 44%;
 }
 
-.btfw-popover[data-btfw-popover-state="open"],
 .btfw-popover[data-btfw-popover-state="opening"] {
+  visibility: visible;
+}
+
+.btfw-popover[data-btfw-popover-state="open"] {
   opacity: 1;
   transform: translate3d(0, 0, 0) scale(1);
   pointer-events: auto;
@@ -310,6 +313,11 @@
   visibility: hidden;
   pointer-events: none;
   transition: opacity var(--btfw-modal-motion-duration, 0.22s) ease;
+}
+
+.btfw-popover-backdrop[data-btfw-popover-state="opening"] {
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .btfw-popover-backdrop[data-btfw-popover-state="open"] {

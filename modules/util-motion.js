@@ -61,12 +61,35 @@ BTFW.define("util:motion", [], async () => {
     });
   }
 
+  function nextFrame(fn) {
+    if (typeof fn !== "function") return;
+    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => { window.requestAnimationFrame(fn); });
+    } else {
+      setTimeout(fn, 32);
+    }
+  }
+
   function openModal(modal) {
     if (!modal) return;
-    modal.dataset.btfwModalState = "open";
+    const state = modal.dataset.btfwModalState;
+    if (state === "open" || state === "opening") return;
+
+    modal.dataset.btfwModalState = "opening";
     modal.removeAttribute("aria-hidden");
     modal.removeAttribute("hidden");
-    modal.classList.add("is-active");
+
+    const activate = () => {
+      if (!modal || modal.dataset.btfwModalState !== "opening") return;
+      modal.classList.add("is-active");
+      modal.dataset.btfwModalState = "open";
+    };
+
+    if (prefersReducedMotion()) {
+      activate();
+    } else {
+      nextFrame(activate);
+    }
   }
 
   async function closeModal(modal) {
@@ -92,17 +115,31 @@ BTFW.define("util:motion", [], async () => {
   function openPopover(pop, options = {}) {
     if (!pop) return;
     const state = pop.dataset.btfwPopoverState;
-    if (state === "open") return;
+    if (state === "open" || state === "opening") return;
 
-    pop.dataset.btfwPopoverState = "open";
+    pop.dataset.btfwPopoverState = "opening";
     pop.removeAttribute("hidden");
     pop.removeAttribute("aria-hidden");
 
     const backdrop = options.backdrop;
     if (backdrop) {
-      backdrop.dataset.btfwPopoverState = "open";
+      backdrop.dataset.btfwPopoverState = "opening";
       backdrop.removeAttribute("hidden");
       backdrop.removeAttribute("aria-hidden");
+    }
+
+    const activate = () => {
+      if (pop.dataset.btfwPopoverState !== "opening") return;
+      pop.dataset.btfwPopoverState = "open";
+      if (backdrop && backdrop.dataset.btfwPopoverState === "opening") {
+        backdrop.dataset.btfwPopoverState = "open";
+      }
+    };
+
+    if (prefersReducedMotion()) {
+      activate();
+    } else {
+      nextFrame(activate);
     }
   }
 
