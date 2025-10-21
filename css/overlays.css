@@ -313,7 +313,7 @@
 }
 
 .btfw-popover-backdrop[data-btfw-popover-state="open"] {
-  opacity: 1;
+  opacity: 0;
   visibility: visible;
   pointer-events: auto;
 }
@@ -1328,6 +1328,7 @@ html[data-btfw-theme="dark"] .panel {
 #chatheader {
     display: none;
 }
+
 
 
 
