@@ -5,6 +5,7 @@
 BTFW.define("feature:motd-editor", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+  const motion = await BTFW.init("util:motion");
   
   // Summernote CDN (v0.8.20 - stable)
   const SUMMERNOTE_CSS = "https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.css";
@@ -84,6 +85,9 @@ BTFW.define("feature:motd-editor", [], async () => {
     const m = document.createElement("div");
     m.id = "btfw-motd-modal";
     m.className = "modal";
+    m.dataset.btfwModalState = "closed";
+    m.setAttribute("hidden", "");
+    m.setAttribute("aria-hidden", "true");
     m.innerHTML = `
       <div class="modal-background"></div>
       <div class="modal-card btfw-modal">
@@ -94,17 +98,17 @@ BTFW.define("feature:motd-editor", [], async () => {
         <section class="modal-card-body">
           <div id="btfw-motd-editor"></div>
         </section>
-        <footer class="modal-card-foot">
-          <button class="button is-link" id="btfw-motd-save">Save</button>
-          <button class="button" id="btfw-motd-cancel">Cancel</button>
-        </footer>
-      </div>`;
+      <footer class="modal-card-foot">
+        <button class="button is-link" id="btfw-motd-save">Save</button>
+        <button class="button" id="btfw-motd-cancel">Cancel</button>
+      </footer>
+    </div>`;
     document.body.appendChild(m);
-    
-    $(".modal-background", m).addEventListener("click", ()=> m.classList.remove("is-active"));
-    $(".delete", m).addEventListener("click", ()=> m.classList.remove("is-active"));
-    $("#btfw-motd-cancel", m).addEventListener("click", ()=> m.classList.remove("is-active"));
-    
+    const dismiss = () => motion.closeModal(m);
+    $(".modal-background", m).addEventListener("click", dismiss);
+    $(".delete", m).addEventListener("click", dismiss);
+    $("#btfw-motd-cancel", m).addEventListener("click", dismiss);
+
     return m;
   }
 
@@ -125,7 +129,7 @@ BTFW.define("feature:motd-editor", [], async () => {
       if (host) {
         host.innerHTML = `<textarea class="textarea" style="height:400px; font-family:monospace;">${initialHTML}</textarea>`;
       }
-      m.classList.add("is-active");
+      motion.openModal(m);
       return;
     }
     
@@ -196,11 +200,11 @@ BTFW.define("feature:motd-editor", [], async () => {
           jQuery(host).summernote('destroy');
         }
         
-        m.classList.remove("is-active");
+        motion.closeModal(m);
       };
     }
 
-    m.classList.add("is-active");
+    motion.openModal(m);
   }
 
   // Enhance channel settings MOTD textarea
