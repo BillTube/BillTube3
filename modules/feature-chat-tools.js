@@ -114,7 +114,7 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({ init }) => {
             <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
             <button class="btfw-ct-item" data-tag="u"><u>U</u><span>Underline</span></button>
             <button class="btfw-ct-item" data-tag="s"><span style="text-decoration:line-through">S</span><span>Strike</span></button>
-            <button class="btfw-ct-item" data-tag="spoiler"><span>🙈</span><span>Spoiler</span></button>
+            <button class="btfw-ct-item" data-tag="sp"><span>🙈</span><span>Spoiler</span></button>
           </div>
 
           <!-- Color tools -->
