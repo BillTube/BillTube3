@@ -2,7 +2,6 @@
 BTFW.define("feature:themeSettings", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-  const motion = await BTFW.init("util:motion");
 
   // single key map
   const TS_KEYS = {
@@ -165,9 +164,6 @@ BTFW.define("feature:themeSettings", [], async () => {
     m = document.createElement("div");
     m.id = "btfw-theme-modal";
     m.className = "modal";
-    m.dataset.btfwModalState = "closed";
-    m.setAttribute("hidden", "");
-    m.setAttribute("aria-hidden", "true");
     m.innerHTML = `
       <div class="modal-background"></div>
       <div class="modal-card btfw-theme-modal-card">
@@ -574,13 +570,10 @@ BTFW.define("feature:themeSettings", [], async () => {
 
     if (typeof m._btfwRenderIgnoreList === "function") m._btfwRenderIgnoreList();
 
-    motion.openModal(m);
+    m.classList.add("is-active");
     document.dispatchEvent(new CustomEvent("btfw:themeSettings:open"));
   }
-  function close(){
-    const modal = $("#btfw-theme-modal");
-    if (modal) motion.closeModal(modal);
-  }
+  function close(){ $("#btfw-theme-modal")?.classList.remove("is-active"); }
 
   // --- wire openers in DOM (chat/nav buttons) ---
   const OPEN_SELECTOR = "#btfw-theme-btn-chat, #btfw-theme-btn-nav, .btfw-theme-open";

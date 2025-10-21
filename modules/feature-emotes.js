@@ -2,7 +2,6 @@
 BTFW.define("feature:emotes", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-  const motion = await BTFW.init("util:motion");
 
   /* ------------------------ helpers ------------------------ */
   function insertAtCursor(input, text){
@@ -119,10 +118,7 @@ BTFW.define("feature:emotes", [], async () => {
 
     pop = document.createElement("div");
     pop.id = "btfw-emotes-pop";
-    pop.className = "btfw-popover btfw-emotes-pop";
-    pop.dataset.btfwPopoverState = "closed";
-    pop.setAttribute("hidden", "");
-    pop.setAttribute("aria-hidden", "true");
+    pop.className = "btfw-popover btfw-emotes-pop hidden";
     pop.innerHTML = `
       <div class="btfw-emotes-head">
         <div class="btfw-emotes-tabs">
@@ -216,7 +212,7 @@ BTFW.define("feature:emotes", [], async () => {
 
     // Click-outside to close
     document.addEventListener("click", (e)=>{
-      if (pop.dataset.btfwPopoverState !== "open") return;
+      if (pop.classList.contains("hidden")) return;
       const within = e.target.closest("#btfw-emotes-pop") || e.target.closest("#btfw-btn-emotes");
       if (!within) close();
     }, true);
@@ -451,7 +447,7 @@ function positionPopover(){
     btn.addEventListener("click", ev=>{
   ev.preventDefault(); ev.stopPropagation();
   const pop = document.getElementById("btfw-emotes-pop");
-  (pop && pop.dataset.btfwPopoverState === "open") ? close() : open();
+  (pop && !pop.classList.contains("hidden")) ? close() : open();
 }, {capture:true});
 
   }
@@ -466,7 +462,7 @@ el.parentNode.replaceChild(c, el);
 c.addEventListener("click", ev=>{
   ev.preventDefault(); ev.stopPropagation();
   const pop = document.getElementById("btfw-emotes-pop");
-  (pop && pop.dataset.btfwPopoverState === "open") ? close() : open();
+  (pop && !pop.classList.contains("hidden")) ? close() : open();
 }, {capture:true});
       });
     });
@@ -482,16 +478,13 @@ c.addEventListener("click", ev=>{
     pop?._btfwSyncSearchClear?.();
     // activate correct tab styling
     pop.querySelectorAll(".btfw-tab").forEach(b=>b.classList.toggle("is-active", b.getAttribute("data-tab")==="emotes"));
-    motion.openPopover(pop);
     positionPopover(true);            // compute fixed height once per open
+    pop.classList.remove("hidden");
     render(true);
     focusGrid();
   }
 
-  function close(){
-    const pop = $("#btfw-emotes-pop");
-    if (pop) motion.closePopover(pop);
-  }
+  function close(){ $("#btfw-emotes-pop")?.classList.add("hidden"); }
 
   function boot(){
     removeLegacyButtons();
