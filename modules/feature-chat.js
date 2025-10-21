@@ -1,4 +1,5 @@
-BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
+BTFW.define("feature:chat", ["feature:layout"], async ({ init }) => {
+  const motion = await init("util:motion");
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const MESSAGE_SELECTOR = ".chat-msg, .message, [class*=message]";
@@ -129,19 +130,19 @@ function repositionOpenPopins(){
 
   // Emotes (visible when NOT .hidden)
   const em = document.getElementById("btfw-emotes-pop");
-  if (em && !em.classList.contains("hidden")) {
+  if (em && em.dataset.btfwPopoverState === "open") {
     helper(em, { widthPx: 560, widthVw: 92, maxHpx: 480, maxHvh: 70 });
   }
 
   // Chat Tools (modal active -> position its card)
-  const ctCard = document.querySelector("#btfw-ct-modal.is-active .btfw-ct-card");
+  const ctCard = document.querySelector("#btfw-ct-modal .btfw-ct-card[data-btfw-popover-state=\"open\"]");
   if (ctCard) {
     helper(ctCard, { widthPx: 420, widthVw: 92, maxHpx: 360, maxHvh: 60 });
   }
 
   // Userlist (uses display toggling)
   const ul = document.getElementById("btfw-userlist-pop");
-  if (ul && ul.style.display !== "none") {
+  if (ul && ul.dataset.btfwPopoverState === "open") {
     helper(ul);
   }
 }
@@ -870,7 +871,9 @@ const scheduleNormalizeChatActions = (() => {
     const back = document.createElement("div");
     back.id = "btfw-userlist-backdrop";
     back.className = "btfw-popover-backdrop";
-    back.style.display = "none";
+    back.dataset.btfwPopoverState = "closed";
+    back.setAttribute("hidden", "");
+    back.setAttribute("aria-hidden", "true");
     back.style.zIndex = "6001";
     document.body.appendChild(back);
 
@@ -878,7 +881,9 @@ const scheduleNormalizeChatActions = (() => {
     const pop = document.createElement("div");
     pop.id = "btfw-userlist-pop";
     pop.className = "btfw-popover btfw-userlist-pop";
-    pop.style.display = "none";
+    pop.dataset.btfwPopoverState = "closed";
+    pop.setAttribute("hidden", "");
+    pop.setAttribute("aria-hidden", "true");
     pop.style.zIndex = "6002";
     pop.innerHTML = `
       <div class="btfw-pophead">
@@ -892,10 +897,9 @@ const scheduleNormalizeChatActions = (() => {
     adoptUserlistIntoPopover();
 
     const close = () => {
-      back.style.display = "none";
-      pop.style.display  = "none";
       const ul = $("#userlist");
       if (ul) ul.classList.remove("btfw-userlist-overlay--open");
+      motion.closePopover(pop, { backdrop: back });
     };
 
     back.addEventListener("click", close);
@@ -908,13 +912,12 @@ const scheduleNormalizeChatActions = (() => {
     window.addEventListener("resize", position);
     window.addEventListener("scroll", position, true);
 
-    document._btfw_userlist_isOpen = () => pop.style.display !== "none";
+    document._btfw_userlist_isOpen = () => pop.dataset.btfwPopoverState === "open";
     document._btfw_userlist_open   = () => {
       adoptUserlistIntoPopover();
       const ul = $("#userlist");
       if (ul) ul.classList.add("btfw-userlist-overlay--open");
-      back.style.display = "block";
-      pop.style.display  = "block";
+      motion.openPopover(pop, { backdrop: back });
       positionAboveChatBar(pop);
     };
     document._btfw_userlist_close  = close;
@@ -1240,10 +1243,10 @@ const scheduleNormalizeChatActions = (() => {
   async function openThemeSettings(){
     document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
     let modal = $("#btfw-theme-modal");
-    if (modal) { modal.classList.add("is-active"); return; }
+    if (modal) { motion.openModal(modal); return; }
     await new Promise(r => setTimeout(r, 40));
     modal = $("#btfw-theme-modal");
-    if (modal) { modal.classList.add("is-active"); return; }
+    if (modal) { motion.openModal(modal); return; }
 
     if (_tsLoading) return;
     _tsLoading = true;
@@ -1253,7 +1256,7 @@ const scheduleNormalizeChatActions = (() => {
       document.dispatchEvent(new CustomEvent("btfw:openThemeSettings"));
       await new Promise(r => setTimeout(r, 40));
       modal = $("#btfw-theme-modal");
-      if (modal) modal.classList.add("is-active");
+      if (modal) motion.openModal(modal);
     } catch(e){
       console.warn("[chat] Theme Settings lazy-load failed:", e.message||e);
     } finally {
