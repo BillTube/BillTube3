@@ -193,6 +193,7 @@ function load(src){
   ]).then(function(){
     // Load modules in dependency order - core first, then layout-dependent modules
     var mods=[
+      "modules/util-motion.js",
       "modules/feature-style-core.js",
       "modules/feature-bulma-layer.js",
       "modules/feature-layout.js",

@@ -2,7 +2,8 @@
    Mini panel above chat input: BBCode buttons, AFK/Clear, and Color tools.
    Color uses BillTube2 format: prefix 'col:#RRGGBB:' at the start of the message.
 */
-BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
+BTFW.define("feature:chat-tools", ["feature:chat"], async ({ init }) => {
+  const motion = await init("util:motion");
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
@@ -94,6 +95,8 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     if (!modal) {
       modal = document.createElement("div");
       modal.id = "btfw-ct-modal";
+      modal.setAttribute("hidden", "");
+      modal.setAttribute("aria-hidden", "true");
       cw.appendChild(modal);
     }
 
@@ -140,7 +143,6 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     // container inert; only the card is interactive
     modal.style.background = "transparent";
     modal.style.pointerEvents = "none";
-    modal.classList.add("hidden");
 
     // sync UI to stored stick color now
     (function syncKeepColorUI(){
@@ -155,6 +157,9 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
     if (card) {
       card.classList.add("btfw-popover");
       card.style.pointerEvents = "auto";
+      card.dataset.btfwPopoverState = "closed";
+      card.setAttribute("hidden", "");
+      card.setAttribute("aria-hidden", "true");
     }
 
     // Build color swatches
@@ -185,14 +190,27 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
       if (keep && keep.checked && !stored) keep.checked = false;
     })();
 
-    positionMiniModal();             // position first
-    m.classList.remove("hidden");    // then show
-    m.classList.add("is-active");
+    m.removeAttribute("hidden");
+    m.removeAttribute("aria-hidden");
+    positionMiniModal();
+    const card = m.querySelector(".btfw-ct-card");
+    if (card) motion.openPopover(card);
   }
 
   function closeMiniModal(){
     const m = $("#btfw-ct-modal");
-    if (m) { m.classList.add("hidden"); m.classList.remove("is-active"); }
+    if (!m) return;
+    const card = m.querySelector(".btfw-ct-card");
+    if (!card) {
+      m.setAttribute("hidden", "");
+      m.setAttribute("aria-hidden", "true");
+      return;
+    }
+    motion.closePopover(card).then(() => {
+      if (card.dataset.btfwPopoverState === "open") return;
+      m.setAttribute("hidden", "");
+      m.setAttribute("aria-hidden", "true");
+    });
   }
 
   function positionMiniModal(){
@@ -276,7 +294,8 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({}) => {
         e.stopPropagation();
         e.stopImmediatePropagation();
         const m = $("#btfw-ct-modal");
-        const isOpen = m && !m.classList.contains("hidden");
+        const card = m?.querySelector?.(".btfw-ct-card");
+        const isOpen = !!(card && card.dataset.btfwPopoverState === "open");
         if (isOpen) closeMiniModal(); else openMiniModal();
       }, { capture: true });
     }
