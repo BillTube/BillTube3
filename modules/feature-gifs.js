@@ -3,7 +3,6 @@ BTFW.define("feature:gifs", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const PER_PAGE = 12;
-  const motion = await BTFW.init("util:motion");
 
   /* ---- Keys (BillTube2 defaults; can override via localStorage) ---- */
   const K = { giphy: "btfw:giphy:key", tenor: "btfw:tenor:key" };
@@ -82,10 +81,7 @@ BTFW.define("feature:gifs", [], async () => {
     if (modal) return modal;
     modal = document.createElement("div");
     modal.id = "btfw-gif-modal";
-    modal.className = "modal";
-    modal.dataset.btfwModalState = "closed";
-    modal.setAttribute("hidden", "");
-    modal.setAttribute("aria-hidden", "true");
+    modal.className = "modal is-active";
     modal.innerHTML = `
       <div class="modal-background"></div>
       <div class="modal-card btfw-modal">
@@ -459,7 +455,7 @@ BTFW.define("feature:gifs", [], async () => {
     state.provider = modal.querySelector(".btfw-gif-tabs li.is-active")?.getAttribute("data-p") || "giphy";
     renderSkeleton();
     setTimeout(search, 0);
-    motion.openModal(modal);
+    modal.classList.add("is-active");
     const input = $("#btfw-gif-q", modal);
     if (input) {
       requestAnimationFrame(() => {
@@ -468,7 +464,7 @@ BTFW.define("feature:gifs", [], async () => {
       });
     }
   }
-  function close(){ if (modal) motion.closeModal(modal); }
+  function close(){ modal?.classList.remove("is-active"); }
 
   /* ---- boot ---- */
   function boot(){ ensureOpeners(); }

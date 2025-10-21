@@ -1,7 +1,6 @@
 BTFW.define("feature:chat-commands", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
-  const motion = await BTFW.init("util:motion");
   const now = ()=>Date.now();
 
   // ---------- Utils ----------
@@ -478,9 +477,6 @@ addCommand("cast", async (ctx)=>{
     m = document.createElement("div");
     m.id = "btfw-cmds-modal";
     m.className = "modal";
-    m.dataset.btfwModalState = "closed";
-    m.setAttribute("hidden", "");
-    m.setAttribute("aria-hidden", "true");
     m.innerHTML = `
       <div class="modal-background"></div>
       <div class="modal-card btfw-modal">
@@ -494,17 +490,16 @@ addCommand("cast", async (ctx)=>{
         </footer>
       </div>`;
     document.body.appendChild(m);
-    const dismiss = () => motion.closeModal(m);
-    $(".modal-background", m).addEventListener("click", dismiss);
-    $(".delete", m).addEventListener("click", dismiss);
-    $("#btfw-cmds-close", m).addEventListener("click", dismiss);
+    $(".modal-background", m).addEventListener("click", ()=> m.classList.remove("is-active"));
+    $(".delete", m).addEventListener("click", ()=> m.classList.remove("is-active"));
+    $("#btfw-cmds-close", m).addEventListener("click", ()=> m.classList.remove("is-active"));
     return m;
   }
   function openCommandsModal(){
     const m = ensureCommandsModal();
     const body = m.querySelector(".modal-card-body");
     if (body) body.innerHTML = buildCommandsTable();
-    motion.openModal(m);
+    m.classList.add("is-active");
   }
 
   function injectCommandsButton(into){
