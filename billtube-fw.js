@@ -202,12 +202,12 @@ function load(src){
     // Load bundled modules (dev for now) or individual modules (main)
     if (USE_BUNDLES) {
       var bundles = [
-        "scripts/bundles/core-entry.js",
-        "scripts/bundles/chat-entry.js",
-        "scripts/bundles/player-entry.js",
-        "scripts/bundles/playlist-entry.js",
-        "scripts/bundles/admin-entry.js",
-        "scripts/bundles/features-entry.js"
+        "dist/core.bundle.js",
+        "dist/chat.bundle.js",
+        "dist/player.bundle.js",
+        "dist/playlist.bundle.js",
+        "dist/admin.bundle.js",
+        "dist/features.bundle.js"
       ];
       return Promise.all(bundles.map(f => load(BASE+"/"+f)));
     } else {

@@ -1,5 +1,4 @@
 node_modules/
-dist/
 scripts/bundles/
 *.log
 .DS_Store
