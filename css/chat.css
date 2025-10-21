@@ -540,10 +540,11 @@
 
 #btfw-ct-modal{
   position: absolute; inset: 0;
-  display: none;
   z-index: 4800;
 }
-#btfw-ct-modal.is-active{ display: block; }
+#btfw-ct-modal[hidden]{
+  display: none !important;
+}
 #btfw-ct-modal .btfw-ct-backdrop{
   position: absolute; inset: 0;
   background: color-mix(in srgb, var(--btfw-color-bg) 40%, black 60%);
