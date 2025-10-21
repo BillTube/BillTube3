@@ -198,12 +198,12 @@ function load(src){
     // Load bundled modules (production) or individual modules (dev)
     if (USE_BUNDLES) {
       var bundles = [
-        "scripts/bundles/core.bundle.js",
-        "scripts/bundles/chat.bundle.js",
-        "scripts/bundles/player.bundle.js",
-        "scripts/bundles/playlist.bundle.js",
-        "scripts/bundles/admin.bundle.js",
-        "scripts/bundles/features.bundle.js"
+        "scripts/bundles/core-entry.js",
+        "scripts/bundles/chat-entry.js",
+        "scripts/bundles/player-entry.js",
+        "scripts/bundles/playlist-entry.js",
+        "scripts/bundles/admin-entry.js",
+        "scripts/bundles/features-entry.js"
       ];
       return Promise.all(bundles.map(f => load(BASE+"/"+f)));
     } else {
