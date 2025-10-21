@@ -296,8 +296,18 @@
   box-shadow: var(--btfw-overlay-shadow);
   z-index: 6000;
   overflow: hidden;
+  opacity: 0;
+  transform: translate3d(0, 18px, 0) scale(0.96);
+  transition:
+    opacity var(--btfw-modal-motion-duration, 0.22s) ease,
+    transform var(--btfw-modal-motion-duration, 0.22s) var(--btfw-modal-motion-ease, cubic-bezier(0.2, 0.9, 0.25, 1));
+  transform-origin: 50% 44%;
 }
 #btfw-emotes-pop.hidden { display: none; }
+#btfw-emotes-pop:not(.hidden) {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
 
 #btfw-emotes-pop .btfw-emotes-head {
   display: grid;
@@ -477,8 +487,75 @@
 /* Scope to Bulma modals; works for Theme Settings, GIFs, etc.            */
 /* Reads CSS variables if you have tokens.css, otherwise uses fallbacks.   */
 
+/* Unified modal motion ------------------------------------------------- */
+.modal {
+  --btfw-modal-motion-duration: 0.22s;
+  --btfw-modal-motion-ease: cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+.modal > .modal-card,
+.modal > .modal-content,
+.modal > .modal-dialog {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0) scale(0.96);
+  transition:
+    opacity var(--btfw-modal-motion-duration, 0.22s) ease,
+    transform var(--btfw-modal-motion-duration, 0.22s) var(--btfw-modal-motion-ease, cubic-bezier(0.2, 0.9, 0.25, 1));
+  transform-origin: 50% 44%;
+}
+
+.modal.is-active > .modal-card,
+.modal.is-active > .modal-content,
+.modal.is-active > .modal-dialog {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.modal.fade > .modal-dialog {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0) scale(0.96);
+  transition:
+    opacity var(--btfw-modal-motion-duration, 0.22s) ease,
+    transform var(--btfw-modal-motion-duration, 0.22s) var(--btfw-modal-motion-ease, cubic-bezier(0.2, 0.9, 0.25, 1));
+}
+
+.modal.fade.in > .modal-dialog,
+.modal.fade.show > .modal-dialog,
+.modal.in > .modal-dialog,
+.modal.show > .modal-dialog {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.modal .modal-background {
+  opacity: 0;
+  transition: opacity var(--btfw-modal-motion-duration, 0.22s) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal > .modal-card,
+  .modal > .modal-content,
+  .modal > .modal-dialog,
+  .modal.fade > .modal-dialog,
+  .modal .modal-background,
+  .modal-backdrop,
+  #btfw-emotes-pop {
+    transition: none !important;
+  }
+
+  .modal > .modal-card,
+  .modal > .modal-content,
+  .modal > .modal-dialog,
+  .modal.fade > .modal-dialog,
+  #btfw-emotes-pop,
+  #btfw-emotes-pop:not(.hidden) {
+    transform: none !important;
+  }
+}
+
 /* Backdrop */
 .modal.is-active .modal-background {
+  opacity: 1;
   background:
     radial-gradient(1200px 700px at 20% -10%, color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%), transparent 55%),
     radial-gradient(1000px 800px at 120% 120%, color-mix(in srgb, var(--btfw-color-accent) 14%, white 4%, transparent 82%), transparent 50%),
@@ -720,6 +797,13 @@
 
 .modal-backdrop {
   background: color-mix(in srgb, var(--btfw-color-bg) 86%, transparent 14%) !important;
+  opacity: 0;
+  transition: opacity var(--btfw-modal-motion-duration, 0.22s) ease;
+}
+
+.modal-backdrop.in,
+.modal-backdrop.show {
+  opacity: 1;
 }
 
 .modal.btfw-bulma-skin {
