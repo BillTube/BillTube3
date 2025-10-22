@@ -1,8 +1,8 @@
 /* BTFW — feature:bulma-layer (dark/light/auto + Bulma dark overrides + Bootstrap modal bridge) */
 BTFW.define("feature:bulma-layer", [], async () => {
   // Persisted preference (kept for Theme Settings compatibility)
-  const KEY = "btfw:theme:mode";                     // "auto" | "dark" | "light"
-  const KEY_OLD = "btfw:bulma:theme";                // legacy key support
+  const KEY = "btfw:theme:mode"; // "auto" | "dark" | "light"
+  const KEY_OLD = "btfw:bulma:theme"; // legacy key support
   const mq = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
 
   // Single style injector for all dark-scope rules

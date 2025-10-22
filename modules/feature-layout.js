@@ -584,25 +584,3 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     }
     return null;
   }
-
-  // function ensureNavHost(grid){
-  //   if (!grid) return;
-  //   const navEl = findNavbarElement();
-  //   if (!navEl) return;
-
-  //   let host = document.getElementById(NAV_HOST_ID);
-  //   if (!host) {
-  //     host = document.createElement("div");
-  //     host.id = NAV_HOST_ID;
-  //     host.className = "btfw-navhost";
-  //   }
-
-  //   if (navEl.parentElement !== host) {
-  //     host.appendChild(navEl);
-  //   }
-
-  //   if (host.parentElement !== grid) {
-  //     grid.insertBefore(host, grid.firstChild);
-  //   }
-  // }
-

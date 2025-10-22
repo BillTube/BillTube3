@@ -1489,7 +1489,7 @@ function replaceBlock(original, startMarker, endMarker, block){
               <h4>Featured Content & Resources</h4>
               <span>Manage the featured slider feed and extra theme assets.</span>
             </div>
-            <span class="section__chevron" aria-hidden="true">›</span>
+            <span class="section__chevron" aria-hidden="true">></span>
           </summary>
           <div class="section__body">
             <div class="field">
@@ -1538,7 +1538,7 @@ function replaceBlock(original, startMarker, endMarker, block){
               <h4>Integrations</h4>
               <span>Connect API keys used by chat tools and commands.</span>
             </div>
-            <span class="section__chevron" aria-hidden="true">›</span>
+            <span class="section__chevron" aria-hidden="true">></span>
           </summary>
           <div class="section__body">
             <div class="integrations-callout">
@@ -1558,7 +1558,7 @@ function replaceBlock(original, startMarker, endMarker, block){
               <h4>Palette & Tint</h4>
               <span>Adjust surface colors and accent tint.</span>
             </div>
-            <span class="section__chevron" aria-hidden="true">›</span>
+            <span class="section__chevron" aria-hidden="true">></span>
           </summary>
           <div class="section__body">
             <div class="field">
@@ -1619,7 +1619,7 @@ function replaceBlock(original, startMarker, endMarker, block){
               <h4>Typography</h4>
               <span>Select the base font used across the theme.</span>
             </div>
-            <span class="section__chevron" aria-hidden="true">›</span>
+            <span class="section__chevron" aria-hidden="true">></span>
           </summary>
           <div class="section__body">
             <div class="field">
@@ -1657,7 +1657,7 @@ function replaceBlock(original, startMarker, endMarker, block){
               <h4>Branding</h4>
               <span>Navbar title, favicon, and poster overrides.</span>
             </div>
-            <span class="section__chevron" aria-hidden="true">›</span>
+            <span class="section__chevron" aria-hidden="true">></span>
           </summary>
           <div class="section__body">
             <div class="field">
