@@ -1309,7 +1309,7 @@ html[data-btfw-theme="dark"] .panel {
 /* 3) Make the button grid & swatches auto-flow with width (only affects Tools panel) */
 #btfw-ct-modal .btfw-ct-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
   gap: 8px;
 }
 
@@ -1336,6 +1336,7 @@ html[data-btfw-theme="dark"] .panel {
 #chatheader {
     display: none;
 }
+
 
 
 
