@@ -40,7 +40,7 @@ window.BTFW_THEME_ADMIN = {
   };
   // ==BTFW_THEME_ADMIN_END==
   
-  /* BillTube3 one-shot loader for CyTube Channel JS */
+  // BTFW_LOADER_SENTINEL
   (function (W, D) {
     // --- configurable bits ---
     var CDN_BASE = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-slim";

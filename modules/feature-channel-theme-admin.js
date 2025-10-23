@@ -2,10 +2,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   const $  = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-  const JS_BLOCK_START  = "// ==BTFW_THEME_ADMIN_START==";
-  const JS_BLOCK_END    = "// ==BTFW_THEME_ADMIN_END==";
-  const CSS_BLOCK_START = "/* ==BTFW_THEME_ADMIN_START== */";
-  const CSS_BLOCK_END   = "/* ==BTFW_THEME_ADMIN_END== */";
+  const JS_BLOCK_START  = "==BTFW_THEME_ADMIN_START==";
+  const JS_BLOCK_END    = "=BTFW_THEME_ADMIN_END==";
+  const CSS_BLOCK_START = "==BTFW_THEME_ADMIN_START==";
+  const CSS_BLOCK_END   = "==BTFW_THEME_ADMIN_END==";
 
   const JS_FIELD_SELECTORS = [
     "#cs-jstext",
@@ -162,6 +162,7 @@ background: "#0d0d0d",
       google: `Urbanist:wght@${GOOGLE_FONT_WEIGHT_QUERY}`
     }
   };
+
   const FONT_DEFAULT_ID = "inter";
   const FONT_FALLBACK_FAMILY = FONT_PRESETS[FONT_DEFAULT_ID].family;
   const THEME_FONT_LINK_ID = "btfw-theme-font";
@@ -176,40 +177,14 @@ background: "#0d0d0d",
   const MODULE_FIELD_MAX = 10;
   const MODULE_INPUT_SELECTOR = '[data-role="module-inputs"]';
 
-  // Loader patterns as strings to survive minification, compiled on use
-  const LOADER_PATTERN_STRINGS = [
-    String.raw`\/\*\s*BillTube[\s\S]*?loader[\s\S]*?\*\/`,
-    String.raw`\/\/\s*BillTube[\s\S]*?loader`,
-    String.raw`https?:\/\/billtube\.github\.io\/BillTube3\/`,
-    String.raw`billtube-fw\.js`,
-    String.raw`\(function\s*\(\s*(?:W\s*,\s*D|window\s*,\s*document)\s*\)\s*\{[\s\S]*?CDN_BASE`
-  ];
-  
-  const LOADER_PATTERNS = LOADER_PATTERN_STRINGS.map(p => new RegExp(p, 'i'));
+  // Loader patterns as strings to survive minification, compiled at module init
+  const LOADER_SENTINEL = "// BTFW_LOADER_SENTINEL";
+  const LOADER_SENTINEL_REG = /\s*\/\/\s*BTFW_LOADER_SENTINEL/;
 
-  function findLoaderStart(source){
-    if (!source) return -1;
-    for (const pattern of LOADER_PATTERNS) {
-      const match = pattern.exec(source);
-      if (match) {
-        let index = match.index;
-        if (pattern === LOADER_PATTERNS[2] || pattern === LOADER_PATTERNS[3]) {
-          const commentIndex = source.lastIndexOf("/*", index);
-          if (commentIndex !== -1 && commentIndex >= index - 200) {
-            index = commentIndex;
-          }
-        }
-        const lineStart = source.lastIndexOf("\n", index);
-        if (lineStart !== -1) {
-          index = lineStart + 1;
-        } else {
-          index = 0;
-        }
-        return index;
-
-      }
-    }
-    return -1;
+  function findLoaderStart(src){
+    const idx = src.indexOf(LOADER_SENTINEL);
+    if (idx === -1) return -1;
+    return src.lastIndexOf('\n', idx) + 1;
   }
 
   function joinSections(parts, ensureTrailingNewline){
