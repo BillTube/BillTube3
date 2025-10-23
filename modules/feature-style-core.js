@@ -12,7 +12,6 @@ BTFW.define("feature:styleCore", [], async () => {
     }
   }
 
-  // --- UI deps + z-index layering (once) ---
   function ensureUiDepsAndZ() {
     if (!document.querySelector('link[href*="bulma.min.css"]') &&
         !document.querySelector('link[data-btfw-bulma]')) {
@@ -32,7 +31,6 @@ BTFW.define("feature:styleCore", [], async () => {
       document.head.appendChild(fa);
     }
 
-    // Global z-index fixes + userlist overlay default CLOSED
     if (!document.getElementById('btfw-modal-zfix-core')) {
       const z = document.createElement('style');
       z.id = 'btfw-modal-zfix-core';
@@ -65,14 +63,13 @@ BTFW.define("feature:styleCore", [], async () => {
   ensureUiDepsAndZ();
   setTimeout(ensureUiDepsAndZ, 300);
 
-  // Persist "fluid" layout so CyTube renders consistently for all users
   try {
     localStorage.setItem("cytube-layout", "fluid");
     localStorage.setItem("layout", "fluid");
     if (typeof window.setPreferredLayout === "function") {
       window.setPreferredLayout("fluid");
     }
-  } catch (e) { /* ignore */ }
+  } catch (e) {}
 
   return { name: "feature:styleCore" };
 });

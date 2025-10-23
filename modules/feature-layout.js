@@ -267,10 +267,8 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     const h = header ? header.offsetHeight : 48;
     const newTop = h + "px";
     
-    // Update CSS custom property
     document.documentElement.style.setProperty("--btfw-top", newTop);
-    
-    // Force layout recalculation for sticky elements
+
     const chatcol = document.getElementById("btfw-chatcol");
     if (chatcol) {
       if (isVertical) {
@@ -297,9 +295,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       if (isVertical) return;
       isResizing = true;
       e.preventDefault();
-      // Add a class to the body to prevent text selection during drag
       document.body.classList.add("btfw-resizing");
-
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", stopResize);
     });
@@ -351,7 +347,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   function moveCurrent(){ 
     const vh = document.getElementById("videowrap-header"); 
     
-    // If videowrap-header doesn't exist, that's okay - title might be created by CyTube later
     if (!vh) {
       console.log('[layout] No videowrap-header found');
       return;
@@ -370,7 +365,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
         top.appendChild(slot);
       }
       
-      // If currenttitle exists, move it
       if (ct) {
         slot.appendChild(ct);
         console.log('[layout] Moved #currenttitle to slot');
@@ -379,7 +373,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       }
     }
     
-    // Only remove videowrap-header - the title is either moved or wasn't there
     vh.remove(); 
   }
 
@@ -412,7 +405,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       grid.appendChild(split);
       grid.appendChild(right);
 
-      // Insert grid but keep it hidden until properly sized
       grid.style.opacity = '0';
       wrap.prepend(grid);
 
@@ -460,7 +452,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   function finishLayout() {
     const grid = document.getElementById("btfw-grid");
     if (grid) {
-      // Add loaded class and show grid
       grid.classList.add("btfw-loaded");
       grid.style.opacity = '1';
     }
@@ -476,26 +467,22 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     setTop();
     updateResponsiveLayout();
 
-    // Set up a more robust layout finalization
     const finalizeLayout = () => {
-      setTop(); // Recalculate in case navbar mounted late
+      setTop();
       makeResizable();
       finishLayout();
     };
 
-    // Try multiple times to handle async loading
     setTimeout(finalizeLayout, 100);
     setTimeout(finalizeLayout, 300);
     setTimeout(finalizeLayout, 600);
     
-    // Also listen for window load as final fallback
     if (document.readyState === 'complete') {
       finalizeLayout();
     } else {
       window.addEventListener('load', finalizeLayout);
     }
 
-    // Watch for navbar height changes
     const navbar = document.querySelector(".navbar, #nav-collapsible, #navbar, .navbar-fixed-top");
     if (navbar) {
       const resizeObserver = new ResizeObserver(() => {
@@ -505,7 +492,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       resizeObserver.observe(navbar);
     }
 
-    // Watch for window resize
     window.addEventListener('resize', () => {
       setTimeout(() => {
         setTop();
