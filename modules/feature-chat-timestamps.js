@@ -5,8 +5,8 @@
 BTFW.define("feature:chat-timestamps", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
-  const LS_SHOW   = "btfw:chat:ts:show";   // "1" | "0"
-  const LS_FORMAT = "btfw:chat:ts:fmt";    // "24" | "12"
+  const LS_SHOW   = "btfw:chat:ts:show";
+  const LS_FORMAT = "btfw:chat:ts:fmt";
 
   function getShow(){  try { return (localStorage.getItem(LS_SHOW) ?? "1")==="1"; } catch(_) { return true; } }
   function setShow(v){ try { localStorage.setItem(LS_SHOW, v?"1":"0"); } catch(_){} applyVisibility(v); }
@@ -21,7 +21,6 @@ BTFW.define("feature:chat-timestamps", [], async () => {
   function reformatOne(tEl, fmt){
     if (!tEl) return;
     const raw = (tEl.textContent||"").trim();
-    // Expect like: [12:34] or [12:34 AM]
     const m = raw.match(/^\[([^\]]+)\]$/);
     if (!m) return;
     const s = m[1].trim();
@@ -33,7 +32,7 @@ BTFW.define("feature:chat-timestamps", [], async () => {
     } else {
       let m2 = s.match(/^(\d{1,2}):(\d{2})$/);
       if (!m2) return;
-      hh = parseInt(m2[1],10); mm = parseInt(m2[2],10); // assume 24h
+      hh = parseInt(m2[1],10); mm = parseInt(m2[2],10);
     }
 
     let out="";
@@ -42,7 +41,6 @@ BTFW.define("feature:chat-timestamps", [], async () => {
       const mer = (ampm ? ampm : (hh>=12?"PM":"AM"));
       out = `[${h}:${String(mm).padStart(2,"0")} ${mer}]`;
     } else {
-      // 24h
       let h = hh;
       if (ampm==="AM" && hh===12) h=0;
       if (ampm==="PM" && hh<12) h=hh+1*12;

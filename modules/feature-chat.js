@@ -5,7 +5,6 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   const TRIVIA_PREFIX = /^Trivia:\s*/i;
   const BASE = (window.BTFW && BTFW.BASE ? BTFW.BASE.replace(/\/+$/,'') : "");
   
-/* --- Shared pop-in positioning helper (exports a global for other modules) --- */
 function positionAboveChatBar(el, opts){
   if (!el) return;
   const cw  = document.querySelector("#chatwrap");
@@ -14,10 +13,10 @@ function positionAboveChatBar(el, opts){
 
   const {
     margin = 8,
-    widthPx = 560,  // desired width cap
-    widthVw = 92,   // fallback cap in vw
-    maxHpx = 480,   // desired max height cap
-    maxHvh = 70     // fallback cap in vh
+    widthPx = 560,
+    widthVw = 92,
+    maxHpx = 480,
+    maxHvh = 70
   } = (opts || {});
 
   const cwRect  = cw.getBoundingClientRect();
@@ -60,7 +59,7 @@ function positionAboveChatBar(el, opts){
   } else {
     el.style.removeProperty("max-height");
   }
-  el.style.zIndex    = el.style.zIndex || "6002"; // keep above chat, below navbar modals
+  el.style.zIndex    = el.style.zIndex || "6002";
 }
 window.BTFW_positionPopoverAboveChatBar = positionAboveChatBar;
 
@@ -83,19 +82,16 @@ window.addEventListener('scroll', () => {
 function repositionOpenPopins(){
   const helper = (el, opts) => window.BTFW_positionPopoverAboveChatBar && window.BTFW_positionPopoverAboveChatBar(el, opts);
 
-  // Emotes (visible when NOT .hidden)
   const em = document.getElementById("btfw-emotes-pop");
   if (em && !em.classList.contains("hidden")) {
     helper(em, { widthPx: 560, widthVw: 92, maxHpx: 480, maxHvh: 70 });
   }
 
-  // Chat Tools (modal active -> position its card)
   const ctCard = document.querySelector("#btfw-ct-modal.is-active .btfw-ct-card");
   if (ctCard) {
     helper(ctCard, { widthPx: 420, widthVw: 92, maxHpx: 360, maxHvh: 60 });
   }
 
-  // Userlist (uses display toggling)
   const ul = document.getElementById("btfw-userlist-pop");
   if (ul && ul.style.display !== "none") {
     helper(ul);
@@ -105,8 +101,6 @@ window.addEventListener("resize", repositionOpenPopins);
 window.addEventListener("scroll", repositionOpenPopins, true);
 document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopins, 0));
 
-
-  /* ---------------- Userlist popover (same pattern as Emote popover) ---------------- */
   function adoptUserlistIntoPopover(){
     const body = $("#btfw-userlist-pop .btfw-popbody");
     const ul   = $("#userlist");
@@ -238,19 +232,15 @@ function actionsNode(){
   return bar && bar.querySelector("#btfw-chat-actions");
 }
 
-/* Move our action buttons into the correct spot, remove legacy duplicates */
 function normalizeChatActionButtons() {
   const actions = actionsNode(); if (!actions) return;
 
-  // remove legacy/duplicate
   const legacyGif = document.getElementById("btfw-gif-btn");
   if (legacyGif) legacyGif.remove();
 
-  // native emotelist stays hidden; we drive it programmatically as fallback
   const nativeEmoteBtn = document.querySelector("#emotelistbtn, #emotelist");
   if (nativeEmoteBtn) nativeEmoteBtn.style.display = "none";
 
-  // ensure our buttons exist (create if missing)
   if (!document.getElementById("btfw-btn-emotes")) {
     const b = document.createElement("button");
     b.id = "btfw-btn-emotes";
@@ -268,7 +258,6 @@ function normalizeChatActionButtons() {
     actions.appendChild(b);
   }
 
-  // if some other module created them elsewhere, adopt them
   ["btfw-btn-emotes", "btfw-btn-gif", "btfw-chatcmds-btn", "btfw-users-toggle", "usercount"].forEach(id=>{
     const el = document.getElementById(id);
     if (el && el.parentElement !== actions) actions.appendChild(el);
@@ -350,7 +339,6 @@ const scheduleNormalizeChatActions = (() => {
   };
 })();
 
-/* Watch the whole document for late/stray button injections and normalize */
   const buttonSocketState = {
     wired: false,
     socketRef: null,
@@ -525,7 +513,6 @@ const scheduleNormalizeChatActions = (() => {
     };
   })();
 
-  /* ---------------- Auto-scroll management ---------------- */
   const processedMessages = new WeakSet();
 
   function getChatBuffer(){
@@ -537,7 +524,6 @@ const scheduleNormalizeChatActions = (() => {
     const buffer = getChatBuffer();
     if (!buffer) return;
 
-    // Direct socket hook - scroll on every chat message
     const sock = window.socket;
     if (sock && typeof sock.on === "function") {
       sock.on("chatMsg", () => {
@@ -551,7 +537,6 @@ const scheduleNormalizeChatActions = (() => {
 
     processPendingChatMessages();
 
-    // Initial scroll
     if (typeof window.scrollChat === "function") {
       setTimeout(() => window.scrollChat(), 80);
     }
@@ -822,7 +807,6 @@ const scheduleNormalizeChatActions = (() => {
   function ensureUserlistPopover(){
     if ($("#btfw-userlist-pop")) return;
 
-    // Backdrop — same family as emote popover
     const back = document.createElement("div");
     back.id = "btfw-userlist-backdrop";
     back.className = "btfw-popover-backdrop";
@@ -830,7 +814,6 @@ const scheduleNormalizeChatActions = (() => {
     back.style.zIndex = "6001";
     document.body.appendChild(back);
 
-    // Panel
     const pop = document.createElement("div");
     pop.id = "btfw-userlist-pop";
     pop.className = "btfw-popover btfw-userlist-pop";
@@ -886,12 +869,10 @@ const scheduleNormalizeChatActions = (() => {
     }
   }
 
-  /* ---------------- Chat bars & actions ---------------- */
   function ensureBars(){
     const cw = $("#chatwrap"); if (!cw) return;
     cw.classList.add("btfw-chatwrap");
 
-    // Top bar (Now Playing slot — feature:nowplaying moves #currenttitle here)
     let top = cw.querySelector(".btfw-chat-topbar");
     if (!top) {
       top = document.createElement("div");
@@ -937,7 +918,6 @@ const scheduleNormalizeChatActions = (() => {
       topActions.appendChild(btn);
     }
 
-    // Bottom bar + actions
     let bottom = cw.querySelector(".btfw-chat-bottombar");
     if (!bottom) {
       bottom = document.createElement("div");
@@ -971,11 +951,9 @@ const scheduleNormalizeChatActions = (() => {
     }
     actions.classList.add("btfw-chat-actions");
 
-    // 🔹 Remove deprecated/duplicate buttons from previous versions
     const oldGif = $("#btfw-gif-btn");            if (oldGif) oldGif.remove();
     const chatTheme = $("#btfw-theme-btn-chat");  if (chatTheme) chatTheme.remove();
 
-    // 🔹 Emotes button (ours) — lives in actions
     if (!$("#btfw-btn-emotes")) {
       const b = document.createElement("button");
       b.id = "btfw-btn-emotes";
@@ -985,11 +963,9 @@ const scheduleNormalizeChatActions = (() => {
       actions.appendChild(b);
     }
 
-    // Hide the native emotelist button if it exists (we’ll trigger it programmatically)
     const nativeEmoteBtn = $("#emotelistbtn, #emotelist");
     if (nativeEmoteBtn) nativeEmoteBtn.style.display = "none";
 
-    // 🔹 GIF button (ours) — lives in actions
     if (!$("#btfw-btn-gif")) {
       const b = document.createElement("button");
       b.id = "btfw-btn-gif";
@@ -999,14 +975,12 @@ const scheduleNormalizeChatActions = (() => {
       actions.appendChild(b);
     }
 
-    // 🔹 Chat commands button — move into actions if it exists elsewhere
     const cmds = $("#btfw-chatcmds-btn");
     if (cmds && cmds.parentElement !== actions) {
       cmds.classList.add("button","is-dark","is-small","btfw-chatbtn");
       actions.appendChild(cmds);
     }
 
-    // Users button (keep)
     if (!$("#btfw-users-toggle")) {
       const b = document.createElement("button");
       b.id = "btfw-users-toggle";
@@ -1016,7 +990,6 @@ const scheduleNormalizeChatActions = (() => {
       actions.appendChild(b);
     }
 
-    // Buffer & controls layout
     const msg = $("#messagebuffer"); if (msg) msg.classList.add("btfw-messagebuffer");
     const controls = $("#chatcontrols,#chat-controls") || ($("#chatline") && $("#chatline").parentElement);
     if (controls && controls.parentElement !== composerMain) {
@@ -1059,7 +1032,6 @@ const scheduleNormalizeChatActions = (() => {
     };
   })();
 
-  /* ---------------- Usercount cleanup + styling ---------------- */
   const usercountState = {
     socket: null
   };
@@ -1126,10 +1098,9 @@ const scheduleNormalizeChatActions = (() => {
   }
 
   uc.classList.add("btfw-usercount");
-  uc.classList.remove("pointer"); // Remove pointer cursor class
+  uc.classList.remove("pointer");
   if (!uc.title) uc.title = "Connected users";
 
-  // Disable all interaction
   if (!uc.dataset.btfwUsercountBound) {
     uc.addEventListener("click", (e) => {
       e.preventDefault();
@@ -1147,7 +1118,6 @@ const scheduleNormalizeChatActions = (() => {
   wireUsercountSocket();
 }
 
-  /* ---------------- Deterministic username colors ---------------- */
   function colorizeUser(el){
     const n = el.matches?.(".username,.nick,.name") ? el : el.querySelector?.(".username,.nick,.name");
     if (!n) return;
@@ -1157,7 +1127,6 @@ const scheduleNormalizeChatActions = (() => {
     n.style.color=c;
   }
 
-  /* ---------------- Observe chat DOM (re-adopt userlist if re-rendered) ---------------- */
   function observeChatDom(){
     const cw = $("#chatwrap"); if (!cw || cw._btfw_chat_obs) return;
     cw._btfw_chat_obs = true;
@@ -1182,7 +1151,6 @@ const scheduleNormalizeChatActions = (() => {
     ensureScrollManagement();
   }
 
-  /* ---------------- Theme Settings opener (unchanged) ---------------- */
   function loadScript(src){
     return new Promise((res,rej)=>{
       const s=document.createElement("script");
@@ -1217,7 +1185,6 @@ const scheduleNormalizeChatActions = (() => {
     }
   }
 
-  /* ---------------- Delegated clicks ---------------- */
   function wireDelegatedClicks(){
     if (window._btfwChatClicksWired) return;
     window._btfwChatClicksWired = true;
@@ -1234,10 +1201,8 @@ const scheduleNormalizeChatActions = (() => {
 
       if (emoBtn) {
         e.preventDefault();
-        // Prefer our emote popover if present
         const ev = new Event("btfw:openEmotes");
         document.dispatchEvent(ev);
-        // Fallback to native emotelist button if no handler created the popover
         setTimeout(()=>{
           const existing = document.querySelector(".btfw-emote-pop,.btfw-popover.btfw-emote-pop");
           if (!existing) {
@@ -1254,7 +1219,6 @@ const scheduleNormalizeChatActions = (() => {
 
       if (cmdsBtn) {
         e.preventDefault();
-        // Let chat-commands module handle it
         document.dispatchEvent(new Event("btfw:openChatCmds"));
         return;
       }
@@ -1265,7 +1229,6 @@ const scheduleNormalizeChatActions = (() => {
     scheduleMarkChatMessageGroups();
   });
 
-  /* ---------------- Boot ---------------- */
   function boot(){
     refreshChatDom();
     wireChatSocketWatcher();

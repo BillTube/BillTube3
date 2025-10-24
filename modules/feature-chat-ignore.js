@@ -45,7 +45,6 @@ BTFW.define("feature:chat-ignore", [], async () => {
   }
 
   function markUserlist(name, muted){
-    // add/remove muted class
     const li = document.querySelector(`#userlist li[data-name="${CSS.escape(name)}"]`) || null;
     (li||{}).classList?.toggle("btfw-muted", !!muted);
   }
@@ -54,7 +53,6 @@ BTFW.define("feature:chat-ignore", [], async () => {
     const ul = $("#userlist"); if (!ul || ul._btfwIgnoreWired) return;
     ul._btfwIgnoreWired = true;
 
-    // decorate entries with a small "mute" chip
     const decorate = (root)=>{
       const items = root.querySelectorAll("li");
       items.forEach(li=>{
@@ -79,7 +77,6 @@ BTFW.define("feature:chat-ignore", [], async () => {
 
     decorate(ul);
 
-    // observe changes in userlist and re-decorate
     const mo = new MutationObserver(muts=>{
       muts.forEach(m=>{
         if (m.addedNodes) m.addedNodes.forEach(n=>{ if (n.nodeType===1) decorate(n); });

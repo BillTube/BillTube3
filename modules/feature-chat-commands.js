@@ -3,7 +3,6 @@ BTFW.define("feature:chat-commands", [], async () => {
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
   const now = ()=>Date.now();
 
-  // ---------- Utils ----------
   function sendChat(msg){
     try { if (window.socket?.emit) { socket.emit("chatMsg", { msg }); return true; } } catch(_) {}
     return false;
@@ -25,7 +24,6 @@ BTFW.define("feature:chat-commands", [], async () => {
 function getCurrentTitle(){
   const ct = document.getElementById('currenttitle') || document.querySelector('.currenttitle');
   let t = (ct?.textContent || "").trim();
-  // Remove any "Currently playing:" / "Now playing:" prefix
   t = t.replace(/^\s*(?:currently|now)\s*playing\s*[:\-]\s*/i, "").trim();
   return t;
 }
@@ -37,7 +35,7 @@ function getCurrentTitle(){
 
   function decodeHTMLEntities(text){ const t=document.createElement('textarea'); t.innerHTML=text; return t.value; }
   function stylizeUsername(u){
-    const map={'a':'𝐚','b':'𝐛','c':'𝐜','d':'𝐝','e':'𝐞','f':'𝐟','g':'𝐠','h':'𝐡','i':'𝐢','j':'𝐣','k':'𝐤','l':'𝐥','m':'𝐦','n':'𝐧','o':'𝐨','p':'𝐩','q':'𝐪','r':'𝐫','s':'𝐬','t':'𝐭','u':'𝐮','v':'𝐯','w':'𝐰','x':'𝐱','y':'𝐲','z':'𝐳','A':'𝐀','B':'𝐁','C':'𝐂','D':'𝐃','E':'𝐄','F':'𝐅','G':'𝐆','H':'𝐇','I':'𝐈','J':'𝐉','K':'𝐊','L':'𝐋','M':'𝐌','N':'𝐍','O':'𝐎','P':'𝐏','Q':'𝐐','R':'𝐑','S':'𝐒','T':'𝐓','U':'𝐔','V':'𝐕','W':'𝐖','X':'𝐗','Y':'𝐘','Z':'𝐙'};
+    const map={'a':'a','b':'b','c':'c','d':'d','e':'e','f':'f','g':'g','h':'h','i':'i','j':'j','k':'k','l':'l','m':'m','n':'n','o':'o','p':'p','q':'q','r':'r','s':'s','t':'t','u':'u','v':'v','w':'w','x':'x','y':'y','z':'z','A':'A','B':'B','C':'C','D':'D','E':'E','F':'F','G':'G','H':'H','I':'I','J':'J','K':'K','L':'L','M':'M','N':'N','O':'O','P':'P','Q':'Q','R':'R','S':'S','T':'T','U':'U','V':'V','W':'W','X':'X','Y':'Y','Z':'Z'};
     return String(u||"").split("").map(ch=>map[ch]||ch).join("");
   }
   async function updateScore(username){
@@ -93,7 +91,6 @@ function getCurrentTitle(){
     }
   }
 
-  // ---------- TMDB summary ----------
   function getTMDBKey(){
     try {
       const cfg = (window.BTFW_CONFIG && typeof window.BTFW_CONFIG === "object") ? window.BTFW_CONFIG : {};
@@ -264,7 +261,6 @@ async function fetchTMDBCast(title){
       movieId = r.id;
     }
     
-    // Fetch credits
     const creditsUrl = `https://api.themoviedb.org/3/${mediaType}/${movieId}/credits?api_key=${key}`;
     const creditsRes = await fetch(creditsUrl);
     if (!creditsRes.ok) throw new Error(`HTTP ${creditsRes.status}`);
@@ -273,7 +269,6 @@ async function fetchTMDBCast(title){
     const cast = creditsData.cast || [];
     if (!cast.length) return 'No cast information available.';
     
-    // Get top 8 cast members
     const top8 = cast.slice(0, 8);
     const castList = top8.map(actor => {
       const character = actor.character ? ` (${actor.character})` : '';
@@ -286,7 +281,6 @@ async function fetchTMDBCast(title){
     return `TMDB error: ${e.message||e}`; 
   }
 }
-  // ---------- Channel Emotes (for !sm) ----------
   function getChannelEmotes(){
     try {
       if (window.CHANNEL?.emotes) {
@@ -300,7 +294,6 @@ async function fetchTMDBCast(title){
     return [];
   }
 
-  // ---------- Playlist helpers ----------
   function emitVoteSkip(){ try { socket.emit("voteskip"); } catch(_) {} }
   function emitPlayNext(){ try { socket.emit("playNext"); } catch(_) {} }
   function emitBumpLastAfterCurrent(){
@@ -351,18 +344,14 @@ function sanitizeTitleForSearch(t){
   if (!t) return "";
   let s = " " + t + " ";
 
-  // Strip bracketed tags like [1080p], (Official Trailer), but keep (YYYY)
   s = s.replace(/\[[^\]]*\]/g, " ");
   s = s.replace(/\(([^)]*)\)/g, (m, inner) => /^\s*\d{4}\s*$/.test(inner) ? m : " ");
 
-  // Common noise tokens
   s = s.replace(/\b(?:official\s*trailer|trailer|teaser|lyrics|mv|amv|full\s*episode|episode\s*\d+|season\s*\d+)\b/gi, " ");
   s = s.replace(/\b(?:\d{3,4}p|[48]k|hdr|dolby(?:\s+vision)?|remaster|extended|uncut|subbed|dubbed)\b/gi, " ");
 
-  // Collapse whitespace
   s = s.replace(/\s{2,}/g, " ").trim();
 
-  // If there is a delimiter like " - " or " | ", prefer left part (often the title)
   const split = s.split(/\s[-–|:]\s/);
   if (split.length > 1 && split[0].length >= 3) s = split[0].trim();
 
@@ -370,7 +359,6 @@ function sanitizeTitleForSearch(t){
 
   return s || t;
 }
-  // ---------- Command registry ----------
   const REG = new Map();
   function addCommand(name, handler, {desc="", usage="", cooldownMs=800, aliases=[]}={}){
     REG.set(name, {name, handler, desc, usage, cooldownMs, last:0, aliases});
@@ -386,7 +374,6 @@ function sanitizeTitleForSearch(t){
     return { name, args: parts, raw: text };
   }
 
-  // ---- Commands ----
   addCommand("help", ()=> `Commands: ${listPrimary().map(n=>"!"+n).join(", ")}  —  Click the “?” button below chat for details.`, { desc:"List commands", usage:"!help" });
 
   addCommand("leaderboard", async ()=>{ await displayLeaderboard(); return ""; }, { desc:"Show trivia leaderboard", usage:"!leaderboard" });
@@ -422,7 +409,6 @@ addCommand("cast", async (ctx)=>{
   addCommand("sm",    ()=>{ const em=getChannelEmotes(); if (!em.length) return "No channel emotes found."; sendChat(em[Math.floor(Math.random()*em.length)]); return ""; }, { desc:"Random channel emote", usage:"!sm" });
   addCommand("/me",   (ctx)=>{ const msg=(ctx.args[0]||"").trim(); if (msg) sendChat(`/me ${msg}`); return ""; });
 
-  // ---------- Input intercept & incoming ----------
   function onEnterIntercept(e){
     try {
       const input = e.currentTarget; if (!input) return;
@@ -452,7 +438,6 @@ addCommand("cast", async (ctx)=>{
     try { if (window.socket && socket.on) socket.on("chatMsg", onIncomingChatMsg); } catch(_) {}
   }
 
-  // ---------- Commands UI (robust injection) ----------
   function buildCommandsTable(){
     const rows = listPrimary().map(name=>{
       const c = REG.get(name);
@@ -516,12 +501,9 @@ addCommand("cast", async (ctx)=>{
   }
 
   function ensureCommandsButton(){
-    // Prefer bottom bar
     let placed = false;
     const bottom = $("#btfw-chat-bottombar"); if (bottom) placed = injectCommandsButton(bottom);
-    // Fallback to top bar
     if (!placed) { const top = $("#btfw-chat-topbar"); if (top) placed = injectCommandsButton(top); }
-    // Last resort: floating inside chatwrap
     if (!placed) {
       const wrap = $("#chatwrap");
       if (wrap && !$("#btfw-chatcmds-float")) {
@@ -534,7 +516,6 @@ addCommand("cast", async (ctx)=>{
     }
   }
 
-  // Observe chat bars if they mount later
   function watchBars(){
     const root = document.body;
     const mo = new MutationObserver(()=>{
@@ -545,7 +526,6 @@ addCommand("cast", async (ctx)=>{
     mo.observe(root, { childList:true, subtree:true });
   }
 
-  // ---------- Boot ----------
   function boot(){
     const input = $("#chatline");
     if (input && !input._btfwCmds) { input._btfwCmds = true; input.addEventListener("keydown", onEnterIntercept, true); }

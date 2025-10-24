@@ -9,7 +9,7 @@ BTFW.define("feature:chatMedia", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
-  const LS_SIZE = "btfw:chat:emoteSize";   // "sm" | "md" | "lg"
+  const LS_SIZE = "btfw:chat:emoteSize";
   const LS_AUTO = "btfw:chat:gifAutoplay"; // "1" | "0"
   const SIZE_PX = { sm: 100, md: 130, lg: 170 };
   const SEL = "#messagebuffer img.giphy.chat-picture, #messagebuffer img.tenor.chat-picture";
@@ -28,9 +28,7 @@ BTFW.define("feature:chatMedia", [], async () => {
 
   function applySize(mode){
     const px = SIZE_PX[mode] || SIZE_PX.md;
-    // Update theme var
     document.documentElement.style.setProperty("--btfw-emote-size", px + "px");
-    // Force on all existing images immediately (runtime update)
     $$(SEL).forEach(forceSizeOn);
   }
 
@@ -47,12 +45,9 @@ BTFW.define("feature:chatMedia", [], async () => {
     if (next && img.src !== next) img.src = next;
   }
 
-  // Ensure width/height are controlled by CSS var at runtime
   function forceSizeOn(img){
-    // remove HTML attributes that may lock size
     if (img.hasAttribute("width"))  img.removeAttribute("width");
     if (img.hasAttribute("height")) img.removeAttribute("height");
-    // enforce via inline style with !important so nothing overrides it
     const v = "var(--btfw-emote-size)";
     img.style.setProperty("width",     "auto", "important");
     img.style.setProperty("height",    "auto", "important");
@@ -64,12 +59,10 @@ BTFW.define("feature:chatMedia", [], async () => {
     img.style.setProperty("margin","2px 3px");
   }
 
-  // (Re)wire a single image according to current autoplay and size
   function wireOne(img){
     ensureTagged(img);
-    forceSizeOn(img); // make sure size applies immediately
+    forceSizeOn(img);
 
-    // Mark wired so we don't keep reattaching listeners
     if (!img._btfwWired) {
       img._btfwWired = true;
     }
@@ -86,7 +79,6 @@ BTFW.define("feature:chatMedia", [], async () => {
         img.onmouseleave = () => { setSrcIfDifferent(img, toStatic(img.src));   };
       }
     } else if (isTenor(img)) {
-      // Tenor stays animated; no static variant from filter
       img.onmouseenter = null;
       img.onmouseleave = null;
     }
@@ -100,7 +92,6 @@ BTFW.define("feature:chatMedia", [], async () => {
   }
 
   function applyAutoplay(){
-    // Re-wire all existing images idempotently
     $$(SEL).forEach(wireOne);
   }
 
@@ -108,7 +99,6 @@ BTFW.define("feature:chatMedia", [], async () => {
     const buf = $("#messagebuffer");
     if (buf) processNode(buf);
 
-    // Observe ONLY added nodes; no attributes (prevents loops)
     if (buf && !buf._btfwMediaMO){
       const mo = new MutationObserver(muts=>{
         for (const m of muts) {
@@ -121,7 +111,6 @@ BTFW.define("feature:chatMedia", [], async () => {
       buf._btfwMediaMO = mo;
     }
 
-    // Apply persisted settings on startup
     applySize(getSize());
     applyAutoplay();
 
