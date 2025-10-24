@@ -16,7 +16,7 @@ BTFW.define("feature:userlistOverlay",["core","bridge"],async function(){
     var p=ensurePanel();
     var body = p.querySelector(".btfw-chat-overlay-body");
     if (map.userList) {
-      map.userList.style.display=""; // unhide inside overlay
+      map.userList.style.display="";
       stash = map.userList.parentNode;
       body.appendChild(map.userList);
     } else {
@@ -28,7 +28,7 @@ BTFW.define("feature:userlistOverlay",["core","bridge"],async function(){
     var map=ids();
     if (map.userList && stash) {
       stash.appendChild(map.userList);
-      map.userList.style.display="none"; // hide again by default
+      map.userList.style.display="none";
       stash=null;
     }
     if(panel) panel.style.display="none"; isOpen=false;

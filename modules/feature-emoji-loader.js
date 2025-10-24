@@ -17,7 +17,6 @@ BTFW.define("feature:emoji-loader", [], async () => {
       img.style.display = "none";
     }, { once:true });
     if (img.complete && img.naturalWidth > 0) {
-      // already cached
       cell.classList.remove("loading");
       cell.classList.add("ready");
     }

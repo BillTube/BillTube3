@@ -3,24 +3,21 @@ BTFW.define("feature:themeSettings", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
-  // single key map
   const TS_KEYS = {
-    chatTextPx  : "btfw:chat:textSize",       // "12" | "14" | "16" | "18"
-    avatarsMode : "btfw:chat:avatars",        // "off" | "small" | "big"
-    emoteSize   : "btfw:chat:emoteSize",      // "small" | "medium" | "big"
-    gifAutoplay : "btfw:chat:gifAutoplay",    // "1" | "0"
-    chatJoinNotices: "btfw:chat:joinNotices", // "1" | "0"
-    stackCompact: "btfw:stack:compact",       // "1" | "0"
-    localSubs   : "btfw:video:localsubs",     // "1" | "0"
-    billcastEnabled: "btfw:billcast:enabled", // "1" | "0"
-    layoutSide  : "btfw:layout:chatSide"      // "left" | "right"
+    chatTextPx  : "btfw:chat:textSize",
+    avatarsMode : "btfw:chat:avatars",
+    emoteSize   : "btfw:chat:emoteSize",
+    gifAutoplay : "btfw:chat:gifAutoplay",
+    chatJoinNotices: "btfw:chat:joinNotices",
+    stackCompact: "btfw:stack:compact",
+    localSubs   : "btfw:video:localsubs",
+    billcastEnabled: "btfw:billcast:enabled",
+    layoutSide  : "btfw:layout:chatSide"
   };
 
-  // storage helpers
   const get = (k, d) => { try { const v = localStorage.getItem(k); return v==null? d : v; } catch(_) { return d; } };
   const set = (k, v) => { try { localStorage.setItem(k, v); } catch(_){} };
 
-  // apply CSS variables immediately (used by chat/emote sizing)
   function applyChatTextPx(px){
     const wrap = $("#chatwrap");
     if (!wrap) return;
@@ -40,7 +37,6 @@ BTFW.define("feature:themeSettings", [], async () => {
     else resolveStack().then(mod => { if (mod?.setCompactSpacing) mod.setCompactSpacing(active); });
   }
 
-  // cross-feature bridges (lazy)
   const moduleCache = new Map();
   function getModule(name){
     if (moduleCache.has(name)) return moduleCache.get(name);
@@ -76,12 +72,10 @@ BTFW.define("feature:themeSettings", [], async () => {
   }
   resolveStack();
 
-  // --- modal creation ---
   function ensureModal(){
     let m = $("#btfw-theme-modal");
     if (m) return m;
 
-    // nuke legacy
     ["#themesettings","#themeSettingsModal",".themesettings"].forEach(sel=> $$(sel).forEach(el=>el.remove()));
 
     m = document.createElement("div");
@@ -290,11 +284,9 @@ BTFW.define("feature:themeSettings", [], async () => {
     return m;
   }
 
-  // --- apply & persist ---
   function applyAndPersist(){
     const m = $("#btfw-theme-modal"); if (!m) return;
 
-    // gather current values
     const avatarsMode = $("#btfw-avatars-mode", m)?.value || "big";
     const chatTextPx  = $("#btfw-chat-textsize", m)?.value || "14";
     const emoteSize   = $("#btfw-emote-size", m)?.value   || "medium";
@@ -306,7 +298,6 @@ BTFW.define("feature:themeSettings", [], async () => {
     const billcastOn  = $("#btfw-billcast-toggle", m)?.checked;
     const chatSide    = $("#btfw-chat-side", m)?.value || "right";
 
-    // persist
     set(TS_KEYS.avatarsMode, avatarsMode);
     set(TS_KEYS.chatTextPx, chatTextPx);
     set(TS_KEYS.emoteSize, emoteSize);
@@ -317,7 +308,6 @@ BTFW.define("feature:themeSettings", [], async () => {
     set(TS_KEYS.billcastEnabled, billcastOn ? "1":"0");
     set(TS_KEYS.layoutSide, chatSide);
 
-    // apply live
     if (avatarsModule?.setMode) avatarsModule.setMode(avatarsMode);
     else resolveAvatars().then(mod => { if (mod?.setMode) mod.setMode(avatarsMode); });
 
@@ -325,7 +315,6 @@ BTFW.define("feature:themeSettings", [], async () => {
     applyEmoteSize(emoteSize);
     applyCompactStack(compactOn);
 
-    // notify modules
     document.dispatchEvent(new CustomEvent("btfw:chat:gifAutoplayChanged", { detail:{ autoplay: !!gifAutoOn } }));
     document.dispatchEvent(new CustomEvent("btfw:chat:joinNoticesChanged", { detail:{ enabled: !!joinNoticesOn } }));
     document.dispatchEvent(new CustomEvent("btfw:stack:compactChanged",    { detail:{ enabled : !!compactOn } }));
@@ -342,7 +331,6 @@ BTFW.define("feature:themeSettings", [], async () => {
     }}));
   }
 
-  // --- open/close & state refresh ---
   function open(){
     const m = ensureModal();
 
@@ -386,7 +374,6 @@ BTFW.define("feature:themeSettings", [], async () => {
   }
   function close(){ $("#btfw-theme-modal")?.classList.remove("is-active"); }
 
-  // --- wire openers in DOM (chat/nav buttons) ---
   const OPEN_SELECTOR = "#btfw-theme-btn-chat, #btfw-theme-btn-nav, .btfw-theme-open";
   let delegatedOpeners = false;
   function wireOpeners(){
@@ -407,7 +394,6 @@ BTFW.define("feature:themeSettings", [], async () => {
     pane._btfwDecorated = true;
     pane.classList.add("btfw-useroptions-pane");
     
-    // Hide the "General Preferences" header
     const headers = Array.from(pane.querySelectorAll('h3, h4, .section-header, legend'));
     headers.forEach(header => {
       const text = header.textContent.toLowerCase();
@@ -416,7 +402,6 @@ BTFW.define("feature:themeSettings", [], async () => {
       }
     });
     
-    // Hide the disclaimer text about layouts
     const paragraphs = Array.from(pane.querySelectorAll('p, .help-block, .text-muted'));
     paragraphs.forEach(p => {
       const text = p.textContent.toLowerCase();
@@ -449,7 +434,6 @@ BTFW.define("feature:themeSettings", [], async () => {
           text.includes('layout') || 
           text.includes('ignore channel css') || 
           text.includes('ignore channel javascript')) {
-        // Hide the label itself
         label.style.display = 'none';
         
         const formGroup = label.closest('.form-group, .control-group, .checkbox, div');
@@ -515,7 +499,6 @@ BTFW.define("feature:themeSettings", [], async () => {
     }, true);
   }
 
-  // --- boot: apply persisted variables even if modal never opened ---
   function boot(){
     applyChatTextPx(parseInt(get(TS_KEYS.chatTextPx, "14"),10));
     applyEmoteSize(get(TS_KEYS.emoteSize,"medium"));

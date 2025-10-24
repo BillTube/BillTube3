@@ -20,13 +20,11 @@ BTFW.define("feature:modal-skin", [], async () => {
     root.querySelectorAll(".btn").forEach(btn=>{
       btn.classList.add("button","is-small");
       btn.classList.remove("btn","btn-lg","btn-sm","btn-xs");
-      // map Bootstrap flavor to Bulma flavor
       let mapped=false;
       for (const [bs,bul] of map){
         if (btn.classList.contains(bs)) { btn.classList.remove(bs); btn.classList.add(bul); mapped=true; }
       }
       if (!mapped) btn.classList.add("is-dark");
-      // alignments
       if (btn.classList.contains("pull-right")) { btn.classList.remove("pull-right"); btn.classList.add("is-pulled-right"); }
       if (btn.classList.contains("pull-left"))  { btn.classList.remove("pull-left");  btn.classList.add("is-pulled-left"); }
     });
@@ -40,9 +38,8 @@ BTFW.define("feature:modal-skin", [], async () => {
     del.className = "delete"; del.setAttribute("aria-label","close");
     del.addEventListener("click", (e)=>{
       e.preventDefault();
-      // hide using Bootstrap if available
       try { if (window.jQuery) window.jQuery(modal).modal("hide"); } catch(_) {}
-      modal.classList.remove("is-active"); // harmless for non-bulma
+      modal.classList.remove("is-active");
     });
     header.appendChild(del);
   }
@@ -51,19 +48,15 @@ BTFW.define("feature:modal-skin", [], async () => {
     if (!modal || modal.classList.contains("btfw-modal") || modal.classList.contains("btfw-bulma-skin")) return;
     modal.classList.add("btfw-bulma-skin");
 
-    // tag parts so CSS can skin them like Bulma modal-card
     modal.querySelectorAll(".modal-content").forEach(c=>c.classList.add("btfw-card"));
     modal.querySelectorAll(".modal-header").forEach(h=>h.classList.add("btfw-card-head"));
     modal.querySelectorAll(".modal-body").forEach(b=>b.classList.add("btfw-card-body"));
     modal.querySelectorAll(".modal-footer").forEach(f=>f.classList.add("btfw-card-foot"));
 
-    // add bulma-like close button
     ensureDeleteButton(modal);
 
-    // restyle buttons once now, and again on each show
     restyleButtons(modal);
 
-    // When Bootstrap shows the modal, restyle again (in case content was injected)
     try {
       if (window.jQuery) {
         window.jQuery(modal).on("shown.bs.modal", function(){ restyleButtons(modal); });
@@ -76,7 +69,6 @@ BTFW.define("feature:modal-skin", [], async () => {
   }
 
   function boot(){
-    // initial pass
     skinAll();
 
     const handleBootstrapModal = (event)=>{

@@ -4,10 +4,9 @@ BTFW.define("feature:gifs", [], async () => {
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const PER_PAGE = 12;
 
-  /* ---- Keys (BillTube2 defaults; can override via localStorage) ---- */
   const K = { giphy: "btfw:giphy:key", tenor: "btfw:tenor:key" };
   const DEFAULT_GIPHY = "bb2006d9d3454578be1a99cfad65913d";
-  const DEFAULT_TENOR = "5WPAZ4EXST2V"; // Tenor v1 used by BillTube2
+  const DEFAULT_TENOR = "5WPAZ4EXST2V";
 
   function getKey(which) {
     try { return (localStorage.getItem(K[which]) || "").trim(); } catch (_) { return ""; }
@@ -17,21 +16,18 @@ BTFW.define("feature:gifs", [], async () => {
     return v || fallback;
   }
 
-  /* ---- State ---- */
   const state = {
-    provider: "giphy",  // "giphy" | "tenor"
+    provider: "giphy",
     query: "",
     page: 1,
     total: 0,
-    items: [],          // { id, thumb, urlClassic }
+    items: [],
     loading: false
   };
 
-  // Track rendered state for optimized rendering
-  let renderedItems = []; // Track what's currently rendered
-  let gridClickHandlerAttached = false; // Ensure we only attach the delegated handler once
+  let renderedItems = [];
+  let gridClickHandlerAttached = false;
 
-  /* ---- Utils ---- */
   function insertAtCursor(input, text) {
     input.focus();
     const s = input.selectionStart ?? input.value.length;
@@ -45,7 +41,7 @@ BTFW.define("feature:gifs", [], async () => {
   }
 
   function stripQuery(u){ return (u||"").split("?")[0].split("#")[0]; }
-  function buildGiphyClassic(id){ return `https://media1.giphy.com/media/${id}/giphy.gif`; } // NOTE: media1 (digit) for your regex
+  function buildGiphyClassic(id){ return `https://media1.giphy.com/media/${id}/giphy.gif`; }
   function normTenor(u){ return stripQuery(u); }
 
   function ensureOpeners() {
@@ -75,7 +71,6 @@ BTFW.define("feature:gifs", [], async () => {
     }
   }
 
-  /* ---- Modal ---- */
   let modal = null;
   function ensureModal(){
     if (modal) return modal;
@@ -156,7 +151,6 @@ BTFW.define("feature:gifs", [], async () => {
     n.classList.toggle("is-hidden", !msg);
   }
 
-  /* ---- Fetching ---- */
   async function fetchGiphy(q){
     const key = effKey("giphy", DEFAULT_GIPHY);
     const endpoint = q ? "https://api.giphy.com/v1/gifs/search"
@@ -184,7 +178,6 @@ BTFW.define("feature:gifs", [], async () => {
 
   async function fetchTenor(q){
     const key = effKey("tenor", DEFAULT_TENOR);
-    // Tenor v1 to match BillTube2
     const endpoint = q ? "https://api.tenor.com/v1/search"
                        : "https://api.tenor.com/v1/trending";
     const url = new URL(endpoint);
@@ -227,17 +220,14 @@ BTFW.define("feature:gifs", [], async () => {
     }
   }
 
-  /* ---- Rendering ---- */
   function renderSkeleton(){
     const grid = $("#btfw-gif-grid", ensureModal());
 
-    // Clear rendered state
     renderedItems = [];
 
-    // Only clear if we're not already showing skeletons
     const existingSkeletons = grid.querySelectorAll('.is-skeleton');
     if (existingSkeletons.length === PER_PAGE) {
-      return; // Already showing correct number of skeletons
+      return;
     }
 
     grid.innerHTML = "";
@@ -256,7 +246,6 @@ BTFW.define("feature:gifs", [], async () => {
   function render(){
     const grid = $("#btfw-gif-grid", ensureModal());
 
-    // Setup event delegation (only once)
     setupGridClickHandler(grid);
 
     const totalPages = Math.max(1, Math.ceil(state.total / PER_PAGE));
@@ -266,40 +255,32 @@ BTFW.define("feature:gifs", [], async () => {
     const start = (state.page - 1) * PER_PAGE;
     const pageItems = state.items.slice(start, start + PER_PAGE);
 
-    // OPTIMIZATION: Check if we can update in place
     const canUpdateInPlace = shouldUpdateInPlace(pageItems, grid);
 
     if (canUpdateInPlace) {
-      // Fast path: update existing elements
       updateExistingCells(grid, pageItems);
     } else {
-      // Full render needed
       fullRender(grid, pageItems);
     }
 
-    // Update rendered state
     renderedItems = pageItems.map(item => ({
       id: item.id,
       thumb: item.thumb,
       urlClassic: item.urlClassic
     }));
 
-    // Update pagination
     $("#btfw-gif-pages").textContent = `${state.page} / ${totalPages}`;
     $("#btfw-gif-prev").disabled = (state.page <= 1);
     $("#btfw-gif-next").disabled = (state.page >= totalPages);
   }
 
-  // Event delegation - ONE handler for all GIF clicks
   function setupGridClickHandler(grid) {
     if (gridClickHandlerAttached) return;
 
     grid.addEventListener("click", (e) => {
-      // Find the clicked cell (bubbling from img or button)
       const cell = e.target.closest(".btfw-gif-cell");
       if (!cell || cell.classList.contains("is-skeleton")) return;
 
-      // Get URL from data attribute
       const url = cell.dataset.url;
       if (!url) return;
 
@@ -313,20 +294,16 @@ BTFW.define("feature:gifs", [], async () => {
     gridClickHandlerAttached = true;
   }
 
-  // Check if we can update existing cells instead of full re-render
   function shouldUpdateInPlace(newItems, grid) {
     const existingCells = grid.querySelectorAll(".btfw-gif-cell:not(.is-skeleton)");
 
-    // If counts don't match, need full render
     if (existingCells.length !== newItems.length) return false;
 
-    // If we have no tracked state, need full render
     if (renderedItems.length === 0) return false;
 
     return true;
   }
 
-  // Update existing cells efficiently
   function updateExistingCells(grid, newItems) {
     const cells = grid.querySelectorAll(".btfw-gif-cell");
 
@@ -336,20 +313,16 @@ BTFW.define("feature:gifs", [], async () => {
 
       const oldItem = renderedItems[index];
 
-      // Only update if item actually changed
       if (!oldItem || oldItem.id !== item.id) {
         updateCell(cell, item);
       }
     });
   }
 
-  // Update a single cell's content
   function updateCell(cell, item) {
-    // Update data attribute
     cell.dataset.url = item.urlClassic || "";
     cell.dataset.id = item.id || "";
 
-    // Update image
     const img = cell.querySelector("img");
     if (img && img.src !== item.thumb) {
       img.src = item.thumb;
@@ -359,13 +332,10 @@ BTFW.define("feature:gifs", [], async () => {
       prepareImageLoadingState(cell, img);
     }
 
-    // Remove skeleton class if present
     cell.classList.remove("is-skeleton");
   }
 
-  // Full render when updating in place isn't possible
   function fullRender(grid, pageItems) {
-    // Use replaceChildren for efficient bulk replacement (better than innerHTML = "")
     const frag = document.createDocumentFragment();
 
     pageItems.forEach(item => {
@@ -376,13 +346,11 @@ BTFW.define("feature:gifs", [], async () => {
     grid.replaceChildren(frag);
   }
 
-  // Create a single GIF cell element
   function createGifCell(item) {
     const cell = document.createElement("button");
     cell.className = "btfw-gif-cell";
     cell.type = "button";
 
-    // Store data in attributes for event delegation
     cell.dataset.url = item.urlClassic || "";
     cell.dataset.id = item.id || "";
 
@@ -421,7 +389,6 @@ BTFW.define("feature:gifs", [], async () => {
     }
   }
 
-  // If you have rapid pagination clicks, you can debounce renders:
   let renderTimeout = null;
 
   function debouncedRender() {
@@ -432,15 +399,13 @@ BTFW.define("feature:gifs", [], async () => {
     renderTimeout = setTimeout(() => {
       render();
       renderTimeout = null;
-    }, 16); // ~60fps
+    }, 16);
   }
 
-  // Open the GIF modal when the bridge asks
   document.addEventListener('btfw:openGifs', ()=> {
     try { openGifModal(); } catch(e){}
   });
 
-  /* ---- open / close ---- */
   function open(){
     ensureModal();
     showNotice("");
@@ -459,7 +424,6 @@ BTFW.define("feature:gifs", [], async () => {
   }
   function close(){ modal?.classList.remove("is-active"); }
 
-  /* ---- boot ---- */
   function boot(){ ensureOpeners(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();

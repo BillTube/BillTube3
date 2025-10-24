@@ -7,7 +7,6 @@ BTFW.define("feature:navbar", [], async () => {
   let mobileNavActive = false;
   let mobileNavHandlersBound = false;
 
-  // ---------- Helpers ----------
   function getUserName(){
     try { return (window.CLIENT && CLIENT.name) ? CLIENT.name : ""; }
     catch(_) { return ""; }
@@ -15,10 +14,8 @@ BTFW.define("feature:navbar", [], async () => {
 
   function findUserlistItem(name){
     if (!name) return null;
-    // Most stable: data-name
     const byData = document.querySelector(`#userlist li[data-name="${CSS.escape(name)}"]`);
     if (byData) return byData;
-    // Fallback: scan text
     const items = document.querySelectorAll("#userlist li, #userlist .userlist_item, #userlist .user");
     for (const el of items) {
       const t = (el.textContent || "").trim();
@@ -40,7 +37,6 @@ BTFW.define("feature:navbar", [], async () => {
 
   function getCyTubeAvatar(){
     try {
-      // Many installs expose USEROPTS.avatar; harmless if absent
       return (window.USEROPTS && USEROPTS.avatar) ? USEROPTS.avatar : "";
     } catch(_) { return ""; }
   }
@@ -63,13 +59,11 @@ BTFW.define("feature:navbar", [], async () => {
   }
 
   function findNavList(){
-    // Prefer the list that contains the Theme button (keeps avatar to the right of it)
     const themeBtn = document.getElementById("btfw-theme-btn-nav");
     if (themeBtn) {
       const ul = themeBtn.closest("ul");
       if (ul) return ul;
     }
-    // Common fallbacks (Bootstrap/Bulma)
     return document.querySelector(".navbar .nav.navbar-nav")
         || document.querySelector(".navbar-nav")
         || document.querySelector(".navbar .navbar-end ul")
@@ -91,16 +85,12 @@ BTFW.define("feature:navbar", [], async () => {
   }
 
   function ensureThemeButtonHook(){
-    // If your nav already injects the Theme button elsewhere, we do nothing.
-    // This only assigns an ID to an existing Theme button if missing.
     const existing = document.getElementById("btfw-theme-btn-nav");
     if (existing) { styleThemeButton(existing); return; }
 
-    // Try to reuse a theme button in nav, or create a minimal one
     const navUL = findNavList();
     if (!navUL) return;
 
-    // Look for any button with sliders icon in nav
     let btn = navUL.querySelector(".fa-sliders, .fa-sliders-h, .fa-sliders-simple, .fa-sliders-h::before");
     if (btn) {
       const a = btn.closest("a,button");
@@ -110,7 +100,6 @@ BTFW.define("feature:navbar", [], async () => {
       }
     }
 
-    // As a last resort, add a small Theme button
     const li = document.createElement("li");
     const a  = document.createElement("a");
     a.innerHTML = `
@@ -121,8 +110,6 @@ BTFW.define("feature:navbar", [], async () => {
     styleThemeButton(a);
     li.appendChild(a);
     navUL.appendChild(li);
-
-    // Let theme settings wire the click via its own ensureOpeners()
   }
 
   function buildAvatarElement(name){
@@ -222,7 +209,6 @@ BTFW.define("feature:navbar", [], async () => {
     if (!host || !navToggleButton) return;
     const isOpen = host.getAttribute("data-mobile-open") === "true";
     
-    // ✅ FIX: Only update attributes if they changed
     const currentExpanded = navToggleButton.getAttribute("aria-expanded");
     if (currentExpanded !== (isOpen ? "true" : "false")) {
       navToggleButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
@@ -239,7 +225,6 @@ BTFW.define("feature:navbar", [], async () => {
     const label = navToggleButton.querySelector(".btfw-nav-toggle__label");
     if (label) {
       const newText = isOpen ? "Close" : "Menu";
-      // ✅ FIX: ONLY UPDATE IF CHANGED
       if (label.textContent !== newText) {
         label.textContent = newText;
       }
@@ -282,15 +267,12 @@ BTFW.define("feature:navbar", [], async () => {
     }, true);
   }
 
-  // ---------- Boot ----------
   function boot(){
-    // Keep existing nav look; only ensure Theme button hook and avatar item.
     ensureThemeButtonHook();
     pruneNavLinks();
     renderAvatar();
     setupMobileNav();
 
-    // Refresh when userlist changes (profile image may load later)
     const userlist = $("#userlist");
     if (userlist && !userlist._btfwNavMO){
       const mo = new MutationObserver(()=> refresh());
@@ -298,7 +280,6 @@ BTFW.define("feature:navbar", [], async () => {
       userlist._btfwNavMO = mo;
     }
 
-    // Refresh on likely auth/profile events if available
     try {
       if (window.socket && socket.on) {
         socket.on("login", refresh);
@@ -308,7 +289,6 @@ BTFW.define("feature:navbar", [], async () => {
       }
     } catch(_) {}
 
-    // Also retry a couple times during early boot in case nav mounts late
     let tries = 0;
     const t = setInterval(()=>{
       tries++;

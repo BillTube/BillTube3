@@ -143,7 +143,6 @@ BTFW.define("feature:footer", [], async () => {
 
       strayChildren.forEach(node => host.appendChild(node));
 
-      // Merge any duplicate footer nodes into the primary host
       stackContainer.querySelectorAll("#btfw-footer ~ .btfw-footer, #btfw-footer ~ #btfw-footer").forEach(extra => {
         if (extra === host) return;
         while (extra.firstChild) host.appendChild(extra.firstChild);

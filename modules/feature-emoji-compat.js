@@ -1,6 +1,6 @@
 
 BTFW.define("feature:emoji-compat", [], async () => {
-  const LS = "btfw:emoji:twemoji";     // "1" | "0"
+  const LS = "btfw:emoji:twemoji";
   const TW_VER = "14.0.2";
   const TW_JS  = `https://cdn.jsdelivr.net/npm/twemoji@${TW_VER}/dist/twemoji.min.js`;
   const TW_ASSETS_BASE = `https://cdn.jsdelivr.net/npm/twemoji@${TW_VER}/assets/`;
@@ -31,25 +31,20 @@ BTFW.define("feature:emoji-compat", [], async () => {
     });
   }
 
-  // Hide until loaded + set attrs + remove broken/orphan FE0F images
   function prepImages(root){
     if (!root) return;
     root.querySelectorAll("img.twemoji").forEach(img => {
-      // Add attrs for smoother loading
       img.setAttribute("loading", "lazy");
       img.setAttribute("decoding", "async");
-      // Fade-in on load; if already cached, mark ready immediately
       if (img.complete && img.naturalWidth > 0) img.classList.add("is-ready");
       else {
         img.addEventListener("load", ()=> img.classList.add("is-ready"), { once:true });
       }
-      // If the src is an orphaned FE0F (variation selector) image, remove it
       try {
         if (img.alt === "\uFE0F" || /\/fe0f(?:\.svg|\.png)$/.test(img.src)) {
           img.remove();
         }
       } catch(_) {}
-      // Also remove truly broken images
       img.addEventListener("error", ()=> img.remove(), { once:true });
     });
   }
@@ -60,7 +55,7 @@ BTFW.define("feature:emoji-compat", [], async () => {
       if (node.matches?.(SKIP_SELECTOR)) return true;
       if (node.closest?.(SKIP_SELECTOR)) return true;
     }
-    if (node.nodeType === 11) { // DocumentFragment
+    if (node.nodeType === 11) {
       return Array.from(node.childNodes || []).every(child => shouldSkip(child));
     }
     return false;
@@ -74,7 +69,6 @@ BTFW.define("feature:emoji-compat", [], async () => {
       folder: "svg",
       ext: ".svg",
       className: "twemoji",
-      // add attributes to every generated <img>
       attributes: () => ({ loading: "lazy", decoding: "async" })
     });
     prepImages(node);
@@ -97,14 +91,12 @@ BTFW.define("feature:emoji-compat", [], async () => {
       }
     });
     mo.observe(buf, { childList: true, subtree: true });
-    // initial pass
     parseNode(buf);
   }
   function stopChatObserver(){
     if (mo) { try { mo.disconnect(); } catch(_){} mo = null; }
   }
 
-  // Re-parse just the picker window when it renders/updates
   document.addEventListener("btfw:emotes:rendered", (e)=> {
     const container = e.detail?.container || null;
     if (enabled && container && !shouldSkip(container)) {

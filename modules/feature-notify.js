@@ -12,8 +12,8 @@ BTFW.define("feature:notify", [], async () => {
     return ENTITY_DECODER.value;
   }
 
-  const LS_ENABLED     = "btfw:notify:enabled";   // "1"|"0"
-  const LS_JOIN_NOTICES= "btfw:chat:joinNotices"; // "1"|"0"
+  const LS_ENABLED     = "btfw:notify:enabled";
+  const LS_JOIN_NOTICES= "btfw:chat:joinNotices";
   const MAX_VISIBLE    = 3;
   const DEFAULT_TIMEOUT= 6000;
 
@@ -36,7 +36,6 @@ BTFW.define("feature:notify", [], async () => {
     if (value != null) joinNoticesEnabled = !!value;
   });
 
-  // ---- container (absolute overlay) ------------------------------------------
   function ensureStack(){
     const buf = $("#messagebuffer");
     if (!buf) return null;
@@ -74,7 +73,6 @@ BTFW.define("feature:notify", [], async () => {
     return stack;
   }
 
-  // if CyTube re-renders chat, keep the stack around
   function observeChat(){
     const cw = $("#chatwrap");
     if (!cw || cw._btfw_notify_obs) return;
@@ -82,7 +80,6 @@ BTFW.define("feature:notify", [], async () => {
     new MutationObserver(() => ensureStack()).observe(cw, {childList:true, subtree:true});
   }
 
-  // ---- queue + API -----------------------------------------------------------
   const visible = [];
   const queued  = [];
 
@@ -100,7 +97,7 @@ BTFW.define("feature:notify", [], async () => {
       title: "",
       html: "",
       icon: "",
-      kind: "info",           // info|success|warn|error
+      kind: "info",
       timeout: DEFAULT_TIMEOUT,
       onClick: null,
       actions: []
@@ -224,7 +221,6 @@ BTFW.define("feature:notify", [], async () => {
     return card;
   }
 
-  // ---- timers / progress ------------------------------------------------------
 function startAutoclose(o){
   const bar = o.el.querySelector(".btfw-notice-progress > div");
   const timer = o.el.querySelector(".btfw-notice-timer");
@@ -238,7 +234,7 @@ function startAutoclose(o){
     paused: false,
     manual: false,
     lastTick: Date.now(),
-    lastDisplayedSecs: -1,  // ← ADD THIS
+    lastDisplayedSecs: -1,
     intervalId: 0,
     bar,
     label,
@@ -254,7 +250,6 @@ function startAutoclose(o){
     if (state.remainingNode) {
       const secs = state.total > 0 ? Math.max(0, Math.ceil(state.remaining / 1000)) : 0;
       
-      // ← ONLY UPDATE textContent IF THE SECOND ACTUALLY CHANGED
       if (secs !== state.lastDisplayedSecs) {
         state.remainingNode.textContent = String(secs);
         state.lastDisplayedSecs = secs;
@@ -321,7 +316,6 @@ function startAutoclose(o){
 
   function closeAll(){ visible.slice().forEach(close); queued.length=0; }
 
-  // convenience
   const api = {
     notify,
     info   : p => notify(Object.assign({kind:"info"},    p||{})),
@@ -333,24 +327,21 @@ function startAutoclose(o){
     isEnabled(){ return !!enabled; }
   };
 
-  // ---- de-dupe (avoid many toasts for same event burst) ----------------------
-  const seen = new Map(); // key -> expireAt (ms)
+  const seen = new Map();
   function postOnce(key, ttlMs, builder){
     const now = Date.now();
     const exp = seen.get(key)||0;
-    if (exp > now) return;   // still within de-dupe window
+    if (exp > now) return;
     seen.set(key, now + (ttlMs||1500));
     builder();
   }
 
-  // ---- CyTube hooks (wired once) ---------------------------------------------
   let socketWired = false;
   function wireSocketOnce(){
     if (socketWired) return;
     if (!window.socket || typeof window.socket.on !== "function") return;
     socketWired = true;
 
-    // Now playing: changeMedia & setCurrent often both fire → de-dupe
     try {
       const scheduleNowPlaying = (payload) => {
         const direct = titleFromData(payload);
@@ -466,7 +457,6 @@ function startAutoclose(o){
 
   function escapeHtml(s){ return s.replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-  // ---- boot ------------------------------------------------------------------
   function boot(){
     ensureStack();
     observeChat();
@@ -476,7 +466,6 @@ function startAutoclose(o){
   else boot();
   document.addEventListener("btfw:layoutReady", ()=> setTimeout(boot, 50));
 
-  // handy global for ad-hoc testing
   window.BTFW_notify = api;
   return Object.assign({ name:"feature:notify" }, api);
 });

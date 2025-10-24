@@ -30,7 +30,6 @@ BTFW.define("feature:local-subs", ["feature:videoOverlay"], async () => {
     video.appendChild(t);
   }
 
-  // Video.js interop (if present)
   function getVideoJS(){
     try { return (window.videojs && videojs("ytapiplayer")) || null; } catch(_) { return null; }
   }
@@ -49,7 +48,6 @@ BTFW.define("feature:local-subs", ["feature:videoOverlay"], async () => {
   }
 
   function getActiveHTML5Video(){
-    // CyTube’s HTML5 player <video> usually lives under #ytapiplayer
     const v = $("#ytapiplayer video") || $("video");
     return v || null;
   }
@@ -89,7 +87,6 @@ BTFW.define("feature:local-subs", ["feature:videoOverlay"], async () => {
           }
         };
         reader.readAsText(file);
-        // reset so selecting same file again fires change
         e.target.value = "";
       });
     }
@@ -109,7 +106,6 @@ BTFW.define("feature:local-subs", ["feature:videoOverlay"], async () => {
     overlay.querySelector(".btfw-vo-buttons")?.appendChild(btn) || overlay.appendChild(btn);
   }
 
-  // Clear tracks on media change
   function wireChangeMedia(){
     try {
       if (window.socket && socket.on && !window._btfw_localsubs_wired) {
@@ -127,7 +123,6 @@ BTFW.define("feature:local-subs", ["feature:videoOverlay"], async () => {
   function boot(){
     wireChangeMedia();
     injectButton();
-    // Watch for overlay mount/remount
     const mo = new MutationObserver(()=> injectButton());
     mo.observe(document.body, { childList:true, subtree:true });
   }

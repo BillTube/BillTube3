@@ -2,21 +2,19 @@
 $(document).ready(function () {
   var session = null;
   var castPlayer = null;
-  var CHECK_INTERVAL = 120000; // Sync every 120 seconds
-  var SYNC_THRESHOLD = 20;     // Sync if time difference > 20 seconds
+  var CHECK_INTERVAL = 120000;
+  var SYNC_THRESHOLD = 20;
   var player = null;
   var castAvailable = false;
   var syncInterval = null;
 
-  /* --------------------------- Overlay / Bar helpers --------------------------- */
   function $overlay() {
-    var $o = $('#btfw-video-overlay'); // new theme overlay
+    var $o = $('#btfw-video-overlay');
     if ($o.length) return $o;
 
-    $o = $('#VideoOverlay');           // legacy overlay
+    $o = $('#VideoOverlay');
     if ($o.length) return $o;
 
-    // Last resort: create an overlay so buttons have a home
     var $vw = $('#videowrap');
     if ($vw.length) {
       $o = $('<div id="btfw-video-overlay" class="btfw-video-overlay"></div>')
@@ -24,14 +22,13 @@ $(document).ready(function () {
         .appendTo($vw);
       return $o;
     }
-    return $(); // none yet
+    return $();
   }
 
   function $voBar() {
     var $b = $('#btfw-vo-bar');
     if ($b.length) return $b;
 
-    // Create a minimal bar if overlay exists but bar doesn't
     var $ov = $overlay();
     if ($ov.length) {
       $b = $('<div id="btfw-vo-bar" class="btfw-vo-bar"></div>')
@@ -49,7 +46,7 @@ $(document).ready(function () {
         .appendTo($ov);
       return $b;
     }
-    return $(); // overlay not there yet
+    return $();
   }
 
   function $voSection(side) {
@@ -86,7 +83,6 @@ $(document).ready(function () {
     mo.observe(document.body, { childList: true, subtree: true });
   }
 
-  /* ------------------------------ Player wiring ------------------------------- */
   function initializePlayer() {
     if ($('#ytapiplayer').length) {
       player = videojs('ytapiplayer');
@@ -144,13 +140,9 @@ $(document).ready(function () {
     });
   }
 
-  /* ------------------------------ Cast controls ------------------------------- */
   function createCastButton() {
-    // return a jQuery element (don’t append here)
     if ($('#btfw-vo-cast').length) return $('#btfw-vo-cast');
 
-    // Use the same overlay styling as other buttons
-    // Glyphicons exist via Bootswatch Slate; if you prefer FA, swap the inner <span>.
     var $btn = $(
       '<button id="btfw-vo-cast" ' +
         'class="btn btn-sm btn-default btfw-vo-adopted" ' +
@@ -192,7 +184,6 @@ $(document).ready(function () {
     var $left = $voSection('left');
     if (!$left.length) { whenVoBarReady(initializeCastButton); return; }
 
-    // Remove any previous instance to avoid duplicates when re-running
     $('#btfw-vo-cast, #btfw-vo-cast-fallback').remove();
 
     var $btn = castAvailable ? createCastButton() : createFallbackButton();
@@ -219,7 +210,6 @@ $(document).ready(function () {
     }
   }
 
-  /* --------------------------- Cast framework wiring -------------------------- */
   function initializeCastApi() {
     castAvailable = true;
     var context = cast.framework.CastContext.getInstance();
@@ -258,7 +248,6 @@ $(document).ready(function () {
     }
   }
 
-  /* --------------------------------- Casting --------------------------------- */
   function waitForPlayer(cb) {
     if (player) { cb(); }
     else { setTimeout(function () { waitForPlayer(cb); }, 500); }
@@ -289,7 +278,6 @@ $(document).ready(function () {
     var videoSrc = getCurrentVideoSrc();
     if (!videoSrc) { console.error('Cannot cast: no video src'); return; }
 
-    // Skip YouTube (receiver app doesn’t handle YT embeds here)
     if (videoSrc.toLowerCase().includes('youtube')) return;
 
     var mimeType = getMimeType(videoSrc);
@@ -331,7 +319,6 @@ $(document).ready(function () {
     }
   }
 
-  /* ------------------------------- Time sync ---------------------------------- */
   function startSync() {
     if (!syncInterval) syncInterval = setInterval(syncPlaybackTime, CHECK_INTERVAL);
   }
@@ -344,7 +331,7 @@ $(document).ready(function () {
       var startTime = Date.now();
       castPlayer.getStatus(null, function (status) {
         var endTime = Date.now();
-        var latency = (endTime - startTime) / 2000; // → seconds
+        var latency = (endTime - startTime) / 2000;
         var castTime = status.currentTime + latency;
 
         if (Math.abs(localTime - castTime) > SYNC_THRESHOLD) {
@@ -366,7 +353,6 @@ $(document).ready(function () {
     }
   }
 
-  /* ----------------------------- Socket hooks --------------------------------- */
   if (window.socket && typeof window.socket.on === 'function') {
     socket.on("changeMedia", function () {
       waitForYtapiplayer(function () {
@@ -386,7 +372,6 @@ $(document).ready(function () {
     else setTimeout(function () { waitForYtapiplayer(cb); }, 500);
   }
 
-  /* ------------------------ Load Google Cast framework ------------------------ */
   var castScript = document.createElement('script');
   castScript.src = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
   document.head.appendChild(castScript);
@@ -396,12 +381,10 @@ $(document).ready(function () {
     else { castAvailable = false; whenVoBarReady(initializeCastButton); }
   };
 
-  // Cleanup on unload
   $(window).on('beforeunload', function () {
     if (session) session.endSession(true);
   });
 
-  /* --------------------------------- Boot ------------------------------------- */
   initializePlayer();
   whenVoBarReady(initializeCastButton);
 });

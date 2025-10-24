@@ -145,23 +145,18 @@ BTFW.define("feature:motd-editor", [], async () => {
     }
   });
 
-      
-      // ✅ FIX: Use Quill's clipboard API to properly parse HTML
       if (initialHTML && initialHTML.trim()) {
         try {
-          // Method 1: dangerouslyPasteHTML (keeps most formatting)
           quill.clipboard.dangerouslyPasteHTML(initialHTML);
           console.log('[motd-editor] Content loaded via clipboard API');
         } catch(e) {
           console.warn('[motd-editor] Clipboard paste failed, trying delta conversion', e);
-          // Method 2: Convert to Delta format
           try {
             const delta = quill.clipboard.convert(initialHTML);
             quill.setContents(delta);
             console.log('[motd-editor] Content loaded via delta conversion');
           } catch(e2) {
             console.error('[motd-editor] Both methods failed', e2);
-            // Last resort: plain text
             quill.setText(initialHTML);
           }
         }

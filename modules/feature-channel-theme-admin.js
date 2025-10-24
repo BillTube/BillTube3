@@ -177,7 +177,6 @@ background: "#0d0d0d",
   const MODULE_FIELD_MAX = 10;
   const MODULE_INPUT_SELECTOR = '[data-role="module-inputs"]';
 
-  // Loader patterns as strings to survive minification, compiled at module init
   const LOADER_SENTINEL = "// BTFW_LOADER_SENTINEL";
   const LOADER_SENTINEL_REG = /\s*\/\/\s*BTFW_LOADER_SENTINEL/;
 
@@ -1076,15 +1075,12 @@ background: "#0d0d0d",
       return;
     }
 
-    // Check if already bound - use a property instead of dataset to be more reliable
     if (container._btfwModuleHandlerBound) {
-      return; // Already bound, skip
+      return;
     }
 
     const handler = (event) => {
-      // Only respond to events from module inputs
       if (event?.target?.dataset?.role === 'module-input') {
-        // Small delay to ensure input value is updated
         setTimeout(() => {
           ensureModuleFieldAvailability(panel);
           if (typeof onChange === "function") onChange();
@@ -1092,11 +1088,9 @@ background: "#0d0d0d",
       }
     };
 
-    // Use event delegation on the container
     container.addEventListener('input', handler);
     container.addEventListener('change', handler);
 
-    // Mark as bound using a property that survives DOM manipulation
     container._btfwModuleHandlerBound = true;
     container.dataset.btfwModuleWatcher = "1";
 
@@ -1259,8 +1253,6 @@ background: "#0d0d0d",
 
     return `\n${CSS_BLOCK_START}\n:root {\n  --btfw-theme-bg: ${bg};\n  --btfw-theme-surface: ${surface};\n  --btfw-theme-panel: ${panel};\n  --btfw-theme-text: ${textColor};\n  --btfw-theme-chat-text: ${chatText};\n  --btfw-theme-accent: ${accent};\n  --btfw-theme-font-family: ${fontFamily};\n}\n${CSS_BLOCK_END}`;
   }
-
-// Replace this function in feature-channel-theme-admin.js
 
 function replaceBlock(original, startMarker, endMarker, block){
   const sanitizedBlock = (block || "").trim();

@@ -3,7 +3,6 @@ BTFW.define("feature:emotes", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
-  /* ------------------------ helpers ------------------------ */
   function insertAtCursor(input, text){
     input.focus();
     const s = input.selectionStart ?? input.value.length;
@@ -16,7 +15,6 @@ BTFW.define("feature:emotes", [], async () => {
     input.dispatchEvent(new Event("input", {bubbles:true}));
   }
 
-  // Ensure single-codepoint emoji render as emoji (VS16)
   function normalizeEmojiForInsert(s){
     if (/\uFE0F/.test(s)) return s;
     const cps = Array.from(s);
@@ -31,29 +29,26 @@ BTFW.define("feature:emotes", [], async () => {
     }
   }
 
-  /* ------------------------ state ------------------------- */
   const CHANNEL_NAME = (window.CHANNEL && window.CHANNEL.name) || "default";
   const RECENT_KEY   = `btfw:recent:emotes:${CHANNEL_NAME}`;
 
   let state = {
-    tab: "emotes",                // "emotes" | "emoji" | "recent"
+    tab: "emotes",
     list: { emotes: [], emoji: [], recent: [] },
     filtered: [],
     highlight: 0,
     emojiReady: false,
     search: "",
-    renderEpoch: 0               // cancels in-flight chunked renders
+    renderEpoch: 0
   };
 
-  // Grid sizing logic (purely for keyboard nav calculations)
-  const TILE_APPROX = 72;        // px per tile including gaps for estimating columns
+  const TILE_APPROX = 72;
 
   function gridCols(grid){
     const w = grid.clientWidth || 520;
     return Math.max(3, Math.floor(w / TILE_APPROX));
   }
 
-  /* ------------------------ data -------------------------- */
   function loadChannelEmotes(){
     const src = Array.isArray(window.CHANNEL?.emotes) ? window.CHANNEL.emotes : [];
     state.list.emotes = src
@@ -109,7 +104,6 @@ BTFW.define("feature:emotes", [], async () => {
     try { localStorage.setItem(RECENT_KEY, JSON.stringify(state.list.recent)); } catch(_){}
   }
 
-  /* ------------------------ popover UI ------------------------ */
   function ensurePopover(){
     let pop = $("#btfw-emotes-pop");
     if (pop) return pop;
@@ -143,7 +137,6 @@ BTFW.define("feature:emotes", [], async () => {
       gridEl.classList.add("btfw-emoji-grid--native");
     }
 
-    // Tabs
     pop.querySelector(".btfw-emotes-tabs").addEventListener("click", ev=>{
       const btn = ev.target.closest(".btfw-tab");
       if (!btn) return;
@@ -155,7 +148,6 @@ BTFW.define("feature:emotes", [], async () => {
       focusGrid();
     });
 
-    // Debounced search
     (function(){
       let t = 0;
       $("#btfw-emotes-search", pop).addEventListener("input", e=>{
@@ -169,10 +161,8 @@ BTFW.define("feature:emotes", [], async () => {
       render(true); focusGrid();
     });
 
-    // Close button
     $(".btfw-emotes-close", pop).addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); close(); });
 
-    // Keyboard navigation (full list)
     $("#btfw-emotes-grid", pop).addEventListener("keydown", ev=>{
       const grid = $("#btfw-emotes-grid");
       const total = grid.querySelectorAll(".btfw-emote-tile").length;
@@ -197,14 +187,12 @@ BTFW.define("feature:emotes", [], async () => {
       ensureVisible();
     });
 
-    // Click-outside to close
     document.addEventListener("click", (e)=>{
       if (pop.classList.contains("hidden")) return;
       const within = e.target.closest("#btfw-emotes-pop") || e.target.closest("#btfw-btn-emotes");
       if (!within) close();
     }, true);
 
-    // First position & fixed height
     positionPopover(true);
 
     return pop;
@@ -222,9 +210,7 @@ BTFW.define("feature:emotes", [], async () => {
     try { grid.focus(); } catch(_) {}
   }
 
-  /* ------------------- anchoring & watchers ------------------- */
   function findBottomBar(){
-    // Prefer custom bottom bar → fallback to CyTube controls → final fallback: input itself
     return document.getElementById("btfw-chat-bottombar")
         || document.getElementById("chatcontrols")
         || document.getElementById("chatline");
@@ -242,9 +228,6 @@ function positionPopover(){
     });
   }
 }
-
-
-
 
   function watchPosition(){
     const wrap   = document.getElementById("chatwrap") || document.body;
@@ -270,11 +253,9 @@ function positionPopover(){
     }
   }
 
-  /* ------------------- render (chunked) ------------------- */
   function render(fromSearch){
     const grid = $("#btfw-emotes-grid"); if (!grid) return;
 
-    // Filter entire list
     const q = (state.search || "").toLowerCase();
     if (state.tab === "emotes") {
       state.filtered = q ? state.list.emotes.filter(x => x.name.toLowerCase().includes(q)) : state.list.emotes;
@@ -288,16 +269,13 @@ function positionPopover(){
         : state.list.recent;
     }
 
-    // Reset scroll & highlight on new search/tab
     if (fromSearch) {
       grid.scrollTop = 0;
       state.highlight = 0;
     }
 
-    // Start a new render epoch (cancel any in-flight chunk)
     const epoch = ++state.renderEpoch;
 
-    // Hard clear and start chunked build
     grid.innerHTML = "";
     const total = state.filtered.length;
     let i = 0;
@@ -358,7 +336,6 @@ function positionPopover(){
       }
       grid.appendChild(frag);
 
-      // Let emoji-compat (Twemoji) parse the appended chunk
       document.dispatchEvent(new CustomEvent("btfw:emotes:rendered", { detail:{ container: grid } }));
 
       if (i < total) {
@@ -368,7 +345,6 @@ function positionPopover(){
           setTimeout(step, 0);
         }
       } else {
-        // Finalize selection styling
         highlightActive();
       }
     }
@@ -394,7 +370,6 @@ function positionPopover(){
     else if (r.bottom > gr.bottom) grid.scrollTop += (r.bottom - gr.bottom) + 8;
   }
 
-  /* --------------------- buttons ---------------------- */
   function removeLegacyButtons(){
     const sels = [
       "#emotelistbtn", "#emotelist", "#emote-list", "#emote-btn",
@@ -423,7 +398,6 @@ function positionPopover(){
       : '<span aria-hidden="true">🙂</span>';
     btn.title = "Emotes / Emoji";
 
-    // place before GIF button if present
     const gifBtn = bar.querySelector("#btfw-btn-gif, .btfw-btn-gif");
     if (gifBtn && gifBtn.parentNode) gifBtn.parentNode.insertBefore(btn, gifBtn);
     else bar.appendChild(btn);
@@ -452,16 +426,14 @@ c.addEventListener("click", ev=>{
     });
   }
 
-  /* ------------------- open / close / boot ------------------- */
   function open(){
     const pop = ensurePopover();
     loadChannelEmotes();
     loadRecent();
     state.tab="emotes"; state.search=""; state.highlight=0;
     $("#btfw-emotes-search").value = "";
-    // activate correct tab styling
     pop.querySelectorAll(".btfw-tab").forEach(b=>b.classList.toggle("is-active", b.getAttribute("data-tab")==="emotes"));
-    positionPopover(true);            // compute fixed height once per open
+    positionPopover(true);
     pop.classList.remove("hidden");
     render(true);
     focusGrid();
@@ -474,7 +446,6 @@ c.addEventListener("click", ev=>{
     ensureOurButton();
     bindAnyExistingOpeners();
     watchPosition();
-    // NO warm-up emoji fetch; loads on first Emoji tab open
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
