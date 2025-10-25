@@ -2,7 +2,6 @@ BTFW.define("feature:chat", ["feature:layout"], async ({}) => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const MESSAGE_SELECTOR = ".chat-msg, .message, [class*=message]";
-  const TRIVIA_PREFIX = /^Trivia:\s*/i;
   const BASE = (window.BTFW && BTFW.BASE ? BTFW.BASE.replace(/\/+$/,'') : "");
   
 function positionAboveChatBar(el, opts){
@@ -325,7 +324,6 @@ function orderChatActions(actions){
   anchor.remove();
 }
 
-
 const scheduleNormalizeChatActions = (() => {
   let pending = false;
   const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
@@ -552,79 +550,12 @@ const scheduleNormalizeChatActions = (() => {
     })[ch] || ch);
   }
 
-  function restyleTriviaMessage(msgEl){
-    if (!msgEl || msgEl.dataset?.btfwTriviaStyled) return;
-    const code = msgEl.querySelector("code");
-    if (!code) return;
-    const raw = (code.textContent || "").trim();
-    if (!TRIVIA_PREFIX.test(raw)) return;
-
-    const question = raw.replace(TRIVIA_PREFIX, "").trim();
-    const hostSpan = code.closest("span");
-    if (!hostSpan) return;
-
-    const optionNodes = Array.from(hostSpan.querySelectorAll(".chatcolor"));
-    const options = [];
-    optionNodes.forEach((node) => {
-      const text = (node.textContent || "").replace(/,\s*$/, "").trim();
-      if (!text) return;
-      const color = node.style?.color || "";
-      options.push({ text, color });
-    });
-
-    if (!options.length) {
-      const segments = (hostSpan.textContent || "").split(/Options:/i);
-      if (segments[1]) {
-        segments[1].split(",").map(part => part.trim()).filter(Boolean).forEach((text) => {
-          options.push({ text, color: "" });
-        });
-      }
-    }
-
-    const wrapper = document.createElement("div");
-    wrapper.className = "btfw-chat-trivia";
-
-    const questionRow = document.createElement("div");
-    questionRow.className = "btfw-chat-trivia__question";
-    questionRow.innerHTML = `
-      <span class="btfw-chat-trivia__icon" aria-hidden="true">🎬</span>
-      <span class="btfw-chat-trivia__prompt">${escapeHTML(question || "Trivia question")}</span>
-    `;
-    wrapper.appendChild(questionRow);
-
-    if (options.length) {
-      const meta = document.createElement("div");
-      meta.className = "btfw-chat-trivia__meta";
-      meta.textContent = "Choose the correct answer:";
-      wrapper.appendChild(meta);
-
-      const list = document.createElement("ol");
-      list.className = "btfw-chat-trivia__options";
-      options.forEach((opt, index) => {
-        const li = document.createElement("li");
-        li.className = "btfw-chat-trivia__option";
-        if (opt.color) li.style.setProperty("--btfw-trivia-option-color", opt.color);
-        li.innerHTML = `
-          <span class="btfw-chat-trivia__badge">${index + 1}</span>
-          <span class="btfw-chat-trivia__label">${escapeHTML(opt.text)}</span>
-        `;
-        list.appendChild(li);
-      });
-      wrapper.appendChild(list);
-    }
-
-    hostSpan.replaceWith(wrapper);
-    msgEl.classList.add("btfw-chat-trivia-msg");
-    msgEl.dataset.btfwTriviaStyled = "1";
-  }
-
   function processPendingChatMessages(){
     const buffer = getChatBuffer();
     if (!buffer) return;
     const newMessages = [];
     buffer.querySelectorAll(MESSAGE_SELECTOR).forEach((el) => {
       if (processedMessages.has(el)) return;
-      restyleTriviaMessage(el);
       applyChatMessageGrouping(el);
       newMessages.push(el);
     });
@@ -710,25 +641,33 @@ const scheduleNormalizeChatActions = (() => {
     }
   }
 
-  function restyleExistingTrivia(){
-    const buffer = getChatBuffer();
-    if (!buffer) return;
-    buffer.querySelectorAll(MESSAGE_SELECTOR).forEach((el) => {
-      restyleTriviaMessage(el);
-      processedMessages.add(el);
-    });
+  function normalizeUserIdentifier(str){
+    if (str == null) return "";
+    let result = String(str).trim();
+    if (!result) return "";
+    if (result.endsWith(":")) {
+      result = result.slice(0, -1).trimEnd();
+    }
+    return result;
   }
 
   function locateUserlistItem(name){
-    if (!name) return null;
-    const direct = document.querySelector(`#userlist li[data-name="${CSS.escape(name)}"]`);
+    const targetName = normalizeUserIdentifier(name);
+    if (!targetName) return null;
+    const direct = document.querySelector(`#userlist li[data-name="${CSS.escape(targetName)}"]`);
     if (direct) return direct;
     const candidates = document.querySelectorAll('#userlist li, #userlist .userlist_item, #userlist .user');
+    const normalizedTarget = targetName.toLowerCase();
+
     for (const el of candidates) {
       const attr = (el.getAttribute && el.getAttribute('data-name')) || '';
       const text = attr || (el.textContent || '');
       if (!text) continue;
-      if (text.trim().replace(/:\s*$/, '').toLowerCase() === name.toLowerCase()) return el;
+
+      const normalizedText = normalizeUserIdentifier(text);
+      if (!normalizedText) continue;
+
+      if (normalizedText.toLowerCase() === normalizedTarget) return el;
     }
     return null;
   }
@@ -742,9 +681,8 @@ const scheduleNormalizeChatActions = (() => {
       if (ev.button !== 0) return;
       const target = ev.target.closest('.username');
       if (!target) return;
-      const raw = (target.textContent || '').trim();
-      if (!raw) return;
-      const name = raw.replace(/:\s*$/, '');
+      const raw = target.textContent || '';
+      const name = normalizeUserIdentifier(raw);
       if (!name) return;
 
       const item = locateUserlistItem(name);
@@ -1014,7 +952,6 @@ const scheduleNormalizeChatActions = (() => {
     adoptUserlistIntoPopover();
     adoptNewMessageIndicator();
     ensureScrollManagement();
-    restyleExistingTrivia();
     scheduleProcessPendingChatMessages();
     scheduleMarkChatMessageGroups();
   }
@@ -1193,7 +1130,7 @@ const scheduleNormalizeChatActions = (() => {
       const t = e.target;
       const gifBtn   = t.closest && t.closest("#btfw-btn-gif");
       const emoBtn   = t.closest && t.closest("#btfw-btn-emotes");
-      const themeBtn = t.closest && (t.closest("#btfw-theme-btn-nav")); // chat theme button removed
+      const themeBtn = t.closest && (t.closest("#btfw-theme-btn-nav"));
       const usersBtn = t.closest && t.closest("#btfw-users-toggle");
       const cmdsBtn  = t.closest && t.closest("#btfw-chatcmds-btn");
 
