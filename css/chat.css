@@ -1069,12 +1069,17 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
     position: relative;
     transition: .3s;
 }
-
+.chat-msg-J44J .username {
+text-shadow: 6px 6px 2px #424242b3, 5px 5px 2px #808080, 9px 2px 3px #808080a6 !important;
+    font-family: Courier New;
+    -webkit-text-fill-color: #e4e1e7bf;
+    animation: lights 8s 750ms linear infinite;
+}
 /* Vices username - Purple glow */
 .chat-msg-Vices .username {
-    -webkit-text-fill-color: #922fffbf;
-    animation: lights 8s 750ms linear infinite;
-    font-weight: 1000;
+    -webkit-text-fill-color: #b26dff91;
+    animation: lights 2s 750ms linear infinite;
+    letter-spacing: 0.02em;
 }
 .chat-msg-Nailgun .username {
     -webkit-background-clip: text, text, border-box, border-box, border-box;
