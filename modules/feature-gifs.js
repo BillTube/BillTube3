@@ -20,17 +20,21 @@ BTFW.define("feature:gifs", [], async () => {
 
   /* ---- State ---- */
   const state = {
-    provider: "giphy",  // "giphy" | "tenor"
+    provider: "giphy",  // "giphy" | "tenor" | "favorites"
     query: "",
     page: 1,
     total: 0,
-    items: [],          // { id, thumb, urlClassic }
+    items: [],          // { id, provider, thumb, urlClassic }
     loading: false
   };
 
   // Track rendered state for optimized rendering
   let renderedItems = []; // Track what's currently rendered
   let gridClickHandlerAttached = false; // Ensure we only attach the delegated handler once
+
+  const FAVORITES_KEY = "btfw:gifs:favorites";
+  let favorites = loadFavorites();
+  let favoriteLookup = buildFavoriteLookup(favorites);
 
   /* ---- Utils ---- */
   function insertAtCursor(input, text) {
@@ -99,6 +103,7 @@ BTFW.define("feature:gifs", [], async () => {
               <ul>
                 <li class="is-active" data-p="giphy"><a>Giphy</a></li>
                 <li data-p="tenor"><a>Tenor</a></li>
+                <li data-p="favorites"><a>Favorites</a></li>
               </ul>
             </div>
             <div class="btfw-gif-search">
@@ -133,7 +138,7 @@ BTFW.define("feature:gifs", [], async () => {
       modal.querySelectorAll(".btfw-gif-tabs li").forEach(x=>x.classList.toggle("is-active", x===li));
       state.provider = li.getAttribute("data-p");
       state.page = 1;
-      search();
+      handleProviderChange();
     });
 
     $("#btfw-gif-go", modal).addEventListener("click", ()=> { state.page = 1; search(); });
@@ -181,7 +186,7 @@ BTFW.define("feature:gifs", [], async () => {
                                || g.images.fixed_width?.url
                                || g.images.downsized_still?.url)) || "";
       const urlClassic = id ? buildGiphyClassic(id) : ""; // <— classic format ONLY
-      return { id, thumb, urlClassic };
+      return { id, provider: "giphy", thumb, urlClassic };
     });
     return { items: list, total: list.length };
   }
@@ -203,7 +208,7 @@ BTFW.define("feature:gifs", [], async () => {
     const list = (json.results || []).map(t => {
       const gif  = t.media?.[0]?.gif?.url || t.media?.[0]?.mediumgif?.url || t.media?.[0]?.tinygif?.url || "";
       const tiny = t.media?.[0]?.nanogif?.url || t.media?.[0]?.tinygif?.url || gif;
-      return { id: t.id, thumb: tiny, urlClassic: normTenor(gif) };
+      return { id: t.id, provider: "tenor", thumb: tiny, urlClassic: normTenor(gif) };
     });
     return { items: list, total: list.length };
   }
@@ -212,6 +217,14 @@ BTFW.define("feature:gifs", [], async () => {
     const q = ($("#btfw-gif-q", ensureModal()).value || "").trim();
     state.query = q;
     state.page = 1;
+
+    if (state.provider === "favorites") {
+      state.loading = false;
+      applyFavoritesToState();
+      render();
+      return;
+    }
+
     state.loading = true;
     renderSkeleton();
 
@@ -233,6 +246,9 @@ BTFW.define("feature:gifs", [], async () => {
 
   /* ---- Rendering ---- */
   function renderSkeleton(){
+    if (state.provider === "favorites") {
+      return;
+    }
     const grid = $("#btfw-gif-grid", ensureModal());
 
     // Clear rendered state
@@ -266,6 +282,8 @@ BTFW.define("feature:gifs", [], async () => {
     // Setup event delegation (only once)
     setupGridClickHandler(grid);
 
+    updateToolbarForProvider();
+
     const totalPages = Math.max(1, Math.ceil(state.total / PER_PAGE));
     const clamped = Math.max(1, Math.min(totalPages, state.page));
     if (clamped !== state.page) state.page = clamped;
@@ -276,17 +294,20 @@ BTFW.define("feature:gifs", [], async () => {
     // OPTIMIZATION: Check if we can update in place
     const canUpdateInPlace = shouldUpdateInPlace(pageItems, grid);
 
+    const showRemove = state.provider === "favorites";
+
     if (canUpdateInPlace) {
       // Fast path: update existing elements
-      updateExistingCells(grid, pageItems);
+      updateExistingCells(grid, pageItems, { showRemove });
     } else {
       // Full render needed
-      fullRender(grid, pageItems);
+      fullRender(grid, pageItems, { showRemove });
     }
 
     // Update rendered state
     renderedItems = pageItems.map(item => ({
       id: item.id,
+      provider: item.provider,
       thumb: item.thumb,
       urlClassic: item.urlClassic
     }));
@@ -302,6 +323,13 @@ BTFW.define("feature:gifs", [], async () => {
     if (gridClickHandlerAttached) return;
 
     grid.addEventListener("click", (e) => {
+      const toggle = e.target.closest(".btfw-gif-fav-toggle");
+      if (toggle && handleFavoriteControl(toggle)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
       // Find the clicked cell (bubbling from img or button)
       const cell = e.target.closest(".btfw-gif-cell");
       if (!cell || cell.classList.contains("is-skeleton")) return;
@@ -315,6 +343,15 @@ BTFW.define("feature:gifs", [], async () => {
 
       insertAtCursor(input, " " + url + " ");
       close();
+    });
+
+    grid.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " " && e.key !== "Spacebar") return;
+      const toggle = e.target.closest(".btfw-gif-fav-toggle");
+      if (toggle && handleFavoriteControl(toggle)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     });
 
     gridClickHandlerAttached = true;
@@ -334,27 +371,26 @@ BTFW.define("feature:gifs", [], async () => {
   }
 
   // Update existing cells efficiently
-  function updateExistingCells(grid, newItems) {
+  function updateExistingCells(grid, newItems, opts = {}) {
+    const { showRemove = false } = opts;
     const cells = grid.querySelectorAll(".btfw-gif-cell");
 
     newItems.forEach((item, index) => {
       const cell = cells[index];
       if (!cell) return;
-
-      const oldItem = renderedItems[index];
-
-      // Only update if item actually changed
-      if (!oldItem || oldItem.id !== item.id) {
-        updateCell(cell, item);
-      }
+      updateCell(cell, item, { showRemove });
     });
   }
 
   // Update a single cell's content
-  function updateCell(cell, item) {
+  function updateCell(cell, item, opts = {}) {
+    const { showRemove = false } = opts;
     // Update data attribute
     cell.dataset.url = item.urlClassic || "";
     cell.dataset.id = item.id || "";
+    cell.dataset.thumb = item.thumb || "";
+    cell.dataset.provider = item.provider || state.provider || "";
+    cell.dataset.favKey = makeFavoriteKey(item);
 
     // Update image
     const img = cell.querySelector("img");
@@ -368,15 +404,17 @@ BTFW.define("feature:gifs", [], async () => {
 
     // Remove skeleton class if present
     cell.classList.remove("is-skeleton");
+    updateFavoriteVisualState(cell, showRemove);
   }
 
   // Full render when updating in place isn't possible
-  function fullRender(grid, pageItems) {
+  function fullRender(grid, pageItems, opts = {}) {
+    const { showRemove = false } = opts;
     // Use replaceChildren for efficient bulk replacement (better than innerHTML = "")
     const frag = document.createDocumentFragment();
 
     pageItems.forEach(item => {
-      const cell = createGifCell(item);
+      const cell = createGifCell(item, { showRemove });
       frag.appendChild(cell);
     });
 
@@ -384,7 +422,8 @@ BTFW.define("feature:gifs", [], async () => {
   }
 
   // Create a single GIF cell element
-  function createGifCell(item) {
+  function createGifCell(item, opts = {}) {
+    const { showRemove = false } = opts;
     const cell = document.createElement("button");
     cell.className = "btfw-gif-cell";
     cell.type = "button";
@@ -392,6 +431,9 @@ BTFW.define("feature:gifs", [], async () => {
     // Store data in attributes for event delegation
     cell.dataset.url = item.urlClassic || "";
     cell.dataset.id = item.id || "";
+    cell.dataset.thumb = item.thumb || "";
+    cell.dataset.provider = item.provider || state.provider || "";
+    cell.dataset.favKey = makeFavoriteKey(item);
 
     const frame = document.createElement("div");
     frame.className = "btfw-gif-thumb";
@@ -406,7 +448,36 @@ BTFW.define("feature:gifs", [], async () => {
     frame.appendChild(img);
     cell.appendChild(frame);
 
+    const toggle = document.createElement("span");
+    toggle.className = "btfw-gif-fav-toggle" + (showRemove ? " is-remove" : "");
+    toggle.dataset.action = showRemove ? "remove-favorite" : "toggle-favorite";
+    toggle.setAttribute("role", "button");
+    toggle.tabIndex = 0;
+    cell.appendChild(toggle);
+
+    updateFavoriteVisualState(cell, showRemove);
+
     return cell;
+  }
+
+  function updateFavoriteVisualState(cell, showRemove) {
+    const favKey = cell.dataset.favKey;
+    const isFav = favoriteLookup.has(favKey || "");
+    cell.classList.toggle("is-favorited", isFav);
+    const toggle = cell.querySelector(".btfw-gif-fav-toggle");
+    if (!toggle) return;
+    if (showRemove) {
+      toggle.textContent = "×";
+      toggle.title = "Remove from favorites";
+      toggle.setAttribute("aria-label", "Remove from favorites");
+      toggle.setAttribute("aria-pressed", "true");
+      return;
+    }
+    toggle.textContent = isFav ? "★" : "☆";
+    const label = isFav ? "Remove from favorites" : "Add to favorites";
+    toggle.title = label;
+    toggle.setAttribute("aria-label", label);
+    toggle.setAttribute("aria-pressed", isFav ? "true" : "false");
   }
 
   function prepareImageLoadingState(cell, img) {
@@ -457,11 +528,13 @@ BTFW.define("feature:gifs", [], async () => {
     showNotice("");
     state.page = 1;
     state.provider = modal.querySelector(".btfw-gif-tabs li.is-active")?.getAttribute("data-p") || "giphy";
-    renderSkeleton();
+    if (state.provider !== "favorites") {
+      renderSkeleton();
+    }
     setTimeout(search, 0);
     motion.openModal(modal);
     const input = $("#btfw-gif-q", modal);
-    if (input) {
+    if (input && state.provider !== "favorites") {
       requestAnimationFrame(() => {
         input.focus();
         input.select();
@@ -469,6 +542,132 @@ BTFW.define("feature:gifs", [], async () => {
     }
   }
   function close(){ if (modal) motion.closeModal(modal); }
+
+  function handleProviderChange() {
+    updateToolbarForProvider();
+    if (state.provider === "favorites") {
+      applyFavoritesToState();
+      render();
+    } else {
+      renderSkeleton();
+      search();
+    }
+  }
+
+  function updateToolbarForProvider() {
+    const searchBar = $(".btfw-gif-search", modal || document);
+    if (!searchBar) return;
+    const shouldHide = state.provider === "favorites";
+    searchBar.classList.toggle("is-hidden", shouldHide);
+  }
+
+  function makeFavoriteKey(item) {
+    const provider = item.provider || state.provider || "";
+    const idPart = item.id || "";
+    const urlPart = item.urlClassic || "";
+    const fallback = idPart || urlPart;
+    return provider + "::" + (fallback || "");
+  }
+
+  function loadFavorites() {
+    try {
+      const raw = localStorage.getItem(FAVORITES_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter(item => item && typeof item === "object" && item.urlClassic)
+          .map(item => ({
+            provider: item.provider || "giphy",
+            id: item.id || "",
+            thumb: item.thumb || item.urlClassic,
+            urlClassic: item.urlClassic
+          }));
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  function saveFavorites() {
+    try {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    } catch (_) {}
+  }
+
+  function buildFavoriteLookup(list) {
+    const map = new Map();
+    list.forEach(item => {
+      const key = makeFavoriteKey(item);
+      if (key) map.set(key, item);
+    });
+    return map;
+  }
+
+  function applyFavoritesToState() {
+    state.loading = false;
+    state.items = favorites.slice();
+    state.total = favorites.length;
+    showNotice(favorites.length ? "" : "Favorite GIFs will appear here once you star them.");
+  }
+
+  function cellToItem(cell) {
+    if (!cell) return null;
+    const provider = cell.dataset.provider || state.provider || "";
+    const id = cell.dataset.id || "";
+    const thumb = cell.dataset.thumb || "";
+    const urlClassic = cell.dataset.url || "";
+    const item = { provider, id, thumb, urlClassic };
+    item.favKey = cell.dataset.favKey || makeFavoriteKey(item);
+    return item;
+  }
+
+  function toggleFavorite(item) {
+    const key = item.favKey || makeFavoriteKey(item);
+    if (!item.urlClassic) return;
+    if (favoriteLookup.has(key)) {
+      removeFavorite(item);
+      return;
+    }
+    favorites.push({
+      provider: item.provider,
+      id: item.id,
+      thumb: item.thumb || item.urlClassic,
+      urlClassic: item.urlClassic
+    });
+    favoriteLookup.set(key, favorites[favorites.length - 1]);
+    saveFavorites();
+    if (state.provider === "favorites") {
+      applyFavoritesToState();
+    }
+    render();
+  }
+
+  function removeFavorite(item) {
+    const key = item.favKey || makeFavoriteKey(item);
+    const idx = favorites.findIndex(f => makeFavoriteKey(f) === key);
+    if (idx === -1) return;
+    favorites.splice(idx, 1);
+    favoriteLookup.delete(key);
+    saveFavorites();
+    if (state.provider === "favorites") {
+      applyFavoritesToState();
+    }
+    render();
+  }
+
+  function handleFavoriteControl(toggle) {
+    const cell = toggle.closest(".btfw-gif-cell");
+    if (!cell || cell.classList.contains("is-skeleton")) return false;
+    const item = cellToItem(cell);
+    if (!item) return false;
+    const action = toggle.dataset.action || "";
+    if (action === "remove-favorite") {
+      removeFavorite(item);
+    } else {
+      toggleFavorite(item);
+    }
+    return true;
+  }
 
   /* ---- boot ---- */
   function boot(){ ensureOpeners(); }
