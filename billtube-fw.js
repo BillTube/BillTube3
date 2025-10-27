@@ -1,7 +1,10 @@
 /*! BillTube Framework — v3.4f */
+const CDN_BASE = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-slim";
+const DEV_BRANCH_SUFFIX = "@dev";
+const MAIN_BRANCH_SUFFIX = "@main";
+
 (function(){
-  var scripts=document.getElementsByTagName('script');
-  var BASE=(document.currentScript&&document.currentScript.src)||scripts[scripts.length-1].src; BASE=BASE.replace(/\/[^/]*$/, "");
+  var scripts = document.getElementsByTagName('script');
 
   var Registry=Object.create(null);
   function define(name,deps,factory){ Registry[name]={deps:deps||[],factory:factory,instance:null}; }
@@ -99,7 +102,8 @@
       return overlay;
     }
 
-    function show(){ attach(); startAudioSuppression(); }
+    function show(){ attach(); 
+      startAudioSuppression(); }
 
     function hide(){
       stopAudioSuppression();
@@ -181,83 +185,34 @@ function load(src){
   });
 }
 
-  // Detect if we're using bundled or dev mode
-  // Check if DEV_MODE is set or if loaded from @dev branch
-  var isDev = (typeof window.DEV_MODE !== 'undefined' && window.DEV_MODE === true) || BASE.indexOf('@dev') !== -1;
-  var USE_BUNDLES = isDev;
+  var DEV_CDN = CDN_BASE + DEV_BRANCH_SUFFIX;
+  var MAIN_CDN = CDN_BASE + MAIN_BRANCH_SUFFIX;
   
   console.log('[BTFW] BASE:', BASE);
   console.log('[BTFW] isDev:', isDev);
   console.log('[BTFW] USE_BUNDLES:', USE_BUNDLES);
   // Preload CSS in proper order for layout stability
   Promise.all([
-    preload(BASE+"/css/tokens.css"),
-    preload(BASE+"/css/base.css"),
-    preload(BASE+"/css/navbar.css"),
-    preload(BASE+"/css/chat.css"),
-    preload(BASE+"/css/overlays.css"),
-    preload(BASE+"/css/player.css"),
-    preload(BASE+"/css/mobile.css")
+    preload(DEV_CDN+"/css/tokens.css"),
+    preload(DEV_CDN+"/css/base.css"),
+    preload(DEV_CDN+"/css/navbar.css"),
+    preload(DEV_CDN+"/css/chat.css"),
+    preload(DEV_CDN+"/css/overlays.css"),
+    preload(DEV_CDN+"/css/player.css"),
+    preload(DEV_CDN+"/css/mobile.css")
   ]).then(function(){
-    // Load bundled modules (dev for now) or individual modules (main)
-    if (USE_BUNDLES) {
-      var bundles = [
-        "dist/core.bundle.js",
-        "dist/chat.bundle.js",
-        "dist/player.bundle.js",
-        "dist/playlist.bundle.js",
-        "dist/admin.bundle.js",
-        "dist/features.bundle.js"
-      ];
-      return Promise.all(bundles.map(f => load(BASE+"/"+f)));
-    } else {
-      // Dev mode for the future (currently the standard) - load individual modules (must match build.js bundles)
-      var mods=[
-        "modules/feature-style-core.js",
-        "modules/feature-bulma-layer.js",
-        "modules/feature-layout.js",
-        "modules/feature-chat.js",
-        "modules/feature-chat-tools.js",
-        "modules/feature-chat-filters.js",
-        "modules/feature-chat-username-colors.js",
-        "modules/feature-chat-media.js",
-        "modules/feature-chat-avatars.js",
-        "modules/feature-chat-timestamps.js",
-        "modules/feature-chat-ignore.js",
-        "modules/feature-chat-commands.js",
-        "modules/feature-player.js",
-        "modules/feature-stack.js",
-        "modules/feature-video-overlay.js",
-        "modules/feature-video-enhancements.js",
-        "modules/feature-ambient.js",
-        "modules/feature-pip.js",
-        "modules/feature-resize.js",
-        "modules/feature-nowplaying.js",
-        "modules/feature-playlist-performance.js",
-        "modules/feature-playlist-tools.js",
-        "modules/feature-playlist-search.js",
-        "modules/feature-channel-theme-admin.js",
-        "modules/feature-theme-settings.js",
-        "modules/feature-motd-editor.js",
-        "modules/feature-channels.js",
-        "modules/feature-footer.js",
-        "modules/feature-navbar.js",
-        "modules/feature-modal-skin.js",
-        "modules/feature-emotes.js",
-        "modules/feature-emoji-compat.js",
-        "modules/feature-emoji-loader.js",
-        "modules/feature-gifs.js",
-        "modules/feature-poll-overlay.js",
-        "modules/feature-notify.js",
-        "modules/feature-sync-guard.js",
-        "modules/feature-local-subs.js",
-        "modules/feature-billcast.js",
-        "modules/feature-billcaster.js",
-        "modules/feature-overlays.js",
-        "modules/feature-userlist-overlay.js"
-      ];
-      return Promise.all(mods.map(f => load(BASE+"/"+f)));
-    }
+    // Always load bundled modules from the dev CDN
+    var bundles = [
+      "/dist/core.bundle.js",
+      "/dist/chat.bundle.js",
+      "/dist/player.bundle.js",
+      "/dist/playlist.bundle.js",
+      "/dist/admin.bundle.js",
+      "/dist/features.bundle.js"
+    ];
+    return Promise.all(bundles.map(function(file){
+      return load(DEV_CDN + file);
+    }));
   }).then(function(){
     return Promise.all([
       BTFW.init("feature:styleCore"),
