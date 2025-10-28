@@ -126,11 +126,14 @@ BTFW.define("feature:ratings", [], async () => {
     const style = document.createElement("style");
     style.id = "btfw-ratings-style";
     style.textContent = `
-      #btfw-ratings { display:inline-flex; align-items:center; gap:6px; margin-left:12px;
-        font-size:13px; font-family:inherit; color: var(--btfw-chat-dim, rgba(222,229,255,.72)); position:relative; }
+      #btfw-ratings-wrapper { width: 100%; }
+      #btfw-ratings { display:flex; flex-direction:column; align-items:flex-start; gap:8px; width:100%;
+        margin:0; padding-top:8px; font-size:13px; font-family:inherit; color: var(--btfw-chat-dim, rgba(222,229,255,.72));
+        position:relative; border-top:1px solid rgba(255,255,255,.08); }
       #btfw-ratings[hidden] { display:none !important; }
-      #btfw-ratings .btfw-ratings__label { font-size:12px; opacity:.74; letter-spacing:.02em; }
-      #btfw-ratings .btfw-ratings__stars { display:inline-flex; align-items:center; gap:2px; }
+      #btfw-ratings .btfw-ratings__header { display:flex; align-items:center; gap:8px; width:100%; }
+      #btfw-ratings .btfw-ratings__label { font-size:12px; opacity:.78; letter-spacing:.02em; text-transform:uppercase; }
+      #btfw-ratings .btfw-ratings__stars { display:flex; align-items:center; gap:3px; }
       #btfw-ratings .btfw-ratings__stars button { appearance:none; border:none; background:none; color:rgba(255,255,255,.32);
         cursor:pointer; padding:0 2px; font-size:18px; line-height:1; transition:color .15s ease; }
       #btfw-ratings[data-loading="true"] .btfw-ratings__stars button,
@@ -138,15 +141,18 @@ BTFW.define("feature:ratings", [], async () => {
       #btfw-ratings .btfw-ratings__stars button[data-active="true"],
       #btfw-ratings .btfw-ratings__stars button:hover,
       #btfw-ratings .btfw-ratings__stars button:focus-visible { color: var(--btfw-rating-accent, #ffd166); }
-      #btfw-ratings .btfw-ratings__meta { font-size:12px; opacity:.78; white-space:nowrap; }
-      #btfw-ratings .btfw-ratings__self { font-size:12px; opacity:.88; color: var(--btfw-rating-accent, #ffd166); }
-      #btfw-ratings .btfw-ratings__error { position:absolute; bottom:-1.6em; left:0; font-size:11px; color:#ff879d; white-space:nowrap; }
-      #btfw-ratings .btfw-ratings__refresh { appearance:none; border:none; background:none; color:rgba(255,255,255,.4);
-        cursor:pointer; padding:0 4px; font-size:14px; line-height:1; transition:color .15s ease; }
-      #btfw-ratings .btfw-ratings__refresh:hover, #btfw-ratings .btfw-ratings__refresh:focus-visible { color:rgba(255,255,255,.8); }
+      #btfw-ratings .btfw-ratings__meta-group { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px; opacity:.8; }
+      #btfw-ratings .btfw-ratings__meta { white-space:nowrap; }
+      #btfw-ratings .btfw-ratings__self { font-size:12px; opacity:.9; color: var(--btfw-rating-accent, #ffd166); }
+      #btfw-ratings .btfw-ratings__error { font-size:11px; color:#ff879d; }
+      #btfw-ratings .btfw-ratings__refresh { appearance:none; border:none; background:none; color:rgba(255,255,255,.45);
+        cursor:pointer; padding:0 4px; font-size:14px; line-height:1; transition:color .15s ease; margin-left:auto; }
+      #btfw-ratings .btfw-ratings__refresh:hover,
+      #btfw-ratings .btfw-ratings__refresh:focus-visible { color:rgba(255,255,255,.82); }
       @media (max-width: 720px) {
-        #btfw-ratings { margin-left:6px; font-size:12px; }
-        #btfw-ratings .btfw-ratings__label { display:none; }
+        #btfw-ratings { padding-top:6px; font-size:12px; }
+        #btfw-ratings .btfw-ratings__label { letter-spacing:0.01em; }
+        #btfw-ratings .btfw-ratings__header { flex-wrap:wrap; }
       }
     `;
     document.head.appendChild(style);
@@ -235,21 +241,41 @@ BTFW.define("feature:ratings", [], async () => {
     if (state.container?.isConnected) return state.container;
     ensureStyles();
 
-    const slot = $("#btfw-nowplaying-slot") || $("#chatwrap .btfw-chat-topbar") || $("#chatwrap") || document.body;
-    const el = document.createElement("span");
+    const topbarLeft = $("#chatwrap .btfw-chat-topbar .btfw-chat-topbar-left");
+    const slot = $("#btfw-nowplaying-slot");
+    const host = topbarLeft || slot || $("#chatwrap .btfw-chat-topbar") || $("#chatwrap") || document.body;
+
+    let wrapper = host.querySelector("#btfw-ratings-wrapper");
+    if (!wrapper) {
+      wrapper = document.createElement("div");
+      wrapper.id = "btfw-ratings-wrapper";
+      wrapper.className = "btfw-ratings-wrapper";
+
+      if (topbarLeft && slot && slot.parentElement === topbarLeft) {
+        slot.insertAdjacentElement("afterend", wrapper);
+      } else {
+        host.appendChild(wrapper);
+      }
+    }
+
+    const el = document.createElement("div");
     el.id = "btfw-ratings";
     el.hidden = true;
     el.innerHTML = `
-      <span class="btfw-ratings__label">Rate</span>
-      <span class="btfw-ratings__stars" role="group" aria-label="Rate current media">
+      <div class="btfw-ratings__header">
+        <span class="btfw-ratings__label">Rate</span>
+        <button type="button" class="btfw-ratings__refresh" title="Refresh rating" aria-label="Refresh rating">⟳</button>
+      </div>
+      <div class="btfw-ratings__stars" role="group" aria-label="Rate current media">
         ${STAR_VALUES.map(v => `<button type="button" data-score="${v}" aria-label="Rate ${v} star${v===1?"":"s"}">★</button>`).join("")}
-      </span>
-      <span class="btfw-ratings__meta" aria-live="polite"></span>
-      <span class="btfw-ratings__self" hidden></span>
-      <button type="button" class="btfw-ratings__refresh" title="Refresh rating" aria-label="Refresh rating">⟳</button>
+      </div>
+      <div class="btfw-ratings__meta-group">
+        <span class="btfw-ratings__meta" aria-live="polite"></span>
+        <span class="btfw-ratings__self" hidden></span>
+      </div>
       <span class="btfw-ratings__error" hidden></span>
     `;
-    slot.appendChild(el);
+    wrapper.appendChild(el);
 
     state.container = el;
     state.stars = Array.from(el.querySelectorAll("button[data-score]"));
