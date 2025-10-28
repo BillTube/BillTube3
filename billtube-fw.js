@@ -231,7 +231,8 @@ function load(src){
       "modules/feature-motd-editor.js",
       "modules/feature-video-enhancements.js",
       "modules/feature-channel-theme-admin.js",
-      "modules/feature-theme-settings.js"
+      "modules/feature-theme-settings.js",
+      "modules/feature-ratings.js"
     ];
     return mods.reduce((p,f)=>p.then(()=>load(BASE+"/"+f)), Promise.resolve());
   }).then(function(){
@@ -247,7 +248,7 @@ function load(src){
     return new Promise(resolve => setTimeout(resolve, 100));
   }).then(function(){
     // Initialize all remaining modules
-    return Promise.all([
+    var inits = [
       BTFW.init("feature:channels"),
       BTFW.init("feature:footer"),
       BTFW.init("feature:player"),
@@ -283,8 +284,10 @@ function load(src){
       BTFW.init("feature:videoEnhancements"),
       BTFW.init("feature:footer"),
       BTFW.init("feature:channelThemeAdmin"),
-      BTFW.init("feature:themeSettings")
-    ]);
+      BTFW.init("feature:themeSettings"),
+      BTFW.init("feature:ratings")
+    ];
+    return Promise.all(inits);
   }).then(function(){
     console.log("[BTFW v3.4f] Ready.");
     // Dispatch a final ready event
