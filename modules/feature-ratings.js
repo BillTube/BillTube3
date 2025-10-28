@@ -127,7 +127,7 @@ BTFW.define("feature:ratings", [], async () => {
     style.id = "btfw-ratings-style";
     style.textContent = `
       #btfw-ratings-wrapper { width: 100%; }
-      #btfw-ratings { display:flex; flex-direction:column; align-items:flex-start; gap:8px; width:100%;
+      #btfw-ratings { display:flex; flex-direction:row-reverse; align-items:center; align-content:center; gap:8px; width:100%;
         margin:0; padding-top:8px; font-size:13px; font-family:inherit; color: var(--btfw-chat-dim, rgba(222,229,255,.72));
         position:relative; border-top:1px solid rgba(255,255,255,.08); }
       #btfw-ratings[hidden] { display:none !important; }
