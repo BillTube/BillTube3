@@ -1,15 +1,3 @@
-/* BTFW — feature:ratings (public media rating UI with Worker backend)
-   Merged & improved version
-
-   Key improvements vs. earlier draft:
-   - Safer socket references (no bare `socket` reads)
-   - Default eligibility now public (minRank defaults to 0; configurable)
-   - Clear stats timer on media change to avoid late updates
-   - Robust userScore parsing from /stats
-   - Optional local self-vote cache for optimistic UX
-   - Defensive endpoint discovery & UI states
-*/
-
 BTFW.define("feature:ratings", [], async () => {
   const configuredEndpoint = [
     (() => { try { return window.BTFW_THEME_ADMIN?.integrations?.ratings?.endpoint || ""; } catch (_) { return ""; } })(),
