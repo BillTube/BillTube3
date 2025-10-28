@@ -195,27 +195,28 @@ BTFW.define("feature:ratings", [], async () => {
     return String(title || "").replace(/^\s*(?:currently|now)\s*playing\s*[:\-]\s*/i, "").replace(/[\s]+/g, " ").trim();
   }
 
-function deriveMediaKey(media, fallbackTitle) {
-  // Always use a stable title-based key: hash( normalizedTitle :: duration )
-  const duration = Number(media?.seconds ?? media?.duration ?? media?.length ?? 0) || 0;
-  const baseTitle = stripTitlePrefix(media?.title || fallbackTitle || "");
-  if (!baseTitle) return "";
-  return `title:${hashString(`${baseTitle}::${duration}`)}`;
-}
+  function deriveMediaKey(media, fallbackTitle) {
+    const duration = Number(media?.seconds ?? media?.duration ?? media?.length ?? 0) || 0;
+    const baseTitle = stripTitlePrefix(media?.title || fallbackTitle || "");
+    if (baseTitle) {
+      return `title:${hashString(`${baseTitle}::${duration}`)}`;
+    }
+
     const parts = [];
-    const type = (media.type || media.mediaType || media.provider || "").toString().trim();
-    const id = (media.id || media.videoId || media.vid || media.ytId || media.uid || "").toString().trim();
+    const type = (media?.type || media?.mediaType || media?.provider || "").toString().trim();
+    const id = (media?.id || media?.videoId || media?.vid || media?.ytId || media?.uid || "").toString().trim();
     if (type && id) parts.push(`${type}:${id}`);
-    if (media.uid && String(media.uid).length) parts.push(`uid:${media.uid}`);
-    if (media.queue?.uid) parts.push(`qu:${media.queue.uid}`);
-    if (media.uniqueID) parts.push(`uniq:${media.uniqueID}`);
+    if (media?.uid && String(media.uid).length) parts.push(`uid:${media.uid}`);
+    if (media?.queue?.uid) parts.push(`qu:${media.queue.uid}`);
+    if (media?.uniqueID) parts.push(`uniq:${media.uniqueID}`);
 
     if (!parts.length) {
-      const duration = Number(media.seconds ?? media.duration ?? media.length ?? 0) || 0;
-      const baseTitle = stripTitlePrefix(media.title || fallbackTitle || "");
-      if (baseTitle) parts.push(`title:${hashString(`${baseTitle}::${duration}`)}`);
+      const fallbackNormalized = stripTitlePrefix(fallbackTitle);
+      if (fallbackNormalized) {
+        parts.push(`title:${hashString(`${fallbackNormalized}::${duration}`)}`);
+      }
     }
-    return parts.join("|");
+    return parts.join("|") || "";
   }
 
   function normalizeMediaData(media) {
@@ -337,7 +338,9 @@ function deriveMediaKey(media, fallbackTitle) {
     if (!event?.detail) return;
     state.lookup = { ...event.detail };
     if (!state.currentMedia && state.lookup?.original) {
-      state.currentMedia = { key: `title:${hashString(state.lookup.original)}`, title: stripTitlePrefix(state.lookup.original), duration: 0, provider: "", id: "" };
+      const baseTitle = stripTitlePrefix(state.lookup.original);
+      const key = deriveMediaKey({ title: baseTitle, seconds: 0 }, baseTitle);
+      state.currentMedia = { key, title: baseTitle, duration: 0, provider: "", id: "" };
       state.currentKey = state.currentMedia.key;
     }
     updateVisibility();
