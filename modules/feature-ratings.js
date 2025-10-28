@@ -784,6 +784,7 @@ BTFW.define("feature:ratings", [], async () => {
     const channel = resolveChannelName();
     const params = new URLSearchParams({ channel });
     params.set("limit", "200");
+    params.set("min", "1");
     const base = endpoint.replace(/\/$/, "");
     const paths = ["leaderboard", "top", "list", "history", ""];
     let lastError = null;
