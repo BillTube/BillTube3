@@ -277,9 +277,9 @@ BTFW.define("feature:ratings", [], async () => {
     style.id = "btfw-ratings-style";
     style.textContent = `
       #btfw-ratings-wrapper { width: 100%; }
-      #btfw-ratings { display:flex; flex-direction:row-reverse; align-items:center; align-content:center; gap:8px; width:100%;
-        margin:0; padding-top:8px; font-size:13px; font-family:inherit; color: var(--btfw-chat-dim, rgba(222,229,255,.72));
-        position:relative; border-top:1px solid rgba(255,255,255,.08); }
+      #btfw-ratings { display: flex; flex-direction: row-reverse; align-items: center; align-content: center; gap: 8px; width: 100%;
+        margin: 0; padding-top: 10px; font-size: 13px; font-family: inherit; color: var(--btfw-chat-dim, rgba(222, 229, 255, .72));
+        position: relative; border-top: 0px solid rgba(255, 255, 255, .08); }
       #btfw-ratings[hidden] { display:none !important; }
       #btfw-ratings .btfw-ratings__header { display:flex; align-items:center; gap:8px; width:100%; }
       #btfw-ratings .btfw-ratings__label { font-size:12px; opacity:.78; letter-spacing:.02em; text-transform:uppercase; }
