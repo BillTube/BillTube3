@@ -32,6 +32,10 @@ BTFW.define("feature:ratings", [], async () => {
   const CHECK_INTERVAL_MS = 1200;
   const STATS_DEBOUNCE_MS = 400;
   const STATS_REFRESH_INTERVAL_MS = 20000;
+  const MIN_MEDIA_DURATION_SECONDS = 60 * 60;
+  const FINAL_WINDOW_SECONDS = 15 * 60;
+  const TIME_TOLERANCE_SECONDS = 1;
+  const PLAYBACK_POLL_INTERVAL_MS = 5000;
   const LS_ANON_ID_KEY = "btfw:ratings:anonid";
   const LS_SELF_PREFIX = "btfw:ratings:self:"; // + mediaKey
 
@@ -52,9 +56,16 @@ BTFW.define("feature:ratings", [], async () => {
     isSubmitting: false,
     lastStatsRequest: 0,
     statsTimer: null,
+    playbackTimer: null,
 
     endpoint: configuredEndpoint || null,
     channel: null,
+
+    playback: {
+      currentTime: 0,
+      duration: 0,
+      lastUpdate: 0,
+    },
   };
 
   // ---------- Small helpers ----------
@@ -66,6 +77,145 @@ BTFW.define("feature:ratings", [], async () => {
 
   function getChannelObj() {
     try { return window.CHANNEL || window.channel || null; } catch { return null; }
+  }
+
+  function getPlayerInstance() {
+    try {
+      return window.PLAYER || window.player || window.Player || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function safeEvaluate(candidate) {
+    if (typeof candidate === "function") {
+      try { return candidate(); } catch (_) { return undefined; }
+    }
+    return candidate;
+  }
+
+  function pickLargestPositive(candidates) {
+    let best = 0;
+    for (const candidate of candidates) {
+      const value = safeEvaluate(candidate);
+      const num = Number(value);
+      if (Number.isFinite(num) && num > best) {
+        best = num;
+      }
+    }
+    return best > 0 ? best : NaN;
+  }
+
+  function pickFirstNonNegative(candidates) {
+    for (const candidate of candidates) {
+      const value = safeEvaluate(candidate);
+      const num = Number(value);
+      if (Number.isFinite(num) && num >= 0) {
+        return num;
+      }
+    }
+    return NaN;
+  }
+
+  function updatePlaybackFromPlayer() {
+    const player = getPlayerInstance();
+    const media = state.currentMedia;
+    let updated = false;
+
+    const duration = pickLargestPositive([
+      () => player?.getDuration?.(),
+      () => player?.getLength?.(),
+      () => player?.mediaLength,
+      () => player?.media?.seconds,
+      () => player?.media?.duration,
+      () => player?.player?.getDuration?.(),
+      () => (typeof player?.player?.duration === "function" ? player.player.duration() : player?.player?.duration),
+      () => player?.player?.currentMedia?.duration,
+      () => player?.videojs?.duration?.(),
+      () => (typeof player?.duration === "function" ? player.duration() : player?.duration),
+      () => media?.duration,
+      () => state.lookup?.duration,
+      () => state.lookup?.seconds,
+      () => state.playback.duration,
+    ]);
+
+    if (Number.isFinite(duration) && duration > 0) {
+      if (!Number.isFinite(state.playback.duration) || Math.abs(state.playback.duration - duration) > 0.5) {
+        updated = true;
+      }
+      state.playback.duration = duration;
+      if (media) media.duration = duration;
+    }
+
+    const currentTime = pickFirstNonNegative([
+      () => player?.getTime?.(),
+      () => player?.getCurrentTime?.(),
+      () => (typeof player?.currentTime === "function" ? player.currentTime() : player?.currentTime),
+      () => player?.media?.currentTime,
+      () => player?.player?.getCurrentTime?.(),
+      () => (typeof player?.player?.currentTime === "function" ? player.player.currentTime() : player?.player?.currentTime),
+      () => player?.videojs?.currentTime?.(),
+      () => media?.currentTime,
+      () => state.playback.currentTime,
+    ]);
+
+    if (Number.isFinite(currentTime) && currentTime >= 0) {
+      if (!Number.isFinite(state.playback.currentTime) || Math.abs(state.playback.currentTime - currentTime) > 0.3) {
+        updated = true;
+      }
+      state.playback.currentTime = currentTime;
+      state.playback.lastUpdate = Date.now();
+      if (media) media.currentTime = currentTime;
+    }
+
+    return updated;
+  }
+
+  function getEffectiveDuration() {
+    const duration = pickLargestPositive([
+      state.playback.duration,
+      state.currentMedia?.duration,
+      state.lookup?.duration,
+      state.lookup?.seconds,
+    ]);
+    return Number.isFinite(duration) && duration > 0 ? duration : NaN;
+  }
+
+  function getEffectiveCurrentTime(duration) {
+    const current = pickFirstNonNegative([
+      state.playback.currentTime,
+      state.currentMedia?.currentTime,
+    ]);
+    if (!Number.isFinite(current) || current < 0) return NaN;
+    if (Number.isFinite(duration) && duration > 0) {
+      return Math.min(current, duration);
+    }
+    return current;
+  }
+
+  function shouldDisplayRatings(duration, currentTime) {
+    if (!Number.isFinite(duration) || !Number.isFinite(currentTime)) return false;
+    if (duration < MIN_MEDIA_DURATION_SECONDS) return false;
+    const remaining = duration - currentTime;
+    return remaining <= (FINAL_WINDOW_SECONDS + TIME_TOLERANCE_SECONDS);
+  }
+
+  function stopPlaybackPolling() {
+    if (state.playbackTimer) {
+      clearTimeout(state.playbackTimer);
+      state.playbackTimer = null;
+    }
+  }
+
+  function startPlaybackPolling() {
+    stopPlaybackPolling();
+    if (!state.currentMedia) return;
+    const tick = () => {
+      if (!state.currentMedia) { stopPlaybackPolling(); return; }
+      updateVisibility();
+      state.playbackTimer = setTimeout(tick, PLAYBACK_POLL_INTERVAL_MS);
+    };
+    state.playbackTimer = setTimeout(tick, PLAYBACK_POLL_INTERVAL_MS);
   }
 
   function resolveChannelName() {
@@ -230,9 +380,10 @@ BTFW.define("feature:ratings", [], async () => {
     const lookupTitle = state.lookup?.canonical || state.lookup?.query || state.lookup?.original || "";
     const rawTitle = stripTitlePrefix(media.title || lookupTitle || "");
     const duration = Number(media.seconds ?? media.duration ?? media.length ?? 0) || 0;
+    const currentTime = Number(media.currentTime ?? media.time ?? media.position ?? 0) || 0;
     const key = deriveMediaKey(media, rawTitle || lookupTitle);
     if (!key) return null;
-    return { key, title: rawTitle, duration,
+    return { key, title: rawTitle, duration, currentTime,
       provider: (media.type || media.mediaType || media.provider || "").toString().trim(),
       id: (media.id || media.videoId || media.vid || media.uid || "").toString().trim() };
   }
@@ -323,22 +474,14 @@ BTFW.define("feature:ratings", [], async () => {
   }
   function setLoading(val) { if (state.container) { state.isSubmitting = !!val; state.container.dataset.loading = val?"true":"false"; } }
 
-  function updateVisibility() {
+  function hideRatings() {
     if (!state.container) return;
-    const endpoint = ensureEndpoint();
-    if (!endpoint) {
-      state.container.hidden = true;
-      return;
-    }
-    if (!state.currentKey) {
-      state.container.hidden = false;
-      state.container.dataset.disabled = "true";
-      setStatus("Waiting for media…");
-      setSelfStatus("");
-      highlightStars(0);
-      return;
-    }
+    state.container.hidden = true;
+    state.container.dataset.disabled = "true";
+  }
 
+  function showRatings() {
+    if (!state.container) return;
     state.container.hidden = false;
     state.container.dataset.disabled = "false";
 
@@ -358,6 +501,26 @@ BTFW.define("feature:ratings", [], async () => {
       setSelfStatus("");
       highlightStars(0);
     }
+  }
+
+  function updateVisibility() {
+    if (!state.container) return;
+    const endpoint = ensureEndpoint();
+    if (!endpoint || !state.currentKey || !state.currentMedia) {
+      hideRatings();
+      return;
+    }
+
+    updatePlaybackFromPlayer();
+    const duration = getEffectiveDuration();
+    const currentTime = getEffectiveCurrentTime(duration);
+
+    if (!shouldDisplayRatings(duration, currentTime)) {
+      hideRatings();
+      return;
+    }
+
+    showRatings();
   }
 
   function handleLookupEvent(event) {
@@ -487,26 +650,66 @@ BTFW.define("feature:ratings", [], async () => {
   }
 
   function setMedia(media) {
-    const normalized = normalizeMediaData(media);
-    if (!normalized) return;
-
-    // clear pending timers from previous media
+    stopPlaybackPolling();
     if (state.statsTimer) { clearTimeout(state.statsTimer); state.statsTimer = null; }
+    const normalized = normalizeMediaData(media);
+    if (!normalized) {
+      state.currentMedia = null;
+      state.currentKey = "";
+      state.stats = null;
+      state.lastVote = null;
+      state.playback.currentTime = 0;
+      state.playback.duration = 0;
+      setSelfStatus("");
+      highlightStars(0);
+      updateVisibility();
+      return;
+    }
 
     state.currentMedia = normalized;
     state.currentKey = normalized.key;
     state.stats = null;
     state.lastVote = null;
+    state.playback.currentTime = Number(normalized.currentTime) || 0;
+    state.playback.duration = Number(normalized.duration) || 0;
+    state.playback.lastUpdate = Date.now();
     setSelfStatus("");
     highlightStars(0);
+    updatePlaybackFromPlayer();
     updateVisibility();
     refreshStats(true);
+    startPlaybackPolling();
   }
 
   function handleMediaUpdate(data) {
     if (!data) return;
     if (data.title && state.currentMedia) state.currentMedia.title = stripTitlePrefix(data.title);
-    if (data.seconds && state.currentMedia) state.currentMedia.duration = Number(data.seconds) || state.currentMedia.duration;
+    if (state.currentMedia) {
+      const durationUpdate = pickLargestPositive([
+        Number(data.seconds),
+        Number(data.duration),
+        Number(data.length),
+        state.currentMedia.duration,
+        state.playback.duration,
+      ]);
+      if (Number.isFinite(durationUpdate) && durationUpdate > 0) {
+        state.currentMedia.duration = durationUpdate;
+        state.playback.duration = durationUpdate;
+      }
+    }
+
+    const nextCurrent = pickFirstNonNegative([
+      Number(data.currentTime),
+      Number(data.time),
+      Number(data.position),
+      state.playback.currentTime,
+    ]);
+    if (Number.isFinite(nextCurrent) && nextCurrent >= 0) {
+      state.playback.currentTime = nextCurrent;
+      state.playback.lastUpdate = Date.now();
+      if (state.currentMedia) state.currentMedia.currentTime = nextCurrent;
+    }
+
     updateVisibility();
   }
 
