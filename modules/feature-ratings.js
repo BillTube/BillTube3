@@ -132,6 +132,50 @@ BTFW.define("feature:ratings", [], async () => {
     return NaN;
   }
 
+  const UNWANTED_TITLE_WORDS = [
+    "Extended",
+    "Director's Cut",
+    "Directors Cut",
+    "Unrated",
+    "Theatrical Cut",
+  ];
+
+  function cleanTitleForSearch(title) {
+    if (!title) return "";
+    let result = String(title);
+    for (const word of UNWANTED_TITLE_WORDS) {
+      const regex = new RegExp(`\\b${word}\\b`, "gi");
+      result = result.replace(regex, "");
+    }
+    return result.replace(/\s{2,}/g, " ").trim();
+  }
+
+  function parseTitleForSearch(originalTitle) {
+    const raw = String(originalTitle || "").trim();
+    if (!raw) {
+      return { title: "", year: "" };
+    }
+
+    let title = raw;
+    let year = "";
+
+    let match = raw.match(/(.+)\s*\((\d{4})\)/);
+    if (match) {
+      title = match[1].trim();
+      year = match[2];
+    }
+
+    if (!year) {
+      match = title.match(/(.+?)\s+(\d{4})\s*$/);
+      if (match) {
+        title = match[1].trim();
+        year = match[2];
+      }
+    }
+
+    return { title: cleanTitleForSearch(title), year };
+  }
+
   function updatePlaybackFromPlayer() {
     const player = getPlayerInstance();
     const media = state.currentMedia;
@@ -567,6 +611,7 @@ BTFW.define("feature:ratings", [], async () => {
       raw.lookup?.title,
     ]);
     if (!title) return null;
+    const parsedTitle = parseTitleForSearch(title);
 
     const avg = Math.min(5, Math.max(0, pickNumber([
       raw.avg,
@@ -619,7 +664,10 @@ BTFW.define("feature:ratings", [], async () => {
 
     const tmdbId = pickString([raw.tmdbId, raw.tmdb_id, raw.tmdb?.id]);
     const tmdbType = pickString([raw.tmdbType, raw.tmdb_type, raw.type, raw.mediaType, raw.media_type, raw.tmdb?.media_type]);
-    const year = extractYear(raw);
+    let year = extractYear(raw);
+    if (!year) {
+      year = parsedTitle.year;
+    }
 
     const id = pickString([raw.mediaKey, raw.key, raw.id, raw.media?.id, raw.media?.key]) || title;
 
@@ -632,6 +680,8 @@ BTFW.define("feature:ratings", [], async () => {
       tmdbId: tmdbId || "",
       tmdbType: tmdbType || "",
       year,
+      searchTitle: parsedTitle.title || cleanTitleForSearch(title),
+      searchYear: parsedTitle.year || year || "",
     };
   }
 
@@ -719,42 +769,110 @@ BTFW.define("feature:ratings", [], async () => {
   }
 
   async function fetchPosterForItem(item) {
-    if (!item || !leaderboardState.tmdbKey || !item.title) return null;
-    const cacheKey = `${item.title.toLowerCase()}::${item.year || ""}`;
+    if (!item || !leaderboardState.tmdbKey) return null;
+    const searchTitle = item.searchTitle || cleanTitleForSearch(item.title);
+    if (!searchTitle) return null;
+
+    const year = item.searchYear || item.year || "";
+    const cacheParts = [];
+    if (item.tmdbId) cacheParts.push(`id:${String(item.tmdbId).toLowerCase()}`);
+    cacheParts.push(`t:${searchTitle.toLowerCase()}`);
+    if (year) cacheParts.push(`y:${year}`);
+    const cacheKey = cacheParts.join("::");
+
     if (leaderboardState.tmdbCache.has(cacheKey)) {
       const cached = leaderboardState.tmdbCache.get(cacheKey);
       return cached || null;
     }
 
     const key = leaderboardState.tmdbKey;
-    try {
-      const url = new URL("https://api.themoviedb.org/3/search/multi");
-      url.searchParams.set("api_key", key);
-      url.searchParams.set("include_adult", "false");
-      url.searchParams.set("query", item.title);
-      if (item.year) {
-        url.searchParams.set("year", item.year);
-        url.searchParams.set("first_air_date_year", item.year);
-        url.searchParams.set("primary_release_year", item.year);
+    const normalizedType = String(item.tmdbType || "").toLowerCase();
+    const normalizedId = String(item.tmdbId || "").trim();
+
+    async function fetchPosterById(id, type) {
+      if (!id || !type) return null;
+      const path = type === "tv" ? `tv/${id}` : type === "movie" ? `movie/${id}` : "";
+      if (!path) return null;
+      try {
+        const url = new URL(`https://api.themoviedb.org/3/${path}`);
+        url.searchParams.set("api_key", key);
+        const response = await fetch(url.toString());
+        if (!response.ok) return null;
+        const json = await response.json();
+        const posterPath = json?.poster_path;
+        if (posterPath) {
+          return sanitizePosterUrl(`https://image.tmdb.org/t/p/w342${posterPath}`);
+        }
+      } catch (error) {
+        console.warn("[ratings] tmdb lookup by id failed", error);
       }
-      const response = await fetch(url.toString());
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const json = await response.json();
-      const results = Array.isArray(json?.results) ? json.results : [];
-      let chosen = null;
-      for (const candidate of results) {
-        if (!candidate || !candidate.poster_path) continue;
-        chosen = candidate;
-        if (item.tmdbType && candidate.media_type === item.tmdbType) break;
-        if (!item.tmdbType && (candidate.media_type === "movie" || candidate.media_type === "tv")) break;
+      return null;
+    }
+
+    if (normalizedId && (normalizedType === "movie" || normalizedType === "tv")) {
+      const directPoster = await fetchPosterById(normalizedId, normalizedType);
+      if (directPoster) {
+        leaderboardState.tmdbCache.set(cacheKey, directPoster);
+        return directPoster;
       }
-      if (chosen?.poster_path) {
-        const posterUrl = sanitizePosterUrl(`https://image.tmdb.org/t/p/w342${chosen.poster_path}`);
-        leaderboardState.tmdbCache.set(cacheKey, posterUrl);
-        return posterUrl;
+    }
+
+    const searchConfigs = [];
+    if (normalizedType === "movie") {
+      searchConfigs.push({ path: "search/movie", type: "movie" });
+    } else if (normalizedType === "tv") {
+      searchConfigs.push({ path: "search/tv", type: "tv" });
+    } else {
+      searchConfigs.push({ path: "search/movie", type: "movie" });
+      searchConfigs.push({ path: "search/tv", type: "tv" });
+    }
+    searchConfigs.push({ path: "search/multi", type: "multi" });
+
+    for (const config of searchConfigs) {
+      try {
+        const url = new URL(`https://api.themoviedb.org/3/${config.path}`);
+        url.searchParams.set("api_key", key);
+        url.searchParams.set("include_adult", "false");
+        url.searchParams.set("query", searchTitle);
+        if (year) {
+          if (config.type === "movie" || config.type === "multi") {
+            url.searchParams.set("year", year);
+            url.searchParams.set("primary_release_year", year);
+          }
+          if (config.type === "tv" || config.type === "multi") {
+            url.searchParams.set("first_air_date_year", year);
+          }
+        }
+        const response = await fetch(url.toString());
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const json = await response.json();
+        const results = Array.isArray(json?.results) ? json.results : [];
+        let chosen = null;
+        for (const candidate of results) {
+          if (!candidate || !candidate.poster_path) continue;
+          const candidateId = candidate.id != null ? String(candidate.id) : "";
+          if (normalizedId && candidateId === normalizedId) {
+            chosen = candidate;
+            break;
+          }
+          if (!chosen) {
+            chosen = candidate;
+          }
+          if (config.type === "movie" || config.type === "tv") {
+            break;
+          }
+          const candidateType = String(candidate.media_type || "").toLowerCase();
+          if (normalizedType && candidateType === normalizedType) break;
+          if (!normalizedType && (candidateType === "movie" || candidateType === "tv")) break;
+        }
+        if (chosen?.poster_path) {
+          const posterUrl = sanitizePosterUrl(`https://image.tmdb.org/t/p/w342${chosen.poster_path}`);
+          leaderboardState.tmdbCache.set(cacheKey, posterUrl);
+          return posterUrl;
+        }
+      } catch (error) {
+        console.warn("[ratings] tmdb lookup failed", error);
       }
-    } catch (error) {
-      console.warn("[ratings] tmdb lookup failed", error);
     }
 
     leaderboardState.tmdbCache.set(cacheKey, "");
