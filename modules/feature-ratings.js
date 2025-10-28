@@ -30,7 +30,7 @@ BTFW.define("feature:ratings", [], async () => {
   const motion = await BTFW.init("util:motion");
 
   const STAR_VALUES = [1, 2, 3, 4, 5];
-  const DEFAULT_MIN_RANK = 0; // Allow everyone by default; override via BTFW_CONFIG.ratings.minRank
+  const DEFAULT_MIN_RANK = 1; // Require at least registered users by default; higher via BTFW_CONFIG.ratings.minRank
   const CHECK_INTERVAL_MS = 1200;
   const STATS_DEBOUNCE_MS = 400;
   const STATS_REFRESH_INTERVAL_MS = 20000;
@@ -291,7 +291,7 @@ BTFW.define("feature:ratings", [], async () => {
     const cfgRank = Number(window.BTFW_CONFIG?.ratings?.minRank);
     const bodyRank = Number(document.body?.dataset?.btfwRatingsMinRank);
     const ranks = [cfgRank, bodyRank].filter((v) => Number.isFinite(v) && v >= 0);
-    return ranks.length ? Math.max(...ranks) : DEFAULT_MIN_RANK;
+    return ranks.length ? Math.max(DEFAULT_MIN_RANK, ...ranks) : DEFAULT_MIN_RANK;
   }
 
   function getClientRank() {
@@ -301,7 +301,7 @@ BTFW.define("feature:ratings", [], async () => {
   }
 
   function isEligible() {
-    // Public by default; keep rank gate if desired
+    // Registered users by default; allow higher gates via config when desired
     const minRank = getConfiguredMinRank();
     const rank = getClientRank();
     if (Number.isFinite(rank) && rank >= minRank) return true;
@@ -319,8 +319,6 @@ BTFW.define("feature:ratings", [], async () => {
       }
     } catch {}
 
-    // If minRank is 0 and rank is NaN (guest), still allow
-    if (minRank === 0 && !Number.isFinite(rank)) return true;
     return false;
   }
 
