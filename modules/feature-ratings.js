@@ -1038,28 +1038,39 @@ BTFW.define("feature:ratings", [], async () => {
     return String(title || "").replace(/^\s*(?:currently|now)\s*playing\s*[:\-]\s*/i, "").replace(/[\s]+/g, " ").trim();
   }
 
+  function normalizeTitleForKey(raw) {
+    // lowercase, strip diacritics, remove punctuation, collapse spaces
+    let s = String(raw || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+    s = s.replace(/[\[\](){}:;\.,!?'"`~_|\\/+-]+/g, " ");
+    s = s.replace(/\s+/g, " ").trim();
+    return s;
+  }
+
+  function extractYearFromTitle(raw) {
+    const s = String(raw || "");
+    const m = s.match(/(?:\(|\b)(19|20)\d{2}(?:\)|\b)(?!.*(19|20)\d{2})/);
+    return m ? m[0].replace(/[()]/g, "") : "";
+  }
+
+  function durationBucket(seconds) {
+    const sec = Number(seconds) || 0;
+    return Math.round((sec / 60) / 5) * 5;
+  }
+
   function deriveMediaKey(media, fallbackTitle) {
     const duration = Number(media?.seconds ?? media?.duration ?? media?.length ?? 0) || 0;
-    const baseTitle = stripTitlePrefix(media?.title || fallbackTitle || "");
-    if (baseTitle) {
-      return `title:${hashString(`${baseTitle}::${duration}`)}`;
-    }
+    const titleRaw = stripTitlePrefix(media?.title || fallbackTitle || "");
+    if (!titleRaw) return "";
 
-    const parts = [];
-    const type = (media?.type || media?.mediaType || media?.provider || "").toString().trim();
-    const id = (media?.id || media?.videoId || media?.vid || media?.ytId || media?.uid || "").toString().trim();
-    if (type && id) parts.push(`${type}:${id}`);
-    if (media?.uid && String(media.uid).length) parts.push(`uid:${media.uid}`);
-    if (media?.queue?.uid) parts.push(`qu:${media.queue.uid}`);
-    if (media?.uniqueID) parts.push(`uniq:${media.uniqueID}`);
+    const year = extractYearFromTitle(titleRaw);
+    const baseTitle = normalizeTitleForKey(
+      year ? titleRaw.replace(new RegExp(`\\(?${year}\\)?`), "") : titleRaw
+    );
 
-    if (!parts.length) {
-      const fallbackNormalized = stripTitlePrefix(fallbackTitle);
-      if (fallbackNormalized) {
-        parts.push(`title:${hashString(`${fallbackNormalized}::${duration}`)}`);
-      }
-    }
-    return parts.join("|") || "";
+    if (!baseTitle) return "";
+
+    const keyPayload = `t:${baseTitle}|y:${year || "na"}`;
+    return `title:${hashString(keyPayload)}`;
   }
 
   function normalizeMediaData(media) {
