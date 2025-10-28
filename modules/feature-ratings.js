@@ -27,6 +27,8 @@ BTFW.define("feature:ratings", [], async () => {
     window.BTFW_CONFIG.shouldLoadRatings = true;
   } catch (_) {}
 
+  const motion = await BTFW.init("util:motion");
+
   const STAR_VALUES = [1, 2, 3, 4, 5];
   const DEFAULT_MIN_RANK = 0; // Allow everyone by default; override via BTFW_CONFIG.ratings.minRank
   const CHECK_INTERVAL_MS = 1200;
@@ -66,6 +68,19 @@ BTFW.define("feature:ratings", [], async () => {
       duration: 0,
       lastUpdate: 0,
     },
+  };
+
+  const leaderboardState = {
+    modal: null,
+    scrollEl: null,
+    listEl: null,
+    loadingEl: null,
+    errorEl: null,
+    loading: false,
+    items: [],
+    abortController: null,
+    tmdbKey: null,
+    tmdbCache: new Map(),
   };
 
   // ---------- Small helpers ----------
@@ -283,6 +298,8 @@ BTFW.define("feature:ratings", [], async () => {
       #btfw-ratings[hidden] { display:none !important; }
       #btfw-ratings .btfw-ratings__header { display:flex; align-items:center; gap:8px; width:100%; }
       #btfw-ratings .btfw-ratings__label { font-size:12px; opacity:.78; letter-spacing:.02em; text-transform:uppercase; }
+      #btfw-ratings .btfw-ratings__actions { margin-left:auto; display:flex; align-items:center; gap:4px; }
+      #btfw-ratings .btfw-ratings__actions button { display:inline-flex; align-items:center; justify-content:center; min-width:0; }
       #btfw-ratings .btfw-ratings__stars { display:flex; align-items:center; gap:3px; }
       #btfw-ratings .btfw-ratings__stars button { appearance:none; border:none; background:none; color:rgba(255,255,255,.32);
         cursor:pointer; padding:0 2px; font-size:18px; line-height:1; transition:color .15s ease; }
@@ -295,14 +312,55 @@ BTFW.define("feature:ratings", [], async () => {
       #btfw-ratings .btfw-ratings__meta { white-space:nowrap; }
       #btfw-ratings .btfw-ratings__self { font-size:12px; opacity:.9; color: var(--btfw-rating-accent, #ffd166); }
       #btfw-ratings .btfw-ratings__error { font-size:11px; color:#ff879d; }
-      #btfw-ratings .btfw-ratings__refresh { appearance:none; border:none; background:none; color:rgba(255,255,255,.45);
-        cursor:pointer; padding:0 4px; font-size:14px; line-height:1; transition:color .15s ease; margin-left:auto; }
+      #btfw-ratings .btfw-ratings__refresh,
+      #btfw-ratings .btfw-ratings__list { appearance:none; border:none; background:none; color:rgba(255,255,255,.45);
+        cursor:pointer; padding:0 4px; font-size:14px; line-height:1; transition:color .15s ease; }
+      #btfw-ratings .btfw-ratings__list { font-size:13px; }
       #btfw-ratings .btfw-ratings__refresh:hover,
-      #btfw-ratings .btfw-ratings__refresh:focus-visible { color:rgba(255,255,255,.82); }
+      #btfw-ratings .btfw-ratings__refresh:focus-visible,
+      #btfw-ratings .btfw-ratings__list:hover,
+      #btfw-ratings .btfw-ratings__list:focus-visible { color:rgba(255,255,255,.82); }
+      #btfw-ratings-modal .modal-card { width: min(92vw, 960px); max-height: 90vh; display:flex; flex-direction:column; }
+      #btfw-ratings-modal .modal-card-head,
+      #btfw-ratings-modal .modal-card-foot { background: rgba(12, 14, 22, .92); color:#fff; }
+      #btfw-ratings-modal .modal-card-head { border-bottom: 1px solid rgba(255,255,255,.08); }
+      #btfw-ratings-modal .modal-card-foot { border-top: 1px solid rgba(255,255,255,.08); justify-content:flex-end; }
+      #btfw-ratings-modal .modal-card-title { font-size:1.125rem; }
+      #btfw-ratings-modal .modal-card-body { background: rgba(12, 14, 22, .88); padding: 18px; color: #f4f6ff; }
+      #btfw-ratings-modal .btfw-ratings-modal__scroll { max-height: min(70vh, 640px); overflow-y: auto; padding-right: 6px; }
+      #btfw-ratings-modal .btfw-ratings-modal__loading,
+      #btfw-ratings-modal .btfw-ratings-modal__error { font-size: 0.95rem; text-align: center; padding: 24px 12px; }
+      #btfw-ratings-modal .btfw-ratings-modal__error { color: #ff879d; }
+      #btfw-ratings-modal .btfw-ratings-modal__list { display:flex; flex-direction:column; gap:12px; }
+      #btfw-ratings-modal .btfw-ratings-modal__list[data-layout="grid"] { display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:16px; }
+      #btfw-ratings-modal .btfw-ratings-modal__item { display:flex; gap:12px; background: rgba(255,255,255,0.04); border-radius: 10px; padding:12px; color:inherit; text-decoration:none; min-height:120px; }
+      #btfw-ratings-modal .btfw-ratings-modal__list[data-layout="grid"] .btfw-ratings-modal__item { flex-direction:column; min-height:0; }
+      #btfw-ratings-modal .btfw-ratings-modal__poster { position:relative; flex:0 0 auto; width:84px; aspect-ratio:2 / 3; border-radius:8px; overflow:hidden; background: rgba(255,255,255,0.07);
+        display:flex; align-items:center; justify-content:center; font-weight:600; font-size:1.25rem; color:rgba(255,255,255,0.64); text-transform:uppercase; }
+      #btfw-ratings-modal .btfw-ratings-modal__poster img { width:100%; height:100%; object-fit:cover; display:block; }
+      #btfw-ratings-modal .btfw-ratings-modal__poster img[hidden] { display:none !important; }
+      #btfw-ratings-modal .btfw-ratings-modal__poster[data-has-poster="true"] .btfw-ratings-modal__poster-fallback { display:none !important; }
+      #btfw-ratings-modal .btfw-ratings-modal__list[data-layout="grid"] .btfw-ratings-modal__poster { width:100%; }
+      #btfw-ratings-modal .btfw-ratings-modal__details { display:flex; flex-direction:column; gap:6px; flex:1 1 auto; }
+      #btfw-ratings-modal .btfw-ratings-modal__title { font-size:1rem; font-weight:600; display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+      #btfw-ratings-modal .btfw-ratings-modal__rank { display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.12); color: var(--btfw-rating-accent, #ffd166);
+        border-radius:999px; font-size:0.75rem; padding:2px 8px; letter-spacing:0.04em; text-transform:uppercase; }
+      #btfw-ratings-modal .btfw-ratings-modal__name { flex:1 1 auto; }
+      #btfw-ratings-modal .btfw-ratings-modal__year { opacity:0.7; font-size:0.9rem; }
+      #btfw-ratings-modal .btfw-ratings-modal__scoreline { display:flex; align-items:center; gap:8px; font-size:0.95rem; }
+      #btfw-ratings-modal .btfw-ratings-modal__avg { font-weight:600; color: var(--btfw-rating-accent, #ffd166); }
+      #btfw-ratings-modal .btfw-ratings-modal__votes { font-size:0.85rem; opacity:0.85; }
+      #btfw-ratings-modal .btfw-ratings-modal__stars { position:relative; display:inline-block; font-size:0.9rem; line-height:1; letter-spacing:2px; min-width:5ch; }
+      #btfw-ratings-modal .btfw-ratings-modal__stars-base { color:rgba(255,255,255,0.18); }
+      #btfw-ratings-modal .btfw-ratings-modal__stars-fill { color:var(--btfw-rating-accent, #ffd166); position:absolute; inset:0; overflow:hidden; white-space:nowrap; }
+      #btfw-ratings-modal .btfw-ratings-modal__empty { padding:36px 12px; text-align:center; opacity:0.85; font-size:0.95rem; }
       @media (max-width: 720px) {
         #btfw-ratings { padding-top:6px; font-size:12px; }
         #btfw-ratings .btfw-ratings__label { letter-spacing:0.01em; }
         #btfw-ratings .btfw-ratings__header { flex-wrap:wrap; }
+        #btfw-ratings .btfw-ratings__actions { width:100%; justify-content:flex-start; margin-left:0; }
+        #btfw-ratings .btfw-ratings__actions button { padding:0 2px; }
+        #btfw-ratings-modal .modal-card { width:94vw; }
       }
     `;
     document.head.appendChild(style);
@@ -325,6 +383,516 @@ BTFW.define("feature:ratings", [], async () => {
       return state.endpoint;
     }
     return null;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function sanitizePosterUrl(url) {
+    const str = String(url ?? "").trim();
+    if (!str) return "";
+    if (/^https?:/i.test(str) || /^data:image\//i.test(str) || /^blob:/i.test(str)) return str;
+    if (str.startsWith("//")) return `https:${str}`;
+    return "";
+  }
+
+  function formatVotes(votes) {
+    const num = Number(votes);
+    const safe = Number.isFinite(num) && num >= 0 ? num : 0;
+    let formatted = String(safe);
+    try { formatted = safe.toLocaleString(); } catch (_) {}
+    return `${formatted} vote${safe === 1 ? "" : "s"}`;
+  }
+
+  function buildStarDisplay(avg) {
+    const clamped = Math.min(5, Math.max(0, Number(avg) || 0));
+    const pct = (clamped / 5) * 100;
+    return `
+      <span class="btfw-ratings-modal__stars" aria-hidden="true">
+        <span class="btfw-ratings-modal__stars-base">★★★★★</span>
+        <span class="btfw-ratings-modal__stars-fill" style="width:${pct}%">★★★★★</span>
+      </span>
+    `;
+  }
+
+  function pickString(candidates) {
+    for (const candidate of candidates) {
+      const value = safeEvaluate(candidate);
+      if (value == null) continue;
+      const str = String(value).trim();
+      if (str) return str;
+    }
+    return "";
+  }
+
+  function pickNumber(candidates) {
+    for (const candidate of candidates) {
+      const value = safeEvaluate(candidate);
+      const num = Number(value);
+      if (Number.isFinite(num)) return num;
+    }
+    return NaN;
+  }
+
+  function extractYear(raw) {
+    const yearSource = pickString([
+      raw?.year,
+      raw?.releaseYear,
+      raw?.release_year,
+      raw?.releaseDate,
+      raw?.release_date,
+      raw?.firstAirDate,
+      raw?.first_air_date,
+      raw?.date,
+      raw?.media?.year,
+      raw?.media?.releaseDate,
+      raw?.media?.released,
+      raw?.tmdb?.release_date,
+      raw?.tmdb?.first_air_date,
+    ]);
+    if (!yearSource) return "";
+    const match = yearSource.match(/(19|20)\d{2}/);
+    return match ? match[0] : "";
+  }
+
+  function resolveTMDBKey() {
+    try {
+      const cfg = (window.BTFW_CONFIG && typeof window.BTFW_CONFIG === "object") ? window.BTFW_CONFIG : {};
+      const tmdbObj = (cfg.tmdb && typeof cfg.tmdb === "object") ? cfg.tmdb : {};
+      const cfgKey = typeof tmdbObj.apiKey === "string" ? tmdbObj.apiKey.trim() : "";
+      const legacyCfg = typeof cfg.tmdbKey === "string" ? cfg.tmdbKey.trim() : "";
+      let lsKey = "";
+      try { lsKey = (localStorage.getItem("btfw:tmdb:key") || "").trim(); } catch (_) {}
+      const g = (v) => (v == null ? "" : String(v)).trim();
+      const globalKey = g(window.TMDB_API_KEY) || g(window.BTFW_TMDB_KEY) || g(window.tmdb_key);
+      const bodyKey = g(document.body?.dataset?.tmdbKey);
+      const key = cfgKey || legacyCfg || lsKey || globalKey || bodyKey;
+      return key || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function ensureLeaderboardModal() {
+    if (leaderboardState.modal?.isConnected) return leaderboardState.modal;
+    const modal = document.createElement("div");
+    modal.id = "btfw-ratings-modal";
+    modal.className = "modal";
+    modal.dataset.btfwModalState = "closed";
+    modal.setAttribute("hidden", "");
+    modal.setAttribute("aria-hidden", "true");
+    modal.innerHTML = `
+      <div class="modal-background"></div>
+      <div class="modal-card btfw-modal" role="dialog" aria-modal="true" aria-labelledby="btfw-ratings-modal-title">
+        <header class="modal-card-head">
+          <p class="modal-card-title" id="btfw-ratings-modal-title">Community Ratings</p>
+          <button class="delete" type="button" aria-label="Close"></button>
+        </header>
+        <section class="modal-card-body">
+          <div class="btfw-ratings-modal__scroll">
+            <div class="btfw-ratings-modal__loading">Loading ratings…</div>
+            <div class="btfw-ratings-modal__error" hidden></div>
+            <div class="btfw-ratings-modal__list" hidden aria-live="polite"></div>
+          </div>
+        </section>
+        <footer class="modal-card-foot">
+          <button type="button" class="button is-link btfw-ratings-modal__close">Close</button>
+        </footer>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector(".modal-background")?.addEventListener("click", closeLeaderboardModal);
+    modal.querySelector(".delete")?.addEventListener("click", closeLeaderboardModal);
+    modal.querySelector(".btfw-ratings-modal__close")?.addEventListener("click", closeLeaderboardModal);
+    modal.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeLeaderboardModal();
+    });
+
+    leaderboardState.modal = modal;
+    leaderboardState.scrollEl = modal.querySelector(".btfw-ratings-modal__scroll");
+    leaderboardState.listEl = modal.querySelector(".btfw-ratings-modal__list");
+    leaderboardState.loadingEl = modal.querySelector(".btfw-ratings-modal__loading");
+    leaderboardState.errorEl = modal.querySelector(".btfw-ratings-modal__error");
+    return modal;
+  }
+
+  function setLeaderboardLoading(isLoading) {
+    leaderboardState.loading = !!isLoading;
+    if (leaderboardState.loadingEl) {
+      leaderboardState.loadingEl.hidden = !isLoading;
+    }
+    if (isLoading && leaderboardState.listEl) {
+      leaderboardState.listEl.setAttribute("hidden", "");
+    }
+  }
+
+  function setLeaderboardError(message) {
+    if (!leaderboardState.errorEl) return;
+    if (message) {
+      leaderboardState.errorEl.hidden = false;
+      leaderboardState.errorEl.textContent = message;
+    } else {
+      leaderboardState.errorEl.hidden = true;
+      leaderboardState.errorEl.textContent = "";
+    }
+  }
+
+  function normalizeLeaderboardPayload(payload) {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    const keys = ["items", "results", "list", "entries", "data", "movies", "records", "leaderboard", "ratings"];
+    for (const key of keys) {
+      const value = payload[key];
+      if (Array.isArray(value)) return value;
+    }
+    if (typeof payload === "object") {
+      const values = Object.values(payload);
+      if (values.length && values.every((item) => item && typeof item === "object")) {
+        return values;
+      }
+    }
+    return [];
+  }
+
+  function normalizeLeaderboardItem(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    const title = pickString([
+      raw.title,
+      raw.name,
+      raw.mediaTitle,
+      raw.displayTitle,
+      raw.media?.title,
+      raw.lookup?.title,
+    ]);
+    if (!title) return null;
+
+    const avg = Math.min(5, Math.max(0, pickNumber([
+      raw.avg,
+      raw.average,
+      raw.score,
+      raw.rating,
+      raw.mean,
+      raw.averageScore,
+    ]) || 0));
+
+    const votes = Math.max(0, Math.round(pickNumber([
+      raw.votes,
+      raw.voteCount,
+      raw.count,
+      raw.totalVotes,
+      raw.ratingCount,
+      raw.total,
+    ]) || 0));
+
+    const posterPath = pickString([
+      raw.posterPath,
+      raw.poster_path,
+      raw.poster,
+      raw.artwork,
+      raw.image,
+      raw.media?.poster,
+      raw.media?.posterPath,
+      raw.tmdb?.poster_path,
+    ]);
+
+    let posterUrl = pickString([
+      raw.posterUrl,
+      raw.posterURL,
+      raw.imageUrl,
+      raw.imageURL,
+      raw.art,
+    ]);
+
+    if (!posterUrl && posterPath) {
+      if (/^https?:/i.test(posterPath)) {
+        posterUrl = posterPath;
+      } else if (posterPath.startsWith("//")) {
+        posterUrl = `https:${posterPath}`;
+      } else if (posterPath.startsWith("/")) {
+        posterUrl = `https://image.tmdb.org/t/p/w342${posterPath}`;
+      }
+    }
+
+    const safePoster = sanitizePosterUrl(posterUrl);
+
+    const tmdbId = pickString([raw.tmdbId, raw.tmdb_id, raw.tmdb?.id]);
+    const tmdbType = pickString([raw.tmdbType, raw.tmdb_type, raw.type, raw.mediaType, raw.media_type, raw.tmdb?.media_type]);
+    const year = extractYear(raw);
+
+    const id = pickString([raw.mediaKey, raw.key, raw.id, raw.media?.id, raw.media?.key]) || title;
+
+    return {
+      id,
+      title,
+      avg: Number.isFinite(avg) ? avg : 0,
+      votes: Number.isFinite(votes) ? votes : 0,
+      posterUrl: safePoster,
+      tmdbId: tmdbId || "",
+      tmdbType: tmdbType || "",
+      year,
+    };
+  }
+
+  function sortLeaderboardItems(items) {
+    return items.sort((a, b) => {
+      if (b.avg !== a.avg) return b.avg - a.avg;
+      if (b.votes !== a.votes) return b.votes - a.votes;
+      return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+    });
+  }
+
+  function renderLeaderboardItem(item, index) {
+    const title = escapeHtml(item.title);
+    const avg = Number(item.avg) || 0;
+    const avgText = avg ? avg.toFixed(2) : "0.00";
+    const votesText = formatVotes(item.votes);
+    const poster = item.posterUrl ? escapeHtml(item.posterUrl) : "";
+    const fallback = escapeHtml((item.title || "?").trim().charAt(0) || "?");
+    const year = item.year ? `<span class="btfw-ratings-modal__year">(${escapeHtml(item.year)})</span>` : "";
+    return `
+      <article class="btfw-ratings-modal__item" data-index="${index}">
+        <div class="btfw-ratings-modal__poster" data-has-poster="${item.posterUrl ? "true" : "false"}">
+          <img src="${poster}" alt="Poster for ${title}" loading="lazy" ${item.posterUrl ? "" : "hidden"}>
+          <div class="btfw-ratings-modal__poster-fallback"${item.posterUrl ? " hidden" : ""} aria-hidden="true">${fallback}</div>
+        </div>
+        <div class="btfw-ratings-modal__details">
+          <div class="btfw-ratings-modal__title">
+            <span class="btfw-ratings-modal__rank">#${index + 1}</span>
+            <span class="btfw-ratings-modal__name">${title}</span>
+            ${year}
+          </div>
+          <div class="btfw-ratings-modal__scoreline">
+            ${buildStarDisplay(avg)}
+            <span class="btfw-ratings-modal__avg">${avgText}★</span>
+          </div>
+          <div class="btfw-ratings-modal__votes">${escapeHtml(votesText)}</div>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderLeaderboard() {
+    const listEl = leaderboardState.listEl;
+    if (!listEl) return;
+    const items = Array.isArray(leaderboardState.items) ? leaderboardState.items : [];
+    const useGrid = !!leaderboardState.tmdbKey || items.some((item) => item.posterUrl);
+    listEl.dataset.layout = useGrid ? "grid" : "list";
+
+    if (!items.length) {
+      listEl.innerHTML = '<div class="btfw-ratings-modal__empty">No movies have been rated yet.</div>';
+      listEl.removeAttribute("hidden");
+      return;
+    }
+
+    listEl.innerHTML = items.map((item, index) => renderLeaderboardItem(item, index)).join("");
+    listEl.removeAttribute("hidden");
+  }
+
+  function updatePosterElement(index, url) {
+    if (!leaderboardState.modal) return;
+    const card = leaderboardState.modal.querySelector(`.btfw-ratings-modal__item[data-index="${index}"]`);
+    if (!card) return;
+    const poster = card.querySelector(".btfw-ratings-modal__poster");
+    if (!poster) return;
+    const img = poster.querySelector("img");
+    const fallback = poster.querySelector(".btfw-ratings-modal__poster-fallback");
+
+    if (url) {
+      if (img) {
+        img.src = url;
+        img.removeAttribute("hidden");
+        const name = card.querySelector(".btfw-ratings-modal__name")?.textContent?.trim() || "movie";
+        img.alt = `Poster for ${name}`;
+      }
+      if (fallback) fallback.setAttribute("hidden", "");
+      poster.dataset.hasPoster = "true";
+    } else {
+      if (img) {
+        img.setAttribute("hidden", "");
+        img.removeAttribute("src");
+      }
+      if (fallback) fallback.removeAttribute("hidden");
+      poster.dataset.hasPoster = "false";
+    }
+  }
+
+  async function fetchPosterForItem(item) {
+    if (!item || !leaderboardState.tmdbKey || !item.title) return null;
+    const cacheKey = `${item.title.toLowerCase()}::${item.year || ""}`;
+    if (leaderboardState.tmdbCache.has(cacheKey)) {
+      const cached = leaderboardState.tmdbCache.get(cacheKey);
+      return cached || null;
+    }
+
+    const key = leaderboardState.tmdbKey;
+    try {
+      const url = new URL("https://api.themoviedb.org/3/search/multi");
+      url.searchParams.set("api_key", key);
+      url.searchParams.set("include_adult", "false");
+      url.searchParams.set("query", item.title);
+      if (item.year) {
+        url.searchParams.set("year", item.year);
+        url.searchParams.set("first_air_date_year", item.year);
+        url.searchParams.set("primary_release_year", item.year);
+      }
+      const response = await fetch(url.toString());
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const json = await response.json();
+      const results = Array.isArray(json?.results) ? json.results : [];
+      let chosen = null;
+      for (const candidate of results) {
+        if (!candidate || !candidate.poster_path) continue;
+        chosen = candidate;
+        if (item.tmdbType && candidate.media_type === item.tmdbType) break;
+        if (!item.tmdbType && (candidate.media_type === "movie" || candidate.media_type === "tv")) break;
+      }
+      if (chosen?.poster_path) {
+        const posterUrl = sanitizePosterUrl(`https://image.tmdb.org/t/p/w342${chosen.poster_path}`);
+        leaderboardState.tmdbCache.set(cacheKey, posterUrl);
+        return posterUrl;
+      }
+    } catch (error) {
+      console.warn("[ratings] tmdb lookup failed", error);
+    }
+
+    leaderboardState.tmdbCache.set(cacheKey, "");
+    return null;
+  }
+
+  async function hydrateLeaderboardPosters(items) {
+    if (!leaderboardState.tmdbKey) return;
+    const limit = Math.min(items.length, 60);
+    for (let i = 0; i < limit; i += 1) {
+      const item = items[i];
+      if (!item || item.posterUrl) continue;
+      const poster = await fetchPosterForItem(item);
+      if (poster) {
+        item.posterUrl = poster;
+        updatePosterElement(i, poster);
+      }
+      if (!leaderboardState.modal || leaderboardState.modal.dataset.btfwModalState === "closed") {
+        return;
+      }
+    }
+  }
+
+  async function fetchLeaderboardData(signal) {
+    const endpoint = ensureEndpoint();
+    if (!endpoint) return [];
+    const channel = resolveChannelName();
+    const params = new URLSearchParams({ channel });
+    params.set("limit", "200");
+    const base = endpoint.replace(/\/$/, "");
+    const paths = ["leaderboard", "top", "list", "history", ""];
+    let lastError = null;
+
+    for (const path of paths) {
+      const url = path ? `${base}/${path}` : base;
+      const target = `${url}?${params.toString()}`;
+      try {
+        const response = await fetch(target, { signal, credentials: "omit" });
+        if (response.status === 404 || response.status === 405) {
+          continue;
+        }
+        if (!response.ok) {
+          const text = await response.text().catch(() => "");
+          throw new Error(`HTTP ${response.status} ${text}`.trim());
+        }
+        const payload = await response.json();
+        const normalized = normalizeLeaderboardPayload(payload)
+          .map((item) => normalizeLeaderboardItem(item))
+          .filter(Boolean)
+          .filter((item) => item.votes > 0);
+        return sortLeaderboardItems(normalized);
+      } catch (error) {
+        if (error?.name === "AbortError") throw error;
+        lastError = error;
+      }
+    }
+
+    if (lastError) throw lastError;
+    return [];
+  }
+
+  async function loadLeaderboard() {
+    const modal = ensureLeaderboardModal();
+    const endpoint = ensureEndpoint();
+    if (!endpoint) {
+      setLeaderboardLoading(false);
+      setLeaderboardError("Ratings are disabled for this channel.");
+      if (leaderboardState.listEl) {
+        leaderboardState.listEl.innerHTML = "";
+        leaderboardState.listEl.setAttribute("hidden", "");
+      }
+      return;
+    }
+
+    if (leaderboardState.abortController) {
+      leaderboardState.abortController.abort();
+    }
+
+    const controller = new AbortController();
+    leaderboardState.abortController = controller;
+    const nextKey = resolveTMDBKey();
+    if (nextKey !== leaderboardState.tmdbKey) {
+      leaderboardState.tmdbCache.clear();
+    }
+    leaderboardState.tmdbKey = nextKey;
+
+    if (leaderboardState.loadingEl) leaderboardState.loadingEl.textContent = "Loading ratings…";
+    setLeaderboardError("");
+    setLeaderboardLoading(true);
+    if (leaderboardState.scrollEl) leaderboardState.scrollEl.scrollTop = 0;
+
+    try {
+      const items = await fetchLeaderboardData(controller.signal);
+      leaderboardState.items = items;
+      renderLeaderboard();
+      setLeaderboardLoading(false);
+      await hydrateLeaderboardPosters(items);
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+      console.warn("[ratings] leaderboard fetch failed", error);
+      setLeaderboardLoading(false);
+      setLeaderboardError("Unable to load rated movies right now.");
+      if (leaderboardState.listEl) {
+        leaderboardState.listEl.innerHTML = "";
+        leaderboardState.listEl.setAttribute("hidden", "");
+      }
+    } finally {
+      if (leaderboardState.abortController === controller) {
+        leaderboardState.abortController = null;
+      }
+    }
+
+    if (modal) {
+      requestAnimationFrame(() => {
+        const closeBtn = modal.querySelector(".btfw-ratings-modal__close");
+        if (!closeBtn) return;
+        try { closeBtn.focus({ preventScroll: true }); }
+        catch (_) {
+          try { closeBtn.focus(); } catch (_) {}
+        }
+      });
+    }
+  }
+
+  function openLeaderboardModal() {
+    const modal = ensureLeaderboardModal();
+    motion.openModal(modal);
+    loadLeaderboard();
+  }
+
+  function closeLeaderboardModal() {
+    if (leaderboardState.abortController) {
+      leaderboardState.abortController.abort();
+      leaderboardState.abortController = null;
+    }
+    if (leaderboardState.modal) {
+      motion.closeModal(leaderboardState.modal);
+    }
   }
 
   function ensureAnonId() {
@@ -415,7 +983,10 @@ BTFW.define("feature:ratings", [], async () => {
     el.innerHTML = `
       <div class="btfw-ratings__header">
         <span class="btfw-ratings__label">Rate</span>
-        <button type="button" class="btfw-ratings__refresh" title="Refresh rating" aria-label="Refresh rating">⟳</button>
+        <div class="btfw-ratings__actions">
+          <button type="button" class="btfw-ratings__list" title="Show rated movies" aria-label="Show rated movies">≣</button>
+          <button type="button" class="btfw-ratings__refresh" title="Refresh rating" aria-label="Refresh rating">⟳</button>
+        </div>
       </div>
       <div class="btfw-ratings__stars" role="group" aria-label="Rate current media">
         ${STAR_VALUES.map(v => `<button type="button" data-score="${v}" aria-label="Rate ${v} star${v===1?"":"s"}">★</button>`).join("")}
@@ -450,6 +1021,11 @@ BTFW.define("feature:ratings", [], async () => {
 
     el.addEventListener("mouseleave", () => highlightStars(state.lastVote || 0));
 
+    el.querySelector(".btfw-ratings__list")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openLeaderboardModal();
+    });
     el.querySelector(".btfw-ratings__refresh")?.addEventListener("click", () => refreshStats(true));
     return el;
   }
