@@ -127,15 +127,16 @@
 }
 
 #chatwrap .btfw-chat-topbar{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap: 10px;
-  padding:8px 10px;
-  margin:0 0 8px 0;
-  border:0px solid var(--btfw-border);
-  border-radius: var(--btfw-radius);
-  flex-shrink: 0; /* Don't shrink these bars */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    margin: 0 0 8px 0;
+    border: 0px solid var(--btfw-border);
+    border-radius: var(--btfw-radius);
+    flex-shrink: 0;
+    flex-direction: column;
 }
 
 #chatwrap .btfw-chat-bottombar {
