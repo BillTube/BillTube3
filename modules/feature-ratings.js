@@ -207,11 +207,13 @@ BTFW.define("feature:ratings", [], async () => {
     return String(title || "").replace(/^\s*(?:currently|now)\s*playing\s*[:\-]\s*/i, "").replace(/[\s]+/g, " ").trim();
   }
 
-  function deriveMediaKey(media, fallbackTitle) {
-    if (!media || typeof media !== "object") {
-      if (fallbackTitle) return `title:${hashString(fallbackTitle)}`;
-      return "";
-    }
+function deriveMediaKey(media, fallbackTitle) {
+  // Always use a stable title-based key: hash( normalizedTitle :: duration )
+  const duration = Number(media?.seconds ?? media?.duration ?? media?.length ?? 0) || 0;
+  const baseTitle = stripTitlePrefix(media?.title || fallbackTitle || "");
+  if (!baseTitle) return "";
+  return `title:${hashString(`${baseTitle}::${duration}`)}`;
+}
     const parts = [];
     const type = (media.type || media.mediaType || media.provider || "").toString().trim();
     const id = (media.id || media.videoId || media.vid || media.ytId || media.uid || "").toString().trim();
