@@ -24,7 +24,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   ];
 
   const DEFAULT_CONFIG = {
-    version: 6,
+    version: 7,
     tint: "midnight",
     colors: {
       background: "#0d0d0d",
@@ -46,6 +46,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       enabled: true,
       tmdb: {
         apiKey: ""
+      },
+      ratings: {
+        endpoint: ""
       }
     },
     resources: {
@@ -426,6 +429,11 @@ background: "#0d0d0d",
     }
     const key = typeof integrations.tmdb.apiKey === "string" ? integrations.tmdb.apiKey.trim() : "";
     integrations.tmdb.apiKey = key;
+    if (!integrations.ratings || typeof integrations.ratings !== "object") {
+      integrations.ratings = { endpoint: "" };
+    }
+    const ratingsEndpoint = typeof integrations.ratings.endpoint === "string" ? integrations.ratings.endpoint.trim() : "";
+    integrations.ratings.endpoint = ratingsEndpoint;
     if (typeof window !== "undefined") {
       window.BTFW_CONFIG = window.BTFW_CONFIG || {};
       if (typeof window.BTFW_CONFIG.tmdb !== "object") {
@@ -434,9 +442,27 @@ background: "#0d0d0d",
       window.BTFW_CONFIG.tmdb.apiKey = key;
       window.BTFW_CONFIG.tmdbKey = key;
       window.BTFW_CONFIG.integrationsEnabled = integrations.enabled;
+      if (typeof window.BTFW_CONFIG.ratings !== "object") {
+        window.BTFW_CONFIG.ratings = {};
+      }
+      window.BTFW_CONFIG.ratings.endpoint = ratingsEndpoint;
+      window.BTFW_CONFIG.ratingsEndpoint = ratingsEndpoint;
+      window.BTFW_CONFIG.shouldLoadRatings = Boolean(ratingsEndpoint);
+      if (ratingsEndpoint) {
+        window.BTFW_RATINGS_ENDPOINT = ratingsEndpoint;
+      } else {
+        try { delete window.BTFW_RATINGS_ENDPOINT; } catch (_) { window.BTFW_RATINGS_ENDPOINT = ""; }
+      }
       try {
         if (document?.body && document.body.dataset.tmdbKey !== key) {
           document.body.dataset.tmdbKey = key;
+        }
+        if (document?.body) {
+          if (ratingsEndpoint) {
+            document.body.dataset.btfwRatingsEndpoint = ratingsEndpoint;
+          } else if (document.body.dataset?.btfwRatingsEndpoint) {
+            delete document.body.dataset.btfwRatingsEndpoint;
+          }
         }
       } catch (_) {}
     }
@@ -1288,6 +1314,13 @@ background: "#0d0d0d",
     } else {
       normalized.integrations.tmdb.apiKey = normalized.integrations.tmdb.apiKey.trim();
     }
+    if (!normalized.integrations.ratings || typeof normalized.integrations.ratings !== "object") {
+      normalized.integrations.ratings = { endpoint: "" };
+    } else if (typeof normalized.integrations.ratings.endpoint !== "string") {
+      normalized.integrations.ratings.endpoint = "";
+    } else {
+      normalized.integrations.ratings.endpoint = normalized.integrations.ratings.endpoint.trim();
+    }
 
     if (normalized.features && typeof normalized.features === "object") {
       delete normalized.features.videoOverlayPoll;
@@ -1641,6 +1674,15 @@ function replaceBlock(original, startMarker, endMarker, block){
               <label for="btfw-theme-integrations-tmdb">TMDB API key</label>
               <input type="text" id="btfw-theme-integrations-tmdb" data-btfw-bind="integrations.tmdb.apiKey" placeholder="YOUR_TMDB_KEY">
             </div>
+            <div class="integrations-callout">
+              <strong>Ratings API endpoint</strong>
+              <span>Point to your BillTube Worker that stores community ratings for now playing media.</span>
+            </div>
+            <div class="field">
+              <label for="btfw-theme-integrations-ratings">Ratings API endpoint</label>
+              <input type="url" id="btfw-theme-integrations-ratings" data-btfw-bind="integrations.ratings.endpoint" placeholder="https://billtubemovierating.billtube.workers.dev/">
+              <p class="help">Leave blank to disable the rating widget entirely.</p>
+            </div>
           </div>
         </details>
 
@@ -1926,6 +1968,14 @@ function replaceBlock(original, startMarker, endMarker, block){
       updated.integrations.tmdb = { apiKey: "" };
     }
     updated.integrations.tmdb.apiKey = (updated.integrations.tmdb.apiKey || "").trim();
+    if (!updated.integrations.ratings || typeof updated.integrations.ratings !== "object") {
+      updated.integrations.ratings = { endpoint: "" };
+    }
+    if (typeof updated.integrations.ratings.endpoint !== "string") {
+      updated.integrations.ratings.endpoint = "";
+    } else {
+      updated.integrations.ratings.endpoint = updated.integrations.ratings.endpoint.trim();
+    }
     if (updated.features && typeof updated.features === "object") {
       delete updated.features.videoOverlayPoll;
       if (Object.keys(updated.features).length === 0) {
@@ -2219,6 +2269,9 @@ function replaceBlock(original, startMarker, endMarker, block){
     }
     if (!cfg.integrations.tmdb || typeof cfg.integrations.tmdb !== "object") {
       cfg.integrations.tmdb = { apiKey: "" };
+    }
+    if (!cfg.integrations.ratings || typeof cfg.integrations.ratings !== "object") {
+      cfg.integrations.ratings = { endpoint: "" };
     }
 
     if (!cfg.branding || typeof cfg.branding !== "object") {
