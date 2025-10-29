@@ -1,4 +1,4 @@
-BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
+BTFW.define("feature:videoOverlay", [], async () => {
   const $ = (selector, root = document) => root.querySelector(selector);
 
   const CONTROL_SELECTORS = [
@@ -96,9 +96,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     return false;
   }
 
-  function shouldShowAmbientButton() {
-    return isChannelOwner() && isDirectMedia();
-  }
   const localSubsEnabled = () => {
     try {
       return localStorage.getItem(LS.localSubs) !== "0";
@@ -125,7 +122,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
   const AUTO_IDLE_RESET_INTERVAL = 120000;
 
   let autoRefreshInterval = AUTO_REFRESH_BASE_INTERVAL;
-  let ambientModulePromise = null;
   let airplayListenerAttached = false;
   let trackedAirplayVideo = null;
 
@@ -213,10 +209,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       #btfw-video-overlay .btfw-vo-adopted:focus-visible {
         outline: 2px solid rgba(109, 77, 246, 0.95);
         outline-offset: 2px;
-      }
-
-      #btfw-ambient.active {
-        background: rgba(109, 77, 246, 0.8);
       }
 
       .btfw-notification {
@@ -364,38 +356,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     return { left, right };
   }
 
-  function ensureAmbientModule() {
-    if (ambientModulePromise) return ambientModulePromise;
-    if (!window.BTFW || typeof BTFW.init !== "function") {
-      return Promise.reject(new Error("Ambient module unavailable"));
-    }
-    ambientModulePromise = BTFW.init("feature:ambient").catch((err) => {
-      ambientModulePromise = null;
-      throw err;
-    });
-    return ambientModulePromise;
-  }
-
-  function updateAmbientButton(active) {
-    const btn = $("#btfw-ambient");
-    if (!btn) return;
-    btn.classList.toggle("active", !!active);
-  }
-
-  function syncAmbientButton() {
-    const btn = $("#btfw-ambient");
-    if (!btn) return;
-    ensureAmbientModule()
-      .then((ambient) => {
-        updateAmbientButton(ambient.isActive());
-      })
-      .catch(() => {});
-  }
-
-  document.addEventListener("btfw:ambient:state", (event) => {
-    updateAmbientButton(event?.detail?.active);
-  });
-
   function getAirplayCandidate() {
     return document.querySelector("#ytapiplayer video, video");
   }
@@ -502,21 +462,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       customButtons.push({ id: "btfw-fullscreen", icon: "fas fa-expand", tooltip: "Fullscreen", action: toggleFullscreen, section: "right" });
     }
 
-    if (shouldShowAmbientButton()) {
-      customButtons.push({
-        id: "btfw-ambient",
-        icon: "fas fa-sun",
-        tooltip: "Ambient Mode",
-        action: toggleAmbient,
-        section: "left"
-      });
-    } else {
-      const ambientButton = document.querySelector("#btfw-ambient");
-      if (ambientButton?.parentElement) {
-        ambientButton.parentElement.removeChild(ambientButton);
-      }
-    }
-
     customButtons.push({
       id: "btfw-airplay",
       icon: "fas fa-cast",
@@ -541,7 +486,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       }
     });
 
-    syncAmbientButton();
     updateAirplayButtonVisibility();
   }
 
@@ -715,38 +659,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       } else if (document.mozCancelFullScreen) {
         document.mozCancelFullScreen();
       }
-    }
-  }
-
-  async function toggleAmbient() {
-    if (!isDirectMedia()) {
-      showNotification("Ambient mode is only available for direct videos", "warning");
-      updateAmbientButton(false);
-      return;
-    }
-    try {
-      const ambient = await ensureAmbientModule();
-      const enabling = !ambient.isActive();
-      const active = await ambient.toggle();
-
-      if (active) {
-        try {
-          ambient.refresh();
-        } catch (_) {}
-      }
-
-      updateAmbientButton(active);
-
-      if (active) {
-        showNotification("Ambient mode enabled", "info");
-      } else if (enabling) {
-        showNotification("Unable to enable ambient mode", "error");
-      } else {
-        showNotification("Ambient mode disabled", "info");
-      }
-    } catch (e) {
-      console.warn("[video-overlay] Ambient toggle failed:", e);
-      showNotification("Failed to toggle ambient mode", "error");
     }
   }
 
@@ -951,7 +863,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     name: "feature:videoOverlay",
     setLocalSubsEnabled: setLocalSubs,
     toggleFullscreen,
-    toggleAmbient,
     enableAirplay
   };
 });
