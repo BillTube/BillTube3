@@ -48,6 +48,7 @@ BTFW.define("feature:ratings", [], async () => {
     statusNode: null,
     selfNode: null,
     errorNode: null,
+    announcedStart: false,
 
     lookup: null,
     currentMedia: null,
@@ -1443,9 +1444,25 @@ BTFW.define("feature:ratings", [], async () => {
     }
   }
 
+  function announceActivation() {
+    if (state.announcedStart) return;
+    state.announcedStart = true;
+
+    try {
+      const notify = window.BTFW_notify;
+      if (notify && typeof notify.info === "function") {
+        notify.info({ title: "Movie rating has started" });
+      } else if (notify && typeof notify.notify === "function") {
+        notify.notify({ title: "Movie rating has started", kind: "info" });
+      }
+    } catch (_) {}
+  }
+
   function boot() {
     const ui = ensureUI();
     if (!ui) { setTimeout(boot, 800); return; }
+
+    announceActivation();
 
     updateVisibility();
     bindSocketHandlers();
