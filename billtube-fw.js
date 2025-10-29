@@ -1,21 +1,17 @@
 /*! BillTube Framework — v3.4f */
-const CDN_BASE = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-slim";
-const DEV_BRANCH_SUFFIX = "@dev";
-const MAIN_BRANCH_SUFFIX = "@main";
+const DEV_CDN = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-slim@dev";
 
 (function(){
-  var scripts = document.getElementsByTagName('script');
-
   var Registry=Object.create(null);
   function define(name,deps,factory){ Registry[name]={deps:deps||[],factory:factory,instance:null}; }
   async function init(name){
     var m=Registry[name]; if(!m) throw new Error("Module not found: "+name);
     if(m.instance) return m.instance;
     for(var i=0;i<m.deps.length;i++){ await init(m.deps[i]); }
-    m.instance = await m.factory({define, init, BASE});
+    m.instance = await m.factory({define, init, DEV_CDN});
     return m.instance;
   }
-  window.BTFW = { define, init, BASE };
+  window.BTFW = { define, init, DEV_CDN };
 
   var BootOverlay=(function(){
     var overlay=null;
@@ -143,33 +139,62 @@ var SUPPORTS_PRELOAD = (function(){
 })();
 
 function preload(href){
-  return new Promise(function(resolve){
-    var l = document.createElement("link");
-    var url = qparam(href, "v="+encodeURIComponent(BTFW_VERSION));
+  return new Promise(function(resolve, reject){
+    var link = document.createElement("link");
+    var url;
 
-    if (SUPPORTS_PRELOAD) {
-      l.rel = "preload";
-      l.as  = "style";
-      l.onload = function(){
-        l.rel = "stylesheet";
-        l.removeAttribute("onload");
-        resolve(true);
-      };
-      l.onerror = function(){
-        l.rel = "stylesheet";
-        resolve(false);
-      };
-    } else {
-      l.rel = "stylesheet";
-      l.onload = function(){ resolve(true); };
-      l.onerror = function(){ resolve(false); };
+    try {
+      url = qparam(href, "v="+encodeURIComponent(BTFW_VERSION));
+    } catch (err) {
+      reject(err instanceof Error ? err : new Error("Failed to prepare preload URL"));
+      return;
     }
 
-    l.href = url;
-    document.head.appendChild(l);
+    var settled = false;
+
+    function promoteToStylesheet(){
+      link.rel = "stylesheet";
+      link.removeAttribute("onload");
+      link.removeAttribute("onerror");
+    }
+
+    function handleLoad(){
+      if (settled) return;
+      settled = true;
+      promoteToStylesheet();
+      resolve(true);
+    }
+
+    function handleError(event){
+      if (settled) return;
+      settled = true;
+      promoteToStylesheet();
+      var reason = event && event.error ? event.error : new Error("Failed to preload stylesheet: " + href);
+      reject(reason);
+    }
+
+    if (SUPPORTS_PRELOAD) {
+      link.rel = "preload";
+      link.as  = "style";
+    } else {
+      link.rel = "stylesheet";
+    }
+
+    link.onload = handleLoad;
+    link.onerror = handleError;
+    link.href = url;
+
+    document.head.appendChild(link);
 
     if (!SUPPORTS_PRELOAD) {
-      resolve(true);
+      // Fallback browsers load styles directly; mark success once appended.
+      // Give the browser a microtask to signal errors before resolving.
+      Promise.resolve().then(function(){
+        if (!settled) {
+          settled = true;
+          resolve(true);
+        }
+      });
     }
   });
 }
@@ -184,11 +209,8 @@ function load(src){
     document.head.appendChild(s);
   });
 }
-
-  var DEV_CDN = CDN_BASE + DEV_BRANCH_SUFFIX;
-  var MAIN_CDN = CDN_BASE + MAIN_BRANCH_SUFFIX;
   
-  console.log('[BTFW] BASE:', BASE);
+  console.log('[BTFW] DEV_CDN:', DEV_CDN);
   console.log('[BTFW] isDev:', isDev);
   console.log('[BTFW] USE_BUNDLES:', USE_BUNDLES);
   // Preload CSS in proper order for layout stability
