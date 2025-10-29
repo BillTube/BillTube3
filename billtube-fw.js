@@ -2,22 +2,38 @@
 const DEV_CDN = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-slim@dev";
 
 (function(){
-  var Registry=Object.create(null);
-  function define(name,deps,factory){ Registry[name]={deps:deps||[],factory:factory,instance:null}; }
-  async function init(name){
-    var m=Registry[name]; if(!m) throw new Error("Module not found: "+name);
-    if(m.instance) return m.instance;
-    for(var i=0;i<m.deps.length;i++){ await init(m.deps[i]); }
-    m.instance = await m.factory({define, init, DEV_CDN});
-    return m.instance;
+  var Registry = Object.create(null);
+  function define(moduleName, moduleDeps, functionFactory) {
+    Registry[moduleName] = {
+      deps: moduleDeps || [],
+      factory: functionFactory,
+      instance: null
+    };
   }
+  async function init(moduleName){
+    var module = Registry[moduleName]; 
+    if (!module) {
+      throw new Error("Module not found: "+moduleName);
+    }
+    if (module.instance) {
+      return module.instance;
+    }
+    
+    for (var i=0;i<module.deps.length;i++) { 
+      await init(module.deps[i]);
+    }
+    
+    module.instance = await module.factory({define, init, DEV_CDN});
+    return module.instance;
+  }
+
   window.BTFW = { define, init, DEV_CDN };
 
   var BootOverlay=(function(){
-    var overlay=null;
-    var styleEl=null;
-    var muteInterval=null;
-    var suppressedVideos=new Map();
+    var overlay = null;
+    var styleEl = null;
+    var muteInterval = null;
+    var suppressedVideos = new Map();
 
     function cleanupVideoRefs(){
       for (const [video] of suppressedVideos) {
@@ -27,13 +43,13 @@ const DEV_CDN = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-s
       }
     }
 
-    function suppressVideoAudio(){
+    function suppressVideoAudio() {
       cleanupVideoRefs();
-      var videos=document.querySelectorAll('video');
-      videos.forEach(function(video){
+      var videos = document.querySelectorAll('video');
+      videos.forEach(function(video) {
         if (!(video instanceof HTMLVideoElement)) return;
         if (!suppressedVideos.has(video)) {
-          var state={
+          var state = {
             muted: video.muted,
             volume: (typeof video.volume === 'number') ? video.volume : null
           };
@@ -44,14 +60,14 @@ const DEV_CDN = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-s
       });
     }
 
-    function startAudioSuppression(){
+    function startAudioSuppression() {
       suppressVideoAudio();
       if (muteInterval) return;
       muteInterval = setInterval(suppressVideoAudio, 250);
       document.documentElement && document.documentElement.classList.add('btfw-loading-muted');
     }
 
-    function stopAudioSuppression(){
+    function stopAudioSuppression() {
       if (muteInterval) {
         clearInterval(muteInterval);
         muteInterval = null;
@@ -72,17 +88,8 @@ const DEV_CDN = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-s
       document.documentElement && document.documentElement.classList.remove('btfw-loading-muted');
     }
 
-    function ensureStyles(){
-      if (styleEl) return;
-      styleEl=document.createElement('style');
-      styleEl.id='btfw-boot-overlay-style';
-      styleEl.textContent="\n        #btfw-boot-overlay{\n          position:fixed;\n          inset:0;\n          background:radial-gradient(circle at 20% 20%, rgba(41,52,89,0.28), rgba(5,6,13,0.92));\n          backdrop-filter:blur(6px);\n          display:flex;\n          align-items:center;\n          justify-content:center;\n          z-index:10000;\n          opacity:1;\n          transition:opacity 220ms ease, visibility 220ms ease;\n          visibility:visible;\n        }\n        #btfw-boot-overlay[data-state=hidden]{\n          opacity:0;\n          visibility:hidden;\n        }\n        .btfw-boot-overlay__card{\n          display:flex;\n          flex-direction:column;\n          align-items:center;\n          gap:1rem;\n          padding:2.5rem 3rem;\n          border-radius:18px;\n          background:rgba(9,12,23,0.82);\n          box-shadow:0 18px 48px rgba(3,8,20,0.45);\n          color:#f5f7ff;\n          text-align:center;\n          min-width:260px;\n          font-family:'Inter','Segoe UI',sans-serif;\n        }\n        .btfw-boot-overlay__ring{\n          width:58px;\n          height:58px;\n          border-radius:50%;\n          border:4px solid rgba(255,255,255,0.18);\n          border-top-color:#6d4df6;\n          animation:btfw-boot-spin 1s linear infinite;\n        }\n        .btfw-boot-overlay__label{\n          font-size:0.95rem;\n          letter-spacing:0.02em;\n          opacity:0.88;\n        }\n        .btfw-boot-overlay__label strong{\n          display:block;\n          font-size:1.05rem;\n          letter-spacing:0.03em;\n          margin-bottom:0.35rem;\n        }\n        .btfw-boot-overlay__error{\n          display:none;\n          font-size:0.85rem;\n          color:#ffb4c1;\n        }\n        #btfw-boot-overlay[data-state=error] .btfw-boot-overlay__error{\n          display:block;\n        }\n        #btfw-boot-overlay[data-state=error] .btfw-boot-overlay__ring{\n          border-color:rgba(255,180,193,0.3);\n          border-top-color:#ff5678;\n          animation:none;\n        }\n        @keyframes btfw-boot-spin{\n          from{transform:rotate(0deg);}\n          to{transform:rotate(360deg);}\n        }\n      ";
-      document.head.appendChild(styleEl);
-    }
-
     function attach(){
       if (overlay) return overlay;
-      ensureStyles();
       overlay=document.createElement('div');
       overlay.id='btfw-boot-overlay';
       overlay.setAttribute('role','status');
@@ -211,8 +218,6 @@ function load(src){
 }
   
   console.log('[BTFW] DEV_CDN:', DEV_CDN);
-  console.log('[BTFW] isDev:', isDev);
-  console.log('[BTFW] USE_BUNDLES:', USE_BUNDLES);
   // Preload CSS in proper order for layout stability
   Promise.all([
     preload(DEV_CDN+"/css/tokens.css"),
@@ -221,7 +226,8 @@ function load(src){
     preload(DEV_CDN+"/css/chat.css"),
     preload(DEV_CDN+"/css/overlays.css"),
     preload(DEV_CDN+"/css/player.css"),
-    preload(DEV_CDN+"/css/mobile.css")
+    preload(DEV_CDN+"/css/mobile.css"),
+    preload(DEV_CDN+"/css/boot-overlay.css")
   ]).then(function(){
     // Always load bundled modules from the dev CDN
     var bundles = [
