@@ -1,4 +1,4 @@
-// ==BTFW_THEME_ADMIN_START==
+// BTFW_THEME_ADMIN_START
 window.BTFW_THEME_ADMIN = {
     "version": 6,
     "tint": "custom",
@@ -38,17 +38,16 @@ window.BTFW_THEME_ADMIN = {
       "headerName": "BillTube3 Slim (Experimental)"
     }
   };
-  // ==BTFW_THEME_ADMIN_END==
+  // BTFW_THEME_ADMIN_END
   
   // BTFW_LOADER_SENTINEL
   (function (W, D) {
-    // --- configurable bits ---
+    // Configurable bits
     var CDN_BASE = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-slim";
     var FILE     = "billtube-fw.js";
     var VERSION  = "dev-001";
     var DEV_NOCACHE = false;
     var DEV_MODE = true;
-    // --------------------------
     
     // Expose DEV_MODE globally for billtube-fw.js to check
     W.DEV_MODE = DEV_MODE;
