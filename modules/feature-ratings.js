@@ -48,6 +48,7 @@ BTFW.define("feature:ratings", [], async () => {
     statusNode: null,
     selfNode: null,
     errorNode: null,
+    announcedStart: false,
 
     ratingVisible: false,
     ratingWindowAnnounced: false,
@@ -1474,6 +1475,8 @@ BTFW.define("feature:ratings", [], async () => {
   function boot() {
     const ui = ensureUI();
     if (!ui) { setTimeout(boot, 800); return; }
+
+    announceActivation();
 
     updateVisibility();
     bindSocketHandlers();
