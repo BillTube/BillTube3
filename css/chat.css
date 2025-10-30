@@ -1,4 +1,7 @@
-
+#messagebuffer {
+  contain: layout style paint;
+  content-visibility: auto;
+}
 #messagebuffer > div {
   content-visibility: auto;
   contain-intrinsic-size: auto 60px; /* Estimated height for layout calculations */
@@ -124,15 +127,16 @@
 }
 
 #chatwrap .btfw-chat-topbar{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 10px;
-  padding:8px 10px;
-  margin:0 0 8px 0;
-  border:1px solid var(--btfw-border);
-  border-radius: var(--btfw-radius);
-  flex-shrink: 0; /* Don't shrink these bars */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1px;
+    padding: 8px 10px;
+    margin: 0 0 8px 0;
+    border: 0px solid var(--btfw-border);
+    border-radius: var(--btfw-radius);
+    flex-shrink: 0;
+    flex-direction: column;
 }
 
 #chatwrap .btfw-chat-bottombar {
@@ -150,11 +154,12 @@
 
 .btfw-chat-topbar-left {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
     flex: 1 1 auto;
     min-width: 0;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .btfw-chat-topbar-actions{
@@ -165,10 +170,19 @@
 }
 
 #btfw-nowplaying-slot{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+}
+
+#btfw-nowplaying-slot > .btfw-nowplaying{
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  width: 100%;
 }
 
 #btfw-mobile-modules-toggle{
@@ -315,7 +329,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(60% 80% at 12% 46%, color-mix(in srgb, var(--btfw-color-accent) 44%, transparent 56%), transparent 58%);
+  background: radial-gradient(80% 90% at 12% 46%, color-mix(in srgb, var(--btfw-color-accent) 44%, transparent 96%), transparent 48%);
   opacity: .65;
   pointer-events: none;
   z-index: 0;
@@ -537,10 +551,11 @@
 
 #btfw-ct-modal{
   position: absolute; inset: 0;
-  display: none;
   z-index: 4800;
 }
-#btfw-ct-modal.is-active{ display: block; }
+#btfw-ct-modal[hidden]{
+  display: none !important;
+}
 #btfw-ct-modal .btfw-ct-backdrop{
   position: absolute; inset: 0;
   background: color-mix(in srgb, var(--btfw-color-bg) 40%, black 60%);
@@ -560,10 +575,8 @@
 #btfw-ct-modal .btfw-ct-cardhead{
   display:flex; align-items:center; justify-content:space-between;
   padding: 10px 12px;
-  background: linear-gradient(90deg,
-    color-mix(in srgb, var(--btfw-color-accent) 96%, transparent 4%),
-    color-mix(in srgb, var(--btfw-color-accent) 80%, white 20%));
   color: var(--btfw-color-text); font-weight: 600; letter-spacing: .2px;
+  border-bottom: 1px solid var(--btfw-border);
 }
 #btfw-ct-modal .btfw-ct-close{
   background: transparent;
@@ -613,9 +626,9 @@
 #chatline{
   flex: 1 1 auto;
   min-width: 0;
-  background: color-mix(in srgb, var(--btfw-color-panel) 74%, transparent 26%);
+  background: color-mix(in srgb, var(--btfw-color-panel) 74%, transparent 26%)!important;
   color: var(--btfw-color-text);
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 40%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 80%);
   border-radius: 999px;
   padding: 10px 16px;
   min-height: 44px;
@@ -1067,12 +1080,17 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
     position: relative;
     transition: .3s;
 }
-
+.chat-msg-J44J .username {
+text-shadow: 6px 6px 2px #424242b3, 5px 5px 2px #808080, 9px 2px 3px #808080a6 !important;
+    font-family: Courier New;
+    -webkit-text-fill-color: #e4e1e7bf;
+    animation: lights 8s 750ms linear infinite;
+}
 /* Vices username - Purple glow */
 .chat-msg-Vices .username {
-    -webkit-text-fill-color: #922fffbf;
-    animation: lights 8s 750ms linear infinite;
-    font-weight: 1000;
+    -webkit-text-fill-color: #b26dff91;
+    animation: lights 2s 750ms linear infinite;
+    letter-spacing: 0.02em;
 }
 .chat-msg-Nailgun .username {
     -webkit-background-clip: text, text, border-box, border-box, border-box;

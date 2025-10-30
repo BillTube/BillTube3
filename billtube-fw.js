@@ -229,14 +229,47 @@ function load(src){
     preload(DEV_CDN+"/css/mobile.css"),
     preload(DEV_CDN+"/css/boot-overlay.css")
   ]).then(function(){
-    // Always load bundled modules from the dev CDN
-    var bundles = [
-      "/dist/core.bundle.js",
-      "/dist/chat.bundle.js",
-      "/dist/player.bundle.js",
-      "/dist/playlist.bundle.js",
-      "/dist/admin.bundle.js",
-      "/dist/features.bundle.js"
+    // Load modules in dependency order - core first, then layout-dependent modules
+    var mods=[
+      "modules/util-motion.js",
+      "modules/feature-style-core.js",
+      "modules/feature-bulma-layer.js",
+      "modules/feature-layout.js",
+      "modules/feature-channels.js",
+      "modules/feature-footer.js",
+      "modules/feature-player.js",
+      "modules/feature-stack.js",
+      "modules/feature-chat.js",
+      "modules/feature-chat-tools.js",
+      "modules/feature-chat-filters.js",
+      "modules/feature-navbar.js",
+      "modules/feature-modal-skin.js",
+      "modules/feature-nowplaying.js",
+      "modules/feature-chat-username-colors.js",
+      "modules/feature-emotes.js",
+      "modules/feature-chat-media.js",
+      "modules/feature-emoji-compat.js",
+      "modules/feature-chat-avatars.js",
+      "modules/feature-chat-timestamps.js",
+      "modules/feature-chat-ignore.js",
+      "modules/feature-gifs.js",
+      "modules/feature-video-overlay.js",
+      "modules/feature-poll-overlay.js",
+      "modules/feature-pip.js",
+      "modules/feature-notify.js",
+      "modules/feature-notification-sounds.js",
+      "modules/feature-sync-guard.js",
+      "modules/feature-chat-commands.js",
+      "modules/feature-playlist-performance.js",
+      "modules/feature-playlist-tools.js",
+      "modules/feature-local-subs.js",
+      "modules/feature-emoji-loader.js",
+      "modules/feature-billcast.js",
+      "modules/feature-motd-editor.js",
+      "modules/feature-video-enhancements.js",
+      "modules/feature-channel-theme-admin.js",
+      "modules/feature-theme-settings.js",
+      "modules/feature-ratings.js"
     ];
     return Promise.all(bundles.map(function(file){
       return load(DEV_CDN + file);
@@ -251,7 +284,7 @@ function load(src){
     return BTFW.init("feature:layout");
   }).then(function(){
     // Initialize all remaining modules
-    return Promise.all([
+    var inits = [
       BTFW.init("feature:channels"),
       BTFW.init("feature:footer"),
       BTFW.init("feature:player"),
@@ -270,11 +303,11 @@ function load(src){
       BTFW.init("feature:modal-skin"),
       BTFW.init("feature:nowplaying"),
       BTFW.init("feature:gifs"),
-      BTFW.init("feature:ambient"),
       BTFW.init("feature:videoOverlay"),
       BTFW.init("feature:poll-overlay"),
       BTFW.init("feature:pip"),
       BTFW.init("feature:notify"),
+      BTFW.init("feature:notification-sounds"),
       BTFW.init("feature:syncGuard"),
       BTFW.init("feature:chat-commands"),
       BTFW.init("feature:playlistPerformance"),
@@ -285,8 +318,10 @@ function load(src){
       BTFW.init("feature:motd-editor"),
       BTFW.init("feature:videoEnhancements"),
       BTFW.init("feature:channelThemeAdmin"),
-      BTFW.init("feature:themeSettings")
-    ]);
+      BTFW.init("feature:themeSettings"),
+      BTFW.init("feature:ratings")
+    ];
+    return Promise.all(inits);
   }).then(function(){
     console.log("[BTFW v3.4f] Ready.");
     // Dispatch a final ready event

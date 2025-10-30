@@ -3,9 +3,9 @@ BTFW.define("feature:navbar", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
 
   const MOBILE_BREAKPOINT = 768;
-  let navToggleButton = null;
   let mobileNavActive = false;
   let mobileNavHandlersBound = false;
+  let lastMobileDispatch = { open: null, mobile: null };
 
   function getUserName(){
     try { return (window.CLIENT && CLIENT.name) ? CLIENT.name : ""; }
@@ -173,100 +173,118 @@ BTFW.define("feature:navbar", [], async () => {
     setupMobileNav();
   }
 
-  function ensureMobileToggle(){
+  function isMobileNavOpen(){
     const host = document.getElementById("btfw-navhost");
-    if (!host) return null;
-    if (!navToggleButton) {
-      navToggleButton = document.createElement("button");
-      navToggleButton.id = "btfw-nav-toggle";
-      navToggleButton.type = "button";
-      navToggleButton.className = "btfw-nav-toggle";
-      navToggleButton.setAttribute("aria-expanded", "false");
-      navToggleButton.setAttribute("aria-label", "Open navigation");
-      navToggleButton.innerHTML = `
-        <span class="btfw-nav-toggle__bars" aria-hidden="true">
-          <span></span><span></span><span></span>
-        </span>
-        <span class="btfw-nav-toggle__label">Menu</span>
-      `;
-      navToggleButton.addEventListener("click", () => {
-        const hostEl = document.getElementById("btfw-navhost");
-        if (!hostEl) return;
-        const isOpen = hostEl.getAttribute("data-mobile-open") === "true";
-        const next = !isOpen;
-        hostEl.setAttribute("data-mobile-open", next ? "true" : "false");
-        syncToggleState();
-      });
-    }
-    if (navToggleButton.parentElement !== host) {
-      host.insertBefore(navToggleButton, host.firstChild);
-    }
-    return navToggleButton;
+    if (!host) return false;
+    return host.getAttribute("data-mobile-open") === "true";
   }
 
-  function syncToggleState(){
+  function dispatchMobileState(open){
     const host = document.getElementById("btfw-navhost");
-    if (!host || !navToggleButton) return;
-    const isOpen = host.getAttribute("data-mobile-open") === "true";
-    
-    const currentExpanded = navToggleButton.getAttribute("aria-expanded");
-    if (currentExpanded !== (isOpen ? "true" : "false")) {
-      navToggleButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    const mobile = host?.classList.contains("btfw-navhost--mobile") || false;
+    if (lastMobileDispatch.open === open && lastMobileDispatch.mobile === mobile) return;
+    lastMobileDispatch = { open, mobile };
+    document.dispatchEvent(new CustomEvent("btfw:navbar:mobileState", {
+      detail: { open, mobile }
+    }));
+  }
+
+  function setMobileNavOpen(open){
+    const host = document.getElementById("btfw-navhost");
+    if (!host) return;
+    const value = open ? "true" : "false";
+    const prev = host.getAttribute("data-mobile-open");
+    if (prev !== value) {
+      host.setAttribute("data-mobile-open", value);
     }
-    
-    const currentLabel = navToggleButton.getAttribute("aria-label");
-    const newLabel = isOpen ? "Close navigation" : "Open navigation";
-    if (currentLabel !== newLabel) {
-      navToggleButton.setAttribute("aria-label", newLabel);
+
+    const isMobile = host.classList.contains("btfw-navhost--mobile");
+    if (document.body) {
+      if (isMobile && open) document.body.classList.add("btfw-mobile-nav-open");
+      else document.body.classList.remove("btfw-mobile-nav-open");
     }
-    
-    navToggleButton.classList.toggle("btfw-nav-toggle--open", isOpen);
-    
-    const label = navToggleButton.querySelector(".btfw-nav-toggle__label");
-    if (label) {
-      const newText = isOpen ? "Close" : "Menu";
-      if (label.textContent !== newText) {
-        label.textContent = newText;
-      }
+
+    dispatchMobileState(open);
+  }
+
+  function ensureMobileCloseButton(){
+    const host = document.getElementById("btfw-navhost");
+    if (!host) return;
+    const nav = host.querySelector(":is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)");
+    if (!nav) return;
+
+    let btn = document.getElementById("btfw-mobile-nav-close");
+    if (btn && btn.closest(":is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)") !== nav) {
+      btn.remove();
+      btn = null;
     }
+
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "btfw-mobile-nav-close";
+      btn.className = "btfw-mobile-nav-close";
+      btn.setAttribute("aria-label", "Close navigation menu");
+      btn.innerHTML = "<span aria-hidden=\"true\">&times;</span>";
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        setMobileNavOpen(false);
+      });
+      nav.insertBefore(btn, nav.firstChild);
+    }
+  }
+
+  function toggleMobileNav(){
+    const host = document.getElementById("btfw-navhost");
+    if (!host) return;
+    if (!host.classList.contains("btfw-navhost--mobile")) {
+      setMobileNavOpen(true);
+      return;
+    }
+    setMobileNavOpen(!isMobileNavOpen());
   }
 
   function updateMobileNavState(){
     const host = document.getElementById("btfw-navhost");
     if (!host) return;
-    ensureMobileToggle();
+    const wasMobile = host.classList.contains("btfw-navhost--mobile");
     const shouldEnable = window.innerWidth <= MOBILE_BREAKPOINT;
     host.classList.toggle("btfw-navhost--mobile", shouldEnable);
     if (shouldEnable) {
-      if (!mobileNavActive) {
-        host.setAttribute("data-mobile-open", "false");
+      if (!mobileNavActive || !wasMobile) {
         mobileNavActive = true;
+        setMobileNavOpen(false);
+      } else {
+        setMobileNavOpen(isMobileNavOpen());
       }
     } else {
-      host.setAttribute("data-mobile-open", "true");
       mobileNavActive = false;
+      setMobileNavOpen(true);
     }
-    syncToggleState();
   }
 
   function setupMobileNav(){
     const host = document.getElementById("btfw-navhost");
     if (!host) return;
-    ensureMobileToggle();
+    ensureMobileCloseButton();
     updateMobileNavState();
     if (mobileNavHandlersBound) return;
     mobileNavHandlersBound = true;
     window.addEventListener("resize", () => updateMobileNavState());
     host.addEventListener("click", (ev) => {
       if (window.innerWidth > MOBILE_BREAKPOINT) return;
-      if (!host) return;
       const target = ev.target.closest?.('#btfw-navhost a, #btfw-navhost button');
-      if (!target || target === navToggleButton) return;
-      host.setAttribute("data-mobile-open", "false");
-      syncToggleState();
+      if (!target) return;
+      setMobileNavOpen(false);
     }, true);
   }
 
+  document._btfw_nav_setMobileOpen = setMobileNavOpen;
+  document._btfw_nav_toggleMobile = toggleMobileNav;
+  document._btfw_nav_isMobileOpen = isMobileNavOpen;
+
+  // ---------- Boot ----------
   function boot(){
     ensureThemeButtonHook();
     pruneNavLinks();

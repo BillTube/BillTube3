@@ -17,14 +17,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(180deg,
-    rgba(11, 17, 29, 0.15) 0%,
-    transparent 35%,
-    transparent 65%,
-    rgba(11, 17, 29, 0.08) 100%
-  );
   opacity: 1;
-  transform: translate3d(0, 0, 0);
   will-change: opacity;
 }
 
@@ -42,10 +35,13 @@
 #videowrap iframe,
 #videowrap #ytapiplayer,
 #videowrap .video-js {
-  transform: translate3d(0, 0, 0);  /* Creates GPU layer */
   backface-visibility: hidden;       /* Optimization hint */
   -webkit-backface-visibility: hidden;
-  will-change: transform;            /* Prepare for animations */
+  will-change: auto;                 /* Default state avoids extra GPU layers */
+}
+
+#videowrap.is-transitioning video {
+  will-change: transform;            /* Promote only during transitions */
 }
 .video-js, 
 .video-js * {
@@ -1172,6 +1168,8 @@
     flex-basis: 100% !important;
   }
 }
+
+
 
 
 

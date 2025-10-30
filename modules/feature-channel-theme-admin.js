@@ -24,7 +24,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   ];
 
   const DEFAULT_CONFIG = {
-    version: 6,
+    version: 7,
     tint: "midnight",
     colors: {
       background: "#0d0d0d",
@@ -46,6 +46,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       enabled: true,
       tmdb: {
         apiKey: ""
+      },
+      ratings: {
+        endpoint: ""
       }
     },
     resources: {
@@ -107,7 +110,7 @@ background: "#0d0d0d",
     }
   };
 
-  const CRITICAL_FONT_WEIGHTS = ["400", "600"];
+  const CRITICAL_FONT_WEIGHTS = [400, 500, 600];
   const GOOGLE_FONT_WEIGHT_QUERY = CRITICAL_FONT_WEIGHTS.join(";");
 
   const FONT_PRESETS = {
@@ -176,6 +179,8 @@ background: "#0d0d0d",
   const MODULE_FIELD_MIN = 3;
   const MODULE_FIELD_MAX = 10;
   const MODULE_INPUT_SELECTOR = '[data-role="module-inputs"]';
+  const moduleWatcherRegistry = new WeakMap();
+  const activeModuleWatchers = new Set();
 
   const LOADER_SENTINEL = "// BTFW_LOADER_SENTINEL";
   const LOADER_SENTINEL_REG = /\s*\/\/\s*BTFW_LOADER_SENTINEL/;
@@ -401,6 +406,11 @@ background: "#0d0d0d",
     }
     const key = typeof integrations.tmdb.apiKey === "string" ? integrations.tmdb.apiKey.trim() : "";
     integrations.tmdb.apiKey = key;
+    if (!integrations.ratings || typeof integrations.ratings !== "object") {
+      integrations.ratings = { endpoint: "" };
+    }
+    const ratingsEndpoint = typeof integrations.ratings.endpoint === "string" ? integrations.ratings.endpoint.trim() : "";
+    integrations.ratings.endpoint = ratingsEndpoint;
     if (typeof window !== "undefined") {
       window.BTFW_CONFIG = window.BTFW_CONFIG || {};
       if (typeof window.BTFW_CONFIG.tmdb !== "object") {
@@ -409,9 +419,27 @@ background: "#0d0d0d",
       window.BTFW_CONFIG.tmdb.apiKey = key;
       window.BTFW_CONFIG.tmdbKey = key;
       window.BTFW_CONFIG.integrationsEnabled = integrations.enabled;
+      if (typeof window.BTFW_CONFIG.ratings !== "object") {
+        window.BTFW_CONFIG.ratings = {};
+      }
+      window.BTFW_CONFIG.ratings.endpoint = ratingsEndpoint;
+      window.BTFW_CONFIG.ratingsEndpoint = ratingsEndpoint;
+      window.BTFW_CONFIG.shouldLoadRatings = Boolean(ratingsEndpoint);
+      if (ratingsEndpoint) {
+        window.BTFW_RATINGS_ENDPOINT = ratingsEndpoint;
+      } else {
+        try { delete window.BTFW_RATINGS_ENDPOINT; } catch (_) { window.BTFW_RATINGS_ENDPOINT = ""; }
+      }
       try {
         if (document?.body && document.body.dataset.tmdbKey !== key) {
           document.body.dataset.tmdbKey = key;
+        }
+        if (document?.body) {
+          if (ratingsEndpoint) {
+            document.body.dataset.btfwRatingsEndpoint = ratingsEndpoint;
+          } else if (document.body.dataset?.btfwRatingsEndpoint) {
+            delete document.body.dataset.btfwRatingsEndpoint;
+          }
         }
       } catch (_) {}
     }
@@ -616,12 +644,26 @@ background: "#0d0d0d",
     return FONT_PRESETS[key] || null;
   }
 
-  function buildGoogleFontUrl(name){
+  function buildPresetFontUrl(preset, weights = null){
+    if (!preset || !preset.google) return "";
+
+    const weightQuery = weights
+      ? (Array.isArray(weights) ? weights.join(";") : weights)
+      : CRITICAL_FONT_WEIGHTS.join(";");
+
+    return `https://fonts.googleapis.com/css2?family=${preset.google.replace(/wght@[^&]+/, `wght@${weightQuery}`)}&display=swap`;
+  }
+
+  function buildGoogleFontUrl(name, weights = null){
     if (!name) return "";
     const trimmed = name.trim();
     if (!trimmed) return "";
     const encoded = trimmed.replace(/\s+/g, "+");
-    return `https://fonts.googleapis.com/css2?family=${encoded}:wght@${GOOGLE_FONT_WEIGHT_QUERY}&display=swap`;
+    const weightQuery = weights
+      ? (Array.isArray(weights) ? weights.join(";") : weights)
+      : CRITICAL_FONT_WEIGHTS.join(";");
+
+    return `https://fonts.googleapis.com/css2?family=${encoded}:wght@${weightQuery}&display=swap`;
   }
 
   function resolveTypographyConfig(typo){
@@ -1068,6 +1110,50 @@ background: "#0d0d0d",
     trimModuleInputs(panel);
   }
 
+  function finalizeModuleWatcher(container, watcher){
+    if (watcher.timeoutId !== null) {
+      clearTimeout(watcher.timeoutId);
+      watcher.timeoutId = null;
+    }
+    if (watcher.observer) {
+      watcher.observer.disconnect();
+      watcher.observer = null;
+    }
+    activeModuleWatchers.delete(watcher);
+    if (moduleWatcherRegistry.get(container) === watcher) {
+      moduleWatcherRegistry.delete(container);
+    }
+    if (container) {
+      delete container._btfwModuleHandlerBound;
+      if (container.dataset && container.dataset.btfwModuleWatcher) {
+        delete container.dataset.btfwModuleWatcher;
+      }
+    }
+  }
+
+  function cleanupModuleWatcher(container, expectedWatcher){
+    if (!container) return;
+    const watcher = moduleWatcherRegistry.get(container);
+    if (!watcher || (expectedWatcher && watcher !== expectedWatcher)) {
+      return;
+    }
+    if (!watcher.controller.signal.aborted) {
+      watcher.controller.abort();
+      return;
+    }
+    finalizeModuleWatcher(container, watcher);
+  }
+
+  if (typeof window !== "undefined" && !window.__btfwModuleWatcherCleanupRegistered) {
+    window.addEventListener('beforeunload', () => {
+      const watchers = Array.from(activeModuleWatchers);
+      for (const watcher of watchers) {
+        cleanupModuleWatcher(watcher.container, watcher);
+      }
+    });
+    window.__btfwModuleWatcherCleanupRegistered = true;
+  }
+
   function bindModuleFieldWatcher(panel, onChange){
     const container = getModuleContainer(panel);
     if (!container) {
@@ -1075,26 +1161,66 @@ background: "#0d0d0d",
       return;
     }
 
-    if (container._btfwModuleHandlerBound) {
-      return;
-    }
+    cleanupModuleWatcher(container);
+
+    const controller = new AbortController();
+    const watcherRecord = {
+      container,
+      controller,
+      timeoutId: null,
+      observer: null
+    };
+
+    moduleWatcherRegistry.set(container, watcherRecord);
+    activeModuleWatchers.add(watcherRecord);
+
+    controller.signal.addEventListener('abort', () => {
+      if (moduleWatcherRegistry.get(container) === watcherRecord) {
+        finalizeModuleWatcher(container, watcherRecord);
+      }
+    });
 
     const handler = (event) => {
       if (event?.target?.dataset?.role === 'module-input') {
-        setTimeout(() => {
-          ensureModuleFieldAvailability(panel);
-          if (typeof onChange === "function") onChange();
+        if (watcherRecord.timeoutId !== null) {
+          clearTimeout(watcherRecord.timeoutId);
+        }
+        watcherRecord.timeoutId = setTimeout(() => {
+          if (!controller.signal.aborted) {
+            ensureModuleFieldAvailability(panel);
+            if (typeof onChange === "function") onChange();
+          }
+          watcherRecord.timeoutId = null;
         }, 10);
       }
     };
 
-    container.addEventListener('input', handler);
-    container.addEventListener('change', handler);
+    container.addEventListener('input', handler, { signal: controller.signal });
+    container.addEventListener('change', handler, { signal: controller.signal });
+
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.removedNodes) {
+          const hasContains = typeof node?.contains === 'function';
+          if (
+            node === panel ||
+            node === container ||
+            (hasContains && (node.contains(panel) || node.contains(container)))
+          ) {
+            cleanupModuleWatcher(container, watcherRecord);
+            return;
+          }
+        }
+      }
+    });
+
+    watcherRecord.observer = observer;
+    observer.observe(document.body, { childList: true, subtree: true });
 
     container._btfwModuleHandlerBound = true;
-    container.dataset.btfwModuleWatcher = "1";
-
-    console.log('[theme-admin] Module field watcher bound successfully');
+    if (container.dataset) {
+      container.dataset.btfwModuleWatcher = "1";
+    }
   }
 
   function readModuleValues(panel){
@@ -1164,6 +1290,13 @@ background: "#0d0d0d",
       normalized.integrations.tmdb.apiKey = "";
     } else {
       normalized.integrations.tmdb.apiKey = normalized.integrations.tmdb.apiKey.trim();
+    }
+    if (!normalized.integrations.ratings || typeof normalized.integrations.ratings !== "object") {
+      normalized.integrations.ratings = { endpoint: "" };
+    } else if (typeof normalized.integrations.ratings.endpoint !== "string") {
+      normalized.integrations.ratings.endpoint = "";
+    } else {
+      normalized.integrations.ratings.endpoint = normalized.integrations.ratings.endpoint.trim();
     }
 
     if (normalized.features && typeof normalized.features === "object") {
@@ -1450,7 +1583,7 @@ function replaceBlock(original, startMarker, endMarker, block){
         <h3>Channel Theme Toolkit</h3>
         <p class="lead">Configure your BillTube channel's featured media, theme palette, typography, and resources without editing raw Channel JS or CSS.</p>
 
-        <details class="section" data-section="resources" open>
+        <details class="section" data-section="resources">
           <summary class="section__summary">
             <div class="section__title">
               <h4>Featured Content & Resources</h4>
@@ -1499,7 +1632,7 @@ function replaceBlock(original, startMarker, endMarker, block){
           </div>
         </details>
 
-        <details class="section" data-section="integrations" open>
+        <details class="section" data-section="integrations">
           <summary class="section__summary">
             <div class="section__title">
               <h4>Integrations</h4>
@@ -1516,10 +1649,19 @@ function replaceBlock(original, startMarker, endMarker, block){
               <label for="btfw-theme-integrations-tmdb">TMDB API key</label>
               <input type="text" id="btfw-theme-integrations-tmdb" data-btfw-bind="integrations.tmdb.apiKey" placeholder="YOUR_TMDB_KEY">
             </div>
+            <div class="integrations-callout">
+              <strong>Ratings API endpoint</strong>
+              <span>Point to your BillTube Worker that stores community ratings for now playing media.</span>
+            </div>
+            <div class="field">
+              <label for="btfw-theme-integrations-ratings">Ratings API endpoint</label>
+              <input type="url" id="btfw-theme-integrations-ratings" data-btfw-bind="integrations.ratings.endpoint" placeholder="https://billtubemovierating.billtube.workers.dev/">
+              <p class="help">Leave blank to disable the rating widget entirely.</p>
+            </div>
           </div>
         </details>
 
-        <details class="section" data-section="palette" open>
+        <details class="section" data-section="palette">
           <summary class="section__summary">
             <div class="section__title">
               <h4>Palette & Tint</h4>
@@ -1580,7 +1722,7 @@ function replaceBlock(original, startMarker, endMarker, block){
           </div>
         </details>
 
-        <details class="section" data-section="typography" open>
+        <details class="section" data-section="typography">
           <summary class="section__summary">
             <div class="section__title">
               <h4>Typography</h4>
@@ -1801,6 +1943,14 @@ function replaceBlock(original, startMarker, endMarker, block){
       updated.integrations.tmdb = { apiKey: "" };
     }
     updated.integrations.tmdb.apiKey = (updated.integrations.tmdb.apiKey || "").trim();
+    if (!updated.integrations.ratings || typeof updated.integrations.ratings !== "object") {
+      updated.integrations.ratings = { endpoint: "" };
+    }
+    if (typeof updated.integrations.ratings.endpoint !== "string") {
+      updated.integrations.ratings.endpoint = "";
+    } else {
+      updated.integrations.ratings.endpoint = updated.integrations.ratings.endpoint.trim();
+    }
     if (updated.features && typeof updated.features === "object") {
       delete updated.features.videoOverlayPoll;
       if (Object.keys(updated.features).length === 0) {
@@ -2095,6 +2245,9 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (!cfg.integrations.tmdb || typeof cfg.integrations.tmdb !== "object") {
       cfg.integrations.tmdb = { apiKey: "" };
     }
+    if (!cfg.integrations.ratings || typeof cfg.integrations.ratings !== "object") {
+      cfg.integrations.ratings = { endpoint: "" };
+    }
 
     if (!cfg.branding || typeof cfg.branding !== "object") {
       cfg.branding = cloneDefaults().branding;
@@ -2153,7 +2306,6 @@ setTimeout(() => {
   const modules = normalizeModuleUrls(collectModuleCandidates(cfg));
   renderModuleInputs(panel, modules);
   ensureModuleFieldAvailability(panel);
-  console.log('[theme-admin] Module fields populated with:', modules);
 }, 50);
 
     let dirty = false;
@@ -2177,7 +2329,6 @@ setTimeout(() => {
     setTimeout(() => {
       const container = getModuleContainer(panel);
       if (container) {
-        console.log('[theme-admin] Module container found, initializing fields');
         ensureModuleFieldAvailability(panel);
       } else {
         console.error('[theme-admin] Module container NOT found after panel init');

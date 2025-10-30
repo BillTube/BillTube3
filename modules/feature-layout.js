@@ -1,7 +1,6 @@
 BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) => {
   const SPLIT_KEY = "btfw:grid:leftPx";
   const CHAT_SIDE_KEY = "btfw:layout:chatSide";
-  const MOBILE_STACK_ID = "btfw-mobile-stack";
   const NAV_HOST_ID = "btfw-navhost";
   const VIDEO_MIN_PX = 520;
   const DEFAULT_VIDEO_TARGET = 680;
@@ -103,44 +102,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     );
   }
 
-  function ensureMobileStackShell(){
-    let shell = document.getElementById(MOBILE_STACK_ID);
-    if (!shell) {
-      shell = document.createElement("div");
-      shell.id = MOBILE_STACK_ID;
-      shell.className = "btfw-mobile-stack";
-      shell.innerHTML = `
-        <div class="btfw-mobile-stack__panel" role="dialog" aria-modal="true" aria-labelledby="btfw-mobile-stack-title">
-          <div class="btfw-mobile-stack__header">
-            <span class="btfw-mobile-stack__title" id="btfw-mobile-stack-title">Modules</span>
-            <button type="button" class="btfw-mobile-stack__close" aria-label="Close modules">&times;</button>
-          </div>
-          <div class="btfw-mobile-stack__body"></div>
-        </div>
-      `;
-      document.body.appendChild(shell);
-
-      shell.addEventListener("click", (ev) => {
-        if (ev.target === shell) setMobileStackOpen(false);
-      });
-      const closeBtn = shell.querySelector(".btfw-mobile-stack__close");
-      if (closeBtn) closeBtn.addEventListener("click", () => setMobileStackOpen(false));
-
-      if (!document._btfwMobileStackEsc) {
-        document._btfwMobileStackEsc = true;
-        document.addEventListener("keydown", (ev) => {
-          if (ev.key === "Escape") setMobileStackOpen(false);
-        });
-      }
-    }
-    return shell;
-  }
-
-  function isMobileStackOpen(){
-    const shell = document.getElementById(MOBILE_STACK_ID);
-    return !!(shell && shell.classList.contains("btfw-mobile-stack--open"));
-  }
-
   function placeStackInLayout(){
     const stack = document.getElementById("btfw-stack");
     if (!stack) return;
@@ -173,50 +134,55 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     }
   }
 
-  function setMobileStackOpen(open){
-    const shell = ensureMobileStackShell();
-    const allow = !!open && isVertical;
-    if (allow) moveStackToOverlay();
-    else restoreStackFromOverlay();
-
-    shell.classList.toggle("btfw-mobile-stack--open", allow);
-    if (document.body) {
-      document.body.classList.toggle("btfw-mobile-stack-open", allow);
-    }
-    const toggle = document.getElementById("btfw-mobile-modules-toggle");
-    if (toggle) toggle.setAttribute("aria-expanded", allow ? "true" : "false");
-  }
-
-  function moveStackToOverlay(){
-    if (!isVertical) return;
-    const stack = document.getElementById("btfw-stack");
-    if (!stack) return;
-    const shell = ensureMobileStackShell();
-    const body = shell.querySelector(".btfw-mobile-stack__body");
-    if (body && stack.parentElement !== body) {
-      stack.classList.remove("btfw-stack--in-chat");
-      body.appendChild(stack);
-    }
-  }
-
-  function restoreStackFromOverlay(){
-    placeStackInLayout();
-  }
-
   function wireMobileToggle(){
     const toggle = document.getElementById("btfw-mobile-modules-toggle");
-    if (!toggle || toggle === mobileToggleEl) return;
+    if (!toggle) return;
+    if (toggle === mobileToggleEl && toggle._btfwNavWired) return;
+
+    if (mobileToggleEl && mobileToggleEl._btfwNavStateHandler) {
+      document.removeEventListener("btfw:navbar:mobileState", mobileToggleEl._btfwNavStateHandler);
+    }
+
     mobileToggleEl = toggle;
-    toggle.setAttribute("aria-expanded", "false");
-    toggle.setAttribute("aria-haspopup", "dialog");
+    toggle._btfwNavWired = true;
+    toggle.setAttribute("aria-haspopup", "menu");
+
+    const applyState = (open, mobile) => {
+      const navHost = document.getElementById("btfw-navhost");
+      const isMobile = mobile ?? (navHost ? navHost.classList.contains("btfw-navhost--mobile") : false);
+      const isOpen = !!open && isMobile;
+      toggle.setAttribute("aria-expanded", isMobile && isOpen ? "true" : "false");
+      const label = isMobile
+        ? (isOpen ? "Close navigation menu" : "Open navigation menu")
+        : "Open navigation menu";
+      toggle.setAttribute("aria-label", label);
+      toggle.title = label;
+      toggle.classList.toggle("btfw-mobile-modules-toggle--active", isMobile && isOpen);
+    };
+
+    const handleState = (ev) => {
+      applyState(ev?.detail?.open, ev?.detail?.mobile);
+    };
+    document.addEventListener("btfw:navbar:mobileState", handleState);
+    toggle._btfwNavStateHandler = handleState;
+
     toggle.addEventListener("click", (ev) => {
       ev.preventDefault();
-      if (!isVertical) {
-        toggle.blur();
-        return;
+      const toggleFn = document._btfw_nav_toggleMobile;
+      const setFn = document._btfw_nav_setMobileOpen;
+      if (typeof toggleFn === "function") {
+        toggleFn();
+      } else if (typeof setFn === "function") {
+        const next = !(typeof document._btfw_nav_isMobileOpen === "function" && document._btfw_nav_isMobileOpen());
+        setFn(next);
       }
-      setMobileStackOpen(!isMobileStackOpen());
     });
+
+    const initialOpen = typeof document._btfw_nav_isMobileOpen === "function"
+      ? document._btfw_nav_isMobileOpen()
+      : false;
+    const initialMobile = document.getElementById("btfw-navhost")?.classList.contains("btfw-navhost--mobile") || false;
+    applyState(initialOpen, initialMobile);
   }
 
   function updateResponsiveLayout(){
@@ -232,14 +198,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       if (document.body) {
         document.body.classList.toggle("btfw-mobile-stack-enabled", shouldVertical);
       }
-
-      if (shouldVertical) {
-        if (isMobileStackOpen()) moveStackToOverlay();
-        else restoreStackFromOverlay();
-      } else {
-        setMobileStackOpen(false);
-        restoreStackFromOverlay();
-      }
+      placeStackInLayout();
       refreshVideoSizing();
       setTimeout(() => {
         refreshVideoSizing();
@@ -249,12 +208,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       }, 60);
       document.dispatchEvent(new CustomEvent("btfw:layout:orientation", { detail: { vertical: shouldVertical } }));
     } else {
-      if (shouldVertical) {
-        if (isMobileStackOpen()) moveStackToOverlay();
-        else restoreStackFromOverlay();
-      } else {
-        restoreStackFromOverlay();
-      }
+      placeStackInLayout();
     }
 
     applyColumnTemplate();
@@ -423,27 +377,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       if(c && !right.contains(c)) right.appendChild(c);
     }
 
-    const leftpadWatch = document.getElementById("btfw-leftpad");
-    if (leftpadWatch && !leftpadWatch._btfwStackWatch) {
-      const obs = new MutationObserver(() => {
-        if (isVertical) {
-          if (isMobileStackOpen()) moveStackToOverlay();
-          else placeStackInLayout();
-        }
-      });
-      obs.observe(leftpadWatch, { childList: true });
-      leftpadWatch._btfwStackWatch = obs;
-    }
-
-    const chatWatch = document.getElementById("btfw-chatcol");
-    if (chatWatch && !chatWatch._btfwStackWatch) {
-      const obs = new MutationObserver(() => {
-        if (isVertical && !isMobileStackOpen()) placeStackInLayout();
-      });
-      obs.observe(chatWatch, { childList: true });
-      chatWatch._btfwStackWatch = obs;
-    }
-
     ["videowrap","playlistrow","playlistwrap","queuecontainer","queue","plmeta","chatwrap","controlsrow","rightcontrols"].forEach(id=>stripDeep(document.getElementById(id)));
     moveCurrent();
     placeStackInLayout();
@@ -509,10 +442,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
 
   document.addEventListener("btfw:chat:barsReady", () => {
     wireMobileToggle();
-    if (isVertical) {
-      if (isMobileStackOpen()) moveStackToOverlay();
-      else restoreStackFromOverlay();
-    }
+    placeStackInLayout();
   });
 
   function findNavbarElement(){

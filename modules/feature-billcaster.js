@@ -8,6 +8,37 @@ $(document).ready(function () {
   var castAvailable = false;
   var syncInterval = null;
 
+  function getMediaType() {
+    try {
+      return window.PLAYER && window.PLAYER.mediaType || null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function isDirectMedia() {
+    var type = getMediaType();
+    if (typeof type === 'string') {
+      type = type.toLowerCase();
+      if (type === 'fi' || type === 'gd') return true;
+      if (type) return false;
+    }
+
+    if (typeof getCurrentVideoSrc === 'function') {
+      var src = getCurrentVideoSrc();
+      if (typeof src === 'string' && src.length) {
+        var lower = src.toLowerCase();
+        if (lower.indexOf('youtube.com') !== -1 || lower.indexOf('youtu.be') !== -1) {
+          return false;
+        }
+        return /(\.mp4|\.webm|\.ogg|\.ogv|\.mov)([#?]|$)/.test(lower);
+      }
+    }
+
+    return false;
+  }
+
+  /* --------------------------- Overlay / Bar helpers --------------------------- */
   function $overlay() {
     var $o = $('#btfw-video-overlay');
     if ($o.length) return $o;
@@ -194,13 +225,13 @@ $(document).ready(function () {
   }
 
   function updateCastButtonVisibility() {
-    var videoSrc = getCurrentVideoSrc();
-    var isYouTubeVideo = videoSrc ? videoSrc.toLowerCase().includes('youtube') : false;
-
-    if (isYouTubeVideo) {
+    if (!isDirectMedia()) {
       $('#btfw-vo-cast, #btfw-vo-cast-fallback').hide();
       if (session) stopSync();
-    } else if (castAvailable) {
+      return;
+    }
+
+    if (castAvailable) {
       $('#btfw-vo-cast').show();
       $('#btfw-vo-cast-fallback').hide();
       if (session && !syncInterval) startSync();
@@ -278,7 +309,7 @@ $(document).ready(function () {
     var videoSrc = getCurrentVideoSrc();
     if (!videoSrc) { console.error('Cannot cast: no video src'); return; }
 
-    if (videoSrc.toLowerCase().includes('youtube')) return;
+    if (!isDirectMedia()) return;
 
     var mimeType = getMimeType(videoSrc);
     var mediaInfo = new chrome.cast.media.MediaInfo(videoSrc, mimeType);

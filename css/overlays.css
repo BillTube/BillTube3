@@ -1,14 +1,11 @@
 
-/* ---------- Navbar should stay above app content ---------- */
 #nav-collapsible,
 .navbar,
 #navbar,
 .navbar-fixed-top {
-  /* Don’t force position here (CyTube/Bootswatch handles it). */
   z-index: 5000 !important;
 }
 
-/* ---------- Bulma/CyTube modal layering (card above backdrop) ---------- */
 .modal { z-index: 6000 !important; }
 .modal .modal-background { z-index: 6001 !important; }
 .modal .modal-card,
@@ -229,12 +226,10 @@
    ====================================================================== */
 
 .btfw-chat-topbar {
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--btfw-overlay-bg) 88%, transparent 12%),
-    color-mix(in srgb, var(--btfw-overlay-elevated) 88%, transparent 12%));
-  border: 1px solid var(--btfw-border);
-  border-radius: var(--btfw-radius);
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 48%, transparent 52%);
+  background: color-mix(in srgb, var(--btfw-color-panel) 60%, transparent 40%) !important;
+  border: 0px solid var(--btfw-border);
+  border-radius: 50px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .btfw-chat-bottombar {
@@ -250,8 +245,8 @@
   background: linear-gradient(145deg,
     color-mix(in srgb, var(--btfw-overlay-elevated) 86%, transparent 14%),
     color-mix(in srgb, var(--btfw-overlay-bg) 80%, transparent 20%));
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 68%, transparent 32%);
-  box-shadow: 0 20px 46px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
+  border: 0px solid color-mix(in srgb, var(--btfw-border) 68%, transparent 32%);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .btfw-chat-actions .button.btfw-chatbtn {
@@ -284,6 +279,55 @@
 /* Fixed-size popover container (JS sets an explicit height) */
 .btfw-popover {
   max-width: calc(100vw - 16px);
+  opacity: 0;
+  transform: translate3d(0, 18px, 0) scale(0.96);
+  transition:
+    opacity var(--btfw-modal-motion-duration, 0.22s) ease,
+    transform var(--btfw-modal-motion-duration, 0.22s) var(--btfw-modal-motion-ease, cubic-bezier(0.2, 0.9, 0.25, 1));
+  pointer-events: none;
+  visibility: hidden;
+  transform-origin: 50% 44%;
+}
+
+.btfw-popover[data-btfw-popover-state="opening"] {
+  visibility: visible;
+}
+
+.btfw-popover[data-btfw-popover-state="open"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.btfw-popover[data-btfw-popover-state="closing"] {
+  pointer-events: none;
+}
+
+.btfw-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 6001;
+  background: color-mix(in srgb, var(--btfw-color-bg) 42%, black 58%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--btfw-modal-motion-duration, 0.22s) ease;
+}
+
+.btfw-popover-backdrop[data-btfw-popover-state="opening"] {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.btfw-popover-backdrop[data-btfw-popover-state="open"] {
+  opacity: 0;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.btfw-popover-backdrop[data-btfw-popover-state="closing"] {
+  pointer-events: none;
 }
 
 #btfw-emotes-pop {
@@ -291,8 +335,8 @@
   right: 8px;
   bottom: 56px;            /* JS overrides; keep as safe fallback */
   width: min(520px, calc(100vw - 16px));
-  height: 360px;           /* fallback; JS sets exact height per open */
   max-width: calc(100vw - 16px);
+  min-width: min(280px, calc(100vw - 16px));
   display: flex;
   flex-direction: column;
   background: color-mix(in srgb, var(--btfw-overlay-bg) 94%, transparent 6%);
@@ -301,11 +345,15 @@
   box-shadow: var(--btfw-overlay-shadow);
   z-index: 6000;
   overflow: hidden;
+  transform-origin: 50% 44%;
 }
-#btfw-emotes-pop.hidden { display: none; }
 
 #btfw-emotes-pop .btfw-emotes-head {
-  display: flex; align-items: center; gap: 8px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "tabs search close";
+  align-items: center;
+  gap: 8px;
   padding: 8px 10px;
   border-bottom: 1px solid var(--btfw-border);
   position: sticky;
@@ -316,7 +364,12 @@
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.18);
 }
 
-#btfw-emotes-pop .btfw-emotes-tabs { display: inline-flex; gap: 4px; }
+#btfw-emotes-pop .btfw-emotes-tabs {
+  grid-area: tabs;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 #btfw-emotes-pop .btfw-tab {
   background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
   color: var(--btfw-color-text-soft);
@@ -332,30 +385,55 @@
 }
 
 #btfw-emotes-pop .btfw-emotes-search {
-  margin-left: auto;
-  display: inline-flex; align-items: center; gap: 6px;
+  grid-area: search;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
 }
 #btfw-emotes-pop #btfw-emotes-search {
   background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);
   border: 1px solid var(--btfw-border);
   color: var(--btfw-color-text);
   border-radius: 8px;
-  font-size: 12px; padding: 6px 8px; width: 180px;
+  font-size: 12px;
+  padding: 6px 28px 6px 10px;
+  width: 100%;
 }
 #btfw-emotes-pop #btfw-emotes-clear {
-    background: 
- color-mix(in srgb, var(--btfw-color-panel) 84%, transparent 16%);
-    border: 1px solid var(--btfw-border);
-    color: var(--btfw-color-text-soft);
-    border-radius: 8px;
-    width: 53px;
-    font-size: 12px;
-    height: 30px;
-    line-height: 1;
-    cursor: pointer;
+  position: absolute;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: var(--btfw-color-text-soft);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease, color .12s ease;
+}
+#btfw-emotes-pop #btfw-emotes-clear.is-visible {
+  opacity: 0.72;
+  pointer-events: auto;
+}
+#btfw-emotes-pop #btfw-emotes-clear.is-visible:hover {
+  color: var(--btfw-color-text);
+  opacity: 1;
+}
+#btfw-emotes-pop #btfw-emotes-clear:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 68%, transparent 32%);
+  outline-offset: 1px;
+  opacity: 1;
 }
 #btfw-emotes-pop .btfw-emotes-close {
-  margin-left: 8px;
+  grid-area: close;
   width: 28px; height: 28px;
   border-radius: 8px;
   border: 1px solid var(--btfw-border);
@@ -366,16 +444,16 @@
 
 /* Fixed grid: constant tile size & no hover-jump */
 #btfw-emotes-grid {
-  flex: 1 1 auto;
-  overflow: visible;
-  overflow-y: visible;
-  padding: 10px;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 5px;
-  content-visibility: auto;
-  contain-intrinsic-size: 320px 320px;
-  scrollbar-gutter: stable;
+    flex: 1 1 auto;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+    content-visibility: auto;
+    contain-intrinsic-size: 320px 320px;
+    scrollbar-gutter: stable;
+    overflow-y: clip;
+    margin-bottom: 60px;
 }
 
 #btfw-emotes-grid .btfw-emote-tile {
@@ -420,6 +498,20 @@
   transform: translateY(-1px) scale(1.04);
 }
 
+@media (max-width: 640px){
+  #btfw-emotes-pop .btfw-emotes-head {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "tabs close"
+      "search search";
+    align-items: start;
+  }
+
+  #btfw-emotes-pop .btfw-emotes-tabs {
+    justify-content: flex-start;
+  }
+}
+
 /* Compact on narrow chat columns */
 @media (max-width: 800px){ #btfw-emotes-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 560px){ #btfw-emotes-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -434,8 +526,86 @@
 /* Scope to Bulma modals; works for Theme Settings, GIFs, etc.            */
 /* Reads CSS variables if you have tokens.css, otherwise uses fallbacks.   */
 
+/* Unified modal motion ------------------------------------------------- */
+.modal {
+  --btfw-modal-motion-duration: 0.22s;
+  --btfw-modal-motion-ease: cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+.modal[data-btfw-modal-state="open"],
+.modal[data-btfw-modal-state="opening"],
+.modal[data-btfw-modal-state="closing"] {
+  display: flex !important;
+}
+
+.modal[data-btfw-modal-state="closing"] {
+  pointer-events: none;
+}
+
+.modal > .modal-card,
+.modal > .modal-content,
+.modal > .modal-dialog {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0) scale(0.96);
+  transition:
+    opacity var(--btfw-modal-motion-duration, 0.22s) ease,
+    transform var(--btfw-modal-motion-duration, 0.22s) var(--btfw-modal-motion-ease, cubic-bezier(0.2, 0.9, 0.25, 1));
+  transform-origin: 50% 44%;
+}
+
+.modal.is-active > .modal-card,
+.modal.is-active > .modal-content,
+.modal.is-active > .modal-dialog {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.modal.fade > .modal-dialog {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0) scale(0.96);
+  transition:
+    opacity var(--btfw-modal-motion-duration, 0.22s) ease,
+    transform var(--btfw-modal-motion-duration, 0.22s) var(--btfw-modal-motion-ease, cubic-bezier(0.2, 0.9, 0.25, 1));
+}
+
+.modal.fade.in > .modal-dialog,
+.modal.fade.show > .modal-dialog,
+.modal.in > .modal-dialog,
+.modal.show > .modal-dialog {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.modal .modal-background {
+  opacity: 0;
+  transition: opacity var(--btfw-modal-motion-duration, 0.22s) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal > .modal-card,
+  .modal > .modal-content,
+  .modal > .modal-dialog,
+  .modal.fade > .modal-dialog,
+  .modal .modal-background,
+  .modal-backdrop,
+  .btfw-popover,
+  .btfw-popover-backdrop {
+    transition: none !important;
+  }
+
+  .modal > .modal-card,
+  .modal > .modal-content,
+  .modal > .modal-dialog,
+  .modal.fade > .modal-dialog,
+  .btfw-popover,
+  .btfw-popover[data-btfw-popover-state="open"] {
+    transform: none !important;
+  }
+}
+
 /* Backdrop */
 .modal.is-active .modal-background {
+  opacity: 1;
   background:
     radial-gradient(1200px 700px at 20% -10%, color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%), transparent 55%),
     radial-gradient(1000px 800px at 120% 120%, color-mix(in srgb, var(--btfw-color-accent) 14%, white 4%, transparent 82%), transparent 50%),
@@ -555,11 +725,19 @@
 .modal-card-body .field { margin-bottom: 1rem; }
 /* ===== GIF modal grid ===== */
 .btfw-gif-toolbar {
-  display:flex; align-items:center; gap:10px; margin-bottom:10px;
+  display:flex; align-items:flex-start; gap:10px; margin-bottom:10px;
 }
 .btfw-gif-toolbar .btfw-gif-search {
   margin-left:auto; display:flex; gap:8px; align-items:center;
   min-width: 280px;
+}
+.btfw-gif-toolbar .btfw-gif-search.is-hidden {
+  display: none;
+}
+
+#btfw-gif-modal .btfw-gif-tabs li a,
+#btfw-gif-modal .btfw-gif-tabs li.is-active a {
+  border-radius: 4px;
 }
 
 #btfw-gif-notice {
@@ -571,14 +749,18 @@
 }
 #btfw-gif-notice.is-hidden { display:none; }
 
-#btfw-gif-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  min-height: 320px;
+#btfw-gif-modal #btfw-gif-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    min-height: 300px;
+    height: auto;
+    align-items: stretch;
+    justify-items: stretch;
+    align-content: space-between;
 }
 
-.btfw-gif-cell { 
+#btfw-gif-modal .btfw-gif-cell {
   position: relative;
   aspect-ratio: 1 / 1;        /* square */
   border-radius: 12px;
@@ -587,11 +769,61 @@
   background: color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%);
   cursor: pointer;
   padding: 0;
+  display: block;
+  min-inline-size: 0;
+  min-height: 130px;
 }
-.btfw-gif-cell:hover { outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 56%, transparent 44%); }
-.btfw-gif-cell.is-broken { background: color-mix(in srgb, #ff6f96 70%, transparent 30%); }
 
-.btfw-gif-cell.is-loading::before {
+#btfw-gif-modal .btfw-gif-fav-toggle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--btfw-color-on-panel, #fff);
+  background: color-mix(in srgb, rgba(0,0,0,0.72) 70%, transparent 30%);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  transition: transform 0.16s ease, opacity 0.16s ease;
+  pointer-events: auto;
+  user-select: none;
+}
+
+#btfw-gif-modal .btfw-gif-fav-toggle:hover,
+#btfw-gif-modal .btfw-gif-fav-toggle:focus {
+  transform: scale(1.1);
+  outline: none;
+}
+
+#btfw-gif-modal .btfw-gif-fav-toggle:focus-visible {
+  outline: 2px solid var(--btfw-color-accent);
+  outline-offset: 2px;
+}
+
+#btfw-gif-modal .btfw-gif-fav-toggle.is-remove {
+  background: color-mix(in srgb, #ff6677 70%, transparent 30%);
+}
+
+#btfw-gif-modal .btfw-gif-cell.is-favorited:not(.is-skeleton) .btfw-gif-fav-toggle:not(.is-remove) {
+  background: color-mix(in srgb, var(--btfw-color-accent) 72%, transparent 28%);
+  color: var(--btfw-color-on-accent, #fff);
+}
+
+#btfw-gif-modal .btfw-gif-cell:hover {
+  outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 56%, transparent 44%);
+}
+
+#btfw-gif-modal .btfw-gif-cell.is-broken {
+  background: color-mix(in srgb, #ff6f96 70%, transparent 30%);
+}
+
+#btfw-gif-modal .btfw-gif-cell.is-loading::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -599,7 +831,7 @@
   pointer-events: none;
 }
 
-.btfw-gif-cell.is-loading::after {
+#btfw-gif-modal .btfw-gif-cell.is-loading::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -614,18 +846,34 @@
   pointer-events: none;
 }
 
-.btfw-gif-cell.is-loading img {
+#btfw-gif-modal .btfw-gif-cell.is-loading img {
   filter: brightness(0.55);
 }
 
-.btfw-gif-cell img {
-  width: 100%; height: 100%;
+#btfw-gif-modal .btfw-gif-thumb {
+  position: relative;
+  width: 100%;
+}
+
+#btfw-gif-modal .btfw-gif-thumb::before {
+  content: "";
+  display: block;
+  padding-bottom: 100%;
+}
+
+#btfw-gif-modal .btfw-gif-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
   object-fit: cover;
-  display:block;
+  display: block;
 }
 
 /* Skeleton tiles while loading */
-.btfw-gif-cell.is-skeleton {
+#btfw-gif-modal .btfw-gif-cell.is-skeleton {
   background: linear-gradient(90deg,
     color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%),
     color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%),
@@ -648,6 +896,13 @@
 
 .modal-backdrop {
   background: color-mix(in srgb, var(--btfw-color-bg) 86%, transparent 14%) !important;
+  opacity: 0;
+  transition: opacity var(--btfw-modal-motion-duration, 0.22s) ease;
+}
+
+.modal-backdrop.in,
+.modal-backdrop.show {
+  opacity: 1;
 }
 
 .modal.btfw-bulma-skin {
@@ -901,8 +1156,6 @@ html[data-btfw-theme="dark"] .panel {
 }
 
 .btfw-notice--success{
-  --btfw-notice-bg: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
-  --btfw-notice-border: color-mix(in srgb, var(--btfw-color-accent) 46%, transparent 54%);
   --btfw-notice-accent: var(--btfw-color-accent);
   --btfw-notice-icon-bg: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
   --btfw-notice-icon-color: var(--btfw-color-on-accent);
@@ -927,7 +1180,7 @@ html[data-btfw-theme="dark"] .panel {
 .btfw-notice-shell{
   display: flex;
   gap: 14px;
-  padding: 16px 18px 14px;
+  padding: 10px 15px 10px;
 }
 
 .btfw-notice-iconwrap{
@@ -1031,6 +1284,7 @@ html[data-btfw-theme="dark"] .panel {
 
 .btfw-notice-timer.is-stopped{
   color: color-mix(in srgb, var(--btfw-color-text) 92%, white 8%);
+  font-size: 10px;
 }
 
 .btfw-notice-stop{
@@ -1088,40 +1342,23 @@ html[data-btfw-theme="dark"] .panel {
 }
 .btfw-pop.btfw-pop--open{ display: block; }
 
-
-
-
-
-
-
-
-
-
-
-
-
-/* 1) Make #chatwrap a size container so children can size relative to it */
 #chatwrap {
   container-type: inline-size;  /* modern Chrome/Edge/Firefox/Safari support this */
 }
-
-/* 2) Widths follow #chatwrap (with sensible min/max clamps) */
 #btfw-ct-modal .btfw-ct-card {
-  /* Tools: 360px–640px, otherwise up to ~92% of the chatwrap width */
   width: clamp(360px, 92cqi, 640px);
   max-width: calc(100cqi - 16px);   /* keep a little side margin */
 }
 
 #btfw-emotes-pop {
-  /* Emotes: allow a little wider range */
-  width: clamp(360px, 92cqi, 720px);
+  width: clamp(280px, 92cqi, 720px);
   max-width: calc(100cqi - 16px);
 }
 
 /* 3) Make the button grid & swatches auto-flow with width (only affects Tools panel) */
 #btfw-ct-modal .btfw-ct-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
   gap: 8px;
 }
 
@@ -1131,14 +1368,12 @@ html[data-btfw-theme="dark"] .panel {
   gap: 6px;
 }
 
-/* 4) (Optional) Small polishing so pop-ins never overflow the viewport height */
 #btfw-ct-modal .btfw-ct-card,
 #btfw-emotes-pop {
-  max-height: min(70vh, 560px);
+  max-height: min(80vh, 560px);
   overflow: auto;
 }
 
-/* 5) Backward-compatible fallback when container queries aren’t supported */
 @supports not (container-type: inline-size) {
   #btfw-ct-modal .btfw-ct-card { width: min(92vw, 640px); }
   #btfw-emotes-pop { width: min(92vw, 720px); }

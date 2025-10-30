@@ -1,4 +1,4 @@
-BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
+BTFW.define("feature:videoOverlay", [], async () => {
   const $ = (selector, root = document) => root.querySelector(selector);
 
   const CONTROL_SELECTORS = [
@@ -8,6 +8,94 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
   ];
 
   const LS = { localSubs: "btfw:video:localsubs" };
+  const DEFAULT_OWNER_RANK = 5; // Cytube owners default to rank 5 when CHANNEL perms are unavailable
+  const PERMISSION_KEYS = {
+    owner: ["chanowner", "owner", "founder", "admin", "administrator"]
+  };
+
+  function getMediaType() {
+    try {
+      return window.PLAYER?.mediaType || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function isDirectMedia() {
+    const type = (getMediaType() || "").toLowerCase();
+    return type === "fi" || type === "gd";
+  }
+
+  function getClient() {
+    try {
+      return window.CLIENT || window.client || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getChannel() {
+    try {
+      return window.CHANNEL || window.channel || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getChannelPermissions() {
+    const channel = getChannel();
+    if (channel && typeof channel.perms === "object" && channel.perms) {
+      return channel.perms;
+    }
+    try {
+      return window.CHANNEL_PERMS || window.channelPermissions || {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function getPermissionThreshold(keys = []) {
+    const perms = getChannelPermissions();
+    for (const key of keys) {
+      const value = perms?.[key];
+      if (typeof value === "number") return value;
+    }
+    return undefined;
+  }
+
+  function getOwnerRankThreshold() {
+    const ownerRank = getPermissionThreshold(PERMISSION_KEYS.owner);
+    return typeof ownerRank === "number" ? ownerRank : DEFAULT_OWNER_RANK;
+  }
+
+  function hasOwnerPermission(client) {
+    if (!client) return false;
+    try {
+      if (typeof client.hasPermission === "function" && client.hasPermission("chanowner")) {
+        return true;
+      }
+    } catch (_) {}
+    try {
+      if (typeof window.hasPermission === "function" && window.hasPermission("chanowner")) {
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  function isChannelOwner() {
+    const client = getClient();
+    if (!client) return false;
+    const rank = Number(client.rank);
+    if (!Number.isFinite(rank)) return false;
+
+    if (rank >= getOwnerRankThreshold()) return true;
+
+    if (hasOwnerPermission(client)) return true;
+
+    return false;
+  }
+
   const localSubsEnabled = () => {
     try {
       return localStorage.getItem(LS.localSubs) !== "0";
@@ -34,7 +122,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
   const AUTO_IDLE_RESET_INTERVAL = 120000;
 
   let autoRefreshInterval = AUTO_REFRESH_BASE_INTERVAL;
-  let ambientModulePromise = null;
   let airplayListenerAttached = false;
   let trackedAirplayVideo = null;
 
@@ -50,14 +137,7 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
         z-index: 1000;
         opacity: 0;
         transition: opacity 0.3s ease;
-        background: linear-gradient(
-          to bottom,
-          rgba(0, 0, 0, 0.45) 0%,
-          rgba(0, 0, 0, 0.35) 12%,
-          rgba(0, 0, 0, 0.18) 32%,
-          rgba(0, 0, 0, 0.08) 55%,
-          transparent 75%
-        );
+        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.15) 12%, rgba(0, 0, 0, 0) 32%, rgba(0, 0, 0, 0) 55%, transparent 75%);
       }
 
       #btfw-video-overlay.btfw-vo-visible {
@@ -129,10 +209,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       #btfw-video-overlay .btfw-vo-adopted:focus-visible {
         outline: 2px solid rgba(109, 77, 246, 0.95);
         outline-offset: 2px;
-      }
-
-      #btfw-ambient.active {
-        background: rgba(109, 77, 246, 0.8);
       }
 
       .btfw-notification {
@@ -280,38 +356,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     return { left, right };
   }
 
-  function ensureAmbientModule() {
-    if (ambientModulePromise) return ambientModulePromise;
-    if (!window.BTFW || typeof BTFW.init !== "function") {
-      return Promise.reject(new Error("Ambient module unavailable"));
-    }
-    ambientModulePromise = BTFW.init("feature:ambient").catch((err) => {
-      ambientModulePromise = null;
-      throw err;
-    });
-    return ambientModulePromise;
-  }
-
-  function updateAmbientButton(active) {
-    const btn = $("#btfw-ambient");
-    if (!btn) return;
-    btn.classList.toggle("active", !!active);
-  }
-
-  function syncAmbientButton() {
-    const btn = $("#btfw-ambient");
-    if (!btn) return;
-    ensureAmbientModule()
-      .then((ambient) => {
-        updateAmbientButton(ambient.isActive());
-      })
-      .catch(() => {});
-  }
-
-  document.addEventListener("btfw:ambient:state", (event) => {
-    updateAmbientButton(event?.detail?.active);
-  });
-
   function getAirplayCandidate() {
     return document.querySelector("#ytapiplayer video, video");
   }
@@ -418,11 +462,13 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       customButtons.push({ id: "btfw-fullscreen", icon: "fas fa-expand", tooltip: "Fullscreen", action: toggleFullscreen, section: "right" });
     }
 
-    customButtons.push(
-      { id: "btfw-ambient", icon: "fas fa-sun", tooltip: "Ambient Mode", action: toggleAmbient, section: "left" },
-
-      { id: "btfw-airplay", icon: "fas fa-cast", tooltip: "AirPlay", action: enableAirplay, section: "right" }
-    );
+    customButtons.push({
+      id: "btfw-airplay",
+      icon: "fas fa-cast",
+      tooltip: "AirPlay",
+      action: enableAirplay,
+      section: "right"
+    });
 
     customButtons.forEach((btnConfig) => {
       let btn = document.querySelector(`#${btnConfig.id}`);
@@ -440,7 +486,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       }
     });
 
-    syncAmbientButton();
     updateAirplayButtonVisibility();
   }
 
@@ -617,33 +662,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     }
   }
 
-  async function toggleAmbient() {
-    try {
-      const ambient = await ensureAmbientModule();
-      const enabling = !ambient.isActive();
-      const active = await ambient.toggle();
-
-      if (active) {
-        try {
-          ambient.refresh();
-        } catch (_) {}
-      }
-
-      updateAmbientButton(active);
-
-      if (active) {
-        showNotification("Ambient mode enabled", "info");
-      } else if (enabling) {
-        showNotification("Unable to enable ambient mode", "error");
-      } else {
-        showNotification("Ambient mode disabled", "info");
-      }
-    } catch (e) {
-      console.warn("[video-overlay] Ambient toggle failed:", e);
-      showNotification("Failed to toggle ambient mode", "error");
-    }
-  }
-
   function applyAirplayAttributes(video, showPicker = true) {
     if (!video || !hasAirplaySupport(video)) return false;
     video.setAttribute("airplay", "allow");
@@ -810,7 +828,8 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
       });
       section.insertBefore(btn, section.firstChild || null);
     }
-    btn.style.display = localSubsEnabled() ? "" : "none";
+    const enabled = localSubsEnabled() && isDirectMedia();
+    btn.style.display = enabled ? "" : "none";
   }
 
   function boot() {
@@ -827,6 +846,14 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     targets.forEach((target) => mo.observe(target, { childList: true, subtree: true }));
 
     document.addEventListener("btfw:video:localsubs:changed", () => ensureOverlay());
+
+    try {
+      if (window.socket && typeof socket.on === "function") {
+        socket.on("changeMedia", () => {
+          setTimeout(() => ensureOverlay(), 0);
+        });
+      }
+    } catch (_) {}
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
@@ -836,7 +863,6 @@ BTFW.define("feature:videoOverlay", ["feature:ambient"], async () => {
     name: "feature:videoOverlay",
     setLocalSubsEnabled: setLocalSubs,
     toggleFullscreen,
-    toggleAmbient,
     enableAirplay
   };
 });
