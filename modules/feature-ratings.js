@@ -50,6 +50,9 @@ BTFW.define("feature:ratings", [], async () => {
     errorNode: null,
     announcedStart: false,
 
+    ratingVisible: false,
+    ratingWindowAnnounced: false,
+
     lookup: null,
     currentMedia: null,
     currentKey: "",
@@ -1183,12 +1186,14 @@ BTFW.define("feature:ratings", [], async () => {
     if (!state.container) return;
     state.container.hidden = true;
     state.container.dataset.disabled = "true";
+    state.ratingVisible = false;
   }
 
   function showRatings() {
     if (!state.container) return;
     state.container.hidden = false;
     state.container.dataset.disabled = "false";
+    state.ratingVisible = true;
 
     if (state.stats && typeof state.stats.avg === "number") {
       const avg = state.stats.avg;
@@ -1225,7 +1230,12 @@ BTFW.define("feature:ratings", [], async () => {
       return;
     }
 
+    const wasVisible = state.ratingVisible;
     showRatings();
+
+    if (!wasVisible && state.ratingVisible) {
+      announceRatingWindow();
+    }
   }
 
   function handleLookupEvent(event) {
@@ -1365,6 +1375,8 @@ BTFW.define("feature:ratings", [], async () => {
       state.lastVote = null;
       state.playback.currentTime = 0;
       state.playback.duration = 0;
+      state.ratingVisible = false;
+      state.ratingWindowAnnounced = false;
       setSelfStatus("");
       highlightStars(0);
       updateVisibility();
@@ -1378,6 +1390,8 @@ BTFW.define("feature:ratings", [], async () => {
     state.playback.currentTime = Number(normalized.currentTime) || 0;
     state.playback.duration = Number(normalized.duration) || 0;
     state.playback.lastUpdate = Date.now();
+    state.ratingVisible = false;
+    state.ratingWindowAnnounced = false;
     setSelfStatus("");
     highlightStars(0);
     updatePlaybackFromPlayer();
@@ -1444,9 +1458,9 @@ BTFW.define("feature:ratings", [], async () => {
     }
   }
 
-  function announceActivation() {
-    if (state.announcedStart) return;
-    state.announcedStart = true;
+  function announceRatingWindow() {
+    if (state.ratingWindowAnnounced) return;
+    state.ratingWindowAnnounced = true;
 
     try {
       const notify = window.BTFW_notify;
@@ -1456,6 +1470,11 @@ BTFW.define("feature:ratings", [], async () => {
         notify.notify({ title: "Movie rating has started", kind: "info" });
       }
     } catch (_) {}
+  }
+
+  function announceActivation() {
+    if (!state.ratingVisible) return;
+    announceRatingWindow();
   }
 
   function boot() {
@@ -1479,5 +1498,9 @@ BTFW.define("feature:ratings", [], async () => {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", waitForEligibility);
   else waitForEligibility();
 
-  return { name: "feature:ratings", refresh: () => refreshStats(true) };
+  return {
+    name: "feature:ratings",
+    refresh: () => refreshStats(true),
+    announceActivation,
+  };
 });
