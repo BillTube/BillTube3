@@ -14,7 +14,7 @@
 #messagebuffer > div[class*=" chat-msg-"] {
   display: block !important;
   padding: 2px 16px !important;
-  padding-left: 60px !important;
+  padding-left: var(--btfw-message-padding-left, 60px) !important;
   position: relative;
   min-height: 22px;
 }
