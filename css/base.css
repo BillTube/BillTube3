@@ -650,6 +650,8 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 .btfw-stack-item.btfw-group-item .btfw-stack-item__title {
   font-weight: 700;
   color: var(--btfw-color-text);
+  margin-left: 5px;
+  font-size: 0.8rem;
 }
 .btfw-group-body {
   display: flex;
