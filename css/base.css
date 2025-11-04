@@ -177,10 +177,9 @@ footer {
 }
 
 .table thead th {
-  background: linear-gradient(155deg,
-      color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%),
-      color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%));
-  color: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
+  background: 
+ color-mix(in srgb, var(--btfw-color-panel) 60%, #000000c4 40%) !important;
+  color: white !important;
   font-weight: 600;
   border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-accent) 46%, transparent 54%);
 }
