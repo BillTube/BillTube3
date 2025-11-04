@@ -378,6 +378,9 @@ BTFW.define("feature:chat-avatars", [], async () => {
     const size = mode === "big" ? 40 : mode === "off" ? 0 : 28;
     document.documentElement.style.setProperty("--btfw-avatar-size", `${size}px`);
 
+    const indent = size > 0 ? 16 + size + 4 : 0;
+    document.documentElement.style.setProperty("--btfw-message-padding-left", `${indent}px`);
+
     if (size > 0) {
       // Note: We don't set width/height attributes anymore, CSS handles it dynamically
       document.querySelectorAll("#messagebuffer .btfw-chat-avatar").forEach(img => {
