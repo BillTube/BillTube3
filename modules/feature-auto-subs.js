@@ -19,7 +19,9 @@ BTFW.define("feature:auto-subs", [], async () => {
     isFetching: false,
     trackWatcher: null,
     bootInterval: null,
-    datasetObserver: null
+    datasetObserver: null,
+    updatingRuntime: false,
+    isEvaluating: false
   };
 
   function $(selector, root = document) {
@@ -86,6 +88,7 @@ BTFW.define("feature:auto-subs", [], async () => {
 
   function updateRuntimeFlags(enabled) {
     const flag = Boolean(enabled);
+    state.updatingRuntime = true;
     try {
       window.BTFW_CONFIG = window.BTFW_CONFIG || {};
       if (typeof window.BTFW_CONFIG.integrations !== "object") {
@@ -108,6 +111,9 @@ BTFW.define("feature:auto-subs", [], async () => {
         }
       }
     } catch (_) {}
+    setTimeout(() => {
+      state.updatingRuntime = false;
+    }, 0);
   }
 
   function warnMissingKey() {
@@ -586,6 +592,7 @@ BTFW.define("feature:auto-subs", [], async () => {
     const body = document.body;
     if (!body) return;
     state.datasetObserver = new MutationObserver(() => {
+      if (state.updatingRuntime) return;
       evaluateActivation();
     });
     state.datasetObserver.observe(body, {
@@ -637,19 +644,26 @@ BTFW.define("feature:auto-subs", [], async () => {
   }
 
   function evaluateActivation() {
-    const enabled = computeEnabled();
-    if (!enabled) {
-      deactivate();
-      return;
+    if (state.updatingRuntime) return;
+    if (state.isEvaluating) return;
+    state.isEvaluating = true;
+    try {
+      const enabled = computeEnabled();
+      if (!enabled) {
+        deactivate();
+        return;
+      }
+      const key = getTMDBKey();
+      if (!key) {
+        warnMissingKey();
+        deactivate();
+        return;
+      }
+      activate(key);
+      processCurrentTitle();
+    } finally {
+      state.isEvaluating = false;
     }
-    const key = getTMDBKey();
-    if (!key) {
-      warnMissingKey();
-      deactivate();
-      return;
-    }
-    activate(key);
-    processCurrentTitle();
   }
 
   function onReady() {
