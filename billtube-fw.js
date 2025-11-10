@@ -222,6 +222,7 @@ function load(src){
       "modules/feature-pip.js",
       "modules/feature-notify.js",
       "modules/feature-notification-sounds.js",
+      "modules/feature-audio-enhancer.js",
       "modules/feature-sync-guard.js",
       "modules/feature-chat-commands.js",
       "modules/feature-playlist-performance.js",
