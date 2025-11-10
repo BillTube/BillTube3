@@ -275,6 +275,7 @@ function load(src){
       BTFW.init("feature:pip"),
       BTFW.init("feature:notify"),
       BTFW.init("feature:notification-sounds"),
+      BTFW.init("feature:audioEnhancer"),
       BTFW.init("feature:syncGuard"),
       BTFW.init("feature:chat-commands"),
       BTFW.init("feature:playlistPerformance"),
