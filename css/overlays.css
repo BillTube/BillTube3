@@ -41,9 +41,17 @@
   box-shadow: var(--btfw-overlay-shadow);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
-
+.user-dropdown {
+    border: 1px solid #aaaaaa30;
+    max-width: 220px;
+    padding: 10px;
+}
+#userlist > div > div > strong {
+    color: #e3e3e3;
+    padding: 5px;
+    font-size: 1rem;
+}
 #btfw-userlist-pop .btfw-popbody{
   flex: 1 1 auto;
   overflow-y: auto;
@@ -1385,6 +1393,7 @@ html[data-btfw-theme="dark"] .panel {
 #chatheader {
     display: none;
 }
+
 
 
 
