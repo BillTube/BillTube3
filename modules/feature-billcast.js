@@ -19,9 +19,9 @@ BTFW.define("feature:billcast", [], async () => {
   function isEnabled() {
     try {
       const v = localStorage.getItem(KEY);
-      return (v === null) ? true : v === "1"; // default ON
+      return v === "1"; // default OFF; opt in from Theme Settings
     } catch (_) {
-      return true;
+      return false;
     }
   }
   function setEnabled(on) {

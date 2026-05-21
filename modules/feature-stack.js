@@ -2,6 +2,9 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
   const SKEY="btfw-stack-order";
   const PLAYLIST_VISIBILITY_KEY = "btfw-stack-playlist-open";
   let compactSpacing = true;
+  let booted = false;
+  let stackObserver = null;
+  let retryPopulateInterval = null;
   
   // Define what should be grouped together
   const GROUPS = [
@@ -834,16 +837,21 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
  function boot(){
   const refs=ensureStack();
   if(!refs) return;
+  if (booted) {
+    populate(refs);
+    return;
+  }
+  booted = true;
   populate(refs);
-    const observer=new MutationObserver(()=>populate(refs));
+    stackObserver=new MutationObserver(()=>populate(refs));
     const leftpad = document.getElementById('btfw-leftpad');
   const main = document.getElementById('main');
   
   if (leftpad) {
-    observer.observe(leftpad, {childList:true, subtree:false});
+    stackObserver.observe(leftpad, {childList:true, subtree:false});
   }
   if (main) {
-    observer.observe(main, {childList:true, subtree:false});
+    stackObserver.observe(main, {childList:true, subtree:false});
   }
   setTimeout(() => {
     const playlistGroup = document.querySelector('.btfw-stack-item[data-bind="playlist-group"]');
@@ -856,9 +864,13 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
     playlistGroup.classList.toggle('is-open', shouldBeOpen);
   }, 1000);
   let n=0;
-  const iv=setInterval(()=>{
+  if (retryPopulateInterval) clearInterval(retryPopulateInterval);
+  retryPopulateInterval=setInterval(()=>{
     populate(refs);
-    if(++n>8) clearInterval(iv);
+    if(++n>8) {
+      clearInterval(retryPopulateInterval);
+      retryPopulateInterval = null;
+    }
   },700);
 }
 

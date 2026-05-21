@@ -181,6 +181,10 @@ function load(src){
   });
 }
 
+function loadAll(files){
+  return Promise.all(files.map(function(f){ return load(BASE+"/"+f); }));
+}
+
   // Preload CSS in proper order for layout stability
   Promise.all([
     preload(BASE+"/css/tokens.css"),
@@ -191,12 +195,17 @@ function load(src){
     preload(BASE+"/css/player.css"),
     preload(BASE+"/css/mobile.css")
   ]).then(function(){
-    // Load modules in dependency order - core first, then layout-dependent modules
-    var mods=[
+    // Load modules in dependency stages. Cache busting stays enabled for testing,
+    // but independent files within a stage no longer block each other.
+    var coreMods=[
       "modules/util-motion.js",
       "modules/feature-style-core.js",
-      "modules/feature-bulma-layer.js",
+      "modules/feature-bulma-layer.js"
+    ];
+    var layoutMods=[
       "modules/feature-layout.js",
+    ];
+    var featureMods=[
       "modules/feature-channels.js",
       "modules/feature-footer.js",
       "modules/feature-player.js",
@@ -236,21 +245,22 @@ function load(src){
       "modules/feature-theme-settings.js",
       "modules/feature-ratings.js"
     ];
-    return mods.reduce((p,f)=>p.then(()=>load(BASE+"/"+f)), Promise.resolve());
+    return loadAll(coreMods)
+      .then(function(){
+        return Promise.all([
+          BTFW.init("feature:styleCore"),
+          BTFW.init("feature:bulma-layer")
+        ]);
+      })
+      .then(function(){ return loadAll(layoutMods); })
+      .then(function(){ return BTFW.init("feature:layout"); })
+      .then(function(){
+        // Wait a bit for layout to settle before loading DOM-heavy features.
+        return new Promise(resolve => setTimeout(resolve, 100));
+      })
+      .then(function(){ return loadAll(featureMods); });
   }).then(function(){
     return Promise.all([
-      BTFW.init("feature:styleCore"),
-      BTFW.init("feature:bulma-layer")
-    ]);
-  }).then(function(){
-    // Initialize layout early
-    return BTFW.init("feature:layout");
-  }).then(function(){
-    // Wait a bit for layout to settle
-    return new Promise(resolve => setTimeout(resolve, 100));
-  }).then(function(){
-    // Initialize all remaining modules
-    var inits = [
       BTFW.init("feature:channels"),
       BTFW.init("feature:footer"),
       BTFW.init("feature:player"),
@@ -290,8 +300,7 @@ function load(src){
       BTFW.init("feature:channelThemeAdmin"),
       BTFW.init("feature:themeSettings"),
       BTFW.init("feature:ratings")
-    ];
-    return Promise.all(inits);
+    ]);
   }).then(function(){
     console.log("[BTFW v3.4f] Ready.");
     // Dispatch a final ready event

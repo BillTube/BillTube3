@@ -13,6 +13,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   let chatSidePref = "right";
   let isVertical = false;
   let mobileToggleEl = null;
+  let layoutReadyDispatched = false;
 
   function refreshVideoSizing(){
     const wrap = document.getElementById("videowrap");
@@ -244,6 +245,8 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       console.warn("[BTFW] Resizer elements not found.");
       return;
     }
+    if (splitter._btfwResizableBound) return;
+    splitter._btfwResizableBound = true;
 
     let isResizing = false;
 
@@ -398,7 +401,10 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       grid.style.opacity = '1';
     }
     updateResponsiveLayout();
-    document.dispatchEvent(new CustomEvent("btfw:layoutReady"));
+    if (!layoutReadyDispatched) {
+      layoutReadyDispatched = true;
+      document.dispatchEvent(new CustomEvent("btfw:layoutReady"));
+    }
   }
 
   function init() {
@@ -535,4 +541,3 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       grid.insertBefore(host, grid.firstChild);
     }
   }
-
