@@ -151,7 +151,7 @@ BTFW.define("feature:audioEnhancer", [], async () => {
 
       if (this._isInsideInternalWindow()) return;
 
-      const isAlreadyProxied = current.includes(this.CORS_PROXY);
+      const isAlreadyProxied = current.includes(this.CORS_PROXY) || current === this.proxiedSrc;
       if (isAlreadyProxied) {
         this.isProxied = true;
         this.proxiedSrc = current;
@@ -176,7 +176,11 @@ BTFW.define("feature:audioEnhancer", [], async () => {
       const wasPlaying = !this.player.paused();
 
       this.originalSrc = currentSrc;
-      this.proxiedSrc = this.CORS_PROXY + encodeURIComponent(currentSrc);
+      if (currentSrc.includes('.workers.dev')) {
+        this.proxiedSrc = currentSrc;
+      } else {
+        this.proxiedSrc = this.CORS_PROXY + encodeURIComponent(currentSrc);
+      }
 
       try { this.player.pause(); }
       catch (_) {}
@@ -210,7 +214,7 @@ BTFW.define("feature:audioEnhancer", [], async () => {
       const currentSrc = this.player.currentSrc();
       if (!currentSrc) return false;
 
-      if (currentSrc.includes(this.CORS_PROXY)) {
+      if (currentSrc.includes(this.CORS_PROXY) || currentSrc === this.proxiedSrc) {
         this.isProxied = true;
         this.proxiedSrc = currentSrc;
         return true;
