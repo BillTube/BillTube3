@@ -47,6 +47,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       tmdb: {
         apiKey: ""
       },
+      wyzie: {
+        apiKey: ""
+      },
       ratings: {
         endpoint: ""
       },
@@ -438,6 +441,11 @@ background: "#0d0d0d",
     }
     const key = typeof integrations.tmdb.apiKey === "string" ? integrations.tmdb.apiKey.trim() : "";
     integrations.tmdb.apiKey = key;
+    if (!integrations.wyzie || typeof integrations.wyzie !== "object") {
+      integrations.wyzie = { apiKey: "" };
+    }
+    const wyzieKey = typeof integrations.wyzie.apiKey === "string" ? integrations.wyzie.apiKey.trim() : "";
+    integrations.wyzie.apiKey = wyzieKey;
     if (!integrations.ratings || typeof integrations.ratings !== "object") {
       integrations.ratings = { endpoint: "" };
     }
@@ -468,6 +476,9 @@ background: "#0d0d0d",
       }
       window.BTFW_CONFIG.tmdb.apiKey = key;
       window.BTFW_CONFIG.tmdbKey = key;
+      window.BTFW_CONFIG.wyzie = window.BTFW_CONFIG.wyzie || {};
+      window.BTFW_CONFIG.wyzie.apiKey = wyzieKey;
+      window.BTFW_CONFIG.wyzieKey = wyzieKey;
       window.BTFW_CONFIG.integrationsEnabled = integrations.enabled;
       if (typeof window.BTFW_CONFIG.ratings !== "object") {
         window.BTFW_CONFIG.ratings = {};
@@ -482,6 +493,8 @@ background: "#0d0d0d",
       window.BTFW_CONFIG.integrations.movieInfo.enabled = movieInfoEnabled;
       window.BTFW_CONFIG.integrations.autoSubs = window.BTFW_CONFIG.integrations.autoSubs || {};
       window.BTFW_CONFIG.integrations.autoSubs.enabled = autoSubsEnabled;
+      window.BTFW_CONFIG.integrations.wyzie = window.BTFW_CONFIG.integrations.wyzie || {};
+      window.BTFW_CONFIG.integrations.wyzie.apiKey = wyzieKey;
       window.BTFW_CONFIG.integrations.audioEnhancer = window.BTFW_CONFIG.integrations.audioEnhancer || {};
       window.BTFW_CONFIG.integrations.audioEnhancer.enabled = audioEnhancerEnabled;
       window.BTFW_CONFIG.movieInfo = window.BTFW_CONFIG.movieInfo || {};
@@ -504,6 +517,10 @@ background: "#0d0d0d",
       try {
         if (document?.body && document.body.dataset.tmdbKey !== key) {
           document.body.dataset.tmdbKey = key;
+        }
+        if (document?.body) {
+          if (wyzieKey) document.body.dataset.wyzieKey = wyzieKey;
+          else if (document.body.dataset?.wyzieKey) delete document.body.dataset.wyzieKey;
         }
         if (document?.body) {
           if (ratingsEndpoint) {
@@ -534,6 +551,7 @@ background: "#0d0d0d",
         detail: {
           enabled: integrations.enabled,
           tmdbKey: key,
+          wyzieKey,
           ratingsEndpoint,
           movieInfoEnabled,
           autoSubsEnabled,
@@ -1394,6 +1412,13 @@ background: "#0d0d0d",
     } else {
       normalized.integrations.tmdb.apiKey = normalized.integrations.tmdb.apiKey.trim();
     }
+    if (!normalized.integrations.wyzie || typeof normalized.integrations.wyzie !== "object") {
+      normalized.integrations.wyzie = { apiKey: "" };
+    } else if (typeof normalized.integrations.wyzie.apiKey !== "string") {
+      normalized.integrations.wyzie.apiKey = "";
+    } else {
+      normalized.integrations.wyzie.apiKey = normalized.integrations.wyzie.apiKey.trim();
+    }
     if (!normalized.integrations.ratings || typeof normalized.integrations.ratings !== "object") {
       normalized.integrations.ratings = { endpoint: "" };
     } else if (typeof normalized.integrations.ratings.endpoint !== "string") {
@@ -1747,6 +1772,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     const input = panel.querySelector('#btfw-theme-auto-subs-enabled');
     if (!button || !input) return;
     const tmdbField = panel.querySelector('#btfw-theme-integrations-tmdb');
+    const wyzieField = panel.querySelector('#btfw-theme-integrations-wyzie');
     const enabled = Boolean(integrations.autoSubs.enabled);
     input.checked = enabled;
     button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
@@ -1758,7 +1784,9 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (notice) {
       const keyFromCfg = typeof integrations.tmdb?.apiKey === 'string' ? integrations.tmdb.apiKey.trim() : '';
       const keyFromField = typeof tmdbField?.value === 'string' ? tmdbField.value.trim() : '';
-      const hasKey = Boolean(keyFromCfg || keyFromField);
+      const wyzieFromCfg = typeof integrations.wyzie?.apiKey === 'string' ? integrations.wyzie.apiKey.trim() : '';
+      const wyzieFromField = typeof wyzieField?.value === 'string' ? wyzieField.value.trim() : '';
+      const hasKey = Boolean(keyFromCfg || keyFromField) && Boolean(wyzieFromCfg || wyzieFromField);
       if (!enabled) {
         notice.hidden = true;
         notice.classList.remove('is-warning', 'is-success');
@@ -1768,7 +1796,7 @@ function replaceBlock(original, startMarker, endMarker, block){
         notice.classList.toggle('is-success', hasKey);
         notice.textContent = hasKey
           ? 'Auto subtitles will pull English captions from Wyzie whenever direct file uploads play.'
-          : 'Requires a TMDB API key to match the playing title. Enter your key above before enabling.';
+          : 'Requires TMDB and Wyzie API keys before enabling.';
       }
     }
   }
@@ -1880,8 +1908,12 @@ function replaceBlock(original, startMarker, endMarker, block){
                 <button type="button" class="button is-dark is-small" id="btfw-theme-auto-subs-toggle" aria-pressed="false">Enable auto subtitles</button>
                 <input type="checkbox" id="btfw-theme-auto-subs-enabled" data-btfw-bind="integrations.autoSubs.enabled" hidden>
               </div>
-              <p class="help is-warning" data-role="auto-subs-requirements" hidden>Requires a TMDB API key to match the playing title. Enter your key above before enabling.</p>
+              <p class="help is-warning" data-role="auto-subs-requirements" hidden>Requires TMDB and Wyzie API keys before enabling.</p>
               <p class="help">Fetches English subtitles from the Wyzie catalog automatically when direct file uploads are playing.</p>
+            </div>
+            <div class="field">
+              <label for="btfw-theme-integrations-wyzie">Wyzie API key</label>
+              <input type="text" id="btfw-theme-integrations-wyzie" data-btfw-bind="integrations.wyzie.apiKey" placeholder="YOUR_WYZIE_KEY">
             </div>
             <div class="field">
               <label for="btfw-theme-audio-enhancer-toggle">Audio enhancer (boost & normalization)</label>
@@ -2253,6 +2285,10 @@ function replaceBlock(original, startMarker, endMarker, block){
       updated.integrations.tmdb = { apiKey: "" };
     }
     updated.integrations.tmdb.apiKey = (updated.integrations.tmdb.apiKey || "").trim();
+    if (!updated.integrations.wyzie || typeof updated.integrations.wyzie !== "object") {
+      updated.integrations.wyzie = { apiKey: "" };
+    }
+    updated.integrations.wyzie.apiKey = (updated.integrations.wyzie.apiKey || "").trim();
     if (!updated.integrations.ratings || typeof updated.integrations.ratings !== "object") {
       updated.integrations.ratings = { endpoint: "" };
     }
@@ -2562,6 +2598,9 @@ function replaceBlock(original, startMarker, endMarker, block){
     }
     if (!cfg.integrations.tmdb || typeof cfg.integrations.tmdb !== "object") {
       cfg.integrations.tmdb = { apiKey: "" };
+    }
+    if (!cfg.integrations.wyzie || typeof cfg.integrations.wyzie !== "object") {
+      cfg.integrations.wyzie = { apiKey: "" };
     }
     if (!cfg.integrations.ratings || typeof cfg.integrations.ratings !== "object") {
       cfg.integrations.ratings = { endpoint: "" };

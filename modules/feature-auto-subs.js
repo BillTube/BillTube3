@@ -1,13 +1,15 @@
 /* BTFW – feature:auto-subs */
 BTFW.define("feature:auto-subs", [], async () => {
   const MODULE_NAME = "feature:auto-subs";
-  const WYZIE_API = "https://sub.wyzie.ru/search";
+  const WYZIE_API = "https://sub.wyzie.io/search";
   const TMDB_API = "https://api.themoviedb.org/3";
 
   const state = {
     active: false,
     tmdbKey: null,
+    wyzieKey: null,
     warnedNoKey: false,
+    warnedNoWyzieKey: false,
     currentTitle: "",
     subsCache: new Map(),
     lastAddedTracks: [],
@@ -86,6 +88,25 @@ BTFW.define("feature:auto-subs", [], async () => {
     }
   }
 
+  function getWyzieKey() {
+    try {
+      const cfg = (window.BTFW_CONFIG && typeof window.BTFW_CONFIG === "object") ? window.BTFW_CONFIG : {};
+      const admin = (window.BTFW_THEME_ADMIN && typeof window.BTFW_THEME_ADMIN === "object") ? window.BTFW_THEME_ADMIN : {};
+      const integrations = (cfg.integrations && typeof cfg.integrations === "object") ? cfg.integrations : {};
+      const cfgWyzie = (cfg.wyzie && typeof cfg.wyzie === "object") ? cfg.wyzie : {};
+      const adminWyzie = (admin.integrations?.wyzie && typeof admin.integrations.wyzie === "object") ? admin.integrations.wyzie : {};
+      const intWyzie = (integrations.wyzie && typeof integrations.wyzie === "object") ? integrations.wyzie : {};
+      let lsKey = "";
+      try { lsKey = (localStorage.getItem("btfw:wyzie:key") || "").trim(); } catch (_) {}
+      const g = v => (v == null ? "" : String(v)).trim();
+      return adminWyzie.apiKey?.trim?.() || intWyzie.apiKey?.trim?.() || cfgWyzie.apiKey?.trim?.() ||
+        g(cfg.wyzieKey) || lsKey || g(window.WYZIE_API_KEY) || g(window.BTFW_WYZIE_KEY) ||
+        g(window.wyzie_key) || (document.body?.dataset?.wyzieKey || "").trim() || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function updateRuntimeFlags(enabled) {
     const flag = Boolean(enabled);
     state.updatingRuntime = true;
@@ -122,30 +143,74 @@ BTFW.define("feature:auto-subs", [], async () => {
     console.error("[auto-subs] TMDB API key missing. Set it under Theme Toolkit → Integrations before enabling Auto subtitles.");
   }
 
+  function warnMissingWyzieKey() {
+    if (state.warnedNoWyzieKey) return;
+    state.warnedNoWyzieKey = true;
+    console.error("[auto-subs] Wyzie API key missing. Set it under Theme Toolkit → Integrations before enabling Auto subtitles.");
+  }
+
   function clearWarning() {
     state.warnedNoKey = false;
+    state.warnedNoWyzieKey = false;
   }
 
   function shouldLoadSubtitles() {
     const mediaType = window.PLAYER?.mediaType;
-    return mediaType === "fi" || mediaType === "gd";
+    if (mediaType === "fi" || mediaType === "gd") return true;
+    const video = $("#ytapiplayer video") || $("#videowrap video");
+    return Boolean(video && (video.currentSrc || video.src));
   }
 
   function getPlayer() {
     if (state.player && typeof state.player.addRemoteTextTrack === "function") return state.player;
     const wrap = $("#videowrap");
     if (!wrap) return null;
-    const video = wrap.querySelector("video");
+    const video = wrap.querySelector("video") || $("#ytapiplayer video");
     if (!video) return null;
     if (typeof window.videojs === "function") {
       try {
         state.player = window.videojs(video);
         return state.player;
       } catch (_) {
-        return null;
+        state.player = null;
       }
     }
-    return null;
+    state.player = createNativeVideoAdapter(video);
+    return state.player;
+  }
+
+  function createNativeVideoAdapter(video) {
+    return {
+      addRemoteTextTrack(track) {
+        if (!track || !track.src) return null;
+        const el = document.createElement("track");
+        el.kind = track.kind || "subtitles";
+        el.src = track.src;
+        el.srclang = track.srclang || "en";
+        el.label = track.label || "Auto subtitles";
+        el.dataset.btfwAutoSubs = "1";
+        video.appendChild(el);
+        try {
+          for (const item of video.textTracks) {
+            item.mode = item.label === el.label ? "showing" : "disabled";
+          }
+        } catch (_) {}
+        return el;
+      },
+      remoteTextTracks() {
+        return Array.from(video.querySelectorAll('track[data-btfw-auto-subs="1"]'));
+      },
+      removeRemoteTextTrack(track) {
+        const src = track?.src || "";
+        const label = track?.label || "";
+        const matches = Array.from(video.querySelectorAll('track[data-btfw-auto-subs="1"]'));
+        matches.forEach(el => {
+          if (track === el || (src && el.src === src) || (label && el.label === label)) {
+            try { el.remove(); } catch (_) {}
+          }
+        });
+      }
+    };
   }
 
   function getSocket() {
@@ -296,12 +361,18 @@ BTFW.define("feature:auto-subs", [], async () => {
     if (!player) return;
     state.lastAddedTracks.forEach(trackEl => {
       try {
-        if (trackEl && trackEl.track) {
-          const src = trackEl.track.src;
+        if (trackEl) {
+          const src = trackEl.src || trackEl.track?.src || "";
           if (src && src.startsWith("blob:")) {
             URL.revokeObjectURL(src);
           }
-          player.removeRemoteTextTrack(trackEl.track);
+          if (trackEl.parentNode) {
+            trackEl.remove();
+          } else if (trackEl.track) {
+            player.removeRemoteTextTrack(trackEl.track);
+          } else {
+            player.removeRemoteTextTrack(trackEl);
+          }
         }
       } catch (_) {}
     });
@@ -372,8 +443,8 @@ BTFW.define("feature:auto-subs", [], async () => {
   }
 
   async function fetchSubtitles(imdbId, season, episode) {
-    if (!imdbId) return null;
-    const sources = ["opensubtitles", "subdl", "all"];
+    if (!imdbId || !state.wyzieKey) return null;
+    const sources = ["opensubtitles", "all"];
     for (const source of sources) {
       const params = new URLSearchParams({ id: imdbId });
       if (season !== null && episode !== null) {
@@ -383,6 +454,7 @@ BTFW.define("feature:auto-subs", [], async () => {
       params.append("language", "en");
       params.append("format", "srt");
       params.append("source", source);
+      params.append("key", state.wyzieKey);
       const url = `${WYZIE_API}?${params}`;
       try {
         const resp = await fetch(url);
@@ -597,13 +669,14 @@ BTFW.define("feature:auto-subs", [], async () => {
     });
     state.datasetObserver.observe(body, {
       attributes: true,
-      attributeFilter: ["data-btfw-auto-subs-enabled", "data-tmdb-key"]
+      attributeFilter: ["data-btfw-auto-subs-enabled", "data-tmdb-key", "data-wyzie-key"]
     });
   }
 
-  function activate(tmdbKey) {
-    const keyChanged = Boolean(state.tmdbKey && state.tmdbKey !== tmdbKey);
+  function activate(tmdbKey, wyzieKey) {
+    const keyChanged = Boolean((state.tmdbKey && state.tmdbKey !== tmdbKey) || (state.wyzieKey && state.wyzieKey !== wyzieKey));
     state.tmdbKey = tmdbKey;
+    state.wyzieKey = wyzieKey;
     clearWarning();
     if (state.active) {
       updateRuntimeFlags(true);
@@ -639,6 +712,7 @@ BTFW.define("feature:auto-subs", [], async () => {
     state.currentTitle = "";
     state.isFetching = false;
     state.tmdbKey = null;
+    state.wyzieKey = null;
     state.active = false;
     updateRuntimeFlags(false);
   }
@@ -659,7 +733,13 @@ BTFW.define("feature:auto-subs", [], async () => {
         deactivate();
         return;
       }
-      activate(key);
+      const wyzieKey = getWyzieKey();
+      if (!wyzieKey) {
+        warnMissingWyzieKey();
+        deactivate();
+        return;
+      }
+      activate(key, wyzieKey);
       processCurrentTitle();
     } finally {
       state.isEvaluating = false;
