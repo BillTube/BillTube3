@@ -1947,3 +1947,53 @@ body:not(.is-scrolling) #queue li {
          t o   {   o p a c i t y :   1 ;   t r a n s f o r m :   t r a n s l a t e Y ( 0 ) ;   }  
  }  
  
+/* 5. PLAYLIST CONTROLS REDESIGN (CENTERED, FILTER BOTTOM) */
+.btfw-plbar__layout {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 16px !important;
+    padding: 15px 0 !important;
+}
+
+.btfw-plbar__primary {
+    order: 2 !important;
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+}
+
+.btfw-plbar__aside {
+    order: 1 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+.btfw-plbar__actions {
+    display: flex !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+}
+
+.btfw-plbar__action-btn, #btfw-addmedia-btn {
+    border-radius: 20px !important;
+    padding: 6px 16px !important;
+    font-weight: 600 !important;
+    border: none !important;
+}
+
+.btfw-plbar__search {
+    max-width: 500px !important;
+    width: 100% !important;
+}
+
+.btfw-plbar__search input, .btfw-plbar__search .input {
+    border-radius: 20px 0 0 20px !important;
+}
+.btfw-plbar__search button, .btfw-plbar__search .button {
+    border-radius: 0 20px 20px 0 !important;
+}
