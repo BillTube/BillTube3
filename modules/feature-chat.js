@@ -584,7 +584,8 @@ const scheduleNormalizeChatActions = (() => {
 
     // Direct socket hook - scroll on every chat message
     const sock = window.socket;
-    if (sock && typeof sock.on === "function") {
+    if (sock && typeof sock.on === "function" && !sock._btfwScrollChatBound) {
+      sock._btfwScrollChatBound = true;
       sock.on("chatMsg", () => {
         if (typeof window.scrollChat === "function") {
           window.scrollChat();

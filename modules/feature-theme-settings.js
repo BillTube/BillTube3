@@ -320,7 +320,7 @@ BTFW.define("feature:themeSettings", [], async () => {
                   </header>
                   <div class="btfw-ts-card__body">
                     <label class="checkbox btfw-checkbox">
-                      <input type="checkbox" id="btfw-billcast-toggle" checked> <span>Enable Billcast (Chromecast sender)</span>
+                      <input type="checkbox" id="btfw-billcast-toggle"> <span>Enable Billcast (Chromecast sender)</span>
                     </label>
                     <label class="checkbox btfw-checkbox">
                       <input type="checkbox" id="btfw-localsubs-toggle"> <span>Show the “Local Subtitles” button</span>
@@ -559,7 +559,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     $("#btfw-gif-autoplay").checked = get(TS_KEYS.gifAutoplay, "1") === "1";
     $("#btfw-chat-join-notices").checked = get(TS_KEYS.chatJoinNotices, "1") === "1";
     $("#btfw-localsubs-toggle").checked = get(TS_KEYS.localSubs, "1") === "1";
-    const bc = $("#btfw-billcast-toggle"); if (bc) bc.checked = get(TS_KEYS.billcastEnabled, "1") === "1";
+    const bc = $("#btfw-billcast-toggle"); if (bc) bc.checked = get(TS_KEYS.billcastEnabled, "0") === "1";
     const compactStored = get(TS_KEYS.stackCompact, "1") === "1";
     const compactBtn = $("#btfw-compact-stack-toggle", m);
     if (compactBtn?._btfwSync) compactBtn._btfwSync(compactStored);

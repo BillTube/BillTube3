@@ -6,6 +6,9 @@ BTFW.define("feature:motd-editor", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
   const motion = await BTFW.init("util:motion");
+  let booted = false;
+  let motdButtonObserver = null;
+  let channelSettingsWatched = false;
   
   // Summernote CDN (v0.8.20 - stable)
   const SUMMERNOTE_CSS = "https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.css";
@@ -259,6 +262,9 @@ BTFW.define("feature:motd-editor", [], async () => {
   }
 
   function watchChannelSettings(){
+    if (channelSettingsWatched) return;
+    channelSettingsWatched = true;
+
     const observer = new MutationObserver(() => {
       const modal = $("#channeloptions, #channelsettingsmodal, #channeloptionsmodal");
       if (modal && modal.style.display !== "none" && !modal.classList.contains("hidden")) {
@@ -329,9 +335,14 @@ BTFW.define("feature:motd-editor", [], async () => {
   }
 
   function boot(){
+    if (booted) {
+      injectButton();
+      return;
+    }
+    booted = true;
     injectButton();
-    const mo = new MutationObserver(()=> injectButton());
-    mo.observe(document.body, { childList:true, subtree:true });
+    motdButtonObserver = new MutationObserver(()=> injectButton());
+    motdButtonObserver.observe(document.body, { childList:true, subtree:true });
     watchChannelSettings();
   }
 

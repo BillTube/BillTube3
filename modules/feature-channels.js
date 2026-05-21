@@ -1,5 +1,7 @@
 BTFW.define("feature:channels", [], async () => {
   const $ = (s, r = document) => r.querySelector(s);
+  let booted = false;
+  let initTimer = null;
 
   function resolveSliderSettings() {
     try {
@@ -517,6 +519,7 @@ BTFW.define("feature:channels", [], async () => {
   }
 
   async function initializeChannels() {
+    initTimer = null;
     removeExistingSliders();
     if (!isChannelListEnabled()) {
       return;
@@ -538,13 +541,22 @@ BTFW.define("feature:channels", [], async () => {
     injectChannelSlider(channels);
   }
 
+  function scheduleInitialize(delay = 250) {
+    if (initTimer) clearTimeout(initTimer);
+    initTimer = setTimeout(initializeChannels, delay);
+  }
+
   function boot() {
-    setTimeout(initializeChannels, 500);
-    setTimeout(initializeChannels, 1500);
-    setTimeout(initializeChannels, 3000);
+    if (booted) {
+      scheduleInitialize(250);
+      return;
+    }
+    booted = true;
+
+    scheduleInitialize(500);
 
     document.addEventListener('btfw:layoutReady', () => {
-      setTimeout(initializeChannels, 300);
+      scheduleInitialize(300);
     });
 
     let themeTimer = null;
