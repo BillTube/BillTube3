@@ -141,7 +141,7 @@ var SUPPORTS_PRELOAD = (function(){
 function preload(href){
   return new Promise(function(resolve){
     var l = document.createElement("link");
-    var url = qparam(href, "v="+encodeURIComponent(BTFW_VERSION));
+    var url = qparam(href, "t="+Date.now());
 
     if (SUPPORTS_PRELOAD) {
       l.rel = "preload";
@@ -174,7 +174,7 @@ function load(src){
   return new Promise(function(resolve, reject){
     var s = document.createElement("script");
     s.async = true; s.defer = true;
-    s.src = qparam(src, "v="+encodeURIComponent(BTFW_VERSION));
+    s.src = qparam(src, "t="+Date.now());
     s.onload = function(){ resolve(); };
     s.onerror = function(){ reject(new Error("Failed to load "+src)); };
     document.head.appendChild(s);
