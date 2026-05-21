@@ -243,13 +243,14 @@ BTFW.define("feature:nowplaying", [], async () => {
   function handleMediaChange(data) {
     // Handle both object with title and just queue position number
     if (data && typeof data === 'object' && data.title) {
-      setTitle(data.title, { force: true });
-      mountTitleIntoSlot();
-
       const mediaKey = mediaIdentity(data);
       if (mediaKey) {
         state.lastMediaKey = mediaKey;
       }
+      requestAnimationFrame(() => {
+        setTitle(data.title, { force: true });
+        mountTitleIntoSlot();
+      });
     }
   }
 
