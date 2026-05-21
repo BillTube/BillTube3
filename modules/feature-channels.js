@@ -2,6 +2,9 @@ BTFW.define("feature:channels", [], async () => {
   const $ = (s, r = document) => r.querySelector(s);
   let booted = false;
   let initTimer = null;
+  let initRun = 0;
+  let sliderRun = 0;
+  let placementTimer = null;
 
   function resolveSliderSettings() {
     try {
@@ -461,7 +464,8 @@ BTFW.define("feature:channels", [], async () => {
     cleanup();
   }
 
-  function placeSliderInStack(slider){
+  function placeSliderInStack(slider, run = sliderRun){
+    if (run !== sliderRun) return true;
     const stackBody = document.querySelector('#btfw-stack .btfw-stack-item[data-bind="channels-group"] .btfw-stack-item__body');
     if (!stackBody) return false;
     if (slider.parentElement !== stackBody) stackBody.appendChild(slider);
@@ -469,16 +473,26 @@ BTFW.define("feature:channels", [], async () => {
     return true;
   }
 
-  function scheduleStackPlacement(slider){
-    if (placeSliderInStack(slider)) return;
+  function clearStackPlacementTimer(){
+    if (!placementTimer) return;
+    clearInterval(placementTimer);
+    placementTimer = null;
+  }
+
+  function scheduleStackPlacement(slider, run){
+    clearStackPlacementTimer();
+    if (placeSliderInStack(slider, run)) return;
     let attempts = 0;
-    const iv = setInterval(() => {
+    placementTimer = setInterval(() => {
       attempts += 1;
-      if (placeSliderInStack(slider) || attempts > 10) clearInterval(iv);
+      if (run !== sliderRun || placeSliderInStack(slider, run) || attempts > 10) {
+        clearStackPlacementTimer();
+      }
     }, 400);
   }
 
   function removeExistingSliders() {
+    clearStackPlacementTimer();
     document.querySelectorAll('#btfw-channels').forEach(existing => {
       if (typeof existing._btfwCleanup === 'function') {
         try { existing._btfwCleanup(); } catch(_) {}
@@ -489,6 +503,7 @@ BTFW.define("feature:channels", [], async () => {
 
   function injectChannelSlider(channels) {
     removeExistingSliders();
+    const run = ++sliderRun;
 
     const slider = createChannelSlider(channels);
 
@@ -497,7 +512,7 @@ BTFW.define("feature:channels", [], async () => {
 
     let inserted = false;
 
-    if (placeSliderInStack(slider)) {
+    if (placeSliderInStack(slider, run)) {
       inserted = true;
     } else if (videowrap && leftpad && leftpad.contains(videowrap)) {
       leftpad.insertBefore(slider, videowrap.nextSibling);
@@ -511,7 +526,7 @@ BTFW.define("feature:channels", [], async () => {
       document.body.appendChild(slider);
     }
 
-    scheduleStackPlacement(slider);
+    scheduleStackPlacement(slider, run);
     setTimeout(() => {
       setupCarouselControls(slider, channels);
       slider._btfwRecalc && slider._btfwRecalc();
@@ -519,6 +534,7 @@ BTFW.define("feature:channels", [], async () => {
   }
 
   async function initializeChannels() {
+    const run = ++initRun;
     initTimer = null;
     removeExistingSliders();
     if (!isChannelListEnabled()) {
@@ -531,6 +547,7 @@ BTFW.define("feature:channels", [], async () => {
     }
 
     const channels = await fetchChannelData(jsonUrl);
+    if (run !== initRun) return;
     if (channels.length === 0) {
       injectChannelCSS();
       injectChannelSlider([]);
