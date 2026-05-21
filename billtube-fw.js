@@ -174,7 +174,7 @@ function load(src){
   return new Promise(function(resolve, reject){
     var s = document.createElement("script");
     s.async = true; s.defer = true;
-    s.src = qparam(src, "v="+encodeURIComponent(BTFW_VERSION)) + "&t=" + Date.now();
+    s.src = qparam(src, "v="+encodeURIComponent(BTFW_VERSION));
     s.onload = function(){ resolve(); };
     s.onerror = function(){ reject(new Error("Failed to load "+src)); };
     document.head.appendChild(s);
@@ -296,7 +296,6 @@ function loadAll(files){
       BTFW.init("feature:billcast"),
       BTFW.init("feature:motd-editor"),
       BTFW.init("feature:videoEnhancements"),
-      BTFW.init("feature:footer"),
       BTFW.init("feature:channelThemeAdmin"),
       BTFW.init("feature:themeSettings"),
       BTFW.init("feature:ratings")
