@@ -126,9 +126,10 @@
   overflow: hidden; /* Prevent overflow issues */
 }
 
-/* Twitch/Kick-style chat column — slim header strip, no separate box, no
-   nested chrome. All colors/fonts use --btfw-* tokens so channel-owner
-   theme customizations apply. */
+/* Twitch/Kick-style chat column — slim header strip with zero chrome.
+   Topbar fully blends into the chat column (no bg, no border, no shadow);
+   the now-playing label is the only visible content. All colors/fonts use
+   --btfw-* tokens so channel-owner theme customizations apply. */
 #chatwrap .btfw-chat-topbar{
     display: flex;
     flex-direction: row;
@@ -139,10 +140,12 @@
     margin: 0;
     min-height: 48px;
     background: transparent;
+    background-image: none;
     border: 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--btfw-border) 30%, transparent 70%);
     border-radius: 0;
     box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     flex-shrink: 0;
     position: relative;
     overflow: visible;
