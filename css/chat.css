@@ -156,11 +156,26 @@
     overflow: visible;
 }
 
-/* Grid column placement for the topbar's children */
-#chatwrap .btfw-chat-topbar #btfw-notify-stack { grid-area: left; justify-self: start; min-width: 0; }
+/* Grid column placement for the topbar's children.
+   NOTE: #btfw-notify-stack is intentionally NOT given a grid-area. It uses
+   position:absolute with width: min(360px, 100%) anchored top:100% right:12px
+   so toasts pop out BELOW the topbar at a comfortable width. If we placed
+   it in a grid cell, the CSS Grid spec says the cell becomes the containing
+   block for its absolute positioning — and our left cell is only ~50px
+   wide, which collapsed every toast to a tiny strip. Leaving it out of
+   the grid lets it absolute-position against the topbar itself. */
 #chatwrap .btfw-chat-topbar .btfw-chat-topbar-left { grid-area: center; }
-#chatwrap .btfw-chat-topbar #btfw-ratings-wrapper { grid-area: center; grid-row: 2; width: auto; justify-self: center; }
+/* Ratings row spans the FULL topbar width (column 1 → -1) on row 2 so the
+   stars can spread out and read as a real interaction bar instead of a
+   small cluster in the center. */
+#chatwrap .btfw-chat-topbar #btfw-ratings-wrapper { grid-column: 1 / -1; grid-row: 2; width: 100%; justify-self: stretch; }
 #chatwrap .btfw-chat-topbar #btfw-chat-topbar-actions { grid-area: right; justify-self: end; }
+/* When ratings is open, let the stars take the leftover row space and
+   distribute themselves with even gaps so the row fills end-to-end. */
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__stars {
+  flex: 1 1 auto;
+  justify-content: space-between;
+}
 
 /* Left side stacks title row over the voting stars row when ratings show */
 #chatwrap .btfw-chat-topbar .btfw-chat-topbar-left {
