@@ -66,13 +66,43 @@
   margin: 0;
   margin-left: auto;
   padding: 0;
+  gap: 0;
   flex: 0 0 auto;
   float: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 #btfw-navhost .navbar-nav,
 #btfw-navhost .navbar-nav.navbar-right {
   margin: 0;
   float: none;
+  width: 100%;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Bootstrap's `.visible-lg` / `.visible-md` responsive utility divs end up as
+   flex siblings of the nav <ul> inside #nav-collapsible — even though they
+   collapse to 0 width, when combined with the parent's flex-gap they push
+   the avatar ~36px left of the right edge. Hide them inside the navhost. */
+#btfw-navhost #nav-collapsible .visible-lg,
+#btfw-navhost #nav-collapsible .visible-md,
+#btfw-navhost #nav-collapsible .visible-sm,
+#btfw-navhost #nav-collapsible .visible-xs {
+  display: none !important;
+}
+
+/* The avatar link wraps the img with 12px of padding by default, eating
+   another chunk of right-edge space. Tighten it so the avatar circle sits
+   ~16px from the nav's inner right edge, matching the brand's left offset. */
+#btfw-navhost #btfw-nav-avatar-item {
+  margin-left: 8px;
+  margin-right: 0;
+}
+#btfw-navhost #btfw-nav-avatar-item .btfw-nav-avatar-link,
+#btfw-navhost #btfw-nav-avatar-item > a {
+  padding: 4px 0 4px 8px;
 }
 
 #btfw-navhost .navbar-brand {
