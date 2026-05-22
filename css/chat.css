@@ -1111,6 +1111,17 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
   opacity: 1;
 }
 
+/* CyTube's ui.js attaches a hover popup to #usercount listing site
+   admins / channel admins inside a .profile-box element. Don't need it
+   — toggling the userlist already shows everyone with their rank flair.
+   Hide the box so it never paints. */
+#usercount .profile-box,
+.btfw-usercount .profile-box {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 #usercount.btfw-usercount::before {
   content: "\f0c0";
   font-family: "Font Awesome 5 Free", "Font Awesome 5 Pro", "Font Awesome 5", "FontAwesome", sans-serif;
