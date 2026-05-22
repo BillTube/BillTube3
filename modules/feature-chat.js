@@ -960,12 +960,27 @@ const scheduleNormalizeChatActions = (() => {
       top.prepend(left);
     }
 
-    if (!left.querySelector("#btfw-nowplaying-slot")) {
-      const slot = document.createElement("div");
+    // If feature:nowplaying (or anything else) already created a
+    // #btfw-nowplaying-slot directly inside the topbar, MOVE it into
+    // .btfw-chat-topbar-left so we don't end up with two duplicate-id
+    // slots competing for flex width. Drop any remaining duplicates.
+    let slot = left.querySelector("#btfw-nowplaying-slot");
+    if (!slot) {
+      const existing = top.querySelector("#btfw-nowplaying-slot");
+      if (existing && !left.contains(existing)) {
+        left.appendChild(existing);
+        slot = existing;
+      }
+    }
+    if (!slot) {
+      slot = document.createElement("div");
       slot.id = "btfw-nowplaying-slot";
       slot.className = "btfw-chat-title";
       left.appendChild(slot);
     }
+    top.querySelectorAll("#btfw-nowplaying-slot").forEach(node => {
+      if (node !== slot) node.remove();
+    });
 
     let topActions = top.querySelector("#btfw-chat-topbar-actions");
     if (!topActions) {

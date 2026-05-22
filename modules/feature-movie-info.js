@@ -406,10 +406,13 @@ BTFW.define("feature:movie-info", [], async () => {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     const data = await response.json();
+    // Prefer the TMDB-canonical title; otherwise fall back to the cleaned input
+    // so the banner never shows the raw "Currently Playing: ..." prefix.
+    const displayTitle = cleanTitle || movieTitle;
     if (data?.results?.length > 0) {
       const movie = data.results[0];
       return {
-        title: movieTitle,
+        title: movie.title || displayTitle,
         backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : null,
         poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
         summary: movie.overview || "",
@@ -419,7 +422,7 @@ BTFW.define("feature:movie-info", [], async () => {
       };
     }
     return {
-      title: movieTitle,
+      title: displayTitle,
       backdrop: null,
       poster: null,
       summary: "",
