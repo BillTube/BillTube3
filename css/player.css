@@ -630,10 +630,13 @@
 }
 
 /* These hide rules MUST come after the .vjs-time-control display rule above
-   to win the same-specificity / !important tie. */
+   to win the same-specificity / !important tie. Keep only the current-time
+   label — the duration and divider are redundant with the progress rail. */
 #videowrap .video-js.btfw-videojs-themed .vjs-remaining-time,
 #videowrap .video-js.btfw-videojs-themed .vjs-seek-to-live-control,
-#videowrap .video-js.btfw-videojs-themed .vjs-live-control {
+#videowrap .video-js.btfw-videojs-themed .vjs-live-control,
+#videowrap .video-js.btfw-videojs-themed .vjs-time-divider,
+#videowrap .video-js.btfw-videojs-themed .vjs-duration {
   display: none;
 }
 
