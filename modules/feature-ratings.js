@@ -1181,7 +1181,7 @@ BTFW.define("feature:ratings", [], async () => {
       if (Number.isFinite(score)) highlightStars(score);
     });
 
-    el.addEventListener("mouseleave", () => highlightStars(state.lastVote || 0));
+    el.addEventListener("mouseleave", () => highlightStarsRest());
 
     el.querySelector(".btfw-ratings__list")?.addEventListener("click", (event) => {
       event.preventDefault();
@@ -1192,11 +1192,29 @@ BTFW.define("feature:ratings", [], async () => {
     return el;
   }
 
-  function highlightStars(score) {
+  function highlightStars(score, asCommunity) {
     state.stars.forEach((star) => {
       const v = Number(star.dataset.score);
-      star.dataset.active = v <= score ? "true" : "false";
+      const isActive = v <= score;
+      star.dataset.active = isActive ? "true" : "false";
+      star.dataset.community = isActive && asCommunity ? "true" : "false";
     });
+  }
+
+  // Compute the score the stars should fall back to when the user is not
+  // hovering and hasn't voted yet — i.e. the rounded community average,
+  // shown in a slightly muted accent tone so it reads as "community" not
+  // "your vote".
+  function getRestingStarScore() {
+    if (state.lastVote) return { score: state.lastVote, asCommunity: false };
+    const votes = Number(state.stats?.votes) || 0;
+    const avg = Number(state.stats?.avg) || 0;
+    if (votes >= 1 && avg > 0) return { score: Math.round(avg), asCommunity: true };
+    return { score: 0, asCommunity: false };
+  }
+  function highlightStarsRest() {
+    const r = getRestingStarScore();
+    highlightStars(r.score, r.asCommunity);
   }
 
   function setStatus(text) { if (state.statusNode) state.statusNode.textContent = text || ""; }
@@ -1236,10 +1254,10 @@ BTFW.define("feature:ratings", [], async () => {
 
     if (state.lastVote) {
       setSelfStatus(`Your rating: ${state.lastVote}★`);
-      highlightStars(state.lastVote);
+      highlightStars(state.lastVote, false);
     } else {
       setSelfStatus("");
-      highlightStars(0);
+      highlightStarsRest();
     }
   }
 
