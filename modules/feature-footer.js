@@ -18,6 +18,16 @@ BTFW.define("feature:footer", [], async () => {
           <span>BillTube Framework</span>
           <a href="http://discord.gg/fwadWd9" target="_blank" rel="noopener">Available Now</a>
         </h4>
+        <div class="btfw-footer-branding__donate">
+          <a href="https://ko-fi.com/O5O02CIHL" rel="noopener noreferrer" target="_blank">
+            <img
+              src="https://storage.ko-fi.com/cdn/kofi3.png?v=3"
+              alt="Buy Me a Coffee at ko-fi.com"
+              height="36"
+              width="235"
+            />
+          </a>
+        </div>
       </div>
     </div>
   `;
@@ -98,6 +108,12 @@ BTFW.define("feature:footer", [], async () => {
         display: flex;
         flex-direction: column;
         gap: 0.35rem;
+      }
+
+      .btfw-footer-branding__donate {
+        margin-top: 0.75rem;
+        display: flex;
+        justify-content: center;
       }
 
       @media (min-width: 640px) {

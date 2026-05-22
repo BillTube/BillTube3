@@ -24,7 +24,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   ];
 
   const DEFAULT_CONFIG = {
-    version: 7,
+    version: 8,
     tint: "midnight",
     colors: {
       background: "#0d0d0d",
@@ -49,6 +49,15 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       },
       ratings: {
         endpoint: ""
+      },
+      movieInfo: {
+        enabled: false
+      },
+      autoSubs: {
+        enabled: false
+      },
+      audioEnhancer: {
+        enabled: false
       }
     },
     resources: {
@@ -411,6 +420,24 @@ background: "#0d0d0d",
     }
     const ratingsEndpoint = typeof integrations.ratings.endpoint === "string" ? integrations.ratings.endpoint.trim() : "";
     integrations.ratings.endpoint = ratingsEndpoint;
+
+    if (!integrations.movieInfo || typeof integrations.movieInfo !== "object") {
+      integrations.movieInfo = { enabled: false };
+    }
+    const movieInfoEnabled = Boolean(integrations.movieInfo.enabled);
+    integrations.movieInfo.enabled = movieInfoEnabled;
+
+    if (!integrations.autoSubs || typeof integrations.autoSubs !== "object") {
+      integrations.autoSubs = { enabled: false };
+    }
+    const autoSubsEnabled = Boolean(integrations.autoSubs.enabled);
+    integrations.autoSubs.enabled = autoSubsEnabled;
+
+    if (!integrations.audioEnhancer || typeof integrations.audioEnhancer !== "object") {
+      integrations.audioEnhancer = { enabled: false };
+    }
+    const audioEnhancerEnabled = Boolean(integrations.audioEnhancer.enabled);
+    integrations.audioEnhancer.enabled = audioEnhancerEnabled;
     if (typeof window !== "undefined") {
       window.BTFW_CONFIG = window.BTFW_CONFIG || {};
       if (typeof window.BTFW_CONFIG.tmdb !== "object") {
@@ -425,6 +452,27 @@ background: "#0d0d0d",
       window.BTFW_CONFIG.ratings.endpoint = ratingsEndpoint;
       window.BTFW_CONFIG.ratingsEndpoint = ratingsEndpoint;
       window.BTFW_CONFIG.shouldLoadRatings = Boolean(ratingsEndpoint);
+      if (typeof window.BTFW_CONFIG.integrations !== "object") {
+        window.BTFW_CONFIG.integrations = {};
+      }
+      window.BTFW_CONFIG.integrations.movieInfo = window.BTFW_CONFIG.integrations.movieInfo || {};
+      window.BTFW_CONFIG.integrations.movieInfo.enabled = movieInfoEnabled;
+      window.BTFW_CONFIG.integrations.autoSubs = window.BTFW_CONFIG.integrations.autoSubs || {};
+      window.BTFW_CONFIG.integrations.autoSubs.enabled = autoSubsEnabled;
+      window.BTFW_CONFIG.integrations.audioEnhancer = window.BTFW_CONFIG.integrations.audioEnhancer || {};
+      window.BTFW_CONFIG.integrations.audioEnhancer.enabled = audioEnhancerEnabled;
+      window.BTFW_CONFIG.movieInfo = window.BTFW_CONFIG.movieInfo || {};
+      window.BTFW_CONFIG.movieInfo.enabled = movieInfoEnabled;
+      window.BTFW_CONFIG.movieInfoEnabled = movieInfoEnabled;
+      window.BTFW_CONFIG.shouldLoadMovieInfo = movieInfoEnabled;
+      window.BTFW_CONFIG.autoSubs = window.BTFW_CONFIG.autoSubs || {};
+      window.BTFW_CONFIG.autoSubs.enabled = autoSubsEnabled;
+      window.BTFW_CONFIG.autoSubsEnabled = autoSubsEnabled;
+      window.BTFW_CONFIG.shouldLoadAutoSubs = autoSubsEnabled;
+      window.BTFW_CONFIG.audioEnhancer = window.BTFW_CONFIG.audioEnhancer || {};
+      window.BTFW_CONFIG.audioEnhancer.enabled = audioEnhancerEnabled;
+      window.BTFW_CONFIG.audioEnhancerEnabled = audioEnhancerEnabled;
+      window.BTFW_CONFIG.shouldLoadAudioEnhancer = audioEnhancerEnabled;
       if (ratingsEndpoint) {
         window.BTFW_RATINGS_ENDPOINT = ratingsEndpoint;
       } else {
@@ -440,9 +488,36 @@ background: "#0d0d0d",
           } else if (document.body.dataset?.btfwRatingsEndpoint) {
             delete document.body.dataset.btfwRatingsEndpoint;
           }
+          if (movieInfoEnabled) {
+            document.body.dataset.btfwMovieInfoEnabled = "1";
+          } else if (document.body.dataset?.btfwMovieInfoEnabled) {
+            delete document.body.dataset.btfwMovieInfoEnabled;
+          }
+          if (autoSubsEnabled) {
+            document.body.dataset.btfwAutoSubsEnabled = "1";
+          } else if (document.body.dataset?.btfwAutoSubsEnabled) {
+            delete document.body.dataset.btfwAutoSubsEnabled;
+          }
+          if (audioEnhancerEnabled) {
+            document.body.dataset.btfwAudioEnhancerEnabled = "1";
+          } else if (document.body.dataset?.btfwAudioEnhancerEnabled) {
+            delete document.body.dataset.btfwAudioEnhancerEnabled;
+          }
         }
       } catch (_) {}
     }
+    try {
+      document?.dispatchEvent?.(new CustomEvent("btfw:channelIntegrationsChanged", {
+        detail: {
+          enabled: integrations.enabled,
+          tmdbKey: key,
+          ratingsEndpoint,
+          movieInfoEnabled,
+          autoSubsEnabled,
+          audioEnhancerEnabled
+        }
+      }));
+    } catch (_) {}
   }
 
   function applyRuntimeColors(theme){
@@ -573,6 +648,11 @@ background: "#0d0d0d",
       .btfw-theme-admin label { font-weight: 600; letter-spacing: 0.03em; color: color-mix(in srgb, var(--btfw-admin-text) 92%, transparent 8%); }
       .btfw-theme-admin .btfw-checkbox { display: inline-flex; gap: 10px; align-items: center; font-weight: 600; color: color-mix(in srgb, var(--btfw-admin-text) 92%, transparent 8%); }
       .btfw-theme-admin .btfw-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--btfw-theme-accent, #6d4df6); }
+      .btfw-theme-admin .movie-info-toggle { display: inline-flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      .btfw-theme-admin .movie-info-toggle button { min-width: 0; }
+      .btfw-theme-admin .audio-enhancer-toggle { display: inline-flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      .btfw-theme-admin .audio-enhancer-toggle button { min-width: 0; }
+      .btfw-theme-admin [data-role="movie-info-requirements"] { margin-top: 4px; }
       .btfw-theme-admin .field.is-disabled label,
       .btfw-theme-admin .field.is-disabled .help { opacity: 0.55; }
       .btfw-theme-admin .module-inputs { display: grid; gap: 10px; margin-top: 8px; }
@@ -1298,6 +1378,22 @@ background: "#0d0d0d",
     } else {
       normalized.integrations.ratings.endpoint = normalized.integrations.ratings.endpoint.trim();
     }
+    if (!normalized.integrations.movieInfo || typeof normalized.integrations.movieInfo !== "object") {
+      normalized.integrations.movieInfo = { enabled: false };
+    } else {
+      normalized.integrations.movieInfo.enabled = Boolean(normalized.integrations.movieInfo.enabled);
+    }
+    if (!normalized.integrations.autoSubs || typeof normalized.integrations.autoSubs !== "object") {
+      normalized.integrations.autoSubs = { enabled: false };
+    } else {
+      normalized.integrations.autoSubs.enabled = Boolean(normalized.integrations.autoSubs.enabled);
+    }
+
+    if (!normalized.integrations.audioEnhancer || typeof normalized.integrations.audioEnhancer !== "object") {
+      normalized.integrations.audioEnhancer = { enabled: false };
+    } else {
+      normalized.integrations.audioEnhancer.enabled = Boolean(normalized.integrations.audioEnhancer.enabled);
+    }
 
     if (normalized.features && typeof normalized.features === "object") {
       delete normalized.features.videoOverlayPoll;
@@ -1576,6 +1672,102 @@ function replaceBlock(original, startMarker, endMarker, block){
     }
   }
 
+  function syncMovieInfoToggle(panel, cfg){
+    if (!panel || !cfg || typeof cfg !== "object") return;
+    const integrations = cfg.integrations = cfg.integrations && typeof cfg.integrations === "object"
+      ? cfg.integrations
+      : (cfg.integrations = JSON.parse(JSON.stringify(DEFAULT_CONFIG.integrations)));
+    if (!integrations.movieInfo || typeof integrations.movieInfo !== "object") {
+      integrations.movieInfo = { enabled: false };
+    }
+    const button = panel.querySelector('#btfw-theme-movie-info-toggle');
+    const input = panel.querySelector('#btfw-theme-movie-info-enabled');
+    if (!button || !input) return;
+    const tmdbField = panel.querySelector('#btfw-theme-integrations-tmdb');
+    const enabled = Boolean(integrations.movieInfo.enabled);
+    input.checked = enabled;
+    button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    button.classList.toggle('is-link', enabled);
+    button.classList.toggle('is-dark', !enabled);
+    button.classList.toggle('is-active', enabled);
+    button.textContent = enabled ? 'Movie info overlay enabled' : 'Enable movie info overlay';
+    const notice = panel.querySelector('[data-role="movie-info-requirements"]');
+    if (notice) {
+      const keyFromCfg = typeof integrations.tmdb?.apiKey === 'string' ? integrations.tmdb.apiKey.trim() : '';
+      const keyFromField = typeof tmdbField?.value === 'string' ? tmdbField.value.trim() : '';
+      const hasKey = Boolean(keyFromCfg || keyFromField);
+      if (!enabled) {
+        notice.hidden = true;
+        notice.classList.remove('is-warning', 'is-success');
+      } else {
+        notice.hidden = false;
+        notice.classList.toggle('is-warning', !hasKey);
+        notice.classList.toggle('is-success', hasKey);
+        notice.textContent = hasKey
+          ? 'Movie info will use your TMDB API key to show posters, backdrops, and ratings when viewers hover over the now playing title.'
+          : 'Requires a TMDB API key. Add the key above before enabling to avoid empty results.';
+      }
+    }
+  }
+
+  function syncAutoSubsToggle(panel, cfg){
+    if (!panel || !cfg || typeof cfg !== "object") return;
+    const integrations = cfg.integrations = cfg.integrations && typeof cfg.integrations === "object"
+      ? cfg.integrations
+      : (cfg.integrations = JSON.parse(JSON.stringify(DEFAULT_CONFIG.integrations)));
+    if (!integrations.autoSubs || typeof integrations.autoSubs !== "object") {
+      integrations.autoSubs = { enabled: false };
+    }
+    const button = panel.querySelector('#btfw-theme-auto-subs-toggle');
+    const input = panel.querySelector('#btfw-theme-auto-subs-enabled');
+    if (!button || !input) return;
+    const tmdbField = panel.querySelector('#btfw-theme-integrations-tmdb');
+    const enabled = Boolean(integrations.autoSubs.enabled);
+    input.checked = enabled;
+    button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    button.classList.toggle('is-link', enabled);
+    button.classList.toggle('is-dark', !enabled);
+    button.classList.toggle('is-active', enabled);
+    button.textContent = enabled ? 'Auto subtitles enabled' : 'Enable auto subtitles';
+    const notice = panel.querySelector('[data-role="auto-subs-requirements"]');
+    if (notice) {
+      const keyFromCfg = typeof integrations.tmdb?.apiKey === 'string' ? integrations.tmdb.apiKey.trim() : '';
+      const keyFromField = typeof tmdbField?.value === 'string' ? tmdbField.value.trim() : '';
+      const hasKey = Boolean(keyFromCfg || keyFromField);
+      if (!enabled) {
+        notice.hidden = true;
+        notice.classList.remove('is-warning', 'is-success');
+      } else {
+        notice.hidden = false;
+        notice.classList.toggle('is-warning', !hasKey);
+        notice.classList.toggle('is-success', hasKey);
+        notice.textContent = hasKey
+          ? 'Auto subtitles will pull English captions from Wyzie whenever direct file uploads play.'
+          : 'Requires a TMDB API key to match the playing title. Enter your key above before enabling.';
+      }
+    }
+  }
+
+  function syncAudioEnhancerToggle(panel, cfg){
+    if (!panel || !cfg || typeof cfg !== "object") return;
+    const integrations = cfg.integrations = cfg.integrations && typeof cfg.integrations === "object"
+      ? cfg.integrations
+      : (cfg.integrations = JSON.parse(JSON.stringify(DEFAULT_CONFIG.integrations)));
+    if (!integrations.audioEnhancer || typeof integrations.audioEnhancer !== "object") {
+      integrations.audioEnhancer = { enabled: false };
+    }
+    const button = panel.querySelector('#btfw-theme-audio-enhancer-toggle');
+    const input = panel.querySelector('#btfw-theme-audio-enhancer-enabled');
+    if (!button || !input) return;
+    const enabled = Boolean(integrations.audioEnhancer.enabled);
+    input.checked = enabled;
+    button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    button.classList.toggle('is-link', enabled);
+    button.classList.toggle('is-dark', !enabled);
+    button.classList.toggle('is-active', enabled);
+    button.textContent = enabled ? 'Audio enhancer enabled' : 'Enable audio enhancer';
+  }
+
   function renderPanel(panel){
     injectLocalStyles();
     panel.innerHTML = `
@@ -1648,6 +1840,31 @@ function replaceBlock(original, startMarker, endMarker, block){
             <div class="field">
               <label for="btfw-theme-integrations-tmdb">TMDB API key</label>
               <input type="text" id="btfw-theme-integrations-tmdb" data-btfw-bind="integrations.tmdb.apiKey" placeholder="YOUR_TMDB_KEY">
+            </div>
+            <div class="field">
+              <label for="btfw-theme-movie-info-toggle">Movie info overlay</label>
+              <div class="movie-info-toggle">
+                <button type="button" class="button is-dark is-small" id="btfw-theme-movie-info-toggle" aria-pressed="false">Enable movie info overlay</button>
+                <input type="checkbox" id="btfw-theme-movie-info-enabled" data-btfw-bind="integrations.movieInfo.enabled" hidden>
+              </div>
+              <p class="help is-warning" data-role="movie-info-requirements" hidden>Requires a TMDB API key. Add the key above before enabling to avoid empty results.</p>
+            </div>
+            <div class="field">
+              <label for="btfw-theme-auto-subs-toggle">Auto subtitles (Wyzie)</label>
+              <div class="auto-subs-toggle">
+                <button type="button" class="button is-dark is-small" id="btfw-theme-auto-subs-toggle" aria-pressed="false">Enable auto subtitles</button>
+                <input type="checkbox" id="btfw-theme-auto-subs-enabled" data-btfw-bind="integrations.autoSubs.enabled" hidden>
+              </div>
+              <p class="help is-warning" data-role="auto-subs-requirements" hidden>Requires a TMDB API key to match the playing title. Enter your key above before enabling.</p>
+              <p class="help">Fetches English subtitles from the Wyzie catalog automatically when direct file uploads are playing.</p>
+            </div>
+            <div class="field">
+              <label for="btfw-theme-audio-enhancer-toggle">Audio enhancer (boost & normalization)</label>
+              <div class="audio-enhancer-toggle">
+                <button type="button" class="button is-dark is-small" id="btfw-theme-audio-enhancer-toggle" aria-pressed="false">Enable audio enhancer</button>
+                <input type="checkbox" id="btfw-theme-audio-enhancer-enabled" data-btfw-bind="integrations.audioEnhancer.enabled" hidden>
+              </div>
+              <p class="help">Makes the boost and normalization controls available in the viewer toolkit. Leave disabled to hide them.</p>
             </div>
             <div class="integrations-callout">
               <strong>Ratings API endpoint</strong>
@@ -1856,6 +2073,71 @@ function replaceBlock(original, startMarker, endMarker, block){
         onChange();
       });
     }
+
+    const movieInfoButton = panel.querySelector('#btfw-theme-movie-info-toggle');
+    const movieInfoInput = panel.querySelector('#btfw-theme-movie-info-enabled');
+    if (movieInfoButton && movieInfoInput) {
+      movieInfoButton.addEventListener('click', () => {
+        const next = !movieInfoInput.checked;
+        movieInfoInput.checked = next;
+        if (!cfg.integrations || typeof cfg.integrations !== 'object') {
+          cfg.integrations = {};
+        }
+        if (!cfg.integrations.movieInfo || typeof cfg.integrations.movieInfo !== 'object') {
+          cfg.integrations.movieInfo = { enabled: false };
+        }
+        cfg.integrations.movieInfo.enabled = next;
+        syncMovieInfoToggle(panel, cfg);
+        onChange();
+      });
+    }
+
+    const autoSubsButton = panel.querySelector('#btfw-theme-auto-subs-toggle');
+    const autoSubsInput = panel.querySelector('#btfw-theme-auto-subs-enabled');
+    if (autoSubsButton && autoSubsInput) {
+      autoSubsButton.addEventListener('click', () => {
+        const next = !autoSubsInput.checked;
+        autoSubsInput.checked = next;
+        if (!cfg.integrations || typeof cfg.integrations !== 'object') {
+          cfg.integrations = {};
+        }
+        if (!cfg.integrations.autoSubs || typeof cfg.integrations.autoSubs !== 'object') {
+          cfg.integrations.autoSubs = { enabled: false };
+        }
+        cfg.integrations.autoSubs.enabled = next;
+        syncAutoSubsToggle(panel, cfg);
+        onChange();
+      });
+    }
+
+    const audioEnhancerButton = panel.querySelector('#btfw-theme-audio-enhancer-toggle');
+    const audioEnhancerInput = panel.querySelector('#btfw-theme-audio-enhancer-enabled');
+    if (audioEnhancerButton && audioEnhancerInput) {
+      audioEnhancerButton.addEventListener('click', () => {
+        const next = !audioEnhancerInput.checked;
+        audioEnhancerInput.checked = next;
+        if (!cfg.integrations || typeof cfg.integrations !== 'object') {
+          cfg.integrations = {};
+        }
+        if (!cfg.integrations.audioEnhancer || typeof cfg.integrations.audioEnhancer !== 'object') {
+          cfg.integrations.audioEnhancer = { enabled: false };
+        }
+        cfg.integrations.audioEnhancer.enabled = next;
+        syncAudioEnhancerToggle(panel, cfg);
+        onChange();
+      });
+    }
+
+    const tmdbField = panel.querySelector('#btfw-theme-integrations-tmdb');
+    if (tmdbField) {
+      const syncNotice = () => {
+        syncMovieInfoToggle(panel, cfg);
+        syncAutoSubsToggle(panel, cfg);
+        syncAudioEnhancerToggle(panel, cfg);
+      };
+      tmdbField.addEventListener('input', syncNotice);
+      tmdbField.addEventListener('change', syncNotice);
+    }
   }
 
   function updateInputs(panel, cfg){
@@ -1887,6 +2169,9 @@ function replaceBlock(original, startMarker, endMarker, block){
     ensureModuleFieldAvailability(panel);
     updateTypographyFieldState(panel);
     updateSliderFieldState(panel);
+    syncMovieInfoToggle(panel, cfg);
+    syncAutoSubsToggle(panel, cfg);
+    syncAudioEnhancerToggle(panel, cfg);
     renderPreview(panel, cfg);
   }
 
@@ -1951,6 +2236,14 @@ function replaceBlock(original, startMarker, endMarker, block){
     } else {
       updated.integrations.ratings.endpoint = updated.integrations.ratings.endpoint.trim();
     }
+    if (!updated.integrations.movieInfo || typeof updated.integrations.movieInfo !== "object") {
+      updated.integrations.movieInfo = { enabled: false };
+    }
+    updated.integrations.movieInfo.enabled = Boolean(updated.integrations.movieInfo.enabled);
+    if (!updated.integrations.autoSubs || typeof updated.integrations.autoSubs !== "object") {
+      updated.integrations.autoSubs = { enabled: false };
+    }
+    updated.integrations.autoSubs.enabled = Boolean(updated.integrations.autoSubs.enabled);
     if (updated.features && typeof updated.features === "object") {
       delete updated.features.videoOverlayPoll;
       if (Object.keys(updated.features).length === 0) {
@@ -2248,6 +2541,15 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (!cfg.integrations.ratings || typeof cfg.integrations.ratings !== "object") {
       cfg.integrations.ratings = { endpoint: "" };
     }
+    if (!cfg.integrations.movieInfo || typeof cfg.integrations.movieInfo !== "object") {
+      cfg.integrations.movieInfo = { enabled: false };
+    }
+    cfg.integrations.movieInfo.enabled = Boolean(cfg.integrations.movieInfo.enabled);
+
+    if (!cfg.integrations.autoSubs || typeof cfg.integrations.autoSubs !== "object") {
+      cfg.integrations.autoSubs = { enabled: false };
+    }
+    cfg.integrations.autoSubs.enabled = Boolean(cfg.integrations.autoSubs.enabled);
 
     if (!cfg.branding || typeof cfg.branding !== "object") {
       cfg.branding = cloneDefaults().branding;

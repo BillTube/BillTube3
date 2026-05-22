@@ -1,101 +1,257 @@
-// BTFW â€” ext:autosubs
-// Auto-fetch subtitles from Wyzie API for current media
-// External module for Channel Theme Toolkit
-BTFW.define("ext:autosubs", [], async () => {
-  const $ = (s, r = document) => r.querySelector(s);
-  
-  const WYZIE_API = 'https://sub.wyzie.ru/search';
-  const TMDB_API = 'https://api.themoviedb.org/3';
-  
-  let currentTitle = '';
-  let tmdbApiKey = null;
-  let subsCache = new Map();
-  let lastAddedTracks = [];
-  let currentSubtitles = null;
-  let player = null;
-  let socket = null;
-  let isFetching = false;
-  let trackWatcher = null;
+/* BTFW – feature:auto-subs */
+BTFW.define("feature:auto-subs", [], async () => {
+  const MODULE_NAME = "feature:auto-subs";
+  const WYZIE_API = "https://sub.wyzie.ru/search";
+  const TMDB_API = "https://api.themoviedb.org/3";
+
+  const state = {
+    active: false,
+    tmdbKey: null,
+    warnedNoKey: false,
+    currentTitle: "",
+    subsCache: new Map(),
+    lastAddedTracks: [],
+    currentSubtitles: null,
+    player: null,
+    socket: null,
+    socketHandler: null,
+    socketDetach: null,
+    isFetching: false,
+    trackWatcher: null,
+    bootInterval: null,
+    datasetObserver: null,
+    updatingRuntime: false,
+    isEvaluating: false
+  };
+
+  function $(selector, root = document) {
+    return root.querySelector(selector);
+  }
+
+  function toEnabledValue(value) {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return Number.isFinite(value) ? value > 0 : false;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (!normalized) return false;
+      return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+    }
+    return false;
+  }
+
+  function computeEnabled() {
+    const checks = [
+      () => window.BTFW_THEME_ADMIN?.integrations?.autoSubs?.enabled,
+      () => window.BTFW_CONFIG?.integrations?.autoSubs?.enabled,
+      () => window.BTFW_CONFIG?.autoSubs?.enabled,
+      () => window.BTFW_CONFIG?.autoSubsEnabled,
+      () => window.BTFW_CONFIG?.shouldLoadAutoSubs,
+      () => document?.body?.dataset?.btfwAutoSubsEnabled
+    ];
+    for (const check of checks) {
+      try {
+        const value = typeof check === "function" ? check() : check;
+        if (toEnabledValue(value)) {
+          return true;
+        }
+      } catch (_) {}
+    }
+    return false;
+  }
 
   function getTMDBKey() {
     try {
       const cfg = (window.BTFW_CONFIG && typeof window.BTFW_CONFIG === "object") ? window.BTFW_CONFIG : {};
-      const tmdbObj = (cfg.tmdb && typeof cfg.tmdb === "object") ? cfg.tmdb : {};
+      const admin = (window.BTFW_THEME_ADMIN && typeof window.BTFW_THEME_ADMIN === "object") ? window.BTFW_THEME_ADMIN : {};
+      const cfgTmdb = (cfg.tmdb && typeof cfg.tmdb === "object") ? cfg.tmdb : {};
+      const adminTmdb = (admin.integrations?.tmdb && typeof admin.integrations.tmdb === "object") ? admin.integrations.tmdb : {};
       const integrations = (cfg.integrations && typeof cfg.integrations === "object") ? cfg.integrations : {};
       const intTmdb = (integrations.tmdb && typeof integrations.tmdb === "object") ? integrations.tmdb : {};
-      
-      const cfgKey = typeof tmdbObj.apiKey === "string" ? tmdbObj.apiKey.trim() : "";
+
+      const cfgKey = typeof cfgTmdb.apiKey === "string" ? cfgTmdb.apiKey.trim() : "";
+      const adminKey = typeof adminTmdb.apiKey === "string" ? adminTmdb.apiKey.trim() : "";
       const intKey = typeof intTmdb.apiKey === "string" ? intTmdb.apiKey.trim() : "";
       const legacyCfg = typeof cfg.tmdbKey === "string" ? cfg.tmdbKey.trim() : "";
-      
       let lsKey = "";
-      try { lsKey = (localStorage.getItem("btfw:tmdb:key") || "").trim(); }
-      catch(_) {}
-      
+      try {
+        lsKey = (localStorage.getItem("btfw:tmdb:key") || "").trim();
+      } catch (_) {}
       const g = v => (v == null ? "" : String(v)).trim();
       const globalKey = g(window.TMDB_API_KEY) || g(window.BTFW_TMDB_KEY) || g(window.tmdb_key) || g(window.moviedbkey);
       const bodyKey = (document.body?.dataset?.tmdbKey || "").trim();
-      
-      return intKey || cfgKey || legacyCfg || lsKey || globalKey || bodyKey || null;
-    } catch(e) {
+      const key = adminKey || intKey || cfgKey || legacyCfg || lsKey || globalKey || bodyKey;
+      return key || null;
+    } catch (_) {
       return null;
     }
   }
 
+  function updateRuntimeFlags(enabled) {
+    const flag = Boolean(enabled);
+    state.updatingRuntime = true;
+    try {
+      window.BTFW_CONFIG = window.BTFW_CONFIG || {};
+      if (typeof window.BTFW_CONFIG.integrations !== "object") {
+        window.BTFW_CONFIG.integrations = {};
+      }
+      window.BTFW_CONFIG.integrations.autoSubs = window.BTFW_CONFIG.integrations.autoSubs || {};
+      window.BTFW_CONFIG.integrations.autoSubs.enabled = flag;
+      window.BTFW_CONFIG.autoSubs = window.BTFW_CONFIG.autoSubs || {};
+      window.BTFW_CONFIG.autoSubs.enabled = flag;
+      window.BTFW_CONFIG.autoSubsEnabled = flag;
+      window.BTFW_CONFIG.shouldLoadAutoSubs = flag;
+    } catch (_) {}
+    try {
+      const body = document?.body;
+      if (body) {
+        if (flag) {
+          body.dataset.btfwAutoSubsEnabled = "1";
+        } else if (body.dataset?.btfwAutoSubsEnabled) {
+          delete body.dataset.btfwAutoSubsEnabled;
+        }
+      }
+    } catch (_) {}
+    setTimeout(() => {
+      state.updatingRuntime = false;
+    }, 0);
+  }
+
+  function warnMissingKey() {
+    if (state.warnedNoKey) return;
+    state.warnedNoKey = true;
+    console.error("[auto-subs] TMDB API key missing. Set it under Theme Toolkit → Integrations before enabling Auto subtitles.");
+  }
+
+  function clearWarning() {
+    state.warnedNoKey = false;
+  }
+
   function shouldLoadSubtitles() {
     const mediaType = window.PLAYER?.mediaType;
-    return mediaType === 'fi' || mediaType === 'gd';
+    return mediaType === "fi" || mediaType === "gd";
   }
 
   function getPlayer() {
-    if (player && typeof player.addRemoteTextTrack === 'function') return player;
-    
-    const vw = $('#videowrap');
-    if (!vw) return null;
-    
-    const vid = vw.querySelector('video');
-    if (!vid) return null;
-    
-    if (typeof videojs === 'function') {
+    if (state.player && typeof state.player.addRemoteTextTrack === "function") return state.player;
+    const wrap = $("#videowrap");
+    if (!wrap) return null;
+    const video = wrap.querySelector("video");
+    if (!video) return null;
+    if (typeof window.videojs === "function") {
       try {
-        player = videojs(vid);
-        return player;
-      } catch(e) {}
+        state.player = window.videojs(video);
+        return state.player;
+      } catch (_) {
+        return null;
+      }
     }
     return null;
   }
 
   function getSocket() {
-    if (socket) return socket;
-    if (window.socket && typeof window.socket.on === 'function') {
-      socket = window.socket;
-      return socket;
+    if (state.socket) return state.socket;
+    if (window.socket && typeof window.socket.on === "function") {
+      state.socket = window.socket;
+      return state.socket;
+    }
+    if (window.SOCKET && typeof window.SOCKET.on === "function") {
+      state.socket = window.SOCKET;
+      return state.socket;
     }
     return null;
   }
 
+  function detachSocket() {
+    if (state.socketDetach) {
+      try { state.socketDetach(); }
+      catch (_) {}
+    }
+    state.socketDetach = null;
+    state.socketHandler = null;
+    state.socket = null;
+  }
+
+  function hookSocketEvents() {
+    const socket = getSocket();
+    if (!socket) return false;
+    if (state.socketHandler && state.socket === socket) {
+      return true;
+    }
+    if (state.socket && state.socket !== socket) {
+      detachSocket();
+    }
+    const handler = () => {
+      if (!state.active) return;
+      state.player = null;
+      state.currentTitle = "";
+      state.currentSubtitles = null;
+      state.isFetching = false;
+      stopTrackWatcher();
+      clearExistingTracks();
+      setTimeout(() => {
+        if (!state.active) return;
+        state.player = getPlayer();
+        if (state.player) {
+          processCurrentTitle();
+        }
+      }, 1000);
+    };
+
+    let detach = null;
+    if (typeof socket.on === "function") {
+      socket.on("changeMedia", handler);
+      detach = () => {
+        try {
+          if (typeof socket.off === "function") {
+            socket.off("changeMedia", handler);
+          } else if (typeof socket.removeListener === "function") {
+            socket.removeListener("changeMedia", handler);
+          } else if (typeof socket.removeEventListener === "function") {
+            socket.removeEventListener("changeMedia", handler);
+          }
+        } catch (_) {}
+      };
+    } else if (typeof socket.addEventListener === "function") {
+      socket.addEventListener("changeMedia", handler);
+      detach = () => {
+        try { socket.removeEventListener("changeMedia", handler); }
+        catch (_) {}
+      };
+    }
+
+    state.socket = socket;
+    state.socketHandler = handler;
+    state.socketDetach = detach;
+    return true;
+  }
+
   function getCurrentTitle() {
-    const titleEl = $('#currenttitle');
-    return titleEl ? titleEl.textContent.trim() : '';
+    const titleEl = $("#currenttitle");
+    return titleEl ? titleEl.textContent.trim() : "";
   }
 
   function normalizeTitle(title) {
     return title.toLowerCase()
-                .replace(/[^\w\s]/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim();
+      .replace(/[^\w\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   function cleanMovieTitle(title) {
-    const unwantedWords = ['Extended', 'Director\'s Cut', 'Directors Cut', 'Unrated', 'Theatrical Cut', 'Remastered'];
+    const unwantedWords = [
+      "Extended",
+      "Director's Cut",
+      "Directors Cut",
+      "Unrated",
+      "Theatrical Cut",
+      "Remastered"
+    ];
     let cleanTitle = title;
-
     unwantedWords.forEach(word => {
-      const regex = new RegExp(`\\b${word}\\b`, 'gi');
-      cleanTitle = cleanTitle.replace(regex, '');
+      const regex = new RegExp(`\\b${word}\\b`, "gi");
+      cleanTitle = cleanTitle.replace(regex, "");
     });
-
-    return cleanTitle.replace(/\s{2,}/g, ' ').trim();
+    return cleanTitle.replace(/\s{2,}/g, " ").trim();
   }
 
   function extractYearAndTitle(title) {
@@ -103,20 +259,18 @@ BTFW.define("ext:autosubs", [], async () => {
     if (yearParenMatch) {
       return {
         title: yearParenMatch[1].trim(),
-        year: parseInt(yearParenMatch[2]),
+        year: parseInt(yearParenMatch[2], 10),
         originalTitle: title
       };
     }
-    
     const yearPlainMatch = title.match(/^(.+?)\s+(\d{4})\s*$/);
     if (yearPlainMatch) {
       return {
         title: yearPlainMatch[1].trim(),
-        year: parseInt(yearPlainMatch[2]),
+        year: parseInt(yearPlainMatch[2], 10),
         originalTitle: title
       };
     }
-    
     return {
       title: title.trim(),
       year: null,
@@ -127,282 +281,235 @@ BTFW.define("ext:autosubs", [], async () => {
   function isExactTitleMatch(searchTitle, resultTitle, targetYear = null, resultYear = null) {
     const normalizedSearch = normalizeTitle(searchTitle);
     const normalizedResult = normalizeTitle(resultTitle);
-    
-    const titleMatch = normalizedSearch === normalizedResult || 
-                      normalizedResult === normalizedSearch ||
-                      normalizedResult.replace(/^(the|a|an)\s+/, '') === normalizedSearch.replace(/^(the|a|an)\s+/, '');
-    
+    const titleMatch = normalizedSearch === normalizedResult ||
+      normalizedResult === normalizedSearch ||
+      normalizedResult.replace(/^(the|a|an)\s+/, "") === normalizedSearch.replace(/^(the|a|an)\s+/, "");
     if (!titleMatch) return false;
-    
     if (targetYear && resultYear) {
       return Math.abs(targetYear - resultYear) <= 1;
     }
-    
     return true;
   }
 
   function clearExistingTracks() {
-    const p = getPlayer();
-    if (!p) return;
-    
-    lastAddedTracks.forEach(trackEl => {
+    const player = getPlayer();
+    if (!player) return;
+    state.lastAddedTracks.forEach(trackEl => {
       try {
         if (trackEl && trackEl.track) {
           const src = trackEl.track.src;
-          if (src && src.startsWith('blob:')) {
+          if (src && src.startsWith("blob:")) {
             URL.revokeObjectURL(src);
           }
-          p.removeRemoteTextTrack(trackEl.track);
+          player.removeRemoteTextTrack(trackEl.track);
         }
-      } catch(e) {}
+      } catch (_) {}
     });
-    lastAddedTracks = [];
-    
+    state.lastAddedTracks = [];
     try {
-      const tracks = p.remoteTextTracks();
+      const tracks = player.remoteTextTracks();
       const toRemove = [];
-      
       for (let i = 0; i < tracks.length; i++) {
         const track = tracks[i];
-        if (track.src && track.src.startsWith('blob:')) {
+        if (track.src && track.src.startsWith("blob:")) {
           toRemove.push(track);
         }
       }
-      
       toRemove.forEach(track => {
         try {
           URL.revokeObjectURL(track.src);
-          p.removeRemoteTextTrack(track);
-        } catch(e) {}
+          player.removeRemoteTextTrack(track);
+        } catch (_) {}
       });
-    } catch(e) {}
+    } catch (_) {}
   }
 
   async function searchTMDB(title, year) {
-    if (!tmdbApiKey) return null;
-    
-    let apiUrl = `${TMDB_API}/search/movie?api_key=${tmdbApiKey}&query=${encodeURIComponent(title)}`;
-    
+    if (!state.tmdbKey) return null;
+    const key = state.tmdbKey;
+    let apiUrl = `${TMDB_API}/search/movie?api_key=${key}&query=${encodeURIComponent(title)}`;
     if (year) {
       apiUrl += `&primary_release_year=${year}`;
     }
-
     try {
       const response = await fetch(apiUrl);
       const data = await response.json();
-      
       if (data.results && data.results.length > 0) {
         for (const movie of data.results) {
-          const movieYear = movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : null;
-          
+          const movieYear = movie.release_date ? parseInt(movie.release_date.substring(0, 4), 10) : null;
           if (isExactTitleMatch(title, movie.title, year, movieYear)) {
-            const extIdsResp = await fetch(`${TMDB_API}/movie/${movie.id}/external_ids?api_key=${tmdbApiKey}`);
+            const extIdsResp = await fetch(`${TMDB_API}/movie/${movie.id}/external_ids?api_key=${key}`);
             const extIds = await extIdsResp.json();
             return extIds.imdb_id || null;
           }
         }
-        
         if (year) {
           for (const movie of data.results) {
-            const movieYear = movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : null;
+            const movieYear = movie.release_date ? parseInt(movie.release_date.substring(0, 4), 10) : null;
             if (movieYear === year) {
-              const extIdsResp = await fetch(`${TMDB_API}/movie/${movie.id}/external_ids?api_key=${tmdbApiKey}`);
+              const extIdsResp = await fetch(`${TMDB_API}/movie/${movie.id}/external_ids?api_key=${key}`);
               const extIds = await extIdsResp.json();
               return extIds.imdb_id || null;
             }
           }
         }
       }
-    } catch (error) {}
-    
+    } catch (_) {}
     if (year) {
-      const apiUrlNoYear = `${TMDB_API}/search/movie?api_key=${tmdbApiKey}&query=${encodeURIComponent(title)}`;
-      
+      const apiUrlNoYear = `${TMDB_API}/search/movie?api_key=${key}&query=${encodeURIComponent(title)}`;
       try {
         const response = await fetch(apiUrlNoYear);
         const data = await response.json();
-        
         if (data.results && data.results.length > 0) {
           const movie = data.results[0];
-          const extIdsResp = await fetch(`${TMDB_API}/movie/${movie.id}/external_ids?api_key=${tmdbApiKey}`);
+          const extIdsResp = await fetch(`${TMDB_API}/movie/${movie.id}/external_ids?api_key=${key}`);
           const extIds = await extIdsResp.json();
           return extIds.imdb_id || null;
         }
-      } catch (error) {}
+      } catch (_) {}
     }
-    
     return null;
   }
 
   async function fetchSubtitles(imdbId, season, episode) {
-    const sources = ['opensubtitles', 'subdl', 'all'];
-    
+    if (!imdbId) return null;
+    const sources = ["opensubtitles", "subdl", "all"];
     for (const source of sources) {
       const params = new URLSearchParams({ id: imdbId });
-
       if (season !== null && episode !== null) {
-        params.append('season', season);
-        params.append('episode', episode);
+        params.append("season", season);
+        params.append("episode", episode);
       }
-
-      params.append('language', 'en');
-      params.append('format', 'srt');
-      params.append('source', source);
-
+      params.append("language", "en");
+      params.append("format", "srt");
+      params.append("source", source);
       const url = `${WYZIE_API}?${params}`;
-
       try {
         const resp = await fetch(url);
         if (!resp.ok) continue;
-
         const data = await resp.json();
-
         if (Array.isArray(data) && data.length > 0) {
           const converted = await Promise.all(
             data.slice(0, 10).map(sub => convertSrtToVtt(sub))
           );
           const filtered = converted.filter(Boolean);
-          
           if (filtered.length > 0) {
             return filtered;
           }
         }
-      } catch(e) {
+      } catch (_) {
         continue;
       }
     }
-
     return null;
   }
 
   async function convertSrtToVtt(subtitle) {
-    if (!subtitle.url) return null;
-    
+    if (!subtitle || !subtitle.url) return null;
     try {
       const srtResp = await fetch(subtitle.url);
       if (!srtResp.ok) return null;
-      
       const srtText = await srtResp.text();
       const vttText = srtToVtt(srtText);
-      
-      const blob = new Blob([vttText], { type: 'text/vtt' });
+      const blob = new Blob([vttText], { type: "text/vtt" });
       const vttUrl = URL.createObjectURL(blob);
-      
-      return {
-        url: vttUrl,
-        lang: 'en'
-      };
-    } catch(e) {
+      return { url: vttUrl, lang: "en" };
+    } catch (_) {
       return null;
     }
   }
 
   function srtToVtt(srt) {
-    let vtt = 'WEBVTT\n\n';
-    
-    vtt += srt
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .replace(/(\d{2}):(\d{2}):(\d{2}),(\d{3})/g, '$1:$2:$3.$4')
-      .replace(/^\d+\n/gm, '')
+    let vtt = "WEBVTT\n\n";
+    vtt += String(srt)
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .replace(/(\d{2}):(\d{2}):(\d{2}),(\d{3})/g, "$1:$2:$3.$4")
+      .replace(/^\d+\n/gm, "")
       .trim();
-    
     return vtt;
   }
 
   function addSubtitlesToPlayer(subtitles) {
-    const p = getPlayer();
-    if (!p || !Array.isArray(subtitles) || subtitles.length === 0) return false;
-    
-    if (typeof p.addRemoteTextTrack !== 'function') return false;
-    
-    const existingTracks = p.remoteTextTracks();
-    const hasBlobTracks = existingTracks && Array.from(existingTracks).some(t => t.src && t.src.startsWith('blob:'));
-    
+    if (!Array.isArray(subtitles) || subtitles.length === 0) return false;
+    const player = getPlayer();
+    if (!player || typeof player.addRemoteTextTrack !== "function") return false;
+    const existingTracks = player.remoteTextTracks();
+    const hasBlobTracks = existingTracks && Array.from(existingTracks).some(t => t.src && t.src.startsWith("blob:"));
     if (hasBlobTracks) return false;
-    
     clearExistingTracks();
-    
     const added = [];
     subtitles.forEach((sub, idx) => {
-      if (!sub.url) return;
-      
-      const label = `Sub ${idx + 1}`;
-      
+      if (!sub || !sub.url) return;
+      const label = `Auto sub ${idx + 1}`;
       try {
-        const trackEl = p.addRemoteTextTrack({
-          kind: 'subtitles',
+        const trackEl = player.addRemoteTextTrack({
+          kind: "subtitles",
           src: sub.url,
-          srclang: 'en',
-          label: label
+          srclang: sub.lang || "en",
+          label
         }, false);
-        
-        if (trackEl) added.push(trackEl);
-      } catch(e) {}
+        if (trackEl) {
+          added.push(trackEl);
+        }
+      } catch (_) {}
     });
-    
-    lastAddedTracks = added;
-    currentSubtitles = subtitles;
-    
+    state.lastAddedTracks = added;
+    state.currentSubtitles = subtitles;
     return added.length > 0;
   }
 
   function startTrackWatcher() {
-    if (trackWatcher) return;
-    
-    trackWatcher = setInterval(() => {
-      // Check if we should still be watching based on media type
+    if (state.trackWatcher) return;
+    state.trackWatcher = setInterval(() => {
+      if (!state.active) {
+        stopTrackWatcher();
+        return;
+      }
       if (!shouldLoadSubtitles()) {
         stopTrackWatcher();
         clearExistingTracks();
         return;
       }
-
-      const p = getPlayer();
-      if (!p || !currentSubtitles || currentSubtitles.length === 0) return;
-      
-      const existingTracks = p.remoteTextTracks();
-      const hasBlobTracks = existingTracks && Array.from(existingTracks).some(t => t.src && t.src.startsWith('blob:'));
-      
-      if (!hasBlobTracks && lastAddedTracks.length > 0) {
-        lastAddedTracks = [];
+      const player = getPlayer();
+      if (!player || !state.currentSubtitles || state.currentSubtitles.length === 0) return;
+      const existingTracks = player.remoteTextTracks();
+      const hasBlobTracks = existingTracks && Array.from(existingTracks).some(t => t.src && t.src.startsWith("blob:"));
+      if (!hasBlobTracks && state.lastAddedTracks.length > 0) {
+        state.lastAddedTracks = [];
         setTimeout(() => {
-          addSubtitlesToPlayer(currentSubtitles);
+          if (state.active) {
+            addSubtitlesToPlayer(state.currentSubtitles);
+          }
         }, 100);
       }
     }, 1000);
   }
 
   function stopTrackWatcher() {
-    if (trackWatcher) {
-      clearInterval(trackWatcher);
-      trackWatcher = null;
+    if (state.trackWatcher) {
+      clearInterval(state.trackWatcher);
+      state.trackWatcher = null;
     }
   }
 
   async function processCurrentTitle() {
+    if (!state.active || state.isFetching) return;
     const title = getCurrentTitle();
-    
-    if (!title || isFetching) return;
-    if (title === currentTitle) return;
-    
-    // Check media type before processing
+    if (!title || title === state.currentTitle) return;
     if (!shouldLoadSubtitles()) {
-      currentTitle = title;
+      state.currentTitle = title;
       clearExistingTracks();
       stopTrackWatcher();
       return;
     }
-    
-    currentTitle = title;
-    isFetching = true;
-    
+    state.currentTitle = title;
+    state.isFetching = true;
     try {
-      const p = getPlayer();
-      if (!p || typeof p.addRemoteTextTrack !== 'function') return;
-      
-      if (subsCache.has(title)) {
-        const cached = subsCache.get(title);
+      const player = getPlayer();
+      if (!player || typeof player.addRemoteTextTrack !== "function") return;
+      if (state.subsCache.has(title)) {
+        const cached = state.subsCache.get(title);
         if (cached) {
           const added = addSubtitlesToPlayer(cached);
           if (added) {
@@ -411,133 +518,177 @@ BTFW.define("ext:autosubs", [], async () => {
         }
         return;
       }
-      
-      let imdbId = null;
       let season = null;
       let episode = null;
-      
       const episodeMatch = title.match(/S(\d+)E(\d+)/i);
       if (episodeMatch) {
         season = parseInt(episodeMatch[1], 10);
         episode = parseInt(episodeMatch[2], 10);
       }
-      
       const { title: cleanTitle, year } = extractYearAndTitle(title);
       const finalTitle = cleanMovieTitle(cleanTitle);
-      
-      imdbId = await searchTMDB(finalTitle, year);
-      
+      const imdbId = await searchTMDB(finalTitle, year);
       if (!imdbId) {
-        subsCache.set(title, null);
+        state.subsCache.set(title, null);
         return;
       }
-      
       const subtitles = await fetchSubtitles(imdbId, season, episode);
-      
       if (subtitles && subtitles.length > 0) {
-        subsCache.set(title, subtitles);
+        state.subsCache.set(title, subtitles);
         const added = addSubtitlesToPlayer(subtitles);
         if (added) {
           startTrackWatcher();
         }
       } else {
-        subsCache.set(title, null);
+        state.subsCache.set(title, null);
       }
-      
-    } catch(e) {
+    } catch (_) {
     } finally {
-      isFetching = false;
+      state.isFetching = false;
     }
   }
 
-  function hookSocketEvents() {
-    const sock = getSocket();
-    if (!sock) return false;
-    
-    sock.on('changeMedia', (media) => {
-      player = null;
-      currentTitle = '';
-      currentSubtitles = null;
-      stopTrackWatcher();
-      
-      setTimeout(() => {
-        player = getPlayer();
-        if (player) {
-          processCurrentTitle();
-        }
-      }, 1000);
-    });
-    
-    return true;
-  }
-
-  function boot() {
-    tmdbApiKey = getTMDBKey();
-    
-    if (!tmdbApiKey) {
-      console.error('[autosubs] TMDB API key not configured in Theme Settings â†’ Integrations');
-      return;
+  function startBootProcess() {
+    if (state.bootInterval) {
+      clearInterval(state.bootInterval);
+      state.bootInterval = null;
     }
-    
     let attempts = 0;
-    const maxAttempts = 20;
-    
-    const checkInterval = setInterval(() => {
-      attempts++;
-      const p = getPlayer();
-      const s = getSocket();
-      
-      if (p && s) {
-        clearInterval(checkInterval);
-        clearExistingTracks();
+    const tick = () => {
+      if (!state.active) {
+        if (state.bootInterval) {
+          clearInterval(state.bootInterval);
+          state.bootInterval = null;
+        }
+        return;
+      }
+      attempts += 1;
+      const player = getPlayer();
+      const socket = getSocket();
+      if (player && socket) {
+        if (state.bootInterval) {
+          clearInterval(state.bootInterval);
+          state.bootInterval = null;
+        }
         hookSocketEvents();
-        
-        // Only start if media type is correct
+        clearExistingTracks();
         if (shouldLoadSubtitles()) {
           startTrackWatcher();
           setTimeout(processCurrentTitle, 1000);
         }
+        return;
       }
-      
-      if (attempts >= maxAttempts) {
-        clearInterval(checkInterval);
+      if (attempts >= 20 && state.bootInterval) {
+        clearInterval(state.bootInterval);
+        state.bootInterval = null;
       }
-    }, 500);
+    };
+    state.bootInterval = setInterval(tick, 500);
+    setTimeout(tick, 100);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    setTimeout(boot, 100);
+  function ensureDatasetObserver() {
+    if (state.datasetObserver || typeof MutationObserver !== "function") return;
+    const body = document.body;
+    if (!body) return;
+    state.datasetObserver = new MutationObserver(() => {
+      if (state.updatingRuntime) return;
+      evaluateActivation();
+    });
+    state.datasetObserver.observe(body, {
+      attributes: true,
+      attributeFilter: ["data-btfw-auto-subs-enabled", "data-tmdb-key"]
+    });
   }
 
-  return {
-    name: 'ext:autosubs',
-    clearCache: () => subsCache.clear(),
-    refresh: () => {
-      currentTitle = '';
+  function activate(tmdbKey) {
+    const keyChanged = Boolean(state.tmdbKey && state.tmdbKey !== tmdbKey);
+    state.tmdbKey = tmdbKey;
+    clearWarning();
+    if (state.active) {
+      updateRuntimeFlags(true);
+      if (keyChanged) {
+        state.subsCache.clear();
+        state.currentTitle = "";
+      }
+      if (!state.currentTitle || keyChanged) {
+        processCurrentTitle();
+      }
+      return;
+    }
+    state.active = true;
+    updateRuntimeFlags(true);
+    ensureDatasetObserver();
+    state.subsCache.clear();
+    state.currentTitle = "";
+    startBootProcess();
+  }
+
+  function deactivate() {
+    if (state.bootInterval) {
+      clearInterval(state.bootInterval);
+      state.bootInterval = null;
+    }
+    stopTrackWatcher();
+    clearExistingTracks();
+    detachSocket();
+    state.subsCache.clear();
+    state.player = null;
+    state.currentSubtitles = null;
+    state.lastAddedTracks = [];
+    state.currentTitle = "";
+    state.isFetching = false;
+    state.tmdbKey = null;
+    state.active = false;
+    updateRuntimeFlags(false);
+  }
+
+  function evaluateActivation() {
+    if (state.updatingRuntime) return;
+    if (state.isEvaluating) return;
+    state.isEvaluating = true;
+    try {
+      const enabled = computeEnabled();
+      if (!enabled) {
+        deactivate();
+        return;
+      }
+      const key = getTMDBKey();
+      if (!key) {
+        warnMissingKey();
+        deactivate();
+        return;
+      }
+      activate(key);
       processCurrentTitle();
-    },
-    stopWatcher: stopTrackWatcher
-  };
-});
-
-(function() {
-  function tryInit() {
-    if (window.BTFW && typeof BTFW.init === 'function') {
-      BTFW.init('ext:autosubs').catch(() => {});
-    } else {
-      setTimeout(tryInit, 100);
+    } finally {
+      state.isEvaluating = false;
     }
   }
-  
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      document.addEventListener('btfw:ready', tryInit);
-      setTimeout(tryInit, 500);
-    });
-  } else {
-    document.addEventListener('btfw:ready', tryInit);
-    setTimeout(tryInit, 500);
+
+  function onReady() {
+    ensureDatasetObserver();
+    evaluateActivation();
   }
-})();
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", onReady, { once: true });
+  } else {
+    onReady();
+  }
+
+  document.addEventListener("btfw:ready", evaluateActivation);
+  document.addEventListener("btfw:channelIntegrationsChanged", evaluateActivation);
+
+  return {
+    name: MODULE_NAME,
+    refresh: () => {
+      if (!state.active) return;
+      state.currentTitle = "";
+      processCurrentTitle();
+    },
+    clearCache: () => {
+      state.subsCache.clear();
+    }
+  };
+});
