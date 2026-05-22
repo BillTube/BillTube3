@@ -96,14 +96,23 @@ BTFW.define("feature:videoOverlay", [], async () => {
     return false;
   }
 
+  // Cache the localSubs flag in a closure variable instead of hitting
+  // localStorage on every ensureLocalSubsButton call (which fires from a
+  // MutationObserver — potentially many times per second). The cache is
+  // invalidated when we explicitly set it OR a 'storage' event fires from
+  // another tab.
+  let _localSubsCache = null;
   const localSubsEnabled = () => {
+    if (_localSubsCache !== null) return _localSubsCache;
     try {
-      return localStorage.getItem(LS.localSubs) !== "0";
+      _localSubsCache = localStorage.getItem(LS.localSubs) !== "0";
     } catch (_) {
-      return true;
+      _localSubsCache = true;
     }
+    return _localSubsCache;
   };
   const setLocalSubs = (value) => {
+    _localSubsCache = !!value;
     try {
       localStorage.setItem(LS.localSubs, value ? "1" : "0");
     } catch (_) {}
@@ -111,6 +120,11 @@ BTFW.define("feature:videoOverlay", [], async () => {
       new CustomEvent("btfw:video:localsubs:changed", { detail: { enabled: !!value } })
     );
   };
+  try {
+    window.addEventListener("storage", (e) => {
+      if (e.key === LS.localSubs) _localSubsCache = null;
+    });
+  } catch (_) {}
 
   let refreshClickCount = 0;
   let refreshCooldownUntil = 0;

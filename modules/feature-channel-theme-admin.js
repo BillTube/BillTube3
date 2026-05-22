@@ -2263,6 +2263,28 @@ function replaceBlock(original, startMarker, endMarker, block){
           </div>
         </details>
 
+        <details class="section" data-section="developer">
+          <summary class="section__summary">
+            <div class="section__title">
+              <h4>Developer</h4>
+              <span>Toggles for iterating on the theme. Defaults match a polished live channel.</span>
+            </div>
+            <span class="section__chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="section__body">
+            <div class="field btfw-switch-field">
+              <button type="button" class="btfw-switch" id="btfw-theme-dev-nocache-toggle" role="switch" aria-pressed="false">
+                <span class="btfw-switch__track" aria-hidden="true"><span class="btfw-switch__knob"></span></span>
+                <span class="btfw-switch__meta">
+                  <span class="btfw-switch__title">Development mode (cache-bust every load)</span>
+                  <span class="btfw-switch__state" data-role="state-label">Off</span>
+                </span>
+              </button>
+              <p class="help">When <strong>on</strong>, every CSS / module URL gets a unique <code>?t=&lt;ms&gt;</code> appended so you see code changes immediately on reload. When <strong>off</strong> (recommended for live channels), URLs stay stable so the CDN and browser caches kick in — viewers get faster reloads and only pay for fetches when you actually ship a new commit. Setting is per-browser; reload the page to apply.</p>
+            </div>
+          </div>
+        </details>
+
         <div class="buttons">
           <button type="button" class="btn-primary" id="btfw-theme-apply">Apply to Channel CSS &amp; JS</button>
           <button type="button" class="btn-secondary" id="btfw-theme-reset">Reset to preset</button>
@@ -2384,6 +2406,35 @@ function replaceBlock(original, startMarker, endMarker, block){
         cfg.integrations.audioEnhancer.enabled = next;
         syncAudioEnhancerToggle(panel, cfg);
         onChange();
+      });
+    }
+
+    // Developer mode toggle — flips localStorage["btfw:dev-nocache"]. This is
+    // intentionally a per-browser setting (not a per-channel config) so the
+    // channel admin can flip it while iterating without forcing all viewers
+    // to take the cache-miss penalty. The framework reads the flag at boot,
+    // so a reload is required to apply.
+    const devNoCacheButton = panel.querySelector('#btfw-theme-dev-nocache-toggle');
+    if (devNoCacheButton) {
+      const readDevState = () => {
+        try { return localStorage.getItem("btfw:dev-nocache") === "1"; } catch (_) { return false; }
+      };
+      const writeDevState = (on) => {
+        try {
+          if (on) localStorage.setItem("btfw:dev-nocache", "1");
+          else localStorage.removeItem("btfw:dev-nocache");
+        } catch (_) {}
+      };
+      const renderDevState = () => {
+        const on = readDevState();
+        devNoCacheButton.setAttribute('aria-pressed', on ? 'true' : 'false');
+        const state = devNoCacheButton.querySelector('[data-role="state-label"]');
+        if (state) state.textContent = on ? 'On' : 'Off';
+      };
+      renderDevState();
+      devNoCacheButton.addEventListener('click', () => {
+        writeDevState(!readDevState());
+        renderDevState();
       });
     }
 
