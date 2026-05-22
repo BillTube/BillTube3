@@ -787,6 +787,7 @@ BTFW.define("feature:videoOverlay", [], async () => {
 
   function attachTrack(video, url, label) {
     $("track[data-btfw=\"1\"]", video)?.remove();
+    video.querySelectorAll('track[data-btfw-auto-subs="1"]').forEach(t => t.remove());
     const tr = document.createElement("track");
     tr.kind = "subtitles";
     tr.label = label || "Local";
@@ -794,7 +795,11 @@ BTFW.define("feature:videoOverlay", [], async () => {
     tr.src = url;
     tr.default = true;
     tr.setAttribute("data-btfw", "1");
+    tr.setAttribute("data-btfw-local-subs", "1");
     video.appendChild(tr);
+    video.dataset.btfwLocalSubsActive = "1";
+    document.body.dataset.btfwLocalSubsActive = "1";
+    document.dispatchEvent(new CustomEvent("btfw:localSubsLoaded"));
     try {
       for (const t of video.textTracks) t.mode = t.label === tr.label ? "showing" : "disabled";
     } catch (_) {}
