@@ -128,15 +128,18 @@
 
 /* Twitch/Kick-style chat column — slim header strip with zero chrome.
    Topbar fully blends into the chat column (no bg, no border, no shadow);
-   the now-playing label is the only visible content. All colors/fonts use
-   --btfw-* tokens so channel-owner theme customizations apply. */
+   the now-playing label is the only visible content. The voting card
+   (#btfw-ratings) sits as a slim second row inside .btfw-chat-topbar-left
+   when in the rating window. All colors/fonts use --btfw-* tokens so
+   channel-owner theme customizations apply. */
 #chatwrap .btfw-chat-topbar{
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding: 12px 14px;
+    gap: 4px 10px;
+    padding: 10px 14px;
     margin: 0;
     min-height: 48px;
     background: transparent;
@@ -149,6 +152,122 @@
     flex-shrink: 0;
     position: relative;
     overflow: visible;
+}
+
+/* Left side stacks title row over the voting stars row when ratings show */
+#chatwrap .btfw-chat-topbar .btfw-chat-topbar-left {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* Voting card in the topbar: minimal — bare star glyphs and tiny ghost icons,
+   no backgrounds, no borders. Avg score lives in the topbar pill on the
+   right; this row is purely the rate-yourself action. */
+#chatwrap .btfw-chat-topbar #btfw-ratings-wrapper {
+    width: 100%;
+    flex: 0 0 auto;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+}
+#chatwrap .btfw-chat-topbar #btfw-ratings[hidden] { display: none !important; }
+#chatwrap .btfw-chat-topbar #btfw-ratings {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    font-size: 12px;
+}
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__header { display: contents; }
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__label { display: none; }
+
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__stars {
+    display: inline-flex;
+    gap: 1px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+}
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__stars button {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0 1px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1;
+    color: color-mix(in srgb, var(--btfw-color-text) 30%, transparent 70%);
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__stars button[data-active="true"],
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__stars button:hover,
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__stars button:focus-visible {
+    color: var(--btfw-rating-accent, #ffd166);
+    background: transparent;
+    transform: none;
+}
+
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions {
+    margin: 0 0 0 auto;
+    order: 99;
+    gap: 2px;
+    display: inline-flex;
+    background: transparent;
+}
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions button {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0 4px;
+    margin: 0;
+    width: auto;
+    height: auto;
+    font-size: 13px;
+    line-height: 1;
+    color: color-mix(in srgb, var(--btfw-color-text) 38%, transparent 62%);
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions button:hover,
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions button:focus-visible {
+    color: var(--btfw-color-text);
+    background: transparent;
+}
+
+/* The avg/votes line is redundant with the topbar star pill — hide the
+   meta but keep the "Your rating" status visible. */
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__meta-group {
+    display: inline-flex;
+    gap: 6px;
+    font-size: 11px;
+    opacity: 0.7;
+    background: transparent;
+    flex-wrap: nowrap;
+}
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__meta { display: none; }
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__self { white-space: nowrap; }
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__error {
+    font-size: 10px;
+    background: transparent;
+}
+
+/* When the user is actively voting (ratings card visible), hide the
+   community-rating pill on the right. One star group at a time keeps
+   the topbar from looking cluttered with duplicate star UIs. */
+#chatwrap .btfw-chat-topbar:has(#btfw-ratings:not([hidden])) #btfw-rating-pill {
+    display: none;
 }
 
 #chatwrap .btfw-chat-bottombar {
