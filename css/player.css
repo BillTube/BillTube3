@@ -5,9 +5,9 @@
   display: grid;
   place-items: stretch;
   aspect-ratio: var(--btfw-video-aspect, 16 / 9);
-  /* Solid black letterbox; the tinted color-mix bg was forming a visible
-     "frame" around the video where the player didn't fully fill the wrap. */
-  background: #000;
+  /* Transparent wrap — letterbox area shows the page bg, not a hard
+     black or tinted frame. */
+  background: transparent;
   overflow: hidden;
   isolation: isolate;
   contain: layout style paint;
