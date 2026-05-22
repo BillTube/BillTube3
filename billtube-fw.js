@@ -1,4 +1,4 @@
-/*! BillTube Framework — v3.4f */
+/*! BillTube Framework — v3.4g */
 (function(){
   var scripts=document.getElementsByTagName('script');
   var BASE=(document.currentScript&&document.currentScript.src)||scripts[scripts.length-1].src; BASE=BASE.replace(/\/[^\/]*$/, "");
