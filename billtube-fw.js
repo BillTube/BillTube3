@@ -190,13 +190,30 @@ function preload(href){
 }
 
 function load(src){
+  // Retry up to 3 attempts with backoff. jsdelivr edges occasionally serve a
+  // brief 404 for a commit-pinned URL right after a push while the new SHA
+  // propagates from origin. A single failure used to abort the entire boot
+  // and the channel rendered as bare CyTube; one quick retry usually
+  // succeeds and the user never notices.
   return new Promise(function(resolve, reject){
-    var s = document.createElement("script");
-    s.async = true; s.defer = true;
-    s.src = qparam(src, "t="+Date.now());
-    s.onload = function(){ resolve(); };
-    s.onerror = function(){ reject(new Error("Failed to load "+src)); };
-    document.head.appendChild(s);
+    var attempts = 0;
+    function attempt(){
+      attempts++;
+      var s = document.createElement("script");
+      s.async = true; s.defer = true;
+      s.src = qparam(src, "t="+Date.now()) + (attempts > 1 ? "&retry="+attempts : "");
+      s.onload = function(){ resolve(); };
+      s.onerror = function(){
+        try { s.remove(); } catch(_) {}
+        if (attempts < 3) {
+          setTimeout(attempt, 400 * attempts);
+        } else {
+          reject(new Error("Failed to load "+src+" after "+attempts+" attempts"));
+        }
+      };
+      document.head.appendChild(s);
+    }
+    attempt();
   });
 }
 
@@ -346,15 +363,15 @@ function resolveBranchToSHA(){
       BTFW.init("feature:theater")
     ]);
   }).then(function(){
-    console.log("[BTFW v3.4f] Ready.");
+    console.log("[BTFW v3.4g] Ready.");
     // Dispatch a final ready event
     document.dispatchEvent(new CustomEvent('btfw:ready', {
-      detail: { version: '3.4f', timestamp: Date.now() }
+      detail: { version: '3.4g', timestamp: Date.now() }
     }));
     BootOverlay.hide();
   })
   .catch(function(e){
-    console.error("[BTFW v3.4f] boot failed:", e&&e.message||e);
+    console.error("[BTFW v3.4g] boot failed:", e&&e.message||e);
     BootOverlay.fail((e&&e.message)||'Unknown error');
   });
 
