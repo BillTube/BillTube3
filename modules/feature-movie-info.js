@@ -371,8 +371,12 @@ BTFW.define("feature:movie-info", [], async () => {
   }
 
   function cleanMovieTitle(title) {
+    // CyTube renders the title as "Currently Playing: <title>"; strip the
+    // prefix before sending to TMDB or we'll search for nonsense like
+    // "Currently Playing: Halloween 5" and get no results.
+    let cleanTitle = String(title || "")
+      .replace(/^\s*(?:currently|now)\s*playing\s*[:\-]\s*/i, "");
     const unwantedWords = ["Extended", "Director's Cut", "Directors Cut", "Unrated", "Theatrical Cut"];
-    let cleanTitle = title;
     unwantedWords.forEach(word => {
       const regex = new RegExp(`\\b${word}\\b`, "gi");
       cleanTitle = cleanTitle.replace(regex, "");
