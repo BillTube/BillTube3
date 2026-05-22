@@ -14,6 +14,25 @@
   }
   window.BTFW = { define, init, BASE };
 
+  // Public handshake for third-party theme modules (e.g. donate_module.js) that
+  // probe `window.ThemeToolkit` before falling back to standalone init.
+  if (!window.ThemeToolkit) {
+    var __btfwToolkitModules = [];
+    window.ThemeToolkit = {
+      version: "BTFW",
+      modules: __btfwToolkitModules,
+      registerModule: function(mod){
+        try {
+          __btfwToolkitModules.push(mod);
+          if (mod && typeof mod.init === "function") mod.init();
+        } catch (err) {
+          console.error("[BTFW] ThemeToolkit.registerModule failed", err);
+        }
+        return mod;
+      }
+    };
+  }
+
   var BootOverlay=(function(){
     var overlay=null;
     var styleEl=null;
