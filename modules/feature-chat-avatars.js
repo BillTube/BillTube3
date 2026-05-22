@@ -378,7 +378,10 @@ BTFW.define("feature:chat-avatars", [], async () => {
     const size = mode === "big" ? 40 : mode === "off" ? 0 : 28;
     document.documentElement.style.setProperty("--btfw-avatar-size", `${size}px`);
 
-    const indent = size > 0 ? 16 + size + 4 : 0;
+    // Avatar sits at left:8 (down from 16); 4px gap to text → padding-left
+    // = 8 + size + 4. Keeps the chat tighter on the left without crowding
+    // the avatar against the column edge.
+    const indent = size > 0 ? 8 + size + 4 : 0;
     document.documentElement.style.setProperty("--btfw-message-padding-left", `${indent}px`);
 
     if (size > 0) {
