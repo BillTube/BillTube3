@@ -52,15 +52,116 @@ BTFW.define("feature:footer", [], async () => {
       .btfw-footer__auth {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.75rem;
+        gap: 14px;
         align-items: center;
         justify-content: center;
+        padding: 14px 16px;
+        background: color-mix(in srgb, var(--btfw-color-panel) 60%, transparent 40%);
+        border: 1px solid color-mix(in srgb, var(--btfw-border) 36%, transparent 64%);
+        border-radius: 14px;
       }
 
       .btfw-footer__form {
         display: inline-flex !important;
-        gap: 0.35rem;
+        gap: 10px;
         align-items: center;
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        flex-wrap: wrap;
+        flex: 0 1 auto;
+      }
+
+      /* Username + password inputs need higher specificity + !important to
+         beat CyTube themes/slate.css which forces background-color rgb(22,26,32) */
+      .btfw-footer__auth input.form-control[type="text"],
+      .btfw-footer__auth input.form-control[type="password"] {
+        background-color: color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%) !important;
+        background-image: none !important;
+        border: 1px solid color-mix(in srgb, var(--btfw-border) 45%, transparent 55%) !important;
+        border-radius: 999px !important;
+        color: var(--btfw-color-text) !important;
+        height: 36px !important;
+        padding: 0 16px !important;
+        font-size: 13px !important;
+        line-height: 1 !important;
+        box-shadow: none !important;
+        width: 180px;
+        transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+      }
+      .btfw-footer__auth input.form-control:focus {
+        outline: none !important;
+        border-color: color-mix(in srgb, var(--btfw-color-accent) 60%, transparent 40%) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%) !important;
+        background-color: color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%) !important;
+      }
+      .btfw-footer__auth input.form-control::placeholder {
+        color: color-mix(in srgb, var(--btfw-color-text) 55%, transparent 45%);
+        opacity: 1;
+      }
+
+      /* "Remember me" label + checkbox */
+      .btfw-footer__auth label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        font-size: 12.5px;
+        font-weight: 500;
+        color: color-mix(in srgb, var(--btfw-color-text) 75%, transparent 25%);
+        cursor: pointer;
+      }
+      .btfw-footer__auth label input[type="checkbox"],
+      .btfw-footer__auth input[type="checkbox"] {
+        accent-color: var(--btfw-color-accent);
+        width: 14px;
+        height: 14px;
+        margin: 0;
+      }
+
+      /* Login button — accent fill pill */
+      .btfw-footer__auth #login,
+      .btfw-footer__auth button.btn[type="submit"] {
+        background: color-mix(in srgb, var(--btfw-color-accent) 78%, transparent 22%);
+        border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 90%, transparent 10%);
+        border-radius: 999px;
+        color: var(--btfw-color-bg);
+        font-weight: 600;
+        font-size: 13px;
+        letter-spacing: 0.02em;
+        height: 36px;
+        padding: 0 18px;
+        line-height: 1;
+        box-shadow: none;
+        transition: background 0.18s ease, border-color 0.18s ease;
+      }
+      .btfw-footer__auth #login:hover,
+      .btfw-footer__auth button.btn[type="submit"]:hover {
+        background: var(--btfw-color-accent);
+        border-color: var(--btfw-color-accent);
+      }
+
+      /* "Log in · Register" anchor links (legacy CyTube duplicate id="loginform" on a <p>) */
+      .btfw-footer__auth p.btfw-footer__form {
+        background: transparent;
+        color: color-mix(in srgb, var(--btfw-color-text) 55%, transparent 45%);
+        font-size: 12.5px;
+      }
+      .btfw-footer__auth p.btfw-footer__form a {
+        color: color-mix(in srgb, var(--btfw-color-text) 80%, transparent 20%);
+        text-decoration: none;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font-weight: 500;
+        transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+      }
+      .btfw-footer__auth p.btfw-footer__form a:hover {
+        background: color-mix(in srgb, var(--btfw-color-accent) 14%, transparent 86%);
+        border-color: color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
+        color: var(--btfw-color-text);
       }
 
       .btfw-footer-branding {
