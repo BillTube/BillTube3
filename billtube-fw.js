@@ -287,10 +287,10 @@ const DEV_CDN = "https://cdn.jsdelivr.net/gh/intentionallyIncomplete/BillTube3-s
       BTFW.init("feature:channelThemeAdmin"),
       BTFW.init("feature:themeSettings"),
       BTFW.init("feature:ratings"),
-      BTFW.init("feature:audio-boost"),
-      BTFW.init("feature:auto-subs"),
+      BTFW.init("feature:audioboost"),
+      BTFW.init("ext:autosubs"),
       BTFW.init("feature:movie-info"),
-      BTFW.init("feature:movie-suggestions")
+      BTFW.init("ext:movie-suggestion")
     ];
     return Promise.all(inits);
   }).then(function () {

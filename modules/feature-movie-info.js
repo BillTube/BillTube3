@@ -727,24 +727,6 @@
         isInitialized = false;
     }
 
-    // Auto-initialize when DOM is ready and BTFW is available
-    function tryInit() {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', tryInit);
-            return;
-        }
-        
-        setTimeout(init, 2000);
-    }
-
-    // Also listen for BTFW ready event if available
-    document.addEventListener('btfw:ready', () => {
-        setTimeout(init, 500);
-    });
-
-    tryInit();
-
-    // Export module interface
     window.MovieInfoModule = {
         init,
         cleanup,
@@ -755,5 +737,17 @@
             version: MODULE_VERSION
         }
     };
+
+    function registerMovieInfoModule() {
+        if (!window.BTFW || typeof BTFW.define !== 'function') {
+            setTimeout(registerMovieInfoModule, 100);
+            return;
+        }
+        BTFW.define('feature:movie-info', [], async () => {
+            init();
+            return window.MovieInfoModule;
+        });
+    }
+    registerMovieInfoModule();
 
 })();

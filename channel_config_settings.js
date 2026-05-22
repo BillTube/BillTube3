@@ -29,12 +29,7 @@ window.BTFW_THEME_ADMIN = {
   "resources": {
     "scripts": [],
     "styles": [],
-    "modules": [
-      CDN_BASE + "@latest" + "/modules/audio_boost.js",
-      CDN_BASE + "@latest" + "/modules/movie_info.js",
-      CDN_BASE + "@latest" + "/modules/movie_suggestions.js",
-      CDN_BASE + "@latest" + "/modules/auto_subs.js"
-    ]
+    "modules": []
   },
   "branding": {
     "headerName": "BillTube3 Slim (Experimental)"
