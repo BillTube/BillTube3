@@ -3,6 +3,7 @@ BTFW.define("feature:auto-subs", [], async () => {
   const MODULE_NAME = "feature:auto-subs";
   const WYZIE_API = "https://sub.wyzie.io/search";
   const TMDB_API = "https://api.themoviedb.org/3";
+  const STREMIO_DEFAULT_ADDON = "https://opensubtitles-v3.strem.io";
 
   const state = {
     active: false,
@@ -88,6 +89,21 @@ BTFW.define("feature:auto-subs", [], async () => {
     }
   }
 
+  function getStremioAddon() {
+    try {
+      const cfg = (window.BTFW_CONFIG && typeof window.BTFW_CONFIG === "object") ? window.BTFW_CONFIG : {};
+      const admin = (window.BTFW_THEME_ADMIN && typeof window.BTFW_THEME_ADMIN === "object") ? window.BTFW_THEME_ADMIN : {};
+      const adminUrl = admin.integrations?.autoSubs?.stremioAddon;
+      const cfgUrl = cfg.integrations?.autoSubs?.stremioAddon;
+      let lsUrl = "";
+      try { lsUrl = (localStorage.getItem("btfw:stremio:subs") || "").trim(); } catch (_) {}
+      const url = (adminUrl || cfgUrl || lsUrl || STREMIO_DEFAULT_ADDON || "").trim();
+      return url.replace(/\/+$/, "");
+    } catch (_) {
+      return STREMIO_DEFAULT_ADDON;
+    }
+  }
+
   function getWyzieKey() {
     try {
       const cfg = (window.BTFW_CONFIG && typeof window.BTFW_CONFIG === "object") ? window.BTFW_CONFIG : {};
@@ -146,7 +162,7 @@ BTFW.define("feature:auto-subs", [], async () => {
   function warnMissingWyzieKey() {
     if (state.warnedNoWyzieKey) return;
     state.warnedNoWyzieKey = true;
-    console.error("[auto-subs] Wyzie API key missing. Set it under Theme Toolkit → Integrations before enabling Auto subtitles.");
+    console.info("[auto-subs] No Wyzie API key set — falling back to community Stremio subtitle addon.");
   }
 
   function clearWarning() {
@@ -442,7 +458,7 @@ BTFW.define("feature:auto-subs", [], async () => {
     return null;
   }
 
-  async function fetchSubtitles(imdbId, season, episode) {
+  async function fetchSubtitlesWyzie(imdbId, season, episode) {
     if (!imdbId || !state.wyzieKey) return null;
     const sources = ["opensubtitles", "all"];
     for (const source of sources) {
@@ -476,16 +492,54 @@ BTFW.define("feature:auto-subs", [], async () => {
     return null;
   }
 
+  async function fetchSubtitlesStremio(imdbId, season, episode) {
+    const addon = getStremioAddon();
+    if (!addon || !imdbId) return null;
+    const isSeries = season !== null && episode !== null;
+    const path = isSeries
+      ? `subtitles/series/${imdbId}:${season}:${episode}.json`
+      : `subtitles/movie/${imdbId}.json`;
+    const url = `${addon}/${path}`;
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      const list = Array.isArray(data?.subtitles) ? data.subtitles : [];
+      if (list.length === 0) return null;
+      const englishOnly = list.filter(s => {
+        const lang = String(s?.lang || s?.language || "").toLowerCase();
+        return !lang || lang === "en" || lang === "eng" || lang === "english";
+      });
+      const pickFrom = englishOnly.length > 0 ? englishOnly : list;
+      const converted = await Promise.all(
+        pickFrom.slice(0, 10).map(sub => convertSrtToVtt(sub))
+      );
+      const filtered = converted.filter(Boolean);
+      return filtered.length > 0 ? filtered : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function fetchSubtitles(imdbId, season, episode) {
+    if (!imdbId) return null;
+    if (state.wyzieKey) {
+      const wyzie = await fetchSubtitlesWyzie(imdbId, season, episode);
+      if (wyzie && wyzie.length > 0) return wyzie;
+    }
+    return await fetchSubtitlesStremio(imdbId, season, episode);
+  }
+
   async function convertSrtToVtt(subtitle) {
     if (!subtitle || !subtitle.url) return null;
     try {
       const srtResp = await fetch(subtitle.url);
       if (!srtResp.ok) return null;
       const srtText = await srtResp.text();
-      const vttText = srtToVtt(srtText);
+      const vttText = srtText.trimStart().startsWith("WEBVTT") ? srtText : srtToVtt(srtText);
       const blob = new Blob([vttText], { type: "text/vtt" });
       const vttUrl = URL.createObjectURL(blob);
-      return { url: vttUrl, lang: "en" };
+      return { url: vttUrl, lang: subtitle.lang || "en" };
     } catch (_) {
       return null;
     }
@@ -736,10 +790,8 @@ BTFW.define("feature:auto-subs", [], async () => {
       const wyzieKey = getWyzieKey();
       if (!wyzieKey) {
         warnMissingWyzieKey();
-        deactivate();
-        return;
       }
-      activate(key, wyzieKey);
+      activate(key, wyzieKey || null);
       processCurrentTitle();
     } finally {
       state.isEvaluating = false;
