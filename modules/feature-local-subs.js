@@ -1,4 +1,4 @@
-
+/* BTFW – feature:local-subs */
 BTFW.define("feature:local-subs", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
