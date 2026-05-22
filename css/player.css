@@ -463,9 +463,12 @@
 #videowrap .video-js.btfw-videojs-themed .vjs-subs-caps-button   { order: 60 !important; }
 #videowrap .video-js.btfw-videojs-themed .vjs-audio-button       { order: 61 !important; }
 #videowrap .video-js.btfw-videojs-themed .vjs-playback-rate      { order: 62 !important; }
-#videowrap .video-js.btfw-videojs-themed .vjs-picture-in-picture-control { order: 70 !important; }
 #videowrap .video-js.btfw-videojs-themed .vjs-fullscreen-control { order: 80 !important; }
 #videowrap .video-js.btfw-videojs-themed > .vjs-control-bar > .vjs-menu-button { order: 80 !important; }
+/* PIP is intentionally past the .vjs-menu-button catch-all so it sits to
+   the right of the CC (subs-caps) button, which gets pulled to order 80
+   by that catch-all because subs-caps is itself a menu-button. */
+#videowrap .video-js.btfw-videojs-themed .vjs-picture-in-picture-control { order: 90 !important; }
 
 /* Progress strip pinned to the BOTTOM of the control bar — below the
    button row so the rail and the icons never overlap. City theme set
