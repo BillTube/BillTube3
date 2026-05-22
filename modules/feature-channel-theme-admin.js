@@ -1845,17 +1845,22 @@ function replaceBlock(original, startMarker, endMarker, block){
       const keyFromField = typeof tmdbField?.value === 'string' ? tmdbField.value.trim() : '';
       const wyzieFromCfg = typeof integrations.wyzie?.apiKey === 'string' ? integrations.wyzie.apiKey.trim() : '';
       const wyzieFromField = typeof wyzieField?.value === 'string' ? wyzieField.value.trim() : '';
-      const hasKey = Boolean(keyFromCfg || keyFromField) && Boolean(wyzieFromCfg || wyzieFromField);
+      const hasTmdb = Boolean(keyFromCfg || keyFromField);
+      const hasWyzie = Boolean(wyzieFromCfg || wyzieFromField);
       if (!enabled) {
         notice.hidden = true;
         notice.classList.remove('is-warning', 'is-success');
       } else {
         notice.hidden = false;
-        notice.classList.toggle('is-warning', !hasKey);
-        notice.classList.toggle('is-success', hasKey);
-        notice.textContent = hasKey
-          ? 'Auto subtitles will pull English captions from Wyzie whenever direct file uploads play.'
-          : 'Requires TMDB and Wyzie API keys before enabling.';
+        notice.classList.toggle('is-warning', !hasTmdb);
+        notice.classList.toggle('is-success', hasTmdb);
+        if (!hasTmdb) {
+          notice.textContent = 'Requires a TMDB API key before enabling.';
+        } else if (hasWyzie) {
+          notice.textContent = 'Auto subtitles will use your Wyzie key, then fall back to a community Stremio addon if Wyzie has no match.';
+        } else {
+          notice.textContent = 'No Wyzie key set — using the community Stremio subtitle addon as the source. Add a Wyzie key above for higher reliability.';
+        }
       }
     }
   }
@@ -1971,8 +1976,8 @@ function replaceBlock(original, startMarker, endMarker, block){
                 </span>
               </button>
               <input type="checkbox" id="btfw-theme-auto-subs-enabled" data-btfw-bind="integrations.autoSubs.enabled" hidden>
-              <p class="help is-warning" data-role="auto-subs-requirements" hidden>Requires TMDB and Wyzie API keys before enabling.</p>
-              <p class="help">Fetches English subtitles from the Wyzie catalog automatically when direct file uploads are playing.</p>
+              <p class="help is-warning" data-role="auto-subs-requirements" hidden>Requires a TMDB API key before enabling.</p>
+              <p class="help">Pulls English subtitles for direct file uploads. Uses your Wyzie key when set; otherwise falls back to a community Stremio subtitle addon.</p>
             </div>
             <div class="field">
               <label for="btfw-theme-integrations-wyzie">Wyzie API key</label>
