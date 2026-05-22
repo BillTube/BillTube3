@@ -262,7 +262,8 @@ function loadAll(files){
       "modules/feature-video-enhancements.js",
       "modules/feature-channel-theme-admin.js",
       "modules/feature-theme-settings.js",
-      "modules/feature-ratings.js"
+      "modules/feature-ratings.js",
+      "modules/feature-theater.js"
     ];
     return loadAll(coreMods)
       .then(function(){
@@ -317,7 +318,8 @@ function loadAll(files){
       BTFW.init("feature:videoEnhancements"),
       BTFW.init("feature:channelThemeAdmin"),
       BTFW.init("feature:themeSettings"),
-      BTFW.init("feature:ratings")
+      BTFW.init("feature:ratings"),
+      BTFW.init("feature:theater")
     ]);
   }).then(function(){
     console.log("[BTFW v3.4f] Ready.");
