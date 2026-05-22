@@ -9,6 +9,7 @@
   right: auto;
   width: 100%;
   margin: 0;
+  padding: 0 16px;
   border: 0;
   border-radius: 0 !important;
   background: var(--btfw-navbar-bg, var(--btfw-color-panel)) !important;
@@ -18,9 +19,24 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: clamp(12px, 2vw, 28px);
+  gap: 0;
   flex-wrap: nowrap;
   isolation: isolate;
+}
+
+/* Bootstrap stamps ::before/::after clearfix pseudo-elements on .navbar; in a
+   flex layout those become 0-width flex items that still eat the row gap. */
+#btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before,
+#btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::after {
+  display: none !important;
+}
+
+/* The mobile hamburger button (.navbar-toggle) is also a flex sibling with
+   ~15px horizontal margins; hide it on desktop so it stops pushing the brand. */
+#btfw-navhost .navbar-toggle {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) > .container {
@@ -30,30 +46,49 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: clamp(12px, 2vw, 28px);
+  gap: 0;
   flex-wrap: nowrap;
 }
 
 #btfw-navhost :is(.navbar-header, .navbar-brand-container) {
   display: flex;
   align-items: center;
-  gap: clamp(8px, 1.4vw, 18px);
+  gap: clamp(6px, 0.6vw, 10px);
+  margin: 0;
   margin-right: auto;
   min-height: var(--btfw-navbar-height);
   flex: 0 0 auto;
   white-space: nowrap;
+  float: none;
+}
+
+#btfw-navhost #nav-collapsible {
+  margin: 0;
+  margin-left: auto;
+  padding: 0;
+  flex: 0 0 auto;
+  float: none;
+}
+#btfw-navhost .navbar-nav,
+#btfw-navhost .navbar-nav.navbar-right {
+  margin: 0;
+  float: none;
 }
 
 #btfw-navhost .navbar-brand {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  padding: 0 8px;
+  margin: 0;
+  height: 100%;
   color: var(--btfw-navbar-link);
   font-size: clamp(1.02rem, 1.6vw, 1.15rem);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-decoration: none;
   text-transform: none;
+  float: none;
 }
 
 #btfw-navhost .navbar-brand:hover,
