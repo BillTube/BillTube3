@@ -620,19 +620,12 @@
 }
 #videowrap .video-js.btfw-videojs-themed .vjs-volume-control {
   width: 70px;
-  height: 3px;
+  height: 34px;
   margin: 0;
-  align-self: center;
-  display: flex;
-  align-items: center;
-  position: static;
 }
 #videowrap .video-js.btfw-videojs-themed .vjs-volume-bar {
   width: 100%;
   height: 3px;
-  margin: 0;
-  position: relative;
-  top: auto;
   border: 0;
   background: color-mix(in srgb, var(--btfw-color-text) 18%, transparent 82%);
 }
