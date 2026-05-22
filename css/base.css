@@ -675,176 +675,225 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   border-radius: 8px;
 }
 
-/* Enhanced playlist bar styling */
-.btfw-plbar {
-  display: flex !important;
-  flex-direction: column;
-  gap: 12px !important;
-  padding: 14px 16px !important;
-  margin: 12px 0 10px 0 !important;
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%),
-    color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%)) !important;
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%) !important;
-  border-radius: 14px !important;
-  box-shadow: 0 12px 32px color-mix(in srgb, var(--btfw-color-bg) 28%, transparent 72%);
+/* ============================================================
+   Playlist bar (.btfw-plbar) — flat panel, uniform pill buttons,
+   filter centered at the bottom, count chip in the top-right corner.
+   ============================================================ */
+
+/* Strip nested borders/backgrounds around the playlist stack so the
+   bar doesn't sit inside a stack of competing chrome. */
+#playlistrow {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+#leftpane,
+#rightpane {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
-.btfw-plbar__layout {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  width: 100%;
-  align-items: stretch;
+.btfw-plbar {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  padding: 12px 14px 14px !important;
+  margin: 0 0 12px 0 !important;
+  background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%) !important;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--btfw-color-bg) 28%, transparent 72%) !important;
+  position: relative !important;
+}
+
+/* Flatten the JS-generated wrappers so `.btfw-plbar__primary` becomes the
+   single column stack and the count chip can be absolutely positioned. */
+.btfw-plbar__layout,
+.btfw-plbar__aside {
+  display: contents !important;
 }
 
 .btfw-plbar__primary {
-    flex: 1 1 320px;
-    min-width: 233px;
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+  width: 100% !important;
+  flex: 1 1 100% !important;
+  min-width: 0 !important;
+  padding-right: 56px !important; /* leave room for the corner count chip */
 }
 
-.btfw-plbar__search {
-  width: 100%;
+/* TOP row: action buttons. */
+.btfw-plbar__primary .btfw-plbar__actions {
+  order: 1 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  flex: 0 0 auto !important;
+  justify-content: flex-start !important;
+  width: auto !important;
+  padding-right: 0 !important;
 }
 
-.btfw-plbar__search .field {
-  width: 100%;
+/* BOTTOM row: filter, centered. */
+.btfw-plbar__primary > .field.has-addons,
+.btfw-plbar__primary > .btfw-plbar__search {
+  order: 2 !important;
+  display: flex !important;
+  width: 100% !important;
+  max-width: 460px !important;
+  align-self: center !important;
+  margin: 0 auto !important;
+  flex-wrap: nowrap !important;
 }
 
-.btfw-plbar__search .field.has-addons {
-  flex-wrap: wrap;
-}
-
-.btfw-plbar__search .control.is-expanded {
-  flex: 1 1 auto;
-}
-
-.btfw-plbar__search .input {
-  width: 100%;
-  background: color-mix(in srgb, var(--btfw-color-surface) 86%, transparent 14%);
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 78%, transparent 22%);
-  color: var(--btfw-color-text);
-  border-radius: 10px;
-}
-
-.btfw-plbar__aside {
-  flex: 0 1 320px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-end;
-}
-
+/* Item count: tiny, muted, anchored to the top-right corner. */
 .btfw-plbar__count {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  background: color-mix(in srgb, var(--btfw-color-accent) 16%, transparent 84%);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
-  border-radius: 999px;
-  padding: 4px 12px;
-  color: color-mix(in srgb, var(--btfw-color-text) 92%, transparent 8%);
-  align-self: flex-end;
+  position: absolute !important;
+  top: 10px !important;
+  right: 14px !important;
+  font-size: 9.5px !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  color: color-mix(in srgb, var(--btfw-color-text) 55%, transparent 45%) !important;
+  align-self: auto !important;
+  pointer-events: none !important;
+  line-height: 1 !important;
+  font-weight: 600 !important;
+  display: inline-block !important;
 }
 
-.btfw-plbar__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: flex-start;
-    width: 100%;
-    align-self: stretch;
-    flex-direction: row;
-    align-items: center;
-}
-
-.btfw-plbar__actions > * {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btfw-plbar__control {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btfw-plbar__control form {
-  display: contents;
-}
-
-.btfw-plbar__action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
+/* Uniform action-button theme: 32px-tall pills, theme-tinted bg, accent hover. */
 .btfw-plbar__actions button,
 .btfw-plbar__actions .button,
 .btfw-plbar__actions a.btn,
-.btfw-plbar__actions input[type=button],
-.btfw-plbar__actions input[type=submit],
-.btfw-plbar__actions input[type=reset] {
-  background: color-mix(in srgb, var(--btfw-color-surface) 82%, transparent 18%);
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 74%, transparent 26%);
-  border-radius: 10px;
+.btfw-plbar .btfw-plbar__action-btn {
+  box-sizing: border-box !important;
+  background: color-mix(in srgb, var(--btfw-color-bg) 50%, transparent 50%) !important;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 42%, transparent 58%) !important;
+  border-radius: 999px !important;
   color: var(--btfw-color-text) !important;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
-  text-decoration: none;
+  height: 32px !important;
+  min-height: 32px !important;
+  min-width: 32px !important;
+  padding: 0 14px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: none !important;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.12s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
 }
 
-.btfw-plbar__actions select {
-  background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 78%, transparent 22%);
-  border-radius: 10px;
-  color: var(--btfw-color-text);
-  padding: 6px 10px;
-  font-size: 12px;
+/* Icon-only buttons collapse to a 32x32 pill so they read as round. */
+.btfw-plbar #showsearch,
+.btfw-plbar #showplaylistmanager,
+.btfw-plbar #qlockbtn,
+.btfw-plbar #getplaylist,
+.btfw-plbar #clearplaylist,
+.btfw-plbar #shuffleplaylist,
+.btfw-plbar #showcustomembed,
+.btfw-plbar #showmediaurl {
+  width: 32px !important;
+  padding: 0 !important;
 }
 
 .btfw-plbar__actions button:hover,
 .btfw-plbar__actions .button:hover,
-.btfw-plbar__actions a.btn:hover,
-.btfw-plbar__actions input[type=button]:hover,
-.btfw-plbar__actions input[type=submit]:hover,
-.btfw-plbar__actions input[type=reset]:hover,
-.btfw-plbar__actions select:hover {
-  background: color-mix(in srgb, var(--btfw-color-accent) 36%, transparent 64%) !important;
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 52%, transparent 48%) !important;
+.btfw-plbar .btfw-plbar__action-btn:hover {
+  background: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%) !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, transparent 52%) !important;
 }
 
-.btfw-plbar__actions button:active,
-.btfw-plbar__actions .button:active,
-.btfw-plbar__actions a.btn:active,
-.btfw-plbar__actions input[type=button]:active,
-.btfw-plbar__actions input[type=submit]:active,
-.btfw-plbar__actions input[type=reset]:active {
-  transform: translateY(1px);
+/* Primary "Add media" stands out with the accent fill. */
+.btfw-plbar #btfw-addmedia-btn,
+.btfw-plbar #btfw-addmedia-btn.is-primary {
+  background: color-mix(in srgb, var(--btfw-color-accent) 78%, transparent 22%) !important;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 90%, transparent 10%) !important;
+  color: var(--btfw-color-bg) !important;
+  font-weight: 600 !important;
+  height: 32px !important;
+  padding: 0 16px !important;
+}
+.btfw-plbar #btfw-addmedia-btn:hover {
+  background: var(--btfw-color-accent) !important;
+  border-color: var(--btfw-color-accent) !important;
+}
+
+/* "Copy titles" when active. */
+.btfw-plbar #btfw-pl-copytoggle.is-success,
+.btfw-plbar__actions .button.is-success {
+  background: color-mix(in srgb, var(--btfw-color-accent) 80%, transparent 20%) !important;
+  border-color: var(--btfw-color-accent) !important;
+  color: var(--btfw-color-bg) !important;
+}
+
+/* Filter input + addon buttons are all 36px tall and lock together as one pill. */
+.btfw-plbar__primary > .field.has-addons {
+  align-items: stretch !important;
+}
+.btfw-plbar__primary > .field.has-addons .control {
+  display: flex !important;
+}
+.btfw-plbar__primary > .field.has-addons .input,
+.btfw-plbar__primary input.input {
+  box-sizing: border-box !important;
+  background: color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%) !important;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 45%, transparent 55%) !important;
+  border-radius: 999px 0 0 999px !important;
+  color: var(--btfw-color-text) !important;
+  height: 36px !important;
+  padding: 0 16px !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+}
+.btfw-plbar__primary > .field.has-addons .input:focus {
+  outline: none !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 60%, transparent 40%) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%) !important;
+  z-index: 1 !important;
+}
+.btfw-plbar__primary > .field.has-addons .control:not(.is-expanded) .button {
+  box-sizing: border-box !important;
+  border-radius: 0 !important;
+  height: 36px !important;
+  width: 36px !important;
+  padding: 0 !important;
+  background: color-mix(in srgb, var(--btfw-color-bg) 50%, transparent 50%) !important;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 45%, transparent 55%) !important;
+  border-left: 0 !important;
+  color: color-mix(in srgb, var(--btfw-color-text) 80%, transparent 20%) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.btfw-plbar__primary > .field.has-addons .control:last-child .button {
+  border-radius: 0 999px 999px 0 !important;
+}
+.btfw-plbar__primary > .field.has-addons .control:not(.is-expanded) .button:hover {
+  background: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%) !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, transparent 52%) !important;
+  color: var(--btfw-color-text) !important;
 }
 
 @media (max-width: 860px) {
-  .btfw-plbar__layout {
-    flex-direction: column;
-  }
-  .btfw-plbar__aside {
-    align-items: stretch;
-  }
-  .btfw-plbar__count {
-    align-self: flex-start;
-  }
-  .btfw-plbar__actions {
-    justify-content: flex-start;
-  }
+  .btfw-plbar__primary { padding-right: 0 !important; }
+  .btfw-plbar__primary > .field.has-addons,
+  .btfw-plbar__primary > .btfw-plbar__search { max-width: none !important; }
+  .btfw-plbar__count { top: 8px !important; right: 10px !important; }
 }
+
 
 /* Remove the old stack header completely */
 .btfw-stack-header {
@@ -1848,102 +1897,101 @@ body:not(.is-scrolling) #queue li {
   border-color: var(--btfw-color-accent);
   background: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
 }
-/ *   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =  
-       B i l l T u b e 3   T h e m e - A w a r e   M o d e r n i z a t i o n   O v e r r i d e  
-       C o p y   a l l   o f   t h i s   a n d   p a s t e   i t   i n t o   y o u r   b r o w s e r ' s   D e v T o o l s   o r   S t y l u s !  
-       = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =   * /  
-  
- / *   1 .   S T R U C T U R A L   A L I G N M E N T   &   P A D D I N G   * /  
- b o d y ,   # w r a p   {   p a d d i n g - t o p :   0   ! i m p o r t a n t ;   }  
-  
- # m a i n p a g e   {  
-         p a d d i n g - l e f t :   1 5 p x   ! i m p o r t a n t ;  
-         p a d d i n g - r i g h t :   1 5 p x   ! i m p o r t a n t ;  
-         m a x - w i d t h :   1 0 0 % ;  
- }  
-  
- . c o l - l g - 8 ,   . c o l - m d - 8   {   p a d d i n g - r i g h t :   2 0 p x   ! i m p o r t a n t ;   }  
- . c o l - l g - 4 ,   . c o l - m d - 4   {   p a d d i n g - l e f t :   2 0 p x   ! i m p o r t a n t ;   }  
-  
- / *   2 .   T H E M E - A W A R E   G L A S S M O R P H I S M   N A V   * /  
- . n a v b a r - f i x e d - t o p   {  
-         / *   U s e s   y o u r   t h e m e ' s   b a c k g r o u n d   c o l o r   m i x e d   w i t h   t r a n s p a r e n c y   f o r   t h e   b l u r   e f f e c t   * /  
-         b a c k g r o u n d - c o l o r :   c o l o r - m i x ( i n   s r g b ,   v a r ( - - b t f w - c o l o r - b g )   8 5 % ,   t r a n s p a r e n t )   ! i m p o r t a n t ;  
-         b a c k d r o p - f i l t e r :   b l u r ( 1 5 p x )   ! i m p o r t a n t ;  
-         - w e b k i t - b a c k d r o p - f i l t e r :   b l u r ( 1 5 p x )   ! i m p o r t a n t ;  
-         b o r d e r :   n o n e   ! i m p o r t a n t ;  
-         / *   U s e s   t e x t   c o l o r   f o r   a   s u b t l e ,   t h e m e - a w a r e   b o t t o m   b o r d e r   * /  
-         b o r d e r - b o t t o m :   1 p x   s o l i d   c o l o r - m i x ( i n   s r g b ,   v a r ( - - b t f w - c o l o r - t e x t )   5 % ,   t r a n s p a r e n t )   ! i m p o r t a n t ;  
-         b o x - s h a d o w :   0   4 p x   3 0 p x   r g b a ( 0 ,   0 ,   0 ,   0 . 3 )   ! i m p o r t a n t ;  
- }  
-  
- . n a v b a r   >   . c o n t a i n e r   {  
-         w i d t h :   1 0 0 %   ! i m p o r t a n t ;  
-         p a d d i n g - l e f t :   1 5 p x   ! i m p o r t a n t ;  
-         p a d d i n g - r i g h t :   1 5 p x   ! i m p o r t a n t ;  
- }  
-  
- . n a v b a r - n a v   >   l i   >   a   {  
-         f o n t - s i z e :   1 3 p x   ! i m p o r t a n t ;  
-         f o n t - w e i g h t :   6 0 0   ! i m p o r t a n t ;  
-         t e x t - t r a n s f o r m :   u p p e r c a s e   ! i m p o r t a n t ;  
-         l e t t e r - s p a c i n g :   0 . 5 p x   ! i m p o r t a n t ;  
- }  
-  
- / *   3 .   M O D E R N   B O R D E R   R A D I U S   &   T H E M E - A W A R E   S H A D O W S   * /  
- # v i d e o w r a p ,   # c h a t w r a p ,   . w e l l ,   . p a n e l ,   . m o d a l - c o n t e n t ,   # r i g h t p a n e ,   # l e f t p a n e   {  
-         b o r d e r :   n o n e   ! i m p o r t a n t ;  
- }  
-  
- # v i d e o w r a p ,   # c h a t w r a p   {  
-         b o r d e r - r a d i u s :   1 6 p x   ! i m p o r t a n t ;   o v e r f l o w :   h i d d e n   ! i m p o r t a n t ;    
-         b o x - s h a d o w :   0   1 2 p x   4 0 p x   r g b a ( 0 ,   0 ,   0 ,   0 . 6 ) ,   i n s e t   0   0   0   1 p x   c o l o r - m i x ( i n   s r g b ,   v a r ( - - b t f w - c o l o r - t e x t )   5 % ,   t r a n s p a r e n t )   ! i m p o r t a n t ;  
- }  
-  
- # c h a t l i n e   {  
-         b o r d e r - r a d i u s :   2 0 p x   ! i m p o r t a n t ;    
-         b o r d e r :   1 p x   s o l i d   c o l o r - m i x ( i n   s r g b ,   v a r ( - - b t f w - c o l o r - t e x t )   1 5 % ,   t r a n s p a r e n t )   ! i m p o r t a n t ;  
-         p a d d i n g - l e f t :   1 5 p x   ! i m p o r t a n t ;    
-         b a c k g r o u n d :   c o l o r - m i x ( i n   s r g b ,   v a r ( - - b t f w - c o l o r - b g )   5 0 % ,   t r a n s p a r e n t )   ! i m p o r t a n t ;  
-         c o l o r :   v a r ( - - b t f w - c o l o r - t e x t )   ! i m p o r t a n t ;  
- }  
-  
- / *   4 .   P L A Y L I S T   &   S T A C K   S I M P L I F I C A T I O N   * /  
- / *   R e m o v e   t h e   h a r s h   a l t e r n a t i n g   b a c k g r o u n d s   f r o m   l i s t   i t e m s   * /  
- # q u e u e   . q u e u e _ e n t r y   {  
-         b a c k g r o u n d :   t r a n s p a r e n t   ! i m p o r t a n t ;  
-         b o r d e r :   n o n e   ! i m p o r t a n t ;  
-         b o r d e r - b o t t o m :   1 p x   s o l i d   c o l o r - m i x ( i n   s r g b ,   v a r ( - - b t f w - c o l o r - t e x t )   5 % ,   t r a n s p a r e n t )   ! i m p o r t a n t ;  
-         p a d d i n g :   1 2 p x   1 0 p x   ! i m p o r t a n t ;  
-         t r a n s i t i o n :   b a c k g r o u n d   0 . 2 s   e a s e ;  
- }  
-  
- # q u e u e   . q u e u e _ e n t r y : h o v e r   {  
-         b a c k g r o u n d :   c o l o r - m i x ( i n   s r g b ,   v a r ( - - b t f w - c o l o r - t e x t )   3 % ,   t r a n s p a r e n t )   ! i m p o r t a n t ;  
- }  
-  
- / *   E l e g a n t   a c t i v e   p l a y i n g   i t e m   h i g h l i g h t   * /  
- # q u e u e   . q u e u e _ a c t i v e   {  
-         b a c k g r o u n d :   c o l o r - m i x ( i n   s r g b ,   v a r ( - - b t f w - c o l o r - a c c e n t )   1 0 % ,   t r a n s p a r e n t )   ! i m p o r t a n t ;  
-         b o r d e r - l e f t :   4 p x   s o l i d   v a r ( - - b t f w - c o l o r - a c c e n t )   ! i m p o r t a n t ;  
- }  
-  
- / *   B u t t o n   D e c l u t t e r i n g :   H i d e   A L L   b u t t o n s   u n l e s s   h o v e r e d   * /  
- # q u e u e   . q u e u e _ e n t r y   . b t n - g r o u p   b u t t o n   {   o p a c i t y :   0 . 1 ;   t r a n s i t i o n :   o p a c i t y   0 . 2 s   e a s e ;   }  
- # q u e u e   . q u e u e _ e n t r y : h o v e r   . b t n - g r o u p   b u t t o n   {   o p a c i t y :   1 ;   }  
-  
- / *   S o f t e n   t i m e s t a m p s   a n d   u s e r   n a m e s   i n   t h e   p l a y l i s t   * /  
- # q u e u e   . q u e u e _ e n t r y   . q e _ t i m e ,   # q u e u e   . q u e u e _ e n t r y   . q e _ u s e r   {  
-         c o l o r :   c o l o r - m i x ( i n   s r g b ,   v a r ( - - b t f w - c o l o r - t e x t )   6 0 % ,   t r a n s p a r e n t )   ! i m p o r t a n t ;  
- }  
-  
- / *   5 .   M I C R O - A N I M A T I O N S   * /  
- . b t n ,   a ,   . d r o p d o w n - m e n u   >   l i   >   a   {   t r a n s i t i o n :   a l l   0 . 2 s   e a s e - i n - o u t   ! i m p o r t a n t ;   }  
- . b t n : h o v e r   {   t r a n s f o r m :   t r a n s l a t e Y ( - 2 p x )   ! i m p o r t a n t ;   b o x - s h a d o w :   0   5 p x   1 5 p x   r g b a ( 0 ,   0 ,   0 ,   0 . 2 )   ! i m p o r t a n t ;   }  
-  
- # m e s s a g e b u f f e r   d i v   {   a n i m a t i o n :   f a d e I n   0 . 3 s   e a s e - o u t   f o r w a r d s ;   }  
- @ k e y f r a m e s   f a d e I n   {  
-         f r o m   {   o p a c i t y :   0 ;   t r a n s f o r m :   t r a n s l a t e Y ( 5 p x ) ;   }  
-         t o   {   o p a c i t y :   1 ;   t r a n s f o r m :   t r a n s l a t e Y ( 0 ) ;   }  
- }  
- 
+/* =========================================================================
+   BillTube3 Theme-Aware Modernization Override
+   Copy all of this and paste it into your browser's DevTools or Stylus!
+   ========================================================================= */
+
+/* 1. STRUCTURAL ALIGNMENT & PADDING */
+body, #wrap { padding-top: 0 !important; }
+
+#mainpage {
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+    max-width: 100%;
+}
+
+.col-lg-8, .col-md-8 { padding-right: 20px !important; }
+.col-lg-4, .col-md-4 { padding-left: 20px !important; }
+
+/* 2. THEME-AWARE GLASSMORPHISM NAV */
+.navbar-fixed-top {
+    /* Uses your theme's background color mixed with transparency for the blur effect */
+    background-color: color-mix(in srgb, var(--btfw-color-bg) 85%, transparent) !important;
+    backdrop-filter: blur(15px) !important;
+    -webkit-backdrop-filter: blur(15px) !important;
+    border: none !important;
+    /* Uses text color for a subtle, theme-aware bottom border */
+    border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-text) 5%, transparent) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3) !important;
+}
+
+.navbar > .container {
+    width: 100% !important;
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+}
+
+.navbar-nav > li > a {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* 3. MODERN BORDER RADIUS & THEME-AWARE SHADOWS */
+#videowrap, #chatwrap, .well, .panel, .modal-content, #rightpane, #leftpane {
+    border: none !important;
+}
+
+#videowrap, #chatwrap {
+    border-radius: 16px !important; overflow: hidden !important; 
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px color-mix(in srgb, var(--btfw-color-text) 5%, transparent) !important;
+}
+
+#chatline {
+    border-radius: 20px !important; 
+    border: 1px solid color-mix(in srgb, var(--btfw-color-text) 15%, transparent) !important;
+    padding-left: 15px !important; 
+    background: color-mix(in srgb, var(--btfw-color-bg) 50%, transparent) !important;
+    color: var(--btfw-color-text) !important;
+}
+
+/* 4. PLAYLIST & STACK SIMPLIFICATION */
+/* Remove the harsh alternating backgrounds from list items */
+#queue .queue_entry {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-text) 5%, transparent) !important;
+    padding: 12px 10px !important;
+    transition: background 0.2s ease;
+}
+
+#queue .queue_entry:hover {
+    background: color-mix(in srgb, var(--btfw-color-text) 3%, transparent) !important;
+}
+
+/* Elegant active playing item highlight */
+#queue .queue_active {
+    background: color-mix(in srgb, var(--btfw-color-accent) 10%, transparent) !important;
+    border-left: 4px solid var(--btfw-color-accent) !important;
+}
+
+/* Button Decluttering: Hide ALL buttons unless hovered */
+#queue .queue_entry .btn-group button { opacity: 0.1; transition: opacity 0.2s ease; }
+#queue .queue_entry:hover .btn-group button { opacity: 1; }
+
+/* Soften timestamps and user names in the playlist */
+#queue .queue_entry .qe_time, #queue .queue_entry .qe_user {
+    color: color-mix(in srgb, var(--btfw-color-text) 60%, transparent) !important;
+}
+
+/* 5. MICRO-ANIMATIONS */
+.btn, a, .dropdown-menu > li > a { transition: all 0.2s ease-in-out !important; }
+.btn:hover { transform: translateY(-2px) !important; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important; }
+
+#messagebuffer div { animation: fadeIn 0.3s ease-out forwards; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
