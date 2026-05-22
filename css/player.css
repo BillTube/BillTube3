@@ -466,10 +466,14 @@
    set to position:absolute with hard-coded top/bottom which was dumping
    the holder at y=20 — right across the button row. Force the holder
    back into normal flow inside its parent, and pin the parent to top: 0
-   of the control bar so the rail sits above (not through) the icons. */
+   of the control bar (which is already position:absolute from the
+   themed bar rule above — that's what makes the bar float at the bottom
+   of the video, so we DON'T override its position here, just reserve
+   padding-top for the strip). */
 #videowrap .video-js.btfw-videojs-themed .vjs-control-bar {
-  position: relative;
-  padding-top: 14px;  /* leave room for the absolute progress strip on top */
+  /* keep position:absolute from the bar rule above (the floating bottom);
+     just reserve room on top for the 12px progress strip. */
+  padding-top: 14px;
 }
 #videowrap .video-js.btfw-videojs-themed .vjs-progress-control {
   order: 0;
@@ -531,6 +535,60 @@
 #videowrap .video-js.btfw-videojs-themed .vjs-current-time,
 #videowrap .video-js.btfw-videojs-themed .vjs-duration {
   padding: 0 4px;
+}
+
+/* Strip the volume slider down to ONE linear track + filled level. The
+   default Video.js theme adds a triangular thumb (.vjs-volume-level::after),
+   a tooltip wedge (.vjs-volume-tooltip), and a mouse-display marker that
+   together look like a "triangle pyramid" next to the linear bar. Kill
+   all of them so only the 3px-tall horizontal slider remains. */
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-bar::before,
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-bar::after,
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-level::before,
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-level::after,
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-tooltip,
+#videowrap .video-js.btfw-videojs-themed .vjs-mouse-display {
+  display: none;
+  content: none;
+  background: transparent;
+}
+
+/* Center every button's icon via the .vjs-icon-placeholder so the glyph
+   sits at the optical center of its 34px pill — no more baseline drift
+   from different icon-font metrics. */
+#videowrap .video-js.btfw-videojs-themed .vjs-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-button .vjs-icon-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-button .vjs-icon-placeholder::before {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 17px;
+  line-height: 1;
+  position: static;
+  margin: 0;
+  padding: 0;
+}
+
+/* Time labels share the same baseline as the icons */
+#videowrap .video-js.btfw-videojs-themed .vjs-time-control {
+  height: 34px;
+  line-height: 34px;
+  align-items: center;
 }
 
 /* Volume slider — thin pill, no chrome */
