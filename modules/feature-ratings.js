@@ -30,7 +30,10 @@ BTFW.define("feature:ratings", [], async () => {
   const motion = await BTFW.init("util:motion");
 
   const STAR_VALUES = [1, 2, 3, 4, 5];
-  const DEFAULT_MIN_RANK = 1; // Require at least registered users by default; higher via BTFW_CONFIG.ratings.minRank
+  // Guests (rank -1) can also see + use the voting panel by default; the
+  // backend distinguishes voters by userKey. Channel admins can raise this
+  // via BTFW_CONFIG.ratings.minRank or body[data-btfw-ratings-min-rank].
+  const DEFAULT_MIN_RANK = -1;
   const CHECK_INTERVAL_MS = 1200;
   const STATS_DEBOUNCE_MS = 400;
   const STATS_REFRESH_INTERVAL_MS = 20000;
