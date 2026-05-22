@@ -1189,15 +1189,27 @@ const scheduleNormalizeChatActions = (() => {
   }
 
   uc.classList.add("btfw-usercount");
-  uc.classList.remove("pointer"); // Remove pointer cursor class
-  if (!uc.title) uc.title = "Connected users";
+  // Make it act like a button: pointer cursor, no native title-tooltip,
+  // click opens the userlist (same behavior as #btfw-users-toggle).
+  uc.classList.add("pointer");
+  if (uc.hasAttribute("title")) uc.removeAttribute("title");
+  uc.setAttribute("role", "button");
+  uc.setAttribute("tabindex", "0");
+  uc.setAttribute("aria-label", "Toggle userlist");
 
-  // Disable all interaction
   if (!uc.dataset.btfwUsercountBound) {
     uc.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      try { toggleUserlist(); } catch (_) {}
     }, true);
+    uc.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+        try { toggleUserlist(); } catch (_) {}
+      }
+    });
     uc.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       e.stopPropagation();
