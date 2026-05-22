@@ -32,8 +32,6 @@ BTFW.define("feature:local-subs", [], async () => {
     try {
       const tracks = video.querySelectorAll("track[kind='subtitles'], track[kind='captions']");
       tracks.forEach(t => t.remove());
-      delete video.dataset.btfwLocalSubsActive;
-      if (document.body?.dataset?.btfwLocalSubsActive) delete document.body.dataset.btfwLocalSubsActive;
     } catch(_) {}
   }
   function addTrackToVideoEl(video, src, label="Subtitles"){
@@ -42,11 +40,7 @@ BTFW.define("feature:local-subs", [], async () => {
     t.src  = src;
     t.label= label;
     t.default = true;
-    t.dataset.btfwLocalSubs = "1";
     video.appendChild(t);
-    video.dataset.btfwLocalSubsActive = "1";
-    document.body.dataset.btfwLocalSubsActive = "1";
-    document.dispatchEvent(new CustomEvent("btfw:localSubsLoaded"));
   }
 
   // Video.js interop (if present)
@@ -60,14 +54,11 @@ BTFW.define("feature:local-subs", [], async () => {
       for (let i = list.length - 1; i >= 0; i--) {
         vjs.removeRemoteTextTrack(list[i]);
       }
-      if (document.body?.dataset?.btfwLocalSubsActive) delete document.body.dataset.btfwLocalSubsActive;
     } catch(_) {}
   }
   function addTrackToVJS(vjs, src, label="Subtitles"){
     try {
       vjs.addRemoteTextTrack({ kind:"subtitles", src, default:true, label }, false);
-      document.body.dataset.btfwLocalSubsActive = "1";
-      document.dispatchEvent(new CustomEvent("btfw:localSubsLoaded"));
     } catch(_) {}
   }
 

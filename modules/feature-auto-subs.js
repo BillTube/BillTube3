@@ -177,15 +177,6 @@ BTFW.define("feature:auto-subs", [], async () => {
     return Boolean(video && (video.currentSrc || video.src));
   }
 
-  function hasLocalSubtitles() {
-    const video = $("#ytapiplayer video") || $("#videowrap video");
-    return Boolean(
-      document.body?.dataset?.btfwLocalSubsActive ||
-      video?.dataset?.btfwLocalSubsActive ||
-      video?.querySelector?.('track[data-btfw-local-subs="1"], track[data-btfw="1"]')
-    );
-  }
-
   function getPlayer() {
     if (state.player && typeof state.player.addRemoteTextTrack === "function") return state.player;
     const wrap = $("#videowrap");
@@ -407,8 +398,7 @@ BTFW.define("feature:auto-subs", [], async () => {
       const toRemove = [];
       for (let i = 0; i < tracks.length; i++) {
         const track = tracks[i];
-        const label = track.label || "";
-        if (track.src && track.src.startsWith("blob:") && label.startsWith("Auto sub")) {
+        if (track.src && track.src.startsWith("blob:")) {
           toRemove.push(track);
         }
       }
@@ -568,10 +558,6 @@ BTFW.define("feature:auto-subs", [], async () => {
 
   function addSubtitlesToPlayer(subtitles) {
     if (!Array.isArray(subtitles) || subtitles.length === 0) return false;
-    if (hasLocalSubtitles()) {
-      clearExistingTracks();
-      return false;
-    }
     const player = getPlayer();
     if (!player || typeof player.addRemoteTextTrack !== "function") return false;
     const existingTracks = player.remoteTextTracks();
@@ -611,10 +597,6 @@ BTFW.define("feature:auto-subs", [], async () => {
         clearExistingTracks();
         return;
       }
-      if (hasLocalSubtitles()) {
-        clearExistingTracks();
-        return;
-      }
       const player = getPlayer();
       if (!player || !state.currentSubtitles || state.currentSubtitles.length === 0) return;
       const existingTracks = player.remoteTextTracks();
@@ -643,11 +625,6 @@ BTFW.define("feature:auto-subs", [], async () => {
     if (!title || title === state.currentTitle) return;
     if (!shouldLoadSubtitles()) {
       state.currentTitle = title;
-      clearExistingTracks();
-      stopTrackWatcher();
-      return;
-    }
-    if (hasLocalSubtitles()) {
       clearExistingTracks();
       stopTrackWatcher();
       return;
@@ -834,10 +811,6 @@ BTFW.define("feature:auto-subs", [], async () => {
 
   document.addEventListener("btfw:ready", evaluateActivation);
   document.addEventListener("btfw:channelIntegrationsChanged", evaluateActivation);
-  document.addEventListener("btfw:localSubsLoaded", () => {
-    clearExistingTracks();
-    stopTrackWatcher();
-  });
 
   return {
     name: MODULE_NAME,
