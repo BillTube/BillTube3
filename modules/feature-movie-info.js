@@ -586,6 +586,8 @@ BTFW.define("feature:movie-info", [], async () => {
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const css = `
+      /* Transient now-playing banner — slim 1-line strip that uses the
+         channel theme's tokens so the owner's font/colors apply. */
       .btfw-movie-header {
         position: absolute;
         top: 44px;
@@ -593,13 +595,14 @@ BTFW.define("feature:movie-info", [], async () => {
         height: auto;
         width: 100%;
         max-width: 90vw;
-        background: rgba(20, 20, 20, 0.95);
-        border-radius: 0 0 12px 12px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+        border-radius: 12px;
+        border: 1px solid color-mix(in srgb, var(--btfw-border) 30%, transparent 70%);
         backdrop-filter: blur(10px);
         z-index: 1000;
         overflow: hidden;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 8px 24px color-mix(in srgb, var(--btfw-color-bg) 32%, transparent 68%);
+        max-height: 64px;
         opacity: 0;
         transform: translateY(-20px) scale(0.95);
         pointer-events: none;
@@ -614,116 +617,81 @@ BTFW.define("feature:movie-info", [], async () => {
         animation: slideOutUp 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
       }
       @keyframes slideInDown {
-        0% {
-          opacity: 0;
-          transform: translateY(-30px) scale(0.9);
-        }
-        60% {
-          opacity: 0.8;
-          transform: translateY(5px) scale(1.02);
-        }
-        100% {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
+        0% { opacity: 0; transform: translateY(-30px) scale(0.9); }
+        60% { opacity: 0.8; transform: translateY(5px) scale(1.02); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
       }
       @keyframes slideOutUp {
-        0% {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-        100% {
-          opacity: 0;
-          transform: translateY(-25px) scale(0.95);
-        }
+        0% { opacity: 1; transform: translateY(0) scale(1); }
+        100% { opacity: 0; transform: translateY(-25px) scale(0.95); }
       }
-      .btfw-movie-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.5) 50%, rgba(0, 0, 0, 0.8) 100%);
-        z-index: 1;
-      }
+      /* The dark overlay was needed when the banner showed a poster behind
+         text; the slim 1-line version no longer needs it. */
+      .btfw-movie-overlay { display: none; }
       .btfw-movie-content {
         position: relative;
         z-index: 2;
-        padding: 10px;
+        padding: 10px 14px;
         display: flex;
-        gap: 15px;
-        min-height: 160px;
+        gap: 12px;
+        min-height: auto;
+        background: transparent;
+        align-items: center;
       }
       .btfw-movie-poster {
-        width: 100px;
-        height: auto;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        width: 32px;
+        height: 44px;
+        border-radius: 6px;
+        box-shadow: 0 2px 6px color-mix(in srgb, var(--btfw-color-bg) 50%, transparent 50%);
         flex-shrink: 0;
       }
       .btfw-movie-details {
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 2px;
+        justify-content: center;
+        min-width: 0;
       }
       .btfw-movie-title {
-        color: #fff;
-        font-size: 1.2em;
+        font-family: var(--btfw-font-body, var(--btfw-font-default, inherit));
+        color: var(--btfw-color-text);
+        font-size: 13px;
         font-weight: 600;
         margin: 0;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
         line-height: 1.3;
-      }
-      .btfw-movie-summary {
-        color: #e0e0e0;
-        font-size: 0.85em;
-        line-height: 1.5;
-        margin: 0;
-        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-        display: -webkit-box;
-        -webkit-line-clamp: 4;
-        -webkit-box-orient: vertical;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
         overflow: hidden;
+        text-overflow: ellipsis;
       }
-      .btfw-movie-rating {
-        position: sticky;
-        bottom: 16px;
-        right: 16px;
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 4px;
-        justify-content: flex-end;
-      }
-      .btfw-movie-votes {
-        color: #ccc;
-        font-size: 0.7em;
-        text-align: center;
-        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-      }
+      /* Hide the secondary metadata when the banner is compact — these belong
+         in a full player overlay, not in the chat strip. */
+      .btfw-movie-summary,
+      .btfw-movie-rating,
+      .btfw-movie-votes { display: none; }
       .btfw-movie-loading,
       .btfw-movie-error {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        color: #ccc;
+        gap: 10px;
+        color: color-mix(in srgb, var(--btfw-color-text) 60%, transparent 40%);
         text-align: center;
-        min-height: 120px;
+        font-family: var(--btfw-font-body, var(--btfw-font-default, inherit));
       }
       .btfw-movie-loading i,
       .btfw-movie-error i {
-        font-size: 2em;
+        font-size: 1.1em;
         opacity: 0.7;
       }
       .btfw-movie-error i {
-        color: #ff6b6b;
+        color: color-mix(in srgb, #ff6f96 70%, var(--btfw-color-accent) 30%);
       }
       .btfw-movie-error small {
         font-size: 0.8em;
-        color: #aaa;
+        color: color-mix(in srgb, var(--btfw-color-text) 50%, transparent 50%);
       }
       @media (max-width: 768px) {
         .btfw-movie-header {
@@ -733,25 +701,15 @@ BTFW.define("feature:movie-info", [], async () => {
           border-radius: 0;
         }
         .btfw-movie-content {
-          padding: 16px;
-          flex-direction: column;
-          min-height: auto;
+          padding: 8px 12px;
         }
         .btfw-movie-poster {
-          width: 80px;
-          align-self: center;
-        }
-        .btfw-movie-rating {
-          position: static;
-          align-self: center;
-          margin-top: 12px;
-        }
-        .btfw-movie-summary {
-          -webkit-line-clamp: 3;
+          width: 28px;
+          height: 40px;
         }
       }
       ${CONFIG.TITLE_SELECTOR}:hover {
-        color: #4fc3f7 !important;
+        color: var(--btfw-color-accent) !important;
         transition: color 0.2s ease;
       }
     `;

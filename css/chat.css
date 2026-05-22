@@ -126,36 +126,45 @@
   overflow: hidden; /* Prevent overflow issues */
 }
 
+/* Twitch/Kick-style chat column — slim header strip, no separate box, no
+   nested chrome. All colors/fonts use --btfw-* tokens so channel-owner
+   theme customizations apply. */
 #chatwrap .btfw-chat-topbar{
     display: flex;
+    flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    gap: 1px;
-    padding: 8px 10px;
-    margin: 0 0 8px 0;
-    border: 0px solid var(--btfw-border);
-    border-radius: var(--btfw-radius);
+    gap: 10px;
+    padding: 12px 14px;
+    margin: 0;
+    min-height: 48px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--btfw-border) 30%, transparent 70%);
+    border-radius: 0;
+    box-shadow: none;
     flex-shrink: 0;
-    flex-direction: column;
+    position: relative;
+    overflow: visible;
 }
 
 #chatwrap .btfw-chat-bottombar {
     display: flex;
     flex-direction: column;
     gap: 5px;
-    margin: 5px 0 0px 0;
+    margin: 0;
+    padding: 10px 0 0;
+    background: transparent;
+    border: 0;
+    border-top: 1px solid color-mix(in srgb, var(--btfw-border) 30%, transparent 70%);
+    border-radius: 0;
     flex-shrink: 0;
-}
-
-#chatwrap .btfw-chat-topbar{
-  position: relative;
-  overflow: visible;
 }
 
 .btfw-chat-topbar-left {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
     gap: 8px;
     flex: 1 1 auto;
     min-width: 0;
@@ -170,15 +179,29 @@
 }
 
 #btfw-nowplaying-slot{
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
   gap: 6px;
-  width: 100%;
+  font-family: var(--btfw-font-body, var(--btfw-font-default, inherit));
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--btfw-color-text) 65%, transparent 35%);
+  line-height: 1.4;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-#btfw-nowplaying-slot > .btfw-nowplaying{
-  font-weight: 600;
+#btfw-nowplaying-slot > .btfw-nowplaying,
+#btfw-nowplaying-slot > .btfw-chat-title{
+  font-weight: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -309,35 +332,29 @@
   flex: 1 1 auto;
 }
 
+/* Flat composer (Twitch/Kick style) — no rounded card / shadow / accent halo.
+   Everything sits directly in the chat column below the messages. */
 .btfw-chat-composer {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 6px;
     width: 100%;
-    padding: 3px 10px 10px;
-    border-radius: 20px;
-    border: 1px solid color-mix(in srgb, var(--btfw-border) 70%, transparent 30%);
-    background: 
- color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
-    box-shadow: 0 14px 34px 
- color-mix(in srgb, var(--btfw-color-bg) 38%, transparent 62%);
+    padding: 0 10px 12px;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .btfw-chat-composer::before{
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(80% 90% at 12% 46%, color-mix(in srgb, var(--btfw-color-accent) 44%, transparent 96%), transparent 48%);
-  opacity: .65;
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 .btfw-chat-composer > *{
   position: relative;
-  z-index: 1;
+  z-index: auto;
 }
 
 .btfw-chat-composer-main{
@@ -430,7 +447,8 @@
   }
 }
 
-/* Bottom action buttons container */
+/* Bottom action buttons container — no inner divider; the composer already
+   sits below the messagebuffer separator. */
 .btfw-chat-actions{
   display:flex;
   align-items:center;
@@ -439,8 +457,8 @@
   gap:8px;
   width:100%;
   padding-top:6px;
-  border-top:1px solid color-mix(in srgb, var(--btfw-border) 55%, transparent 45%);
-  margin-top:2px;
+  border-top:0;
+  margin-top:4px;
 }
 .btfw-chat-actions #usercount{
   margin-left:auto;
