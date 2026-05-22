@@ -1124,19 +1124,26 @@ BTFW.define("feature:ratings", [], async () => {
 
     const topbarLeft = $("#chatwrap .btfw-chat-topbar .btfw-chat-topbar-left");
     const slot = $("#btfw-nowplaying-slot");
-    const host = topbarLeft || slot || $("#chatwrap .btfw-chat-topbar") || $("#chatwrap") || document.body;
+    const host = topbarLeft || slot?.parentElement || $("#chatwrap .btfw-chat-topbar") || $("#chatwrap") || document.body;
 
-    let wrapper = host.querySelector("#btfw-ratings-wrapper");
+    let wrapper = document.querySelector("#btfw-ratings-wrapper");
     if (!wrapper) {
       wrapper = document.createElement("div");
       wrapper.id = "btfw-ratings-wrapper";
       wrapper.className = "btfw-ratings-wrapper";
-
-      if (topbarLeft && slot && slot.parentElement === topbarLeft) {
-        slot.insertAdjacentElement("afterend", wrapper);
-      } else {
-        host.appendChild(wrapper);
-      }
+    }
+    // ALWAYS place the wrapper as a sibling AFTER the slot (or appended
+    // to topbarLeft / topbar). NEVER inside the slot — the slot is the
+    // title and gets squeezed to 0 width if the wrapper sits beside it
+    // as a flex sibling. If we previously inserted the wrapper inside
+    // the slot, move it out now.
+    if (topbarLeft && slot && slot.parentElement === topbarLeft) {
+      slot.insertAdjacentElement("afterend", wrapper);
+    } else if (slot && slot !== host && slot.contains(wrapper)) {
+      // Wrong nesting (wrapper inside slot) — pull it out.
+      slot.parentElement?.insertBefore(wrapper, slot.nextSibling);
+    } else if (wrapper.parentElement !== host) {
+      host.appendChild(wrapper);
     }
 
     const el = document.createElement("div");

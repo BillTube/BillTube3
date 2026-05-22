@@ -445,23 +445,24 @@
   color: var(--btfw-color-accent);
 }
 
-/* Predictable control order: play | volume | time | spacer | subs/pip/fs */
-#videowrap .video-js.btfw-videojs-themed .vjs-play-control       { order: 1; }
-#videowrap .video-js.btfw-videojs-themed .vjs-volume-panel       { order: 2; flex: 0 0 auto; }
-#videowrap .video-js.btfw-videojs-themed .vjs-current-time       { order: 3; }
-#videowrap .video-js.btfw-videojs-themed .vjs-time-divider       { order: 4; }
-#videowrap .video-js.btfw-videojs-themed .vjs-duration           { order: 5; }
+/* Predictable control order: play | volume | time | spacer | subs/pip/fs.
+   The city theme sets order:5 on .vjs-play-control to "center" it via
+   flex-grow — needs !important to beat that. */
+#videowrap .video-js.btfw-videojs-themed .vjs-play-control       { order: 1 !important; }
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-panel       { order: 2 !important; flex: 0 0 auto !important; }
+#videowrap .video-js.btfw-videojs-themed .vjs-current-time       { order: 3 !important; }
+#videowrap .video-js.btfw-videojs-themed .vjs-time-divider       { order: 4 !important; }
+#videowrap .video-js.btfw-videojs-themed .vjs-duration           { order: 5 !important; }
+#videowrap .video-js.btfw-videojs-themed .vjs-remaining-time     { order: 6 !important; }
 #videowrap .video-js.btfw-videojs-themed .vjs-custom-control-spacer {
-  order: 50; flex: 1 1 auto; display: block; min-width: 8px;
+  order: 50 !important; flex: 1 1 auto !important; display: block !important; min-width: 8px;
 }
-#videowrap .video-js.btfw-videojs-themed .vjs-subs-caps-button   { order: 60; }
-#videowrap .video-js.btfw-videojs-themed .vjs-audio-button       { order: 61; }
-#videowrap .video-js.btfw-videojs-themed .vjs-playback-rate      { order: 62; }
-#videowrap .video-js.btfw-videojs-themed .vjs-picture-in-picture-control { order: 70; }
-#videowrap .video-js.btfw-videojs-themed .vjs-fullscreen-control { order: 80; }
-#videowrap .video-js.btfw-videojs-themed > .vjs-control-bar > .vjs-menu-button { order: 80; }
-/* Hide the redundant remaining-time (we show current + duration). */
-#videowrap .video-js.btfw-videojs-themed .vjs-remaining-time { display: none; }
+#videowrap .video-js.btfw-videojs-themed .vjs-subs-caps-button   { order: 60 !important; }
+#videowrap .video-js.btfw-videojs-themed .vjs-audio-button       { order: 61 !important; }
+#videowrap .video-js.btfw-videojs-themed .vjs-playback-rate      { order: 62 !important; }
+#videowrap .video-js.btfw-videojs-themed .vjs-picture-in-picture-control { order: 70 !important; }
+#videowrap .video-js.btfw-videojs-themed .vjs-fullscreen-control { order: 80 !important; }
+#videowrap .video-js.btfw-videojs-themed > .vjs-control-bar > .vjs-menu-button { order: 80 !important; }
 
 /* Progress strip pinned to the BOTTOM of the control bar — below the
    button row so the rail and the icons never overlap. City theme set
