@@ -559,6 +559,15 @@
   padding: 0;
   line-height: 1;
 }
+/* Respect Video.js's .vjs-hidden flag — it marks menu buttons whose
+   underlying data is missing (no subtitle tracks, no chapters, no extra
+   audio, no playback-rate config). Without this override our inline-flex
+   above wins over .vjs-hidden's display:none and the bar shows empty
+   buttons. */
+#videowrap .video-js.btfw-videojs-themed .vjs-control.vjs-hidden,
+#videowrap .video-js.btfw-videojs-themed .vjs-button.vjs-hidden {
+  display: none;
+}
 #videowrap .video-js.btfw-videojs-themed .vjs-button .vjs-icon-placeholder {
   display: inline-flex;
   align-items: center;
