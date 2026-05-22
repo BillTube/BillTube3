@@ -32,11 +32,8 @@ BTFW.define("feature:footer", [], async () => {
     </div>
   `;
 
-  let styleInjected = false;
-
   function ensureStyles(){
-    if (styleInjected) return;
-    styleInjected = true;
+    if (document.getElementById("btfw-footer-styles")) return;
     const style = document.createElement("style");
     style.id = "btfw-footer-styles";
     style.textContent = `
