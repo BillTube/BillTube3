@@ -408,6 +408,33 @@ BTFW.define("feature:ratings", [], async () => {
         #btfw-ratings .btfw-ratings__actions button { padding:0 2px; }
         #btfw-ratings-modal .modal-card { width:94vw; }
       }
+
+      /* Community-rating pill in the chat topbar — shows ★ avg of the
+         currently-playing media when at least one vote exists. */
+      .btfw-rating-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px 4px 8px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%);
+        border: 1px solid color-mix(in srgb, var(--btfw-rating-accent, #ffd166) 38%, transparent 62%);
+        color: var(--btfw-color-text);
+        font-family: var(--btfw-font-body, var(--btfw-font-default, inherit));
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1;
+        letter-spacing: 0.02em;
+        cursor: default;
+        transition: background 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+      }
+      .btfw-rating-pill[hidden] { display: none !important; }
+      .btfw-rating-pill > i.fa-star {
+        color: var(--btfw-rating-accent, #ffd166);
+        font-size: 11px;
+        line-height: 1;
+      }
+      .btfw-rating-pill__value { font-variant-numeric: tabular-nums; }
     `;
     document.head.appendChild(style);
   }
@@ -1316,7 +1343,49 @@ BTFW.define("feature:ratings", [], async () => {
     }
 
     updateVisibility();
+    updateTopbarPill();
     scheduleStatsRefresh();
+  }
+
+  /* ---------- Topbar community-rating pill ----------
+     Shows a small "★ 4.2" chip on the right of the chat topbar whenever
+     the current media has at least one community vote. Uses the existing
+     refreshStats() data — no extra fetches. Hidden when there's no
+     endpoint configured, no playing media, or zero votes. */
+  function ensureTopbarPill() {
+    const actions = document.querySelector("#chatwrap .btfw-chat-topbar #btfw-chat-topbar-actions")
+                 || document.querySelector("#chatwrap .btfw-chat-topbar .btfw-chat-topbar-actions");
+    if (!actions) return null;
+    let pill = document.getElementById("btfw-rating-pill");
+    if (pill && pill.parentElement === actions) return pill;
+    if (!pill) {
+      pill = document.createElement("div");
+      pill.id = "btfw-rating-pill";
+      pill.className = "btfw-rating-pill";
+      pill.hidden = true;
+      pill.innerHTML = '<i class="fa fa-star" aria-hidden="true"></i><span class="btfw-rating-pill__value">—</span>';
+      pill.setAttribute("title", "Community rating");
+    }
+    actions.appendChild(pill);
+    return pill;
+  }
+
+  function updateTopbarPill() {
+    const pill = ensureTopbarPill();
+    if (!pill) return;
+    const stats = state.stats;
+    const avg = stats && Number.isFinite(stats.avg) ? stats.avg : 0;
+    const votes = stats && Number.isFinite(stats.votes) ? stats.votes : 0;
+    const endpoint = state.endpoint || ensureEndpoint();
+    const hasMedia = !!state.currentMedia && !!state.currentKey;
+    if (!endpoint || !hasMedia || votes < 1) {
+      pill.hidden = true;
+      return;
+    }
+    pill.hidden = false;
+    const valueEl = pill.querySelector(".btfw-rating-pill__value");
+    if (valueEl) valueEl.textContent = avg.toFixed(1);
+    pill.setAttribute("title", `Community rating: ${avg.toFixed(2)} / 5 (${votes} vote${votes === 1 ? "" : "s"})`);
   }
 
   async function submitVote(score) {
@@ -1380,6 +1449,7 @@ BTFW.define("feature:ratings", [], async () => {
       setSelfStatus("");
       highlightStars(0);
       updateVisibility();
+      updateTopbarPill();
       return;
     }
 
@@ -1396,6 +1466,7 @@ BTFW.define("feature:ratings", [], async () => {
     highlightStars(0);
     updatePlaybackFromPlayer();
     updateVisibility();
+    updateTopbarPill();
     refreshStats(true);
     startPlaybackPolling();
   }
@@ -1484,10 +1555,18 @@ BTFW.define("feature:ratings", [], async () => {
     announceActivation();
 
     updateVisibility();
+    ensureTopbarPill();
+    updateTopbarPill();
     bindSocketHandlers();
     wrapCallbacks();
 
     document.addEventListener("btfw:nowplayingLookup", handleLookupEvent, { passive: true });
+    // Chat topbar can be rebuilt by feature:chat ensureLayout; re-attach the
+    // pill when that happens so it survives layout rebuilds.
+    document.addEventListener("btfw:layoutReady", () => {
+      ensureTopbarPill();
+      updateTopbarPill();
+    }, { passive: true });
 
     const s = window.socket;
     if (s && s.connected) {
