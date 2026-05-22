@@ -119,6 +119,116 @@ background: "#0d0d0d",
         chatText: "#f6cea3",
         accent: "#ff914d"
       }
+    },
+    cyberpunk: {
+      name: "Cyberpunk 2077",
+      colors: {
+        background: "#07020d",
+        surface: "#0f0518",
+        panel: "#19082a",
+        text: "#f1e2ff",
+        chatText: "#d0a8ff",
+        accent: "#ff2bd6"
+      }
+    },
+    synthwave: {
+      name: "Synthwave Sunset",
+      colors: {
+        background: "#1a0a30",
+        surface: "#23104a",
+        panel: "#2f1766",
+        text: "#ffd7f3",
+        chatText: "#ffb6e8",
+        accent: "#ff6ec7"
+      }
+    },
+    matrix: {
+      name: "Matrix Terminal",
+      colors: {
+        background: "#000000",
+        surface: "#040d05",
+        panel: "#08180a",
+        text: "#b8ffc6",
+        chatText: "#7aef88",
+        accent: "#00ff5a"
+      }
+    },
+    vaporwave: {
+      name: "Vaporwave Dream",
+      colors: {
+        background: "#160630",
+        surface: "#1f0c48",
+        panel: "#2b1466",
+        text: "#f7d9ff",
+        chatText: "#d8b8ff",
+        accent: "#00f5d4"
+      }
+    },
+    dracula: {
+      name: "Dracula",
+      colors: {
+        background: "#15151f",
+        surface: "#1d1d2e",
+        panel: "#282a3e",
+        text: "#f8f8f2",
+        chatText: "#c5c8d6",
+        accent: "#bd93f9"
+      }
+    },
+    tokyoNight: {
+      name: "Tokyo Night",
+      colors: {
+        background: "#0b0e16",
+        surface: "#11141d",
+        panel: "#1a1e2e",
+        text: "#c0caf5",
+        chatText: "#a9b1d6",
+        accent: "#7aa2f7"
+      }
+    },
+    nord: {
+      name: "Nord Frost",
+      colors: {
+        background: "#1d2129",
+        surface: "#252a35",
+        panel: "#2e3440",
+        text: "#eceff4",
+        chatText: "#d8dee9",
+        accent: "#88c0d0"
+      }
+    },
+    crimsonNoir: {
+      name: "Crimson Noir",
+      colors: {
+        background: "#0a0203",
+        surface: "#120407",
+        panel: "#1a070a",
+        text: "#ffe9e9",
+        chatText: "#ffc3c3",
+        accent: "#e63946"
+      }
+    },
+    forestGold: {
+      name: "Forest & Gold",
+      colors: {
+        background: "#0a1410",
+        surface: "#0f1c18",
+        panel: "#162a23",
+        text: "#ecf2e6",
+        chatText: "#c8d8c3",
+        accent: "#d4a017"
+      }
+    },
+    bloodMoon: {
+      name: "Blood Moon",
+      colors: {
+        background: "#170307",
+        surface: "#22070d",
+        panel: "#310b15",
+        text: "#ffe1d6",
+        chatText: "#ffb8a3",
+        accent: "#ff4d2e"
+      }
     }
   };
 
@@ -2023,10 +2133,26 @@ function replaceBlock(original, startMarker, endMarker, block){
             <div class="field">
               <label for="btfw-theme-tint">Preset tint</label>
               <select id="btfw-theme-tint" data-btfw-bind="tint">
-                <option value="midnight">Midnight Pulse</option>
-                <option value="aurora">Aurora Bloom</option>
-                <option value="sunset">Sunset Neon</option>
-                <option value="ember">Ember Forge</option>
+                <optgroup label="Curated">
+                  <option value="midnight">Midnight Pulse</option>
+                  <option value="aurora">Aurora Bloom</option>
+                  <option value="sunset">Sunset Neon</option>
+                  <option value="ember">Ember Forge</option>
+                </optgroup>
+                <optgroup label="Themed">
+                  <option value="cyberpunk">Cyberpunk 2077</option>
+                  <option value="synthwave">Synthwave Sunset</option>
+                  <option value="matrix">Matrix Terminal</option>
+                  <option value="vaporwave">Vaporwave Dream</option>
+                  <option value="bloodMoon">Blood Moon</option>
+                  <option value="crimsonNoir">Crimson Noir</option>
+                  <option value="forestGold">Forest &amp; Gold</option>
+                </optgroup>
+                <optgroup label="Editor">
+                  <option value="dracula">Dracula</option>
+                  <option value="tokyoNight">Tokyo Night</option>
+                  <option value="nord">Nord Frost</option>
+                </optgroup>
                 <option value="custom">Custom mix</option>
               </select>
               <p class="help">Choose a curated palette to start from, then fine-tune any swatch.</p>
