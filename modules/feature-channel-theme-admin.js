@@ -739,6 +739,15 @@ background: "#0d0d0d",
       .btfw-theme-admin .status { font-size: 0.78rem; color: var(--btfw-admin-text-soft); }
       .btfw-theme-admin .integrations-callout { padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--btfw-admin-surface-alt) 92%, transparent 8%); border: 1px dashed var(--btfw-admin-border-soft); display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; color: var(--btfw-admin-text-soft); }
       .btfw-theme-admin .integrations-callout strong { color: var(--btfw-admin-text); font-size: 0.82rem; }
+
+      /* API-key test row: input grows, button stays content-sized; result
+         line below picks up success/error tone. */
+      .btfw-theme-admin .key-test-row { display: flex; gap: 8px; align-items: stretch; }
+      .btfw-theme-admin .key-test-row input { flex: 1 1 auto; }
+      .btfw-theme-admin .key-test-row button { flex: 0 0 auto; }
+      .btfw-theme-admin .help.is-success { color: color-mix(in srgb, #4ade80 78%, var(--btfw-admin-text) 22%); }
+      .btfw-theme-admin .help.is-error   { color: color-mix(in srgb, #ff6f96 78%, var(--btfw-admin-text) 22%); }
+      .btfw-theme-admin .help.is-pending { color: var(--btfw-admin-text-soft); font-style: italic; }
       .btfw-theme-admin label { font-weight: 600; letter-spacing: 0.01em; font-size: 0.82rem; color: color-mix(in srgb, var(--btfw-admin-text) 92%, transparent 8%); }
       @media (max-width: 720px) {
         .btfw-theme-admin { padding: 8px 4px 16px; }
@@ -1911,7 +1920,12 @@ function replaceBlock(original, startMarker, endMarker, block){
             </div>
             <div class="field">
               <label for="btfw-theme-integrations-wyzie">Wyzie API key</label>
-              <input type="text" id="btfw-theme-integrations-wyzie" data-btfw-bind="integrations.wyzie.apiKey" placeholder="YOUR_WYZIE_KEY">
+              <div class="key-test-row">
+                <input type="text" id="btfw-theme-integrations-wyzie" data-btfw-bind="integrations.wyzie.apiKey" placeholder="YOUR_WYZIE_KEY">
+                <button type="button" class="btn-secondary" id="btfw-theme-integrations-wyzie-test">Test key</button>
+              </div>
+              <p class="help" data-role="wyzie-test-result" hidden></p>
+              <p class="help">Don't have a key? Claim a free one at <a href="https://store.wyzie.io/redeem" target="_blank" rel="noopener">store.wyzie.io/redeem</a>.</p>
             </div>
             <div class="field">
               <label for="btfw-theme-audio-enhancer-toggle">Audio enhancer (boost & normalization)</label>
@@ -2192,6 +2206,55 @@ function replaceBlock(original, startMarker, endMarker, block){
       };
       tmdbField.addEventListener('input', syncNotice);
       tmdbField.addEventListener('change', syncNotice);
+    }
+
+    // Wyzie API key test button — hits sub.wyzie.io with the current
+    // input value against a known IMDB id (Halloween 5 1989) and reports
+    // the API's verdict inline. No persistence; the user still has to
+    // Save the panel to commit the key.
+    const wyzieTestBtn = panel.querySelector('#btfw-theme-integrations-wyzie-test');
+    const wyzieField = panel.querySelector('#btfw-theme-integrations-wyzie');
+    const wyzieResult = panel.querySelector('[data-role="wyzie-test-result"]');
+    if (wyzieTestBtn && wyzieField && wyzieResult) {
+      const setResult = (text, tone) => {
+        wyzieResult.hidden = false;
+        wyzieResult.textContent = text;
+        wyzieResult.classList.remove('is-success', 'is-error', 'is-pending');
+        if (tone) wyzieResult.classList.add(`is-${tone}`);
+      };
+      wyzieTestBtn.addEventListener('click', async () => {
+        const key = (wyzieField.value || '').trim();
+        if (!key) {
+          setResult('Enter a key above first.', 'error');
+          return;
+        }
+        wyzieTestBtn.disabled = true;
+        const originalLabel = wyzieTestBtn.textContent;
+        wyzieTestBtn.textContent = 'Testing…';
+        setResult('Checking with sub.wyzie.io…', 'pending');
+        try {
+          const url = `https://sub.wyzie.io/search?id=tt0098473&language=en&format=srt&key=${encodeURIComponent(key)}`;
+          const resp = await fetch(url, { credentials: 'omit' });
+          const body = await resp.json().catch(() => null);
+          if (resp.ok && Array.isArray(body)) {
+            setResult(`✓ Valid key — Wyzie returned ${body.length} subtitle entr${body.length === 1 ? 'y' : 'ies'} for the test movie.`, 'success');
+          } else if (resp.status === 401) {
+            setResult('✗ HTTP 401 — Wyzie says the key is missing. Paste it again and retry.', 'error');
+          } else if (resp.status === 403) {
+            setResult('✗ HTTP 403 — Wyzie rejected this key as invalid. Claim a new one at store.wyzie.io/redeem.', 'error');
+          } else if (resp.status === 429) {
+            setResult('✗ HTTP 429 — Rate-limited. Wait a moment and try again.', 'error');
+          } else {
+            const msg = body && body.message ? body.message : `${resp.status} ${resp.statusText || ''}`;
+            setResult(`✗ Unexpected response: ${msg.trim()}`, 'error');
+          }
+        } catch (err) {
+          setResult(`✗ Network error: ${err && err.message ? err.message : err}`, 'error');
+        } finally {
+          wyzieTestBtn.disabled = false;
+          wyzieTestBtn.textContent = originalLabel;
+        }
+      });
     }
   }
 
