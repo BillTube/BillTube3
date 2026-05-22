@@ -1375,91 +1375,10 @@
     grid-template-columns: 1fr !important;
   }
 }
-/* ===== Video.js Control Bar Button Reordering ===== */
-/* Option B: Volume/time on left, play near center, subs on right */
-
-/* LEFT SIDE */
-#videowrap .video-js.vjs-theme-city .vjs-volume-panel {
-  order: 1 !important;
-  margin-left: 8.5em !important;
-  padding-top: 1.5em !important;
-}
-
-#videowrap .video-js.vjs-theme-city .vjs-current-time {
-  order: 2 !important;
-}
-
-#videowrap .video-js.vjs-theme-city .vjs-time-divider {
-  order: 3 !important;
-}
-
-#videowrap .video-js.vjs-theme-city .vjs-duration {
-  order: 4 !important;
-}
-
-#videowrap .video-js.vjs-theme-city .vjs-play-control {
-  order: 5 !important;
-}
-
-/* CENTER - Progress bar */
-#videowrap .video-js.vjs-theme-city .vjs-progress-control {
-  order: 6 !important;
-}
-
-/* RIGHT SIDE */
-#videowrap .video-js.vjs-theme-city .vjs-remaining-time {
-  order: 2 !important;
-  flex: 0 !important;
-}
-
-#videowrap .video-js.vjs-theme-city .vjs-playback-rate {
-  order: 21 !important;
-}
-
-#videowrap .video-js.vjs-theme-city .vjs-chapters-button {
-  order: 22 !important;
-}
-
-#videowrap .video-js.vjs-theme-city .vjs-descriptions-button {
-  order: 23 !important;
-}
-
-#videowrap .video-js.vjs-theme-city .vjs-subs-caps-button {
-  order: 24 !important;
-}
-
-#videowrap .video-js.vjs-theme-city .vjs-audio-button {
-  order: 25 !important;
-}
-
-#videowrap .video-js.vjs-theme-city .vjs-picture-in-picture-control {
-  order: 26 !important;
-}
-
-#videowrap .video-js.vjs-theme-city .vjs-menu-button.vjs-resolution-button,
-#videowrap .video-js.vjs-theme-city div[aria-label="Quality"] {
-  order: 27 !important;
-}
-
-/* Hidden/spacer elements */
-#videowrap .video-js.vjs-theme-city .vjs-custom-control-spacer {
-  order: 10 !important;
-}
-
-#videowrap .video-js.vjs-theme-city .vjs-live-control,
-#videowrap .video-js.vjs-theme-city .vjs-seek-to-live-control {
-  order: 11 !important;
-}
-
-/* Mobile adjustments */
-@media (max-width: 720px) {
-  #videowrap .video-js.vjs-theme-city .vjs-progress-control {
-    order: 100 !important;
-    flex-basis: 100% !important;
-  }
-}
-
---vjs-theme-city--primary: var(--btfw-color-accent) !important;
+/* Legacy ordering block removed — modern rules live near line 451
+   under .btfw-videojs-themed and supersede these older .vjs-theme-city
+   variants. The orphan custom-property line below also has no parent
+   block so it was inert. */
 
 
 
