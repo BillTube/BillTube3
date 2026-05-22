@@ -2002,8 +2002,9 @@ body, #wrap { padding-top: 0 !important; }
 }
 
 #videowrap, #chatwrap {
-    border-radius: 16px !important; overflow: hidden !important; 
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px color-mix(in srgb, var(--btfw-color-text) 5%, transparent) !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    box-shadow: none !important;
 }
 
 #chatline {
