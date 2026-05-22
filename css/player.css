@@ -5,7 +5,9 @@
   display: grid;
   place-items: stretch;
   aspect-ratio: var(--btfw-video-aspect, 16 / 9);
-  background: color-mix(in srgb, var(--btfw-video-bg) 88%, transparent 12%);
+  /* Solid black letterbox; the tinted color-mix bg was forming a visible
+     "frame" around the video where the player didn't fully fill the wrap. */
+  background: #000;
   overflow: hidden;
   isolation: isolate;
   contain: layout style paint;
@@ -116,10 +118,10 @@
   --btfw-vjs-accent-soft: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
   font-family: var(--btfw-font-body);
   color: var(--btfw-vjs-text-strong);
-  background: radial-gradient(circle at 18% 18%,
-      color-mix(in srgb, var(--btfw-color-bg) 62%, transparent 38%),
-      color-mix(in srgb, var(--btfw-color-bg) 96%, black 4%) 68%);
-
+  /* No radial gradient — it was painting a subtle vignette that read as a
+     soft border/shadow around the video. Keep the bg transparent so only
+     the video itself is visible. */
+  background: transparent;
   border-radius: inherit;
   overflow: hidden;
   font-size: 10px;
