@@ -461,25 +461,55 @@
 /* Hide the redundant remaining-time (we show current + duration). */
 #videowrap .video-js.btfw-videojs-themed .vjs-remaining-time { display: none; }
 
-/* Progress bar — own row above the buttons, thin, expands on hover */
+/* Progress bar pinned to a 12px strip at the very top of the control bar.
+   City theme had both .vjs-progress-control AND .vjs-progress-holder
+   set to position:absolute with hard-coded top/bottom which was dumping
+   the holder at y=20 — right across the button row. Force the holder
+   back into normal flow inside its parent, and pin the parent to top: 0
+   of the control bar so the rail sits above (not through) the icons. */
+#videowrap .video-js.btfw-videojs-themed .vjs-control-bar {
+  position: relative;
+  padding-top: 14px;  /* leave room for the absolute progress strip on top */
+}
 #videowrap .video-js.btfw-videojs-themed .vjs-progress-control {
   order: 0;
-  flex: 0 0 100%;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: auto;
+  flex: none;
   width: 100%;
   min-width: 0;
   height: 12px;
   padding: 4px 0;
+  margin: 0;
+  display: flex;
   align-items: center;
   align-self: flex-start;
 }
 #videowrap .video-js.btfw-videojs-themed .vjs-progress-control .vjs-progress-holder {
+  position: relative;
+  top: auto;
+  bottom: auto;
+  inset: auto;
+  transform: none;
   height: 3px;
+  width: 100%;
+  margin: 0;
   border: 0;
   background: color-mix(in srgb, var(--btfw-color-text) 18%, transparent 82%);
   transition: height 0.16s ease;
 }
 #videowrap .video-js.btfw-videojs-themed .vjs-progress-control:hover .vjs-progress-holder {
   height: 5px;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-progress-control .vjs-load-progress,
+#videowrap .video-js.btfw-videojs-themed .vjs-progress-control .vjs-play-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
 }
 #videowrap .video-js.btfw-videojs-themed .vjs-play-progress {
   background: var(--btfw-color-accent);
@@ -489,6 +519,18 @@
   width: 10px;
   height: 10px;
   box-shadow: none;
+}
+
+/* Slim "current : duration" so the divider doesn't have weird inner padding */
+#videowrap .video-js.btfw-videojs-themed .vjs-time-divider {
+  padding: 0;
+  min-width: 0;
+  width: 8px;
+  text-align: center;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-current-time,
+#videowrap .video-js.btfw-videojs-themed .vjs-duration {
+  padding: 0 4px;
 }
 
 /* Volume slider — thin pill, no chrome */
