@@ -772,16 +772,76 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   padding-right: 56px !important; /* leave room for the corner count chip */
 }
 
-/* TOP row: action buttons. */
+/* TOP row: action buttons. Uniform 6px gap so the row stays consistent
+   even across nested .btn-group containers (which we also flatten below). */
 .btfw-plbar__primary .btfw-plbar__actions {
   order: 1 !important;
   display: flex !important;
   flex-wrap: wrap !important;
-  gap: 8px !important;
+  align-items: center !important;
+  gap: 6px !important;
   flex: 0 0 auto !important;
   justify-content: flex-start !important;
   width: auto !important;
   padding-right: 0 !important;
+}
+
+/* Bootstrap nests playlist controls inside .btn-group with negative
+   margins; that collapses the spacing between adjacent buttons and then
+   the gap between groups jumps to the actions row's flex-gap. Flatten
+   each .btn-group to a regular flex row using the same 6px gap. */
+.btfw-plbar__actions .btn-group,
+.btfw-plbar__actions .btfw-plbar__control {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.btfw-plbar__actions .btn-group > .btn,
+.btfw-plbar__actions .btn-group > button,
+.btfw-plbar__actions .btfw-plbar__control > .btn,
+.btfw-plbar__actions .btfw-plbar__control > button,
+.btfw-plbar__actions .btn-group > .btn:first-child,
+.btfw-plbar__actions .btn-group > .btn:last-child,
+.btfw-plbar__actions .btn-group > .btn:not(:first-child):not(:last-child) {
+  margin: 0 !important;
+  border-radius: 999px !important;
+}
+
+/* The lock button (#qlockbtn) uses .btn-success for its 'unlocked' state,
+   which paints it a different color than its siblings. Force the same
+   neutral pill theme so the row reads as one cluster. */
+.btfw-plbar #qlockbtn,
+.btfw-plbar #qlockbtn.btn-success,
+.btfw-plbar__actions .button.is-success {
+  background: color-mix(in srgb, var(--btfw-color-bg) 50%, transparent 50%) !important;
+  border-color: color-mix(in srgb, var(--btfw-border) 42%, transparent 58%) !important;
+  color: var(--btfw-color-text) !important;
+}
+
+/* Icon glyphs precisely centered inside their pill. FontAwesome glyphs are
+   centered; Glyphicons have a ~1px baseline offset that we lift back up. */
+.btfw-plbar__actions button > .fa,
+.btfw-plbar__actions button > .glyphicon,
+.btfw-plbar__actions .button > .fa,
+.btfw-plbar__actions .button > .glyphicon,
+.btfw-plbar #btfw-addmedia-btn > .fa,
+.btfw-plbar__primary > .field.has-addons .control .button > .fa,
+.btfw-plbar__primary > .field.has-addons .control .button > .glyphicon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+.btfw-plbar__actions button > .glyphicon,
+.btfw-plbar__actions .button > .glyphicon,
+.btfw-plbar__primary > .field.has-addons .control .button > .glyphicon {
+  transform: translateY(-1px) !important;
 }
 
 /* BOTTOM row: filter, centered. */
@@ -861,19 +921,21 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, transparent 52%) !important;
 }
 
-/* Primary "Add media" stands out with the accent fill. */
+/* "Add media" sits in the row as just another action — neutral pill, no
+   accent fill. Hover still picks up the accent tint. */
 .btfw-plbar #btfw-addmedia-btn,
-.btfw-plbar #btfw-addmedia-btn.is-primary {
-  background: color-mix(in srgb, var(--btfw-color-accent) 78%, transparent 22%) !important;
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 90%, transparent 10%) !important;
-  color: var(--btfw-color-bg) !important;
-  font-weight: 600 !important;
+.btfw-plbar #btfw-addmedia-btn.is-primary,
+.btfw-plbar #btfw-addmedia-btn.is-link {
+  background: color-mix(in srgb, var(--btfw-color-bg) 50%, transparent 50%) !important;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 42%, transparent 58%) !important;
+  color: var(--btfw-color-text) !important;
+  font-weight: 500 !important;
   height: 32px !important;
-  padding: 0 16px !important;
+  padding: 0 14px !important;
 }
 .btfw-plbar #btfw-addmedia-btn:hover {
-  background: var(--btfw-color-accent) !important;
-  border-color: var(--btfw-color-accent) !important;
+  background: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%) !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, transparent 52%) !important;
 }
 
 /* "Copy titles" when active. */
