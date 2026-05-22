@@ -139,10 +139,14 @@
     align-items: center;
     align-content: center;
     column-gap: 12px;
-    row-gap: 8px;
-    padding: 14px 18px;
+    row-gap: 6px;
+    /* Asymmetric vertical padding (14 top / 6 bottom) compensates for the
+       title's slight upward optical lift so it reads as truly centered. */
+    padding: 14px 14px 6px;
     margin: 0;
-    min-height: 60px;
+    /* No min-height — the bar should be as tall as its content. Title-only
+       lives at ~42px; when the rating widget appears it grows naturally
+       (row 2 of the grid) to make room for stars. */
     /* Visual chrome (background, radius, shadow) lives in overlays.css so
        channel-owner customizations apply through one source of truth.
        Don't reset those properties here — this rule used to override them
