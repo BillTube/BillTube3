@@ -615,42 +615,88 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   border-color:  color-mix(in srgb, var(--btfw-border) 28%, transparent 92%);
 }
 .btfw-stack-item{
-  border:1px solid var(--btfw-border);
-  border-radius: var(--btfw-radius);
-  background: var(--btfw-card-bg);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 40%);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--btfw-color-bg) 22%, transparent 78%);
+  overflow: hidden;
   margin-top: 20px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.btfw-stack-item:hover{
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
 }
 .btfw-stack-item__header{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:6px 8px;
-  border-bottom:1px solid var(--btfw-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-accent) 6%, transparent 94%);
+  border-radius: 0;
+  position: relative;
 }
-.btfw-stack-arrows{ display:flex; gap:6px; }
+/* Subtle accent stripe at the left edge of every header (modern tab cue). */
+.btfw-stack-item__header::before{
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  background: var(--btfw-color-accent);
+  border-radius: 0 3px 3px 0;
+  opacity: 0.55;
+  transition: opacity 0.2s ease, height 0.2s ease;
+}
+.btfw-stack-item:hover .btfw-stack-item__header::before{
+  opacity: 1;
+  height: 22px;
+}
+.btfw-stack-item__title{
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--btfw-color-text) 92%, transparent 8%);
+  margin-left: 14px;
+  line-height: 1.2;
+  text-transform: none;
+}
+.btfw-stack-arrows{ display: flex; gap: 4px; }
 .btfw-arrow{
-  background: color-mix(in srgb, var(--btfw-color-panel) 30%, transparent 70%);
-  border:1px solid var(--btfw-border);
-  border-radius:8px;
-  padding:2px 8px; line-height:1; cursor:pointer;
-  color: var(--btfw-color-text);
-  transition: background 0.18s ease, color 0.18s ease;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--btfw-color-text) 55%, transparent 45%);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.12s ease;
 }
 .btfw-arrow:hover{
-  background: color-mix(in srgb, var(--btfw-color-accent) 48%, transparent 52%);
-  color: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
-}
-.btfw-stack-item__body{ padding:8px; }
-
-/* Grouped items styling */
-.btfw-stack-item.btfw-group-item .btfw-stack-item__header {
   background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
-  border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%);
-  border-radius: 10px;
-}
-.btfw-stack-item.btfw-group-item .btfw-stack-item__title {
-  font-weight: 700;
   color: var(--btfw-color-text);
-  margin-left: 5px;
-  font-size: 0.8rem;
+}
+.btfw-arrow:active{ transform: scale(0.92); }
+.btfw-stack-item__body{ padding: 8px; }
+
+/* Grouped items use the same minimal treatment as the default headers above —
+   no special tinted band or rounded inner corners. */
+.btfw-stack-item.btfw-group-item .btfw-stack-item__title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--btfw-color-text) 92%, transparent 8%);
+  margin-left: 14px;
 }
 .btfw-group-body {
   display: flex;
