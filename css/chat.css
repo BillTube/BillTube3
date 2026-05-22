@@ -217,6 +217,13 @@
     background: transparent;
     transform: none;
 }
+/* When the highlighted stars represent the COMMUNITY average (not the
+   user's own vote), render them in a softer accent tone so the user can
+   tell at a glance that they haven't voted yet. The hover/focus rules
+   above still bring them up to full accent on interaction. */
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__stars button[data-community="true"] {
+    color: color-mix(in srgb, var(--btfw-rating-accent, #ffd166) 60%, transparent 40%);
+}
 
 #chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions {
     margin: 0 0 0 auto;
