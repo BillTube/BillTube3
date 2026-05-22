@@ -252,12 +252,12 @@
   isolation: isolate;
 }
 
+/* Composer is intentionally flat (Twitch/Kick chat style) — chrome lives on
+   the chat column itself, not on the composer. */
 .btfw-chat-composer {
-  background: linear-gradient(145deg,
-    color-mix(in srgb, var(--btfw-overlay-elevated) 86%, transparent 14%),
-    color-mix(in srgb, var(--btfw-overlay-bg) 80%, transparent 20%));
-  border: 0px solid color-mix(in srgb, var(--btfw-border) 68%, transparent 32%);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .btfw-chat-actions .button.btfw-chatbtn {

@@ -220,7 +220,7 @@
   display: flex !important;
   justify-content: flex-end;
   align-items: center;
-  gap: clamp(10px, 1.2vw, 18px);
+  gap: 0;
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
@@ -231,7 +231,7 @@
 #btfw-navhost :is(#nav-collapsible, .navbar-collapse) > ul {
   display: flex;
   align-items: center;
-  gap: clamp(6px, 1vw, 16px);
+  gap: 4px;
   margin: 0;
   flex-wrap: nowrap;
 }
