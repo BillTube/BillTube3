@@ -133,15 +133,16 @@
    when in the rating window. All colors/fonts use --btfw-* tokens so
    channel-owner theme customizations apply. */
 #chatwrap .btfw-chat-topbar{
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr minmax(0, auto) 1fr;
+    grid-template-areas: "left center right";
     align-items: center;
-    justify-content: space-between;
-    gap: 4px 10px;
-    padding: 10px 14px;
+    align-content: center;
+    column-gap: 12px;
+    row-gap: 8px;
+    padding: 14px 18px;
     margin: 0;
-    min-height: 48px;
+    min-height: 60px;
     background: transparent;
     background-image: none;
     border: 0;
@@ -154,13 +155,21 @@
     overflow: visible;
 }
 
+/* Grid column placement for the topbar's children */
+#chatwrap .btfw-chat-topbar #btfw-notify-stack { grid-area: left; justify-self: start; min-width: 0; }
+#chatwrap .btfw-chat-topbar .btfw-chat-topbar-left { grid-area: center; }
+#chatwrap .btfw-chat-topbar #btfw-ratings-wrapper { grid-area: center; grid-row: 2; width: auto; justify-self: center; }
+#chatwrap .btfw-chat-topbar #btfw-chat-topbar-actions { grid-area: right; justify-self: end; }
+
 /* Left side stacks title row over the voting stars row when ratings show */
 #chatwrap .btfw-chat-topbar .btfw-chat-topbar-left {
+    display: flex;
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
+    justify-content: center;
     gap: 4px;
-    flex: 1 1 auto;
     min-width: 0;
+    max-width: 100%;
 }
 
 /* Voting card in the topbar: minimal — bare star glyphs and tiny ghost icons,
@@ -311,16 +320,37 @@
   display: inline-flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 8px;
   font-family: var(--btfw-font-body, var(--btfw-font-default, inherit));
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--btfw-color-text) 65%, transparent 35%);
-  line-height: 1.4;
-  flex: 1 1 auto;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--btfw-color-text);
+  line-height: 1.3;
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
+  text-align: center;
+}
+
+/* Pulsing live-dot in channel accent before the title — signals 'now playing' */
+#btfw-nowplaying-slot::before {
+  content: "";
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--btfw-color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--btfw-color-accent) 65%, transparent);
+  animation: btfwNowPlayingPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes btfwNowPlayingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 #btfw-nowplaying-slot > .btfw-nowplaying,
@@ -334,7 +364,9 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 100%;
+  text-align: center;
+  width: auto;
+  max-width: 100%;
 }
 
 #btfw-mobile-modules-toggle{
