@@ -4,6 +4,12 @@ BTFW.define("feature:auto-subs", [], async () => {
   const WYZIE_API = "https://sub.wyzie.io/search";
   const TMDB_API = "https://api.themoviedb.org/3";
   const STREMIO_DEFAULT_ADDON = "https://opensubtitles-v3.strem.io";
+  const LOCAL_LABEL_PREFIX = "Local: ";
+
+  function isLocalSubTrack(track) {
+    const label = track && typeof track.label === "string" ? track.label : "";
+    return label.indexOf(LOCAL_LABEL_PREFIX) === 0;
+  }
 
   const state = {
     active: false,
@@ -398,9 +404,9 @@ BTFW.define("feature:auto-subs", [], async () => {
       const toRemove = [];
       for (let i = 0; i < tracks.length; i++) {
         const track = tracks[i];
-        if (track.src && track.src.startsWith("blob:")) {
-          toRemove.push(track);
-        }
+        if (!track || !track.src || !track.src.startsWith("blob:")) continue;
+        if (isLocalSubTrack(track)) continue; // preserve local-subs tracks
+        toRemove.push(track);
       }
       toRemove.forEach(track => {
         try {
@@ -561,8 +567,10 @@ BTFW.define("feature:auto-subs", [], async () => {
     const player = getPlayer();
     if (!player || typeof player.addRemoteTextTrack !== "function") return false;
     const existingTracks = player.remoteTextTracks();
-    const hasBlobTracks = existingTracks && Array.from(existingTracks).some(t => t.src && t.src.startsWith("blob:"));
-    if (hasBlobTracks) return false;
+    const hasNonLocalBlobTracks = existingTracks && Array.from(existingTracks).some(
+      t => t.src && t.src.startsWith("blob:") && !isLocalSubTrack(t)
+    );
+    if (hasNonLocalBlobTracks) return false;
     clearExistingTracks();
     const added = [];
     subtitles.forEach((sub, idx) => {
@@ -600,8 +608,10 @@ BTFW.define("feature:auto-subs", [], async () => {
       const player = getPlayer();
       if (!player || !state.currentSubtitles || state.currentSubtitles.length === 0) return;
       const existingTracks = player.remoteTextTracks();
-      const hasBlobTracks = existingTracks && Array.from(existingTracks).some(t => t.src && t.src.startsWith("blob:"));
-      if (!hasBlobTracks && state.lastAddedTracks.length > 0) {
+      const hasNonLocalBlobTracks = existingTracks && Array.from(existingTracks).some(
+        t => t.src && t.src.startsWith("blob:") && !isLocalSubTrack(t)
+      );
+      if (!hasNonLocalBlobTracks && state.lastAddedTracks.length > 0) {
         state.lastAddedTracks = [];
         setTimeout(() => {
           if (state.active) {
