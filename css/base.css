@@ -502,14 +502,39 @@ a:hover {
   overflow: hidden; /* Prevent overflow issues during load */
 }
 
-/* Visual splitter (no drag in CSS; JS can attach drag later) */
+/* Visual splitter between video and chat. Keep the full hit area
+   (--btfw-split-width) so the user can still grab and drag, but visually
+   render only a 1px subtle guide line in the center. The line brightens
+   to accent on hover / drag so the affordance is clear without making
+   the splitter feel like a heavy permanent divider. */
 #btfw-vsplit{
   grid-area: split;
   width: var(--btfw-split-width);
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--btfw-color-accent) 35%, transparent 65%), transparent);
-  border-radius: 4px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   cursor: col-resize;
-  align-self: stretch; /* Ensure splitter takes full height */
+  align-self: stretch;
+  position: relative;
+}
+#btfw-vsplit::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 1px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--btfw-border) 28%, transparent 72%);
+  transition: width 0.16s ease, background 0.16s ease;
+  pointer-events: none;
+}
+#btfw-vsplit:hover::before,
+#btfw-vsplit:active::before,
+#btfw-vsplit[data-dragging="true"]::before {
+  width: 3px;
+  background: color-mix(in srgb, var(--btfw-color-accent) 60%, transparent 40%);
 }
 
 /* Allow swapping chat/video positions on desktop */
