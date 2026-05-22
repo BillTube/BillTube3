@@ -391,6 +391,167 @@
   display: none;
 }
 
+/* === Minimal player layout overrides ===================================
+   Override the heavier styling above with a "dark video player template"
+   look: progress rail on its own row at the top of the control bar, then
+   a single 34px-tall row of bare icons (play | volume | time | spacer |
+   subs | pip | fullscreen). No per-button backgrounds; hover lifts a
+   subtle ring. */
+#videowrap .video-js.btfw-videojs-themed .vjs-control-bar {
+  background: linear-gradient(to top,
+    color-mix(in srgb, var(--btfw-color-bg) 78%, transparent 22%) 0%,
+    color-mix(in srgb, var(--btfw-color-bg) 38%, transparent 62%) 70%,
+    transparent 100%);
+  border: 0;
+  border-radius: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  inset-inline: 0;
+  bottom: 0;
+  padding: 6px 12px 8px;
+  gap: 4px;
+  align-items: center;
+  min-height: 44px;
+  height: auto;
+}
+
+/* Bare icon buttons (play included) */
+#videowrap .video-js.btfw-videojs-themed .vjs-button {
+  background: transparent;
+  background-image: none;
+  border: 0;
+  box-shadow: none;
+  transform: none;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  color: var(--btfw-vjs-text-strong);
+  flex: 0 0 auto;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-button:hover,
+#videowrap .video-js.btfw-videojs-themed .vjs-button:focus-visible {
+  background: color-mix(in srgb, var(--btfw-color-text) 14%, transparent 86%);
+  color: var(--btfw-color-text);
+  transform: none;
+  box-shadow: none;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-play-control:hover {
+  color: var(--btfw-color-accent);
+}
+
+/* Predictable control order: play | volume | time | spacer | subs/pip/fs */
+#videowrap .video-js.btfw-videojs-themed .vjs-play-control       { order: 1; }
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-panel       { order: 2; flex: 0 0 auto; }
+#videowrap .video-js.btfw-videojs-themed .vjs-current-time       { order: 3; }
+#videowrap .video-js.btfw-videojs-themed .vjs-time-divider       { order: 4; }
+#videowrap .video-js.btfw-videojs-themed .vjs-duration           { order: 5; }
+#videowrap .video-js.btfw-videojs-themed .vjs-custom-control-spacer {
+  order: 50; flex: 1 1 auto; display: block; min-width: 8px;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-subs-caps-button   { order: 60; }
+#videowrap .video-js.btfw-videojs-themed .vjs-audio-button       { order: 61; }
+#videowrap .video-js.btfw-videojs-themed .vjs-playback-rate      { order: 62; }
+#videowrap .video-js.btfw-videojs-themed .vjs-picture-in-picture-control { order: 70; }
+#videowrap .video-js.btfw-videojs-themed .vjs-fullscreen-control { order: 80; }
+#videowrap .video-js.btfw-videojs-themed > .vjs-control-bar > .vjs-menu-button { order: 80; }
+/* Hide the redundant remaining-time (we show current + duration). */
+#videowrap .video-js.btfw-videojs-themed .vjs-remaining-time { display: none; }
+
+/* Progress bar — own row above the buttons, thin, expands on hover */
+#videowrap .video-js.btfw-videojs-themed .vjs-progress-control {
+  order: 0;
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
+  height: 12px;
+  padding: 4px 0;
+  align-items: center;
+  align-self: flex-start;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-progress-control .vjs-progress-holder {
+  height: 3px;
+  border: 0;
+  background: color-mix(in srgb, var(--btfw-color-text) 18%, transparent 82%);
+  transition: height 0.16s ease;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-progress-control:hover .vjs-progress-holder {
+  height: 5px;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-play-progress {
+  background: var(--btfw-color-accent);
+  box-shadow: none;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-progress-holder .vjs-slider-bar::after {
+  width: 10px;
+  height: 10px;
+  box-shadow: none;
+}
+
+/* Volume slider — thin pill, no chrome */
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-panel {
+  width: auto;
+  height: 34px;
+  align-items: center;
+  gap: 6px;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-control {
+  width: 70px;
+  height: 34px;
+  margin: 0;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-bar {
+  width: 100%;
+  height: 3px;
+  border: 0;
+  background: color-mix(in srgb, var(--btfw-color-text) 18%, transparent 82%);
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-level {
+  background: var(--btfw-color-text);
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-level::after {
+  width: 8px;
+  height: 8px;
+  box-shadow: none;
+}
+
+/* Time labels — bare digits */
+#videowrap .video-js.btfw-videojs-themed .vjs-time-control {
+  background: transparent;
+  border: 0;
+  padding: 0 6px;
+  color: color-mix(in srgb, var(--btfw-color-text) 80%, transparent 20%);
+  font-size: 12px;
+  line-height: 34px;
+  height: 34px;
+  min-width: auto;
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* These hide rules MUST come after the .vjs-time-control display rule above
+   to win the same-specificity / !important tie. */
+#videowrap .video-js.btfw-videojs-themed .vjs-remaining-time,
+#videowrap .video-js.btfw-videojs-themed .vjs-seek-to-live-control,
+#videowrap .video-js.btfw-videojs-themed .vjs-live-control {
+  display: none;
+}
+
+/* Drop the mute speaker icon — the horizontal volume slider already
+   handles mute (drag to 0) and the icon was the duplicate volume
+   affordance that looked like a triangle next to the linear bar. */
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-panel .vjs-mute-control {
+  display: none;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-volume-panel {
+  gap: 0;
+  padding: 0 6px;
+}
+
 #videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu{
 
   background: color-mix(in srgb, var(--btfw-vjs-surface-strong) 96%, transparent 4%);
