@@ -926,7 +926,10 @@
   margin: 6vh auto;
 }
 
-/* Card chrome — modern radius, soft elevation, single border. */
+/* Card chrome — modern radius, soft elevation, single border. The card
+   is a fixed-height flex column (max 88vh) so when content overflows it
+   doesn't push the whole modal off-screen — the body scrolls and the
+   header/footer stay pinned in place. */
 .modal.btfw-bulma-skin .btfw-card,
 .modal.btfw-bulma-skin .modal-content {
   background: color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%);
@@ -935,6 +938,16 @@
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
   box-shadow: 0 24px 60px color-mix(in srgb, var(--btfw-color-bg) 60%, transparent 40%);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+}
+
+.modal.btfw-bulma-skin .btfw-card > .btfw-card-head,
+.modal.btfw-bulma-skin .btfw-card > .btfw-card-foot,
+.modal.btfw-bulma-skin .modal-content > .modal-header,
+.modal.btfw-bulma-skin .modal-content > .modal-footer {
+  flex: 0 0 auto;
 }
 
 /* Header — title row + tabs row stack vertically with consistent spacing so
@@ -1053,10 +1066,16 @@
   box-shadow: none;
 }
 
-/* Body — generous, consistent padding (was asymmetric 0/16/16). */
+/* Body — generous, consistent padding. Also the scrollable middle of the
+   modal-card flex column above; min-height:0 lets flex shrink it below
+   intrinsic content size so overflow-y can engage. */
 .modal.btfw-bulma-skin .btfw-card-body,
 .modal.btfw-bulma-skin .modal-body {
   padding: 24px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Footer — subtle separator, right-aligned actions. */
