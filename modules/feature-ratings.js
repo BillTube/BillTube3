@@ -1462,9 +1462,27 @@ BTFW.define("feature:ratings", [], async () => {
   }
 
   function setMedia(media) {
+    const normalized = normalizeMediaData(media);
+
+    // CyTube fires changeMedia, setCurrent, and Callbacks.changeMedia on every
+    // media start; all three land here. Without this guard we wipe + re-init
+    // for the same media three times, which re-fires the "Movie rating has
+    // started" toast 2–3 times. Bail when the media key is unchanged.
+    if (normalized && state.currentKey && normalized.key === state.currentKey) {
+      // Same media — refresh playback timestamps in case this event carries
+      // updated currentTime (mediaUpdate replays do that) but don't reset
+      // visibility/announce state.
+      state.playback.currentTime = Number(normalized.currentTime) || state.playback.currentTime;
+      state.playback.duration = Number(normalized.duration) || state.playback.duration;
+      state.playback.lastUpdate = Date.now();
+      updatePlaybackFromPlayer();
+      updateVisibility();
+      return;
+    }
+
     stopPlaybackPolling();
     if (state.statsTimer) { clearTimeout(state.statsTimer); state.statsTimer = null; }
-    const normalized = normalizeMediaData(media);
+
     if (!normalized) {
       state.currentMedia = null;
       state.currentKey = "";
