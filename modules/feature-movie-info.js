@@ -189,7 +189,7 @@ BTFW.define("feature:movie-info", [], async () => {
     }
     const container = document.createElement("div");
     container.id = CONFIG.CONTAINER_ID;
-    container.className = "btfw-movie-header hide";
+    container.className = "btfw-movie-header";
     container.dataset.module = MODULE_ID;
     topbar.insertAdjacentElement("afterend", container);
     state.header = container;
@@ -313,7 +313,6 @@ BTFW.define("feature:movie-info", [], async () => {
   function showMovieHeader() {
     cancelHideTimer();
     if (state.header) {
-      state.header.classList.remove("hide");
       state.header.classList.add("show");
     }
   }
@@ -322,13 +321,9 @@ BTFW.define("feature:movie-info", [], async () => {
     cancelHideTimer();
     state.hideTimer = window.setTimeout(() => {
       if (!state.header) return;
+      // Just remove .show — the transition on .btfw-movie-header animates
+      // both directions (opacity + transform) so we get a smooth close.
       state.header.classList.remove("show");
-      state.header.classList.add("hide");
-      setTimeout(() => {
-        if (state.header && state.header.classList.contains("hide")) {
-          state.header.classList.remove("hide");
-        }
-      }, 320);
     }, 300);
   }
 
@@ -610,39 +605,17 @@ BTFW.define("feature:movie-info", [], async () => {
         opacity: 0;
         transform: translateY(-20px) scale(0.95);
         pointer-events: none;
+        transition:
+          opacity 0.28s cubic-bezier(0.55, 0.055, 0.675, 0.19),
+          transform 0.35s cubic-bezier(0.55, 0.055, 0.675, 0.19);
       }
       .btfw-movie-header.show {
         opacity: 1;
         transform: translateY(0) scale(1);
         pointer-events: auto;
-        animation: slideInDown 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-      }
-      .btfw-movie-header.hide {
-        animation: slideOutUp 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
-      }
-      @keyframes slideInDown {
-        0% {
-          opacity: 0;
-          transform: translateY(-30px) scale(0.9);
-        }
-        60% {
-          opacity: 0.8;
-          transform: translateY(5px) scale(1.02);
-        }
-        100% {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-      }
-      @keyframes slideOutUp {
-        0% {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-        100% {
-          opacity: 0;
-          transform: translateY(-25px) scale(0.95);
-        }
+        transition:
+          opacity 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+          transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       }
       .btfw-movie-overlay {
         position: absolute;
