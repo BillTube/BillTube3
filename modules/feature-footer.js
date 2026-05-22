@@ -143,27 +143,6 @@ BTFW.define("feature:footer", [], async () => {
         border-color: var(--btfw-color-accent);
       }
 
-      /* "Log in · Register" anchor links (legacy CyTube duplicate id="loginform" on a <p>) */
-      .btfw-footer__auth p.btfw-footer__form {
-        background: transparent;
-        color: color-mix(in srgb, var(--btfw-color-text) 55%, transparent 45%);
-        font-size: 12.5px;
-      }
-      .btfw-footer__auth p.btfw-footer__form a {
-        color: color-mix(in srgb, var(--btfw-color-text) 80%, transparent 20%);
-        text-decoration: none;
-        padding: 4px 10px;
-        border-radius: 999px;
-        border: 1px solid transparent;
-        font-weight: 500;
-        transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
-      }
-      .btfw-footer__auth p.btfw-footer__form a:hover {
-        background: color-mix(in srgb, var(--btfw-color-accent) 14%, transparent 86%);
-        border-color: color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
-        color: var(--btfw-color-text);
-      }
-
       .btfw-footer-branding {
         border-top: 1px solid rgba(255, 255, 255, 0.12);
         padding-top: 1.25rem;
@@ -322,6 +301,10 @@ BTFW.define("feature:footer", [], async () => {
 
     ["#logoutform", "#loginform"].forEach(selector => {
       $$(selector).forEach(form => {
+        if (form.matches("p#loginform")) {
+          form.remove();
+          return;
+        }
         if (!wrap.contains(form)) {
           form.classList.remove("navbar-text", "pull-right");
           form.classList.add("btfw-footer__form");
