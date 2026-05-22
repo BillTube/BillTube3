@@ -519,6 +519,34 @@ BTFW.define("feature:playlist-tools", [], async () => {
     }
   }
 
+  /* ---------- Glyphicon -> FontAwesome swap ----------
+     CyTube's playlist buttons ship with Bootstrap 3 Glyphicons whose font
+     metrics don't sit at the optical center of our pill buttons (~1px
+     baseline offset) and look out-of-set against the rest of the UI which
+     uses FontAwesome 6. Replace each known glyph with its FA equivalent
+     at runtime so the icons render uniformly. */
+  const GLYPH_TO_FA = {
+    "showsearch":          "fa-magnifying-glass",
+    "showcustomembed":     "fa-code",
+    "showplaylistmanager": "fa-list",
+    "clearplaylist":       "fa-trash",
+    "shuffleplaylist":     "fa-shuffle",
+    "qlockbtn":            "fa-check",
+    "getplaylist":         "fa-link",
+    "showmediaurl":        "fa-link"
+  };
+  function swapGlyphiconsToFA(){
+    for (const [btnId, faClass] of Object.entries(GLYPH_TO_FA)) {
+      const btn = document.getElementById(btnId);
+      if (!btn) continue;
+      const glyph = btn.querySelector(".glyphicon");
+      if (!glyph) continue;
+      const next = document.createElement("i");
+      next.className = "fa " + faClass;
+      glyph.replaceWith(next);
+    }
+  }
+
   /* ---------- Boot & observe ---------- */
   function boot(){
     injectToolbar();
@@ -529,7 +557,8 @@ BTFW.define("feature:playlist-tools", [], async () => {
     wireQueuePollCopy();
     ensureAddFromUrlTitleFilter();
     ensureAddTempPreference();
-    
+    swapGlyphiconsToFA();
+
     // Set up optimized observers instead of the old ones
     setupOptimizedObservers();
   }
