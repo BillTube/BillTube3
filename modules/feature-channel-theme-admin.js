@@ -686,10 +686,66 @@ background: "#0d0d0d",
       .btfw-theme-admin label { font-weight: 600; letter-spacing: 0.03em; color: color-mix(in srgb, var(--btfw-admin-text) 92%, transparent 8%); }
       .btfw-theme-admin .btfw-checkbox { display: inline-flex; gap: 10px; align-items: center; font-weight: 600; color: color-mix(in srgb, var(--btfw-admin-text) 92%, transparent 8%); }
       .btfw-theme-admin .btfw-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--btfw-theme-accent, #6d4df6); }
-      .btfw-theme-admin .movie-info-toggle { display: inline-flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-      .btfw-theme-admin .movie-info-toggle button { min-width: 0; }
-      .btfw-theme-admin .audio-enhancer-toggle { display: inline-flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-      .btfw-theme-admin .audio-enhancer-toggle button { min-width: 0; }
+      .btfw-theme-admin .btfw-switch-field { display: flex; flex-direction: column; gap: 6px; }
+      .btfw-theme-admin .btfw-switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        padding: 10px 14px;
+        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 78%, transparent);
+        border: 1px solid var(--btfw-admin-border-soft);
+        border-radius: 12px;
+        cursor: pointer;
+        color: var(--btfw-admin-text);
+        transition: background 160ms ease, border-color 160ms ease;
+        font: inherit;
+        text-align: left;
+        width: 100%;
+      }
+      .btfw-theme-admin .btfw-switch:hover { border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 35%, var(--btfw-admin-border-soft)); }
+      .btfw-theme-admin .btfw-switch[aria-pressed="true"] {
+        background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 14%, var(--btfw-admin-surface-alt));
+        border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 55%, transparent);
+      }
+      .btfw-theme-admin .btfw-switch:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 65%, transparent);
+        outline-offset: 2px;
+      }
+      .btfw-theme-admin .btfw-switch__track {
+        position: relative;
+        flex: 0 0 auto;
+        width: 40px;
+        height: 22px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--btfw-admin-text) 22%, transparent);
+        transition: background 160ms ease;
+      }
+      .btfw-theme-admin .btfw-switch__knob {
+        position: absolute;
+        top: 50%;
+        left: 3px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        transform: translateY(-50%);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+        transition: left 160ms ease;
+      }
+      .btfw-theme-admin .btfw-switch[aria-pressed="true"] .btfw-switch__track { background: var(--btfw-theme-accent, #6d4df6); }
+      .btfw-theme-admin .btfw-switch[aria-pressed="true"] .btfw-switch__knob { left: 21px; }
+      .btfw-theme-admin .btfw-switch__meta { display: inline-flex; flex-direction: column; gap: 2px; min-width: 0; }
+      .btfw-theme-admin .btfw-switch__title { font-weight: 600; font-size: 0.85rem; letter-spacing: 0.02em; color: var(--btfw-admin-text); }
+      .btfw-theme-admin .btfw-switch__state {
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--btfw-admin-text-soft);
+      }
+      .btfw-theme-admin .btfw-switch[aria-pressed="true"] .btfw-switch__state {
+        color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 65%, var(--btfw-admin-text));
+      }
       .btfw-theme-admin [data-role="movie-info-requirements"] { margin-top: 4px; }
       .btfw-theme-admin .field.is-disabled label,
       .btfw-theme-admin .field.is-disabled .help { opacity: 0.55; }
@@ -1744,10 +1800,8 @@ function replaceBlock(original, startMarker, endMarker, block){
     const enabled = Boolean(integrations.movieInfo.enabled);
     input.checked = enabled;
     button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-    button.classList.toggle('is-link', enabled);
-    button.classList.toggle('is-dark', !enabled);
-    button.classList.toggle('is-active', enabled);
-    button.textContent = enabled ? 'Movie info overlay enabled' : 'Enable movie info overlay';
+    const movieInfoState = button.querySelector('[data-role="state-label"]');
+    if (movieInfoState) movieInfoState.textContent = enabled ? 'On' : 'Off';
     const notice = panel.querySelector('[data-role="movie-info-requirements"]');
     if (notice) {
       const keyFromCfg = typeof integrations.tmdb?.apiKey === 'string' ? integrations.tmdb.apiKey.trim() : '';
@@ -1783,10 +1837,8 @@ function replaceBlock(original, startMarker, endMarker, block){
     const enabled = Boolean(integrations.autoSubs.enabled);
     input.checked = enabled;
     button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-    button.classList.toggle('is-link', enabled);
-    button.classList.toggle('is-dark', !enabled);
-    button.classList.toggle('is-active', enabled);
-    button.textContent = enabled ? 'Auto subtitles enabled' : 'Enable auto subtitles';
+    const autoSubsState = button.querySelector('[data-role="state-label"]');
+    if (autoSubsState) autoSubsState.textContent = enabled ? 'On' : 'Off';
     const notice = panel.querySelector('[data-role="auto-subs-requirements"]');
     if (notice) {
       const keyFromCfg = typeof integrations.tmdb?.apiKey === 'string' ? integrations.tmdb.apiKey.trim() : '';
@@ -1822,10 +1874,8 @@ function replaceBlock(original, startMarker, endMarker, block){
     const enabled = Boolean(integrations.audioEnhancer.enabled);
     input.checked = enabled;
     button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-    button.classList.toggle('is-link', enabled);
-    button.classList.toggle('is-dark', !enabled);
-    button.classList.toggle('is-active', enabled);
-    button.textContent = enabled ? 'Audio enhancer enabled' : 'Enable audio enhancer';
+    const audioEnhancerState = button.querySelector('[data-role="state-label"]');
+    if (audioEnhancerState) audioEnhancerState.textContent = enabled ? 'On' : 'Off';
   }
 
   function renderPanel(panel){
@@ -1901,20 +1951,26 @@ function replaceBlock(original, startMarker, endMarker, block){
               <label for="btfw-theme-integrations-tmdb">TMDB API key</label>
               <input type="text" id="btfw-theme-integrations-tmdb" data-btfw-bind="integrations.tmdb.apiKey" placeholder="YOUR_TMDB_KEY">
             </div>
-            <div class="field">
-              <label for="btfw-theme-movie-info-toggle">Movie info overlay</label>
-              <div class="movie-info-toggle">
-                <button type="button" class="button is-dark is-small" id="btfw-theme-movie-info-toggle" aria-pressed="false">Enable movie info overlay</button>
-                <input type="checkbox" id="btfw-theme-movie-info-enabled" data-btfw-bind="integrations.movieInfo.enabled" hidden>
-              </div>
+            <div class="field btfw-switch-field">
+              <button type="button" class="btfw-switch" id="btfw-theme-movie-info-toggle" role="switch" aria-pressed="false">
+                <span class="btfw-switch__track" aria-hidden="true"><span class="btfw-switch__knob"></span></span>
+                <span class="btfw-switch__meta">
+                  <span class="btfw-switch__title">Movie info overlay</span>
+                  <span class="btfw-switch__state" data-role="state-label">Off</span>
+                </span>
+              </button>
+              <input type="checkbox" id="btfw-theme-movie-info-enabled" data-btfw-bind="integrations.movieInfo.enabled" hidden>
               <p class="help is-warning" data-role="movie-info-requirements" hidden>Requires a TMDB API key. Add the key above before enabling to avoid empty results.</p>
             </div>
-            <div class="field">
-              <label for="btfw-theme-auto-subs-toggle">Auto subtitles (Wyzie)</label>
-              <div class="auto-subs-toggle">
-                <button type="button" class="button is-dark is-small" id="btfw-theme-auto-subs-toggle" aria-pressed="false">Enable auto subtitles</button>
-                <input type="checkbox" id="btfw-theme-auto-subs-enabled" data-btfw-bind="integrations.autoSubs.enabled" hidden>
-              </div>
+            <div class="field btfw-switch-field">
+              <button type="button" class="btfw-switch" id="btfw-theme-auto-subs-toggle" role="switch" aria-pressed="false">
+                <span class="btfw-switch__track" aria-hidden="true"><span class="btfw-switch__knob"></span></span>
+                <span class="btfw-switch__meta">
+                  <span class="btfw-switch__title">Auto subtitles (Wyzie)</span>
+                  <span class="btfw-switch__state" data-role="state-label">Off</span>
+                </span>
+              </button>
+              <input type="checkbox" id="btfw-theme-auto-subs-enabled" data-btfw-bind="integrations.autoSubs.enabled" hidden>
               <p class="help is-warning" data-role="auto-subs-requirements" hidden>Requires TMDB and Wyzie API keys before enabling.</p>
               <p class="help">Fetches English subtitles from the Wyzie catalog automatically when direct file uploads are playing.</p>
             </div>
@@ -1927,12 +1983,15 @@ function replaceBlock(original, startMarker, endMarker, block){
               <p class="help" data-role="wyzie-test-result" hidden></p>
               <p class="help">Don't have a key? Claim a free one at <a href="https://store.wyzie.io/redeem" target="_blank" rel="noopener">store.wyzie.io/redeem</a>.</p>
             </div>
-            <div class="field">
-              <label for="btfw-theme-audio-enhancer-toggle">Audio enhancer (boost & normalization)</label>
-              <div class="audio-enhancer-toggle">
-                <button type="button" class="button is-dark is-small" id="btfw-theme-audio-enhancer-toggle" aria-pressed="false">Enable audio enhancer</button>
-                <input type="checkbox" id="btfw-theme-audio-enhancer-enabled" data-btfw-bind="integrations.audioEnhancer.enabled" hidden>
-              </div>
+            <div class="field btfw-switch-field">
+              <button type="button" class="btfw-switch" id="btfw-theme-audio-enhancer-toggle" role="switch" aria-pressed="false">
+                <span class="btfw-switch__track" aria-hidden="true"><span class="btfw-switch__knob"></span></span>
+                <span class="btfw-switch__meta">
+                  <span class="btfw-switch__title">Audio enhancer (boost & normalization)</span>
+                  <span class="btfw-switch__state" data-role="state-label">Off</span>
+                </span>
+              </button>
+              <input type="checkbox" id="btfw-theme-audio-enhancer-enabled" data-btfw-bind="integrations.audioEnhancer.enabled" hidden>
               <p class="help">Makes the boost and normalization controls available in the viewer toolkit. Leave disabled to hide them.</p>
             </div>
             <div class="integrations-callout">
