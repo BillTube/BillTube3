@@ -100,6 +100,13 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
       if (!player.classList.contains(BIG_PLAY_CLASS)) {
         player.classList.add(BIG_PLAY_CLASS);
       }
+      // Mark the player as themed so css/player.css's full Video.js
+      // restyle (rounded control bar, accent play button, modern progress
+      // rail, big-play overlay) actually applies. Without this class the
+      // rules sit dormant and the raw city skin shows through.
+      if (!player.classList.contains("btfw-videojs-themed")) {
+        player.classList.add("btfw-videojs-themed");
+      }
     });
   }
 

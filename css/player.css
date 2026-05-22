@@ -237,6 +237,9 @@
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-play-control{
+  /* City theme's default sets flex-grow:1 on the play control which makes
+     it eat half the bar; reset to natural size. */
+  flex: 0 0 auto;
   width: clamp(38px, 5vw, 44px);
   height: clamp(38px, 5vw, 44px);
   border-radius: 14px;
@@ -247,7 +250,6 @@
   color: color-mix(in srgb, var(--btfw-color-text) 98%, white 2%);
   box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%),
     0 6px 16px color-mix(in srgb, black 22%, transparent 78%);
-
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-play-control:hover{
