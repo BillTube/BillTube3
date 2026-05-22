@@ -630,14 +630,18 @@
 }
 
 /* These hide rules MUST come after the .vjs-time-control display rule above
-   to win the same-specificity / !important tie. Keep only the current-time
-   label — the duration and divider are redundant with the progress rail. */
-#videowrap .video-js.btfw-videojs-themed .vjs-remaining-time,
+   to win the same-specificity / !important tie. Keep only the
+   remaining-time label — current-time already shows in the progress
+   tooltip on hover, so a fixed countdown is the useful info. */
+#videowrap .video-js.btfw-videojs-themed .vjs-current-time,
 #videowrap .video-js.btfw-videojs-themed .vjs-seek-to-live-control,
 #videowrap .video-js.btfw-videojs-themed .vjs-live-control,
 #videowrap .video-js.btfw-videojs-themed .vjs-time-divider,
 #videowrap .video-js.btfw-videojs-themed .vjs-duration {
   display: none;
+}
+#videowrap .video-js.btfw-videojs-themed .vjs-remaining-time {
+  display: inline-flex;
 }
 
 /* Drop the mute speaker icon — the horizontal volume slider already
