@@ -179,11 +179,19 @@ BTFW.define("feature:local-subs", [], async () => {
     wireChangeMedia();
     injectButton();
     updateButtonVisibility();
+    // Watch for the overlay mounting/remounting. Scoped to #videowrap (the
+    // only place the overlay can live) so we don't churn on every chat
+    // message or playlist update. If #videowrap isn't there yet, observe
+    // <body> children only (NOT subtree) as a short bootstrap fallback.
+    const observerTarget = document.getElementById("videowrap") || document.body;
+    const observerOpts = observerTarget.id === "videowrap"
+      ? { childList: true, subtree: true }
+      : { childList: true, subtree: false };
     const mo = new MutationObserver(()=> {
       injectButton();
       updateButtonVisibility();
     });
-    mo.observe(document.body, { childList:true, subtree:true });
+    mo.observe(observerTarget, observerOpts);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

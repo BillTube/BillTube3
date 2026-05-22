@@ -157,10 +157,36 @@ var SUPPORTS_PRELOAD = (function(){
   }
 })();
 
+// Dev mode: when true, every module/CSS URL gets `?t=<ms>` appended so neither
+// the browser nor the CDN edge can serve a cached copy. Slower (every load is
+// a MISS) but bullet-proof for live iteration. When false (the default for
+// production), URLs stay stable so jsdelivr's commit-pinned cache and the
+// viewer's browser cache both kick in — a typical reload is ~all hits.
+//
+// Resolution order:
+//   1. window.BTFW_DEV_NOCACHE  (set by the channel loader)
+//   2. localStorage "btfw:dev-nocache" === "1"  (per-viewer override)
+//   3. ?btfw_dev=1 in the page URL  (one-off override)
+//   4. default: false
+//
+// The Channel Theme Toolkit exposes a toggle that writes to (2) so admins can
+// flip it without redeploying the loader.
+var BTFW_DEV_NOCACHE = (function(){
+  try { if (window.BTFW_DEV_NOCACHE === true) return true; } catch(_) {}
+  try { if (localStorage.getItem("btfw:dev-nocache") === "1") return true; } catch(_) {}
+  try { if (/[?&]btfw_dev=1\b/.test(location.search)) return true; } catch(_) {}
+  return false;
+})();
+try { window.BTFW_DEV_NOCACHE = BTFW_DEV_NOCACHE; } catch(_) {}
+
+function maybeBust(url){
+  return BTFW_DEV_NOCACHE ? qparam(url, "t="+Date.now()) : url;
+}
+
 function preload(href){
   return new Promise(function(resolve){
     var l = document.createElement("link");
-    var url = qparam(href, "t="+Date.now());
+    var url = maybeBust(href);
 
     if (SUPPORTS_PRELOAD) {
       l.rel = "preload";
@@ -201,7 +227,9 @@ function load(src){
       attempts++;
       var s = document.createElement("script");
       s.async = true; s.defer = true;
-      s.src = qparam(src, "t="+Date.now()) + (attempts > 1 ? "&retry="+attempts : "");
+      // Always tack on ?retry=N on retries so the edge sees a distinct URL
+      // even in production mode (where maybeBust returns the bare URL).
+      s.src = maybeBust(src) + (attempts > 1 ? (maybeBust(src) === src ? "?" : "&") + "retry="+attempts : "");
       s.onload = function(){ resolve(); };
       s.onerror = function(){
         try { s.remove(); } catch(_) {}
@@ -316,8 +344,10 @@ function resolveBranchToSHA(){
       .then(function(){ return loadAll(layoutMods); })
       .then(function(){ return BTFW.init("feature:layout"); })
       .then(function(){
-        // Wait a bit for layout to settle before loading DOM-heavy features.
-        return new Promise(resolve => setTimeout(resolve, 100));
+        // One frame is enough for layout to commit — the old 100ms setTimeout
+        // was a guess that delayed every viewer's boot by ~85ms beyond what
+        // the browser actually needed.
+        return new Promise(function(resolve){ requestAnimationFrame(function(){ resolve(); }); });
       })
       .then(function(){ return loadAll(featureMods); });
   }).then(function(){
