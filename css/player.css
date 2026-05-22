@@ -583,8 +583,9 @@
 #videowrap .video-js.btfw-videojs-themed .vjs-resolution-button {
   display: none;
 }
-#videowrap .video-js.btfw-videojs-themed .vjs-menu-button[title="Quality"]:not(:has(.vjs-menu-item + .vjs-menu-item)) {
-  display: none;
+#videowrap .video-js.btfw-videojs-themed .vjs-menu-button[title="Quality"]:not(:has(.vjs-menu-item + .vjs-menu-item)),
+#videowrap .video-js.btfw-videojs-themed .vjs-menu-button[aria-label="Quality"]:not(:has(.vjs-menu-item + .vjs-menu-item)) {
+  display: none !important;
 }
 #videowrap .video-js.btfw-videojs-themed .vjs-button .vjs-icon-placeholder {
   display: inline-flex;
