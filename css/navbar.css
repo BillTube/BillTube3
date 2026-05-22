@@ -134,7 +134,7 @@
 #btfw-navhost :is(.navbar-nav, .nav) {
   display: flex;
   align-items: center;
-  gap: clamp(6px, 1vw, 16px);
+  gap: 4px;
   margin: 0;
   padding: 0;
   float: none !important;
@@ -148,12 +148,22 @@
   flex: 0 0 auto;
 }
 
+/* Hide empty <li>s whose only child is display:none (admin-only links such
+   as #showchansettings appear empty to guests but still occupy a flex-gap
+   slot, doubling the apparent space around the Theme button). */
+#btfw-navhost ul.navbar-nav > li:has(> #showchansettings[style*="display: none"]),
+#btfw-navhost ul.navbar-nav > li:has(> #showchansettings[style*="display:none"]),
+#btfw-navhost ul.navbar-nav > li:has(> a[style*="display: none"]:only-child),
+#btfw-navhost ul.navbar-nav > li:has(> a[style*="display:none"]:only-child) {
+  display: none !important;
+}
+
 #btfw-navhost :is(.navbar-nav, .nav) > li > :is(a, button) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: 8px;
   font-weight: 600;
   letter-spacing: 0.01em;
