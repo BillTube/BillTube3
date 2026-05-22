@@ -357,7 +357,12 @@
 #btfw-nowplaying-slot > .btfw-chat-title{
   font-weight: inherit;
   font-family: inherit;
-  font-size: inherit;
+  /* Font shrinks for long titles via the --length custom property set by
+     feature-nowplaying.js (it equals the title's character count). The
+     property is set on this element directly, not the slot, so the rule
+     lives here. Short titles (≤20 chars) hold at 14px; each extra character
+     takes off ~0.08px until the floor at 10px. */
+  font-size: clamp(10px, calc(15.5px - var(--length, 14) * 0.08px), 14px);
   color: inherit;
   letter-spacing: inherit;
   text-transform: inherit;
