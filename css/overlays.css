@@ -926,42 +926,162 @@
   margin: 6vh auto;
 }
 
-.modal.btfw-bulma-skin .btfw-card {
-  background: var(--btfw-overlay-elevated);
+/* Card chrome — modern radius, soft elevation, single border. */
+.modal.btfw-bulma-skin .btfw-card,
+.modal.btfw-bulma-skin .modal-content {
+  background: color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%);
   color: var(--btfw-color-text);
-  border-radius: var(--btfw-radius);
-  border: 1px solid var(--btfw-border);
-  box-shadow: var(--btfw-overlay-shadow);
-  overflow: auto;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--btfw-color-bg) 60%, transparent 40%);
+  overflow: hidden;
 }
 
-.modal.btfw-bulma-skin .btfw-card-head {
-  background: color-mix(in srgb, var(--btfw-overlay-bg) 92%, transparent 8%);
-  border-bottom: 1px solid var(--btfw-border);
-  padding: 12px 16px;
+/* Header — title row + tabs row stack vertically with consistent spacing so
+   the title can actually breathe instead of being crammed next to the tabs. */
+.modal.btfw-bulma-skin .btfw-card-head,
+.modal.btfw-bulma-skin .modal-header {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-accent) 10%, transparent 90%);
+  border-radius: 0;
+  padding: 20px 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
   position: relative;
 }
-.modal.btfw-bulma-skin .btfw-card-head .modal-title {
+.modal.btfw-bulma-skin .btfw-card-head .modal-title,
+.modal.btfw-bulma-skin .modal-header .modal-title {
+  font-size: 19px;
   font-weight: 600;
-  font-size: 16px;
+  letter-spacing: 0.005em;
   margin: 0;
+  padding-right: 44px; /* room for the close button */
+  line-height: 1.2;
+  color: var(--btfw-color-text);
 }
-.modal.btfw-bulma-skin .btfw-card-head .delete {
+
+/* Close (× / .delete) — ghost circle in the corner. */
+.modal.btfw-bulma-skin .btfw-card-head .delete,
+.modal.btfw-bulma-skin .btfw-card-head > .close,
+.modal.btfw-bulma-skin .modal-header .delete,
+.modal.btfw-bulma-skin .modal-header > .close {
   position: absolute;
-  right: 10px; top: 10px;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: transparent;
+  border: 0;
+  color: color-mix(in srgb, var(--btfw-color-text) 60%, transparent 40%);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+.modal.btfw-bulma-skin .btfw-card-head .delete:hover,
+.modal.btfw-bulma-skin .btfw-card-head > .close:hover,
+.modal.btfw-bulma-skin .modal-header .delete:hover,
+.modal.btfw-bulma-skin .modal-header > .close:hover {
+  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+  color: var(--btfw-color-text);
+  opacity: 1;
+}
+/* The Bulma layer also injects a duplicate .delete next to the Bootstrap
+   .close — they stack at the same coordinates. Hide the empty .delete so
+   only one clickable target remains in the same spot. */
+.modal.btfw-bulma-skin .btfw-card-head > .close + .delete,
+.modal.btfw-bulma-skin .modal-header > .close + .delete {
+  display: none;
 }
 
-.modal.btfw-bulma-skin .btfw-card-body {
-  padding: 16px;
+/* Tab nav inside the header — flat outlined pills, no nested panel. */
+.modal.btfw-bulma-skin .btfw-card-head > ul,
+.modal.btfw-bulma-skin .modal-header > ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.modal.btfw-bulma-skin .btfw-card-head > ul > li > a,
+.modal.btfw-bulma-skin .btfw-card-head > ul > li > button,
+.modal.btfw-bulma-skin .modal-header > ul > li > a,
+.modal.btfw-bulma-skin .modal-header > ul > li > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 35%, transparent 65%);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  color: color-mix(in srgb, var(--btfw-color-text) 80%, transparent 20%);
+  box-shadow: none;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+.modal.btfw-bulma-skin .btfw-card-head > ul > li > a:hover,
+.modal.btfw-bulma-skin .btfw-card-head > ul > li > button:hover {
+  background: color-mix(in srgb, var(--btfw-color-accent) 14%, transparent 86%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
+  color: var(--btfw-color-text);
+}
+.modal.btfw-bulma-skin .btfw-card-head > ul > li.active > a,
+.modal.btfw-bulma-skin .btfw-card-head > ul > li.is-active > a,
+.modal.btfw-bulma-skin .btfw-card-head > ul > li.active > button,
+.modal.btfw-bulma-skin .btfw-card-head > ul > li.is-active > button {
+  background: color-mix(in srgb, var(--btfw-color-accent) 78%, transparent 22%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 90%, transparent 10%);
+  color: var(--btfw-color-bg);
+  box-shadow: none;
 }
 
-.modal.btfw-bulma-skin .btfw-card-foot {
-  background: color-mix(in srgb, var(--btfw-overlay-bg) 92%, transparent 8%);
-  border-top: 1px solid var(--btfw-border);
-  padding: 10px 12px;
+/* Body — generous, consistent padding (was asymmetric 0/16/16). */
+.modal.btfw-bulma-skin .btfw-card-body,
+.modal.btfw-bulma-skin .modal-body {
+  padding: 24px;
+}
+
+/* Footer — subtle separator, right-aligned actions. */
+.modal.btfw-bulma-skin .btfw-card-foot,
+.modal.btfw-bulma-skin .modal-footer {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--btfw-color-accent) 10%, transparent 90%);
+  padding: 14px 24px;
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+/* Inner card-in-card chrome in the body — keep it minimal so we don't end
+   up with borders inside borders inside borders. */
+.modal.btfw-bulma-skin .btfw-card-body .card,
+.modal.btfw-bulma-skin .btfw-card-body .panel,
+.modal.btfw-bulma-skin .modal-body .card,
+.modal.btfw-bulma-skin .modal-body .panel,
+.modal.btfw-bulma-skin .modal-body .well {
+  background: color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 30%, transparent 70%);
+  border-radius: 12px;
+  box-shadow: none;
 }
 
 /* Buttons (Bulma look on Bootstrap buttons we remap in JS) */

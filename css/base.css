@@ -946,7 +946,8 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   display: none !important;
 }
 
-/* Modal tab navigations get tint-aware styling */
+/* Modal tab navigations — flat outlined pills, no nested-panel chrome.
+   ID-specific selectors are kept so the rules win over Bootstrap/Bulma defaults. */
 .btfw-card-head > ul,
 #channeloptions .btfw-card-head > ul,
 #useroptions .btfw-card-head > ul,
@@ -956,12 +957,12 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   align-items: center;
   gap: 6px;
   margin: 0;
-  padding: 6px;
+  padding: 0;
   list-style: none;
-  background: color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
-  border-radius: 12px;
-  box-shadow: 0 14px 32px color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .btfw-card-head > ul > li,
@@ -981,32 +982,42 @@ nav.pagination.is-centered.btfw-gif-pager {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  border-radius: 9px;
-  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 35%, transparent 65%);
+  font-size: 12.5px;
+  font-weight: 500;
   letter-spacing: 0.02em;
   text-decoration: none;
-  color: color-mix(in srgb, var(--btfw-color-text) 92%, transparent 8%);
-  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+  color: color-mix(in srgb, var(--btfw-color-text) 80%, transparent 20%);
+  box-shadow: none;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
 }
 
 .btfw-card-head > ul > li > a:hover,
 .btfw-card-head > ul > li > a:focus,
 .btfw-card-head > ul > li > button:hover,
-.btfw-card-head > ul > li > button:focus {
-  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+.btfw-card-head > ul > li > button:focus,
+#channeloptions .btfw-card-head > ul > li > a:hover,
+#useroptions .btfw-card-head > ul > li > a:hover {
+  background: color-mix(in srgb, var(--btfw-color-accent) 14%, transparent 86%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
   color: var(--btfw-color-text);
 }
 
 .btfw-card-head > ul > li.active > a,
 .btfw-card-head > ul > li.active > button,
 .btfw-card-head > ul > li.is-active > a,
-.btfw-card-head > ul > li.is-active > button {
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--btfw-color-accent) 86%, white 14%),
-    color-mix(in srgb, var(--btfw-color-accent) 62%, transparent 38%));
-  color: color-mix(in srgb, var(--btfw-color-text) 98%, white 2%);
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+.btfw-card-head > ul > li.is-active > button,
+#channeloptions .btfw-card-head > ul > li.active > a,
+#channeloptions .btfw-card-head > ul > li.is-active > a,
+#useroptions .btfw-card-head > ul > li.active > a,
+#useroptions .btfw-card-head > ul > li.is-active > a {
+  background: color-mix(in srgb, var(--btfw-color-accent) 78%, transparent 22%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 90%, transparent 10%);
+  color: var(--btfw-color-bg);
+  box-shadow: none;
 }
 
 .tabs,
