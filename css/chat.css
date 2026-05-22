@@ -170,11 +170,19 @@
    small cluster in the center. */
 #chatwrap .btfw-chat-topbar #btfw-ratings-wrapper { grid-column: 1 / -1; grid-row: 2; width: 100%; justify-self: stretch; }
 #chatwrap .btfw-chat-topbar #btfw-chat-topbar-actions { grid-area: right; justify-self: end; }
-/* When ratings is open, let the stars take the leftover row space and
-   distribute themselves with even gaps so the row fills end-to-end. */
+/* When ratings is open, stars stay tight on the LEFT of the row and the
+   action icons (≣ list, ⟳ refresh) get pushed to the far right. The
+   ratings header has display: contents so its action cluster behaves as
+   a direct flex child of #btfw-ratings — we lift it with margin-left:
+   auto, and order:-1 on the stars puts them ahead of it. */
 #chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__stars {
-  flex: 1 1 auto;
-  justify-content: space-between;
+  flex: 0 0 auto;
+  order: -1;
+  justify-content: flex-start;
+}
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions {
+  margin-left: auto;
+  order: 99;
 }
 
 /* Left side stacks title row over the voting stars row when ratings show */
