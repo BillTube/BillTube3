@@ -204,8 +204,32 @@ function loadAll(files){
   return Promise.all(files.map(function(f){ return load(BASE+"/"+f); }));
 }
 
+// Resolve `@<branch>` in BASE to a commit SHA via the GitHub API so every
+// asset request goes to an atomic commit-pinned URL. jsdelivr's branch-alias
+// resolution is occasionally stuck on a stale SHA at the edge, which makes
+// the framework load partially-old code; commit-pinned URLs never have that
+// problem.
+function resolveBranchToSHA(){
+  var m = BASE.match(/^(https:\/\/cdn\.jsdelivr\.net\/gh\/([^\/]+)\/([^@]+))@([^\/]+)$/);
+  if (!m) return Promise.resolve();
+  var prefix = m[1], owner = m[2], repo = m[3], ref = m[4];
+  if (/^[0-9a-f]{7,40}$/i.test(ref)) return Promise.resolve(); // already a SHA
+  var url = 'https://api.github.com/repos/' + owner + '/' + repo + '/branches/' + encodeURIComponent(ref);
+  return fetch(url, { cache: 'no-store' })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      var sha = j && j.commit && j.commit.sha;
+      if (!sha) return;
+      BASE = prefix + '@' + sha;
+      if (window.BTFW) window.BTFW.BASE = BASE;
+      try { console.info('[BTFW] resolved ' + ref + ' -> ' + sha.slice(0, 7)); } catch (_) {}
+    })
+    .catch(function(){ /* fall through to original branch URL */ });
+}
+
   // Preload CSS in proper order for layout stability
-  Promise.all([
+  resolveBranchToSHA().then(function(){
+    return Promise.all([
     preload(BASE+"/css/tokens.css"),
     preload(BASE+"/css/base.css"),
     preload(BASE+"/css/navbar.css"),
@@ -213,7 +237,7 @@ function loadAll(files){
     preload(BASE+"/css/overlays.css"),
     preload(BASE+"/css/player.css"),
     preload(BASE+"/css/mobile.css")
-  ]).then(function(){
+  ]); }).then(function(){
     // Load modules in dependency stages. Cache busting stays enabled for testing,
     // but independent files within a stage no longer block each other.
     var coreMods=[
