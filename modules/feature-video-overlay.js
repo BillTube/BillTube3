@@ -197,16 +197,24 @@ BTFW.define("feature:videoOverlay", [], async () => {
       }
 
       #btfw-video-overlay .btfw-vo-btn i,
-      #btfw-video-overlay .btfw-vo-adopted i {
+      #btfw-video-overlay .btfw-vo-btn .glyphicon,
+      #btfw-video-overlay .btfw-vo-adopted i,
+      #btfw-video-overlay .btfw-vo-adopted .glyphicon {
         transition: transform 0.2s ease;
         font-size: 16px;
+        /* Bootstrap nudges .glyphicon with top:1px;position:relative which
+           throws off the grid-centering we use on the button itself. */
+        top: 0;
+        position: static;
       }
 
       #btfw-video-overlay .btfw-vo-btn:hover,
       #btfw-video-overlay .btfw-vo-adopted:hover{
-        background: color-mix(in srgb, var(--btfw-color-accent) 82%, transparent 18%);
+        background: rgba(0, 0, 0, 0.55);
         transform: translateY(-1px);
-        box-shadow: 0 4px 16px color-mix(in srgb, var(--btfw-color-accent) 36%, transparent 64%);
+        box-shadow:
+          0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 60%, transparent 40%),
+          0 4px 16px color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
       }
 
       #btfw-video-overlay .btfw-vo-btn:hover i,
