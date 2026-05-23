@@ -204,9 +204,9 @@ BTFW.define("feature:videoOverlay", [], async () => {
 
       #btfw-video-overlay .btfw-vo-btn:hover,
       #btfw-video-overlay .btfw-vo-adopted:hover{
-        background: rgba(109, 77, 246, 0.82);
+        background: color-mix(in srgb, var(--btfw-color-accent) 82%, transparent 18%);
         transform: translateY(-1px);
-        box-shadow: 0 4px 16px rgba(109, 77, 246, 0.36);
+        box-shadow: 0 4px 16px color-mix(in srgb, var(--btfw-color-accent) 36%, transparent 64%);
       }
 
       #btfw-video-overlay .btfw-vo-btn:hover i,
@@ -221,7 +221,7 @@ BTFW.define("feature:videoOverlay", [], async () => {
 
       #btfw-video-overlay .btfw-vo-btn:focus-visible,
       #btfw-video-overlay .btfw-vo-adopted:focus-visible {
-        outline: 2px solid rgba(109, 77, 246, 0.95);
+        outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 95%, transparent 5%);
         outline-offset: 2px;
       }
 
