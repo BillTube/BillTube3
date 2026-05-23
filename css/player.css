@@ -172,7 +172,6 @@
       color-mix(in srgb, var(--btfw-vjs-surface) 86%, transparent 14%),
       color-mix(in srgb, var(--btfw-vjs-surface-strong) 92%, transparent 8%));
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
- will-change: opacity, transform; 
   transition: opacity 0.2s ease, transform 0.24s ease;
   pointer-events: auto;
 }
