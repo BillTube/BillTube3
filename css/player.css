@@ -50,7 +50,6 @@
   display: block;
   overflow: hidden;
   background: var(--btfw-video-bg);
-  border-radius: inherit;
 }
 #videowrap .embed-responsive::before{
   content: "";
@@ -71,7 +70,6 @@
   height: 100%;
   display: block;
   border: 0;
-  border-radius: inherit;
 }
 
 /* If no wrapper, modern browsers can use aspect-ratio on iframe */
@@ -91,7 +89,6 @@
 #videowrap .flowplayer{
   width: 100% !important;
   height: 100% !important;
-  border-radius: inherit;
 }
 
 /* ===== Video.js streamlined theme ===== */
@@ -108,7 +105,6 @@
      soft border/shadow around the video. Keep the bg transparent so only
      the video itself is visible. */
   background: transparent;
-  border-radius: inherit;
   overflow: hidden;
   font-size: 10px;
 }
@@ -116,7 +112,9 @@
 #videowrap .video-js.btfw-videojs-themed .vjs-tech,
 #videowrap .video-js.btfw-videojs-themed video,
 #videowrap .video-js.btfw-videojs-themed iframe{
-  border-radius: inherit;
+  /* Inner layers inherit clipping from #videowrap's overflow:hidden — no
+     need to repeat border-radius here; nested rounded clipping is expensive
+     under software rendering (cuts FPS in half). */
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-loading-spinner{

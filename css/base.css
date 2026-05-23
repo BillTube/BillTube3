@@ -2058,16 +2058,22 @@ body, #wrap { padding-top: 0 !important; }
 .col-lg-8, .col-md-8 { padding-right: 20px !important; }
 .col-lg-4, .col-md-4 { padding-left: 20px !important; }
 
-/* 2. THEME-AWARE GLASSMORPHISM NAV */
+/* 2. THEME-AWARE NAV
+   No backdrop-filter — a 15px blur on a fixed nav re-composites the area
+   under it every frame and tanks FPS under software rendering (~4x slower
+   on machines without compositor GPU). The depth that the blur used to add
+   is recovered cheaply via a vertical gradient + accent edge + sharp shadow. */
 .navbar-fixed-top {
-    /* Uses your theme's background color mixed with transparency for the blur effect */
-    background-color: color-mix(in srgb, var(--btfw-color-bg) 85%, transparent) !important;
-    backdrop-filter: blur(15px) !important;
-    -webkit-backdrop-filter: blur(15px) !important;
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--btfw-color-bg) 94%, transparent) 0%,
+        color-mix(in srgb, var(--btfw-color-bg) 98%, transparent) 100%
+      ) !important;
     border: none !important;
-    /* Uses text color for a subtle, theme-aware bottom border */
-    border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-text) 5%, transparent) !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-accent) 22%, transparent) !important;
+    box-shadow:
+      inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-accent) 10%, transparent),
+      0 6px 12px rgba(0, 0, 0, 0.18) !important;
 }
 
 .navbar > .container {
