@@ -953,6 +953,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
           ensureCopyTitleButtons();
           ensureAddFromUrlTitleFilter();
           ensureAddTempPreference();
+          ensureLockButton(); // re-adopt + dedupe if CyTube re-rendered controls
         }, 100); // Wait 100ms after last mutation
       };
       
@@ -1034,9 +1035,20 @@ BTFW.define("feature:playlist-tools", [], async () => {
     icon.className = "fa " + (lockIsLocked(btn) ? "fa-lock" : "fa-lock-open");
   }
   function ensureLockButton(){
-    const btn  = document.getElementById("qlockbtn");
     const meta = document.getElementById("plmeta");
-    if (!btn || !meta) return;
+    if (!meta) return;
+    // The live, CyTube-wired button is whatever currently holds id="qlockbtn".
+    const btn = document.getElementById("qlockbtn");
+    if (!btn) return;
+    // Dedupe: if CyTube re-rendered its controls it can leave a stale relocated
+    // copy behind (two lock icons, only the live one clickable). Drop any
+    // .btfw-pllock that isn't the live button.
+    document.querySelectorAll(".btfw-pllock").forEach(el => {
+      if (el !== btn) {
+        if (el._btfwLockObs) { try { el._btfwLockObs.disconnect(); } catch(_){} }
+        el.remove();
+      }
+    });
     btn.classList.add("btfw-pllock");
     if (btn.parentElement !== meta) meta.appendChild(btn);
     syncLockIcon(btn);
