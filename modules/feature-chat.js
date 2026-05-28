@@ -151,8 +151,86 @@ window.addEventListener("scroll", repositionOpenPopins, true);
 document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopins, 0));
 
 
+  /* ---------------- Userlist docking ---------------- */
+  const UL_DOCK_KEY = "btfw:userlist:docked";
+  function isUserlistDockedPref(){ try { return localStorage.getItem(UL_DOCK_KEY) === "1"; } catch(_) { return false; } }
+  function setUserlistDockedPref(v){ try { localStorage.setItem(UL_DOCK_KEY, v ? "1" : "0"); } catch(_){} }
+  function isVerticalLayout(){
+    const g = document.getElementById("btfw-grid");
+    return g ? g.classList.contains("btfw-grid--vertical") : false;
+  }
+  // True when the userlist is physically living in the dock right now.
+  function isUserlistDocked(){
+    return !!document.getElementById("btfw-userlist-dock") &&
+           !!document.querySelector("#btfw-chatcol.btfw-userlist-docked");
+  }
+
+  function ensureUserlistDock(){
+    let dock = document.getElementById("btfw-userlist-dock");
+    if (dock) return dock;
+    const col = document.getElementById("btfw-chatcol");
+    if (!col) return null;
+    dock = document.createElement("div");
+    dock.id = "btfw-userlist-dock";
+    dock.innerHTML = `
+      <div class="btfw-dockhead">
+        <span>Users</span>
+        <button class="btfw-dock-undock" type="button" aria-label="Undock users list" title="Pop out">
+          <i class="fa fa-clone" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="btfw-dockbody"></div>
+    `;
+    col.appendChild(dock);
+    const ub = dock.querySelector(".btfw-dock-undock");
+    if (ub) ub.addEventListener("click", () => setUserlistDocked(false));
+    return dock;
+  }
+
+  // docked=true moves #userlist into the dock beside the chat; false returns it
+  // to the (closed) popover. opts.persist=false updates the DOM without changing
+  // the saved preference (used for mobile auto-undock).
+  function setUserlistDocked(docked, opts){
+    const persist = !opts || opts.persist !== false;
+    const col = document.getElementById("btfw-chatcol");
+    const ul  = document.getElementById("userlist");
+    if (!col || !ul) return;
+
+    if (docked) {
+      if (persist) setUserlistDockedPref(true);
+      // Docking shares space horizontally; it doesn't fit the narrow vertical
+      // layout, so keep the preference but stay in popover mode there.
+      if (isVerticalLayout()) return;
+      if (document._btfw_userlist_close) document._btfw_userlist_close();
+      const dock = ensureUserlistDock();
+      if (!dock) return;
+      ul.classList.add("btfw-userlist-overlay", "btfw-userlist-overlay--open");
+      ul.style.removeProperty("display");
+      ul.style.removeProperty("position");
+      dock.querySelector(".btfw-dockbody").appendChild(ul);
+      col.classList.add("btfw-userlist-docked");
+      document.body.classList.add("btfw-userlist-is-docked");
+    } else {
+      if (persist) setUserlistDockedPref(false);
+      ensureUserlistPopover();
+      const popBody = document.querySelector("#btfw-userlist-pop .btfw-popbody");
+      if (popBody) {
+        ul.classList.add("btfw-userlist-overlay");
+        ul.classList.remove("btfw-userlist-overlay--open");
+        popBody.appendChild(ul);
+      }
+      col.classList.remove("btfw-userlist-docked");
+      document.body.classList.remove("btfw-userlist-is-docked");
+      const dock = document.getElementById("btfw-userlist-dock");
+      if (dock) dock.remove();
+    }
+    document.dispatchEvent(new CustomEvent("btfw:userlist:reflow"));
+  }
+
   /* ---------------- Userlist popover (same pattern as Emote popover) ---------------- */
   function adoptUserlistIntoPopover(){
+    // Don't steal the list back from the dock while docked.
+    if (isUserlistDocked()) return;
     const body = $("#btfw-userlist-pop .btfw-popbody");
     const ul   = $("#userlist");
     if (!body || !ul) return;
@@ -889,7 +967,12 @@ const scheduleNormalizeChatActions = (() => {
     pop.innerHTML = `
       <div class="btfw-pophead">
         <span>Users</span>
-        <button class="btfw-popclose" aria-label="Close">&times;</button>
+        <div class="btfw-pophead-actions">
+          <button class="btfw-popdock" type="button" aria-label="Dock users list to chat" title="Dock to chat">
+            <i class="fa fa-columns" aria-hidden="true"></i>
+          </button>
+          <button class="btfw-popclose" type="button" aria-label="Close">&times;</button>
+        </div>
       </div>
       <div class="btfw-popbody"></div>
     `;
@@ -905,6 +988,8 @@ const scheduleNormalizeChatActions = (() => {
 
     back.addEventListener("click", close);
     pop.querySelector(".btfw-popclose").addEventListener("click", close);
+    const dockBtn = pop.querySelector(".btfw-popdock");
+    if (dockBtn) dockBtn.addEventListener("click", () => setUserlistDocked(true));
     document.addEventListener("keydown", (ev)=>{ if (ev.key === "Escape") close(); }, true);
 
     function position(){
@@ -926,6 +1011,9 @@ const scheduleNormalizeChatActions = (() => {
   }
 
   function toggleUserlist(){
+    // When docked, the list is always visible beside the chat — the users
+    // button has nothing to toggle. (Undock via the dock's pop-out button.)
+    if (isUserlistDocked()) return;
     ensureUserlistPopover();
     if (document._btfw_userlist_isOpen && document._btfw_userlist_isOpen()){
       document._btfw_userlist_close && document._btfw_userlist_close();
@@ -933,6 +1021,25 @@ const scheduleNormalizeChatActions = (() => {
       document._btfw_userlist_open && document._btfw_userlist_open();
     }
   }
+
+  // Apply the saved dock preference once the chat column exists, and keep the
+  // dock in sync with the responsive layout (it's desktop-only — auto-undock
+  // into the popover on the narrow vertical layout, re-dock on the way back).
+  function initUserlistDock(){
+    if (isUserlistDockedPref() && !isVerticalLayout()) {
+      setUserlistDocked(true, { persist: false });
+    }
+  }
+  document.addEventListener("btfw:layout:orientation", (e) => {
+    const vertical = e && e.detail && e.detail.vertical;
+    if (vertical) {
+      if (isUserlistDocked()) setUserlistDocked(false, { persist: false });
+    } else if (isUserlistDockedPref()) {
+      setUserlistDocked(true, { persist: false });
+    }
+  });
+  document.addEventListener("btfw:layoutReady", () => setTimeout(initUserlistDock, 0));
+  document.addEventListener("btfw:ready", () => setTimeout(initUserlistDock, 0));
 
   /* ---------------- Chat bars & actions ---------------- */
   function ensureBars(){
