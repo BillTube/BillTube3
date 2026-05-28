@@ -319,6 +319,56 @@ BTFW.define("feature:playlist-tools", [], async () => {
     return true;
   }
 
+  /* ---------- Media-type badge per row ----------
+     A tiny source icon (YouTube / Vimeo / Drive / file / …) so each row's
+     origin is obvious at a glance. PERFORMANCE: badges are added lazily via an
+     IntersectionObserver scoped to #queue — only rows actually scrolled into
+     view get one, each is processed once (cached on a data flag), then the row
+     is unobserved. Nothing runs for the hundreds of off-screen items, so this
+     never touches initial load or scroll cost. */
+  function detectMediaType(href){
+    let host = "";
+    try { host = new URL(href || "", location.href).hostname.toLowerCase(); } catch (_) {}
+    if (/(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(host)) return { key:"yt",     icon:"fa-brands fa-youtube",       label:"YouTube" };
+    if (/(^|\.)vimeo\.com$/.test(host))                    return { key:"vimeo",  icon:"fa-brands fa-vimeo",         label:"Vimeo" };
+    if (/(^|\.)twitch\.tv$/.test(host))                    return { key:"twitch", icon:"fa-brands fa-twitch",        label:"Twitch" };
+    if (/(^|\.)dailymotion\.com$|(^|\.)dai\.ly$/.test(host)) return { key:"dm",   icon:"fa-brands fa-dailymotion",   label:"Dailymotion" };
+    if (/(^|\.)soundcloud\.com$/.test(host))               return { key:"sc",     icon:"fa-brands fa-soundcloud",    label:"SoundCloud" };
+    if (/(^|\.)nicovideo\.jp$/.test(host))                 return { key:"nico",   icon:"fa-solid fa-tv",             label:"Niconico" };
+    // The Drive index worker proxies Google Drive files for this channel.
+    if (/drive\.google\.com$/.test(host) || /\.workers\.dev$/.test(host)) return { key:"drive", icon:"fa-brands fa-google-drive", label:"Google Drive" };
+    return { key:"file", icon:"fa-solid fa-film", label:"File" };
+  }
+  function ensureBadge(li){
+    if (!li || li.dataset.btfwBadged) return;
+    li.dataset.btfwBadged = "1";
+    const a = li.querySelector("a.qe_title");
+    if (!a) return;
+    const t = detectMediaType(a.getAttribute("href"));
+    const badge = document.createElement("span");
+    badge.className = "btfw-pl-badge btfw-pl-badge--" + t.key;
+    badge.title = t.label;
+    badge.setAttribute("aria-label", t.label);
+    badge.innerHTML = `<i class="${t.icon}" aria-hidden="true"></i>`;
+    li.insertBefore(badge, li.firstChild);
+  }
+  let badgeObserver = null;
+  function ensureBadgeObserver(){
+    const queue = document.getElementById("queue");
+    if (!queue) return;
+    if (!badgeObserver) {
+      badgeObserver = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (!e.isIntersecting) return;
+          ensureBadge(e.target);
+          badgeObserver.unobserve(e.target); // one-shot per row
+        });
+      }, { root: queue, rootMargin: "320px 0px", threshold: 0 });
+    }
+    // Observe any rows that don't have a badge yet (cheap; IO handles the rest).
+    queue.querySelectorAll(".queue_entry:not([data-btfw-badged])").forEach(li => badgeObserver.observe(li));
+  }
+
   /* ---------- OPTIMIZED: Playlist entry → Poll option helper ---------- */
   function ensureQueuePollButtons() {
     // Only process visible items to avoid adding buttons to hundreds of hidden items
@@ -575,6 +625,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
           updateCount();
           ensureQueuePollButtons(); // Re-add buttons to new visible items
           ensureCopyTitleButtons();
+          ensureBadgeObserver();    // observe any newly-added rows for badges
         }, 100);
       };
 
@@ -666,6 +717,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     // The sortable is created once CyTube populates the queue — retry until it
     // exists, then stop.
     [0, 500, 1500, 3000].forEach(t => setTimeout(tuneSortableScroll, t));
+    ensureBadgeObserver();
 
     // Set up optimized observers instead of the old ones
     setupOptimizedObservers();

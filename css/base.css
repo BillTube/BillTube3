@@ -2261,6 +2261,59 @@ body, #wrap { padding-top: 0 !important; }
     margin: 0 0 6px !important;
 }
 
+/* Media-type badge — small source icon at the left of each row (lazily added
+   by feature:playlist-tools). Tinted chip in the source's brand colour. */
+#queue .queue_entry .btfw-pl-badge {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-right: 9px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1;
+    background: color-mix(in srgb, currentColor 16%, transparent);
+    color: color-mix(in srgb, var(--btfw-color-text) 64%, transparent); /* default (file) */
+}
+#queue .queue_entry .btfw-pl-badge i { line-height: 1; }
+#queue .queue_entry .btfw-pl-badge--yt     { color: #ff4d4d; }
+#queue .queue_entry .btfw-pl-badge--vimeo  { color: #4ec1ec; }
+#queue .queue_entry .btfw-pl-badge--twitch { color: #a970ff; }
+#queue .queue_entry .btfw-pl-badge--dm     { color: #4a8cff; }
+#queue .queue_entry .btfw-pl-badge--sc     { color: #ff8a3d; }
+#queue .queue_entry .btfw-pl-badge--nico   { color: #b9c0cc; }
+#queue .queue_entry .btfw-pl-badge--drive  { color: #5b9bff; }
+
+/* Temporary items (CyTube adds .queue_temp) — warm amber treatment so they
+   read as "won't stick around": tinted row, amber left edge, a TEMP tag and an
+   italic title. */
+#queue .queue_entry.queue_temp {
+    position: relative;
+    background: color-mix(in srgb, #f5a524 9%, transparent) !important;
+    border-left: 3px solid #f5a524 !important;
+    border-bottom-color: color-mix(in srgb, #f5a524 18%, transparent) !important;
+}
+#queue .queue_entry.queue_temp:hover {
+    background: color-mix(in srgb, #f5a524 15%, transparent) !important;
+}
+#queue .queue_entry.queue_temp .qe_title { font-style: italic; }
+#queue .queue_entry.queue_temp .qe_title::before {
+    content: "TEMP";
+    display: inline-block;
+    margin-right: 7px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 9px;
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: .08em;
+    vertical-align: middle;
+    background: color-mix(in srgb, #f5a524 22%, transparent);
+    color: #f7b955;
+}
+
 /* 5. MICRO-ANIMATIONS */
 .btn, a, .dropdown-menu > li > a { transition: all 0.2s ease-in-out !important; }
 .btn:hover { transform: translateY(-2px) !important; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important; }
