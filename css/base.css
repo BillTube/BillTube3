@@ -577,6 +577,10 @@ a:hover {
 
 #btfw-grid.btfw-grid--vertical #videowrap{
   flex: 0 0 auto;
+  /* Let the real aspect-ratio (set dynamically) drive the height instead of
+     the global 300px min-height floor, which over-tall'd the video and added
+     black bars on narrow screens. */
+  min-height: 0;
 }
 
 #btfw-grid.btfw-grid--vertical #videowrap iframe,
@@ -594,7 +598,18 @@ a:hover {
 #btfw-grid.btfw-grid--vertical #chatwrap{
   flex: 1 1 auto;
   min-height: 0;
-  height: auto;
+  height: auto; /* feature-layout.js fitVerticalChat() sets an explicit px
+                   height inline so the composer/bottom bar reaches the
+                   viewport bottom; this is the fallback before JS runs. */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Message buffer expands to fill the chat so the bottom bar (composer +
+   emoji/GIF actions) sits at the viewport bottom in vertical/mobile mode. */
+#btfw-grid.btfw-grid--vertical #messagebuffer{
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* ---------- Content Stack under video ---------- */
