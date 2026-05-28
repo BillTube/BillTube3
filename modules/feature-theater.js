@@ -12,6 +12,13 @@ BTFW.define("feature:theater", [], async () => {
 
   function isOn() { return document.body.classList.contains(BODY_CLASS); }
 
+  // Theater mode and the vertical/mobile layout fight each other (both want to
+  // own the full viewport and the grid template), so theater is desktop-only.
+  function isVerticalLayout() {
+    const grid = document.getElementById("btfw-grid");
+    return grid ? grid.classList.contains("btfw-grid--vertical") : false;
+  }
+
   function apply(on) {
     document.body.classList.toggle(BODY_CLASS, !!on);
     try { localStorage.setItem(STATE_KEY, on ? "1" : "0"); } catch {}
@@ -27,7 +34,11 @@ BTFW.define("feature:theater", [], async () => {
     });
   }
 
-  function toggle() { apply(!isOn()); }
+  function toggle() {
+    // Don't let theater turn ON while in the vertical/mobile layout.
+    if (!isOn() && isVerticalLayout()) return;
+    apply(!isOn());
+  }
 
   function ensureStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -97,6 +108,10 @@ BTFW.define("feature:theater", [], async () => {
         color: var(--btfw-color-accent);
       }
       #btfw-vo-theater > i { line-height: 1; }
+
+      /* Theater is desktop-only — hide the toggle in the vertical/mobile
+         layout (the layout module adds btfw-mobile-stack-enabled on body). */
+      body.btfw-mobile-stack-enabled #btfw-vo-theater { display: none !important; }
     `;
     document.head.appendChild(style);
   }
@@ -153,7 +168,8 @@ BTFW.define("feature:theater", [], async () => {
   }
 
   function restoreFromStorage() {
-    try { if (localStorage.getItem(STATE_KEY) === "1") apply(true); } catch (_) {}
+    // Never restore theater into a vertical/mobile layout.
+    try { if (localStorage.getItem(STATE_KEY) === "1" && !isVerticalLayout()) apply(true); } catch (_) {}
   }
 
   function boot() {
@@ -162,6 +178,11 @@ BTFW.define("feature:theater", [], async () => {
     // Re-attach button when the video overlay rebuilds (e.g. layout reset).
     document.addEventListener("btfw:layoutReady", () => ensureButton(), { passive: true });
     document.addEventListener("btfw:videoOverlayReady", () => ensureButton(), { passive: true });
+    // When the layout flips to vertical/mobile, force theater off so the two
+    // modes never fight over the viewport.
+    document.addEventListener("btfw:layout:orientation", (e) => {
+      if (e && e.detail && e.detail.vertical && isOn()) apply(false);
+    });
     // Retry a few times in case the video overlay is built after us.
     let retries = 0;
     const t = setInterval(() => {
