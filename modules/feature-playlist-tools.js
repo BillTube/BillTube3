@@ -530,7 +530,8 @@ BTFW.define("feature:playlist-tools", [], async () => {
     "showplaylistmanager": "fa-list",
     "clearplaylist":       "fa-trash",
     "shuffleplaylist":     "fa-shuffle",
-    "qlockbtn":            "fa-check",
+    // qlockbtn is handled separately (relocated to the footer + state-aware
+    // lock icon) — see ensureLockButton() below.
     "getplaylist":         "fa-link",
     "showmediaurl":        "fa-link"
   };
@@ -546,6 +547,40 @@ BTFW.define("feature:playlist-tools", [], async () => {
     }
   }
 
+  /* ---------- Playlist lock button: move to the footer + lock icon ----------
+     CyTube's #qlockbtn ships with a Glyphicon check and gets swept into the
+     top toolbar, where its purpose is unclear. Relocate it to the playlist
+     footer (#plmeta, far right) and give it a state-aware lock icon: an open
+     lock when the playlist is unlocked, a closed lock when locked. CyTube
+     toggles the button's title ("Playlist Locked"/"Playlist Unlocked") and
+     btn-danger/btn-success class, so we mirror that into the icon. */
+  function lockIsLocked(btn){
+    const title = (btn.getAttribute("title") || "").toLowerCase();
+    if (title.includes("unlock")) return false;
+    if (title.includes("lock"))   return true;
+    return btn.classList.contains("btn-danger"); // fallback
+  }
+  function syncLockIcon(btn){
+    if (!btn) return;
+    let icon = btn.querySelector("i.fa, .glyphicon");
+    if (!icon) { icon = document.createElement("i"); btn.prepend(icon); }
+    icon.className = "fa " + (lockIsLocked(btn) ? "fa-lock" : "fa-lock-open");
+  }
+  function ensureLockButton(){
+    const btn  = document.getElementById("qlockbtn");
+    const meta = document.getElementById("plmeta");
+    if (!btn || !meta) return;
+    btn.classList.add("btfw-pllock");
+    if (btn.parentElement !== meta) meta.appendChild(btn);
+    syncLockIcon(btn);
+    // Keep the icon in sync when CyTube flips the lock state (it rewrites the
+    // button's title/class, which also re-creates the inner glyph).
+    if (!btn._btfwLockObs) {
+      btn._btfwLockObs = new MutationObserver(() => syncLockIcon(btn));
+      btn._btfwLockObs.observe(btn, { attributes: true, attributeFilter: ["title", "class"], childList: true });
+    }
+  }
+
   /* ---------- Boot & observe ---------- */
   function boot(){
     injectToolbar();
@@ -557,6 +592,10 @@ BTFW.define("feature:playlist-tools", [], async () => {
     ensureAddFromUrlTitleFilter();
     ensureAddTempPreference();
     swapGlyphiconsToFA();
+    ensureLockButton();
+    // feature:stack sweeps the native controls into the toolbar; relocate the
+    // lock button into the footer just after, and retry in case stack runs late.
+    [0, 200, 600, 1200].forEach(t => setTimeout(ensureLockButton, t));
 
     // Set up optimized observers instead of the old ones
     setupOptimizedObservers();
