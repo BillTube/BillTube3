@@ -2191,6 +2191,30 @@ body, #wrap { padding-top: 0 !important; }
     color: color-mix(in srgb, var(--btfw-color-text) 60%, transparent) !important;
 }
 
+/* Drag-and-drop: while a playlist item is being moved, jQuery UI floats it as
+   .ui-sortable-helper. The base rule makes entries transparent, so the dragged
+   bar looked invisible. Give the helper a solid, elevated, accent-outlined look
+   (shrunk slightly so it reads as "picked up" and never clips the queue edge),
+   and show a dashed accent gap where it will drop. */
+#queue .queue_entry.ui-sortable-helper,
+#queue li.ui-sortable-helper {
+    background: var(--btfw-color-panel) !important;
+    border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 50%, transparent) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55),
+                0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 35%, transparent) !important;
+    transform: scale(0.97);
+    opacity: 1 !important;
+    z-index: 9999 !important;
+}
+#queue .ui-sortable-placeholder {
+    visibility: visible !important;
+    background: color-mix(in srgb, var(--btfw-color-accent) 9%, transparent) !important;
+    border: 1px dashed color-mix(in srgb, var(--btfw-color-accent) 45%, transparent) !important;
+    border-radius: 10px !important;
+    margin: 0 0 6px !important;
+}
+
 /* 5. MICRO-ANIMATIONS */
 .btn, a, .dropdown-menu > li > a { transition: all 0.2s ease-in-out !important; }
 .btn:hover { transform: translateY(-2px) !important; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important; }
