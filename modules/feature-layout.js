@@ -481,6 +481,19 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       }, 0);
     });
 
+    // Mobile browsers change the viewport height when the address bar shows/
+    // hides, which doesn't always fire a window 'resize'. visualViewport does,
+    // so refit the vertical chat on those changes to keep it pinned to the
+    // bottom of the visible area.
+    if (window.visualViewport) {
+      const onVV = () => fitVerticalChat();
+      window.visualViewport.addEventListener('resize', onVV);
+      window.visualViewport.addEventListener('scroll', onVV);
+    }
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => { updateResponsiveLayout(); fitVerticalChat(); }, 100);
+    });
+
     // New media may change the player height; refit the chat after it mounts.
     if (window.socket && typeof socket.on === "function") {
       try {
