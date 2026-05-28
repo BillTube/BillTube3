@@ -24,26 +24,76 @@
   width: 100% !important;
   max-width: none !important;
   max-height: none !important;
-  padding: 6px; /* keep your inner padding */
+  min-height: 0 !important;   /* sizing is owned by the popover/dock body */
+  height: auto !important;
+  padding: 0 !important;
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
-  min-height:300px;
   overflow: visible !important;
 }
 #btfw-userlist-pop{
   position: fixed !important;
   right: 12px !important;
   z-index: 6002 !important;
-  width: min(300px, calc(100vw - 24px)) !important;
-  max-height: 55vh !important;
-  background: color-mix(in srgb, var(--btfw-overlay-bg) 96%, transparent 4%);
+  width: min(320px, calc(100vw - 20px)) !important;
+  height: auto !important;
+  max-height: min(62vh, 540px) !important;
+  background: color-mix(in srgb, var(--btfw-overlay-bg) 95%, transparent 5%);
   color: var(--btfw-color-text);
-  border-radius: var(--btfw-radius);
-  border: 1px solid var(--btfw-overlay-border);
-  box-shadow: var(--btfw-overlay-shadow);
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
+  box-shadow: 0 20px 50px color-mix(in srgb, var(--btfw-color-bg) 58%, transparent 42%);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  padding: 0 !important;
+}
+
+/* Header — title left, action buttons (dock + close) right */
+#btfw-userlist-pop .btfw-pophead{
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--btfw-color-accent) 12%, transparent), transparent);
+}
+#btfw-userlist-pop .btfw-pophead > span{
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+#btfw-userlist-pop .btfw-pophead-actions{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* Header action buttons (dock + close) share the same themed chrome */
+#btfw-userlist-pop .btfw-popdock,
+#btfw-userlist-pop .btfw-popclose{
+  position: static;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: inline-grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--btfw-color-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent);
+  color: var(--btfw-color-text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .12s ease, transform .12s ease;
+}
+#btfw-userlist-pop .btfw-popclose{ font-size: 18px; }
+#btfw-userlist-pop .btfw-popdock:hover,
+#btfw-userlist-pop .btfw-popclose:hover{
+  background: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent);
+  transform: translateY(-1px);
 }
 .user-dropdown {
     border: 1px solid #aaaaaa30;
@@ -57,8 +107,10 @@
 }
 #btfw-userlist-pop .btfw-popbody{
   flex: 1 1 auto;
-  overflow-y: auto;
-  padding: 12px 10px 16px;
+  min-height: 200px;     /* a comfortable default so it's never tiny */
+  overflow-y: auto;      /* scrolls when there are 100s of users */
+  overscroll-behavior: contain;
+  padding: 8px;
   margin: 0;
 }
 .btfw-ts-control--radios {
@@ -83,40 +135,53 @@
   line-height: 1.2;
 }
 #btfw-userlist-pop .btfw-popbody #userlist{
-  max-height: 3rem !important;
-  overflow-y: auto !important;
-}
-
-/* The close “X” inside the pop head uses .btfw-popclose */
-#btfw-userlist-pop .btfw-popclose{
-  position: absolute;
-  top: 6px;
-  right: 8px;
+  max-height: none !important;   /* let the popbody own scrolling */
+  height: auto !important;
+  overflow: visible !important;
 }
 /* CLOSED by default (like v3.3). JS toggles the --open class. */
 #userlist.btfw-userlist-overlay:not(.btfw-userlist-overlay--open) {
   display: none !important;
 }
 
-/* Mobile tweaks */
+/* Mobile: near full-width popover anchored above the chat bar */
 @media (max-width: 768px) {
-  #userlist.btfw-userlist-overlay {
-    left: 12px;
-    right: 12px;
-    width: auto;
-    bottom: 160px; /* a bit more space for mobile keyboards */
+  #btfw-userlist-pop{
+    width: calc(100vw - 16px) !important;
+    right: 8px !important;
+    max-height: 60vh !important;
   }
 }
 
-/* Make inner list items tighter and readable on dark bg */
+/* ---- User rows: avatar + rank icon + name, tidy + hoverable ---- */
 #userlist.btfw-userlist-overlay li,
 #userlist.btfw-userlist-overlay .userlist_item {
+  display: flex !important;
+  align-items: center;
+  gap: 9px;
   background: transparent !important;
   border: 0 !important;
-  padding: 6px 8px !important;
+  padding: 6px 10px !important;
+  border-radius: 9px;
   color: inherit !important;
+  cursor: pointer;
+  transition: background .12s ease;
 }
-#userlist.btfw-userlist-overlay img {
+#userlist.btfw-userlist-overlay li:hover,
+#userlist.btfw-userlist-overlay .userlist_item:hover {
+  background: color-mix(in srgb, var(--btfw-color-accent) 14%, transparent) !important;
+}
+
+/* Per-user avatar (mirrors chat avatars: profile image -> initials SVG) */
+#userlist.btfw-userlist-overlay .btfw-ul-avatar{
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex: 0 0 auto;
+  background: color-mix(in srgb, var(--btfw-color-accent) 16%, transparent);
+}
+#userlist.btfw-userlist-overlay img:not(.btfw-ul-avatar) {
   border-radius: 6px;
 }
 
@@ -338,6 +403,14 @@
 }
 
 .btfw-popover[data-btfw-popover-state="closing"] {
+  /* Animate OUT (mirror of the opening transition). Without explicit exit
+     values the element fell back to the base rule's visibility:hidden — which
+     isn't transitioned — so it vanished instantly instead of fading. Keep it
+     visible and drive opacity/transform back to the hidden state so the close
+     animates just like the open. */
+  opacity: 0;
+  transform: translate3d(0, 18px, 0) scale(0.96);
+  visibility: visible;
   pointer-events: none;
 }
 

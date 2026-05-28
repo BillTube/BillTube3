@@ -410,9 +410,89 @@ BTFW.define("feature:chat-avatars", [], async () => {
     return currentMode;
   }
 
+  /* ---------------- Userlist avatars ----------------
+     Same source order as chat (profile image from the item's jQuery data ->
+     cached URL -> colored initials SVG). Always shown (independent of the
+     chat avatar on/off mode) since the userlist is its own UI. Cheap enough
+     for hundreds of users: cached SVGs/URLs + a debounced observer. */
+  const UL_AVATAR_PX = 28;
+
+  function userlistItemName(item){
+    if (!item) return "";
+    const span = item.querySelector(
+      "span.userlist_owner, span.userlist_op, span.userlist_admin, span.userlist_siteadmin, span.userlist_guest, span.userlist_user"
+    ) || Array.from(item.querySelectorAll("span")).find(s => (s.textContent || "").trim());
+    return span ? (span.textContent || "").trim() : "";
+  }
+
+  function userlistItemProfileImg(item){
+    try {
+      if (!window.jQuery) return "";
+      const prof = window.jQuery(item).data && window.jQuery(item).data("profile");
+      return (prof && prof.image) || "";
+    } catch(_) { return ""; }
+  }
+
+  function ensureUserlistAvatar(item){
+    if (!item || item.querySelector(".btfw-ul-avatar")) return;
+    const name = userlistItemName(item);
+    if (!name) return;
+
+    const key = cacheKey(name);
+    const liveUrl = userlistItemProfileImg(item);
+    const cachedUrl = getCachedAvatarUrlByKey(key);
+    let src = liveUrl || cachedUrl;
+    let type = "url";
+    if (src) {
+      setCachedAvatarUrl(name, src);
+    } else {
+      src = initialsDataURL(name, UL_AVATAR_PX);
+      type = "svg";
+    }
+
+    const img = document.createElement("img");
+    img.className = "btfw-ul-avatar";
+    applyAvatarSource(img, src, { key, label: name, size: UL_AVATAR_PX, type });
+    img.loading = "lazy";
+    img.decoding = "async";
+    if (!img._btfwAvatarErrorBound) {
+      img.addEventListener("error", handleAvatarError);
+      img._btfwAvatarErrorBound = true;
+    }
+    item.insertBefore(img, item.firstChild);
+  }
+
+  function reflowUserlist(){
+    const ul = document.getElementById("userlist");
+    if (!ul) return;
+    ul.querySelectorAll(".userlist_item, li").forEach(ensureUserlistAvatar);
+  }
+
+  function watchUserlist(){
+    const ul = document.getElementById("userlist");
+    if (!ul || ul._btfwUlAvMO) return;
+    let t = null;
+    const mo = new MutationObserver(() => {
+      clearTimeout(t);
+      t = setTimeout(reflowUserlist, 60);
+    });
+    mo.observe(ul, { childList: true, subtree: false });
+    ul._btfwUlAvMO = mo;
+    reflowUserlist();
+  }
+
   function boot(){
     applyMode(currentMode);
     reflowAll();
+    watchUserlist();
+    // The userlist may mount after us; retry briefly + on key lifecycle events.
+    let tries = 0;
+    const ulTimer = setInterval(() => {
+      if (document.getElementById("userlist")) { watchUserlist(); }
+      if (document.getElementById("userlist") || tries++ > 20) clearInterval(ulTimer);
+    }, 500);
+    document.addEventListener("btfw:layoutReady", () => watchUserlist());
+    document.addEventListener("btfw:ready", () => watchUserlist());
     const buf = document.getElementById("messagebuffer");
     if (buf && !buf._btfwAvMO){
       const pending = new Set();
@@ -454,6 +534,7 @@ BTFW.define("feature:chat-avatars", [], async () => {
   return {
     name:"feature:chat-avatars",
     reflow: reflowAll,
+    reflowUserlist,
     setMode,
     getMode,
     // ⚡ PERFORMANCE: Expose cache stats for debugging
