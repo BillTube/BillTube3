@@ -152,6 +152,40 @@ footer {
     border: 1px solid rgba(104, 211, 145, 0.25);
     color: #68d391;
 }
+
+/* Playlist lock toggle, relocated into the footer and pushed to the far right.
+   Compact rounded button; reads neutral when unlocked, accent-tinted when
+   locked. (feature:playlist-tools swaps the icon between lock / lock-open.) */
+#plmeta #qlockbtn.btfw-pllock {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 30px;
+    height: 28px;
+    padding: 0 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    background: color-mix(in srgb, var(--btfw-color-text) 8%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--btfw-color-text) 16%, transparent) !important;
+    color: var(--btfw-color-text) !important;
+    box-shadow: none !important;
+    transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+#plmeta #qlockbtn.btfw-pllock:hover {
+    background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent) !important;
+    border-color: color-mix(in srgb, var(--btfw-color-accent) 40%, transparent) !important;
+    color: var(--btfw-color-accent) !important;
+}
+/* Locked (CyTube adds btn-danger) — red tint so the state is obvious. */
+#plmeta #qlockbtn.btfw-pllock.btn-danger {
+    background: color-mix(in srgb, #f43f5e 16%, transparent) !important;
+    border-color: color-mix(in srgb, #f43f5e 38%, transparent) !important;
+    color: #fb7185 !important;
+}
 #wrap {
   padding: 0 0 0px !important;
 }
