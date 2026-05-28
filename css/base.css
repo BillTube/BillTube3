@@ -880,6 +880,75 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 .btfw-pl-matchinfo.is-visible { display: block; }
 .btfw-pl-matchinfo.is-empty { color: #fb7185; }
 
+/* Filter-syntax help popover (toggled by the "?" button in the bar). */
+#btfw-plbar { position: relative; }
+.btfw-pl-help-pop {
+  position: absolute;
+  z-index: 50;
+  top: 52px;
+  right: 14px;
+  width: min(300px, calc(100% - 28px));
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--btfw-color-panel) 96%, black 4%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  color: var(--btfw-color-text);
+}
+.btfw-pl-help-pop[hidden] { display: none; }
+.btfw-pl-help-title { font-weight: 700; margin-bottom: 8px; }
+.btfw-pl-help-pop ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.btfw-pl-help-pop li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.btfw-pl-help-pop li span { color: color-mix(in srgb, var(--btfw-color-text) 62%, transparent); }
+.btfw-pl-help-pop code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--btfw-color-accent) 14%, transparent);
+  color: var(--btfw-color-accent);
+}
+.btfw-pl-help-eg {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--btfw-color-text) 10%, transparent);
+  color: color-mix(in srgb, var(--btfw-color-text) 62%, transparent);
+}
+
+/* Drag-a-link-to-add: highlight the queue while a link is dragged over it. */
+#queue.btfw-pl-dropping {
+  outline: 2px dashed color-mix(in srgb, var(--btfw-color-accent) 60%, transparent);
+  outline-offset: -4px;
+  background: color-mix(in srgb, var(--btfw-color-accent) 6%, transparent);
+  border-radius: 12px;
+}
+
+/* Smart-paste "Add this link?" prompt inside the playlist bar. */
+.btfw-pl-addprompt {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--btfw-color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 28%, transparent);
+  font-size: 12px;
+}
+.btfw-pl-addprompt.is-visible { display: flex; }
+.btfw-pl-addprompt__label { font-weight: 600; white-space: nowrap; }
+.btfw-pl-addprompt__url {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--btfw-color-text) 70%, transparent);
+}
+.btfw-pl-addprompt .button { flex: 0 0 auto; }
+.btfw-pl-addprompt__x { padding: 0 8px !important; }
+
 /* Flatten the JS-generated wrappers so `.btfw-plbar__primary` becomes the
    single column stack and the count chip can be absolutely positioned. */
 .btfw-plbar__layout,
