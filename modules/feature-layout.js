@@ -249,6 +249,17 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   function applyVideoAspect(){
     const wrap = document.getElementById("videowrap");
     if (!wrap) return;
+    // Dynamic aspect is ONLY for vertical/mobile, where the video sits at the
+    // top of a single column and we want it to hug its real ratio. In the
+    // horizontal/desktop layout the video column has its own sizing and
+    // forcing a real-aspect container can be SHORTER than the rendered video
+    // element, clipping its top/bottom under overflow:hidden. So outside
+    // vertical mode we always clear the override and let the CSS default
+    // (16/9) apply, restoring the original desktop behavior.
+    if (!isVertical) {
+      wrap.style.removeProperty("--btfw-video-aspect");
+      return;
+    }
     const v = wrap.querySelector("video");
     if (v && v.videoWidth > 0 && v.videoHeight > 0) {
       wrap.style.setProperty("--btfw-video-aspect", v.videoWidth + " / " + v.videoHeight);
