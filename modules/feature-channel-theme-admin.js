@@ -76,48 +76,73 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   };
 
   const TINT_PRESETS = {
+    // --- Curated: modern, restrained palettes that stay clear of the
+    //     saturated "Themed"/"Editor" hues (blue, purple, magenta, pink,
+    //     green, teal, red, gold). Neutrals + under-used hues. ---
     midnight: {
-      name: "Midnight Pulse",
+      name: "Graphite",
       colors: {
-background: "#0d0d0d",
-      surface: "#090d15",
-      panel: "#191b24",
-      text: "#e8ecfb",
-      chatText: "#d4defd",
-      accent: "#191434"
+        background: "#0c0d0f",
+        surface: "#141519",
+        panel: "#1e2026",
+        text: "#f3f4f7",
+        chatText: "#c4c8d0",
+        accent: "#b9c0cc"
       }
     },
     aurora: {
-      name: "Aurora Bloom",
+      name: "Slate",
       colors: {
-        background: "#02121c",
-        surface: "#071b28",
-        panel: "#10273b",
-        text: "#e9fbff",
-        chatText: "#d0ebff",
-        accent: "#4dd0f6"
+        background: "#0b0e13",
+        surface: "#12161d",
+        panel: "#1c2129",
+        text: "#e9edf4",
+        chatText: "#c0c8d4",
+        accent: "#7f9cc4"
       }
     },
-    sunset: {
-      name: "Sunset Neon",
+    mocha: {
+      name: "Mocha",
       colors: {
-        background: "#13030c",
-        surface: "#1b0813",
-        panel: "#26101d",
-        text: "#ffe7f1",
-        chatText: "#ffcade",
-        accent: "#ff6b9d"
+        background: "#100b08",
+        surface: "#19120d",
+        panel: "#241a13",
+        text: "#f4ece3",
+        chatText: "#d9c8b6",
+        accent: "#cf9b6b"
       }
     },
     ember: {
-      name: "Ember Forge",
+      name: "Amber",
       colors: {
-        background: "#110802",
-        surface: "#190d05",
-        panel: "#24140a",
-        text: "#fbe3c9",
-        chatText: "#f6cea3",
-        accent: "#ff914d"
+        background: "#120c05",
+        surface: "#1c1409",
+        panel: "#281d0d",
+        text: "#fcefdc",
+        chatText: "#f0d3ad",
+        accent: "#f5a524"
+      }
+    },
+    sunset: {
+      name: "Blush",
+      colors: {
+        background: "#130a0e",
+        surface: "#1d1017",
+        panel: "#281721",
+        text: "#fceaef",
+        chatText: "#f1c9d4",
+        accent: "#e891a6"
+      }
+    },
+    citron: {
+      name: "Citron",
+      colors: {
+        background: "#0d0f0a",
+        surface: "#151810",
+        panel: "#20251a",
+        text: "#f2f6e9",
+        chatText: "#d3dbc3",
+        accent: "#bdf263"
       }
     },
     cyberpunk: {
@@ -2134,10 +2159,12 @@ function replaceBlock(original, startMarker, endMarker, block){
               <label for="btfw-theme-tint">Preset tint</label>
               <select id="btfw-theme-tint" data-btfw-bind="tint">
                 <optgroup label="Curated">
-                  <option value="midnight">Midnight Pulse</option>
-                  <option value="aurora">Aurora Bloom</option>
-                  <option value="sunset">Sunset Neon</option>
-                  <option value="ember">Ember Forge</option>
+                  <option value="midnight">Graphite</option>
+                  <option value="aurora">Slate</option>
+                  <option value="mocha">Mocha</option>
+                  <option value="ember">Amber</option>
+                  <option value="sunset">Blush</option>
+                  <option value="citron">Citron</option>
                 </optgroup>
                 <optgroup label="Themed">
                   <option value="cyberpunk">Cyberpunk 2077</option>
