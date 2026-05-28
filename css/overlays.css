@@ -157,7 +157,9 @@
    YouTube's short bottom control strip. */
 #videowrap.btfw-vo-bottombar .btfw-video-overlay .btfw-vo-bar {
   top: auto;
-  bottom: 60px;
+  /* Sits above YouTube's entire bottom cluster (progress bar + time/share/
+     More-videos/logo row). 60px landed on the scrubber; 125px clears it. */
+  bottom: 125px;
 }
 
 #videowrap .btfw-video-overlay .btfw-vo-section {
