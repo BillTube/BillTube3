@@ -31,7 +31,6 @@ BTFW.define("feature:playlist-tools", [], async () => {
           <button id="btfw-pl-scroll" class="button is-small" title="Scroll to current"><i class="fa fa-location-arrow"></i></button>
         </p>
       </div>
-      <span id="btfw-pl-count" class="is-size-7" style="opacity:.75;"></span>
     `;
     // Put it at the top of the header container
     header.insertBefore(bar, header.firstChild);

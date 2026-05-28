@@ -108,9 +108,49 @@ footer {
 #mainpage {
   padding-top: 0px !important;
 }
+/* Playlist footer meta — render the total item count + total runtime as two
+   status-style pills (tinted fill, thin border, a small leading dot in the
+   pill's own color). Items follow the theme accent; runtime uses a steady
+   emerald so the pair reads as two distinct, colored badges. */
 #plmeta {
-    border: 0px solid #aaaaaa!important;
-    padding: 8px;
+    border: 0 !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+}
+#plmeta #plcount,
+#plmeta #pllength {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+#plmeta #plcount::before,
+#plmeta #pllength::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: 0 0 auto;
+}
+/* Items — themed accent */
+#plmeta #plcount {
+    background: color-mix(in srgb, var(--btfw-color-accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent);
+    color: var(--btfw-color-accent);
+}
+/* Runtime — emerald */
+#plmeta #pllength {
+    background: rgba(104, 211, 145, 0.12);
+    border: 1px solid rgba(104, 211, 145, 0.25);
+    color: #68d391;
 }
 #wrap {
   padding: 0 0 0px !important;
