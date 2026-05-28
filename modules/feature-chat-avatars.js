@@ -493,6 +493,8 @@ BTFW.define("feature:chat-avatars", [], async () => {
     }, 500);
     document.addEventListener("btfw:layoutReady", () => watchUserlist());
     document.addEventListener("btfw:ready", () => watchUserlist());
+    // Re-apply avatars after the userlist is moved (e.g. dock <-> popover).
+    document.addEventListener("btfw:userlist:reflow", () => { watchUserlist(); reflowUserlist(); });
     const buf = document.getElementById("messagebuffer");
     if (buf && !buf._btfwAvMO){
       const pending = new Set();

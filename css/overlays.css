@@ -186,6 +186,79 @@
 }
 
 /* ======================================================================
+   DOCKED USERLIST — shares the chat column space instead of hovering.
+   #btfw-chatcol becomes a row: [ #chatwrap (flex) | #btfw-userlist-dock ].
+   Desktop only; the layout module auto-undocks into the popover on the
+   narrow vertical layout.
+   ====================================================================== */
+#btfw-chatcol.btfw-userlist-docked{
+  flex-direction: row !important;
+  align-items: stretch;
+  gap: 8px;
+}
+#btfw-chatcol.btfw-userlist-docked #chatwrap{
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: auto !important;
+}
+#btfw-userlist-dock{
+  flex: 0 0 var(--btfw-userlist-dock-w, 196px);
+  align-self: stretch;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--btfw-overlay-bg) 95%, transparent 5%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+  border-radius: 14px;
+  overflow: hidden;
+}
+#btfw-userlist-dock .btfw-dockhead{
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--btfw-color-accent) 12%, transparent), transparent);
+}
+#btfw-userlist-dock .btfw-dockhead > span{
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+#btfw-userlist-dock .btfw-dock-undock{
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--btfw-color-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent);
+  color: var(--btfw-color-text);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .12s ease, transform .12s ease;
+}
+#btfw-userlist-dock .btfw-dock-undock:hover{
+  background: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent);
+  transform: translateY(-1px);
+}
+#btfw-userlist-dock .btfw-dockbody{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px;
+}
+/* When docked, the userlist inside the dock body fills it naturally */
+#btfw-userlist-dock .btfw-dockbody #userlist.btfw-userlist-overlay{
+  display: block !important;
+}
+
+/* ======================================================================
    VIDEO OVERLAY CHROME (refresh, voteskip) inside #videowrap
    ====================================================================== */
 
