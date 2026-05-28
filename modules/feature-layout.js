@@ -215,6 +215,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     applyColumnTemplate();
     setTop();
     if (!shouldVertical) refreshVideoSizing();
+    attachVideoFitListeners();
     fitVerticalChat();
   }
 
@@ -247,6 +248,20 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   // matching the player exactly. Non-16:9 source content letterboxes inside
   // the player the same way it does on every major platform; that's expected
   // and, crucially, never clips the controls.
+
+  // The HTML5 <video> is the variable-height element above the chat; bind to
+  // its load/play events so the chat re-fits once the player reaches its
+  // final size (boot timing was latching onto a too-early measurement and
+  // sticking at the 320px minimum). Re-attaches per media via the guard flag.
+  function attachVideoFitListeners(){
+    const wrap = document.getElementById("videowrap");
+    const v = wrap ? wrap.querySelector("video") : null;
+    if (v && !v._btfwFitBound) {
+      v._btfwFitBound = true;
+      ["loadedmetadata", "loadeddata", "playing", "resize"].forEach(ev =>
+        v.addEventListener(ev, () => fitVerticalChat()));
+    }
+  }
 
   // In vertical (mobile) mode, stretch the chat so its bottom bar (composer +
   // emoji/GIF actions) reaches the viewport bottom. The module stack sits
@@ -504,15 +519,23 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       setTimeout(() => { updateResponsiveLayout(); fitVerticalChat(); }, 100);
     });
 
-    // New media may change the player height; refit the chat after it mounts.
+    // New media may change the player height; rebind the video listeners and
+    // refit the chat after it mounts.
     if (window.socket && typeof socket.on === "function") {
       try {
         socket.on("changeMedia", () => {
-          setTimeout(() => fitVerticalChat(), 300);
+          setTimeout(() => { attachVideoFitListeners(); fitVerticalChat(); }, 300);
         });
       } catch (_) {}
     }
     document.addEventListener("btfw:layout:orientation", () => fitVerticalChat());
+    // Final boot signal — guarantees one fit after every module has loaded
+    // and the player has had time to settle, even on slow loads.
+    document.addEventListener("btfw:ready", () => {
+      attachVideoFitListeners();
+      fitVerticalChat();
+      setTimeout(fitVerticalChat, 600);
+    });
   }
 
   document.addEventListener("btfw:layout:chatSideChanged", (ev) => {
