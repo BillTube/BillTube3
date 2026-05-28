@@ -1841,22 +1841,21 @@ nav.pagination.is-centered.btfw-gif-pager {
   min-height: 300px; /* Prevent collapse during load */
 }
 
-/* ---------- Responsive: stack chat under content on narrow screens ---------- */
-@media (max-width: 1100px){
-  #btfw-grid{
-    grid-template-columns: 1fr;
-    grid-row-gap: var(--btfw-gap);
-    min-height: auto; /* Reset min-height on mobile */
-  }
-  #btfw-vsplit{ display:none; }
-  #btfw-chatcol{
-    position: relative;
-    top: auto; 
-    height: auto; 
-    min-height: 420px;
-    max-height: none; /* Remove height constraints on mobile */
-  }
-}
+/* ---------- Responsive: stack chat under content on narrow screens ----------
+   The stacked/mobile layout is driven entirely by the JS-applied
+   `.btfw-grid--vertical` class (see feature-layout.js computeThreshold ->
+   ~900-940px, and the .btfw-grid--vertical rules above). That class wins by
+   specificity and fires at the correct dynamic width.
+
+   A static `@media (max-width: 1100px)` block used to live here doing the same
+   stacking, but at a fixed 1100px breakpoint. Because the JS only goes vertical
+   at <940px, widths in the 940-1100px band hit a dead zone: the media query
+   forced `#btfw-chatcol{position:relative; top:auto}` while JS kept the
+   horizontal multi-column layout and set an inline `top: calc(64px + gap)`.
+   position:relative + that inline top shoved the chat column down ~69px,
+   leaving a large empty gap above the chat. Removed — the vertical class is the
+   single source of truth, and #btfw-grid is opacity:0 until JS adds
+   `.btfw-loaded`, so there's no pre-JS flash to guard against. */
 
 /* Utility */
 .btfw-hide{ display:none !important; }
