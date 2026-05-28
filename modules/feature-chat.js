@@ -1035,12 +1035,18 @@ const scheduleNormalizeChatActions = (() => {
   }
 
   function toggleUserlist(){
-    // In dock mode the users button shows/hides the docked panel (the dock's
+    // Already docked? The users button shows/hides the docked panel (the dock's
     // own close button hides it without leaving dock mode; pop-out reverts to
     // the floating popover).
     if (isUserlistDocked()) {
       if (isDockVisible()) hideUserlistDock();
       else showUserlistDock();
+      return;
+    }
+    // Not docked: open in the remembered MODE. Docked mode is desktop-only, so
+    // fall back to the popover in the vertical/mobile layout.
+    if (isUserlistDockedPref() && !isVerticalLayout()) {
+      setUserlistDocked(true, { persist: false });
       return;
     }
     ensureUserlistPopover();
@@ -1051,24 +1057,16 @@ const scheduleNormalizeChatActions = (() => {
     }
   }
 
-  // Apply the saved dock preference once the chat column exists, and keep the
-  // dock in sync with the responsive layout (it's desktop-only — auto-undock
-  // into the popover on the narrow vertical layout, re-dock on the way back).
-  function initUserlistDock(){
-    if (isUserlistDockedPref() && !isVerticalLayout()) {
-      setUserlistDocked(true, { persist: false });
-    }
-  }
+  // The userlist always starts CLOSED on page load — we only remember the MODE
+  // (popover vs docked) so the Users button opens it in the right form. The
+  // dock is desktop-only, so if the layout flips to vertical while docked we
+  // relocate the list into the (closed) popover; we never auto-open it.
   document.addEventListener("btfw:layout:orientation", (e) => {
     const vertical = e && e.detail && e.detail.vertical;
-    if (vertical) {
-      if (isUserlistDocked()) setUserlistDocked(false, { persist: false });
-    } else if (isUserlistDockedPref()) {
-      setUserlistDocked(true, { persist: false });
+    if (vertical && isUserlistDocked()) {
+      setUserlistDocked(false, { persist: false });
     }
   });
-  document.addEventListener("btfw:layoutReady", () => setTimeout(initUserlistDock, 0));
-  document.addEventListener("btfw:ready", () => setTimeout(initUserlistDock, 0));
 
   /* ---------------- Chat bars & actions ---------------- */
   function ensureBars(){
