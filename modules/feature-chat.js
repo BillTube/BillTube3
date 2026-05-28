@@ -159,10 +159,28 @@ document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopi
     const g = document.getElementById("btfw-grid");
     return g ? g.classList.contains("btfw-grid--vertical") : false;
   }
-  // True when the userlist is physically living in the dock right now.
+  // Dock MODE is active when the chat column is in the docked layout. The dock
+  // panel itself can still be collapsed/hidden within that mode.
   function isUserlistDocked(){
-    return !!document.getElementById("btfw-userlist-dock") &&
-           !!document.querySelector("#btfw-chatcol.btfw-userlist-docked");
+    return !!document.querySelector("#btfw-chatcol.btfw-userlist-docked");
+  }
+  function isDockVisible(){
+    const d = document.getElementById("btfw-userlist-dock");
+    return !!d && d.style.display !== "none";
+  }
+  function showUserlistDock(){
+    const d = document.getElementById("btfw-userlist-dock");
+    if (d) d.style.display = "";
+  }
+  function hideUserlistDock(){
+    const d = document.getElementById("btfw-userlist-dock");
+    if (d) d.style.display = "none";
+  }
+  // "Pop out": leave dock mode and show the list as a floating popover instead
+  // of hiding it (the old undock button closed the list, which felt wrong).
+  function popUserlistOutOfDock(){
+    setUserlistDocked(false);
+    if (document._btfw_userlist_open) document._btfw_userlist_open();
   }
 
   function ensureUserlistDock(){
@@ -175,15 +193,20 @@ document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopi
     dock.innerHTML = `
       <div class="btfw-dockhead">
         <span>Users</span>
-        <button class="btfw-dock-undock" type="button" aria-label="Undock users list" title="Pop out">
-          <i class="fa fa-clone" aria-hidden="true"></i>
-        </button>
+        <div class="btfw-dockhead-actions">
+          <button class="btfw-dock-popout" type="button" aria-label="Pop out to floating list" title="Pop out to floating">
+            <i class="fa fa-window-restore" aria-hidden="true"></i>
+          </button>
+          <button class="btfw-dock-close" type="button" aria-label="Close users list" title="Close">&times;</button>
+        </div>
       </div>
       <div class="btfw-dockbody"></div>
     `;
     col.appendChild(dock);
-    const ub = dock.querySelector(".btfw-dock-undock");
-    if (ub) ub.addEventListener("click", () => setUserlistDocked(false));
+    const po = dock.querySelector(".btfw-dock-popout");
+    if (po) po.addEventListener("click", popUserlistOutOfDock);
+    const cl = dock.querySelector(".btfw-dock-close");
+    if (cl) cl.addEventListener("click", hideUserlistDock);
     return dock;
   }
 
@@ -210,6 +233,7 @@ document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopi
       dock.querySelector(".btfw-dockbody").appendChild(ul);
       col.classList.add("btfw-userlist-docked");
       document.body.classList.add("btfw-userlist-is-docked");
+      showUserlistDock();
     } else {
       if (persist) setUserlistDockedPref(false);
       ensureUserlistPopover();
@@ -1011,9 +1035,14 @@ const scheduleNormalizeChatActions = (() => {
   }
 
   function toggleUserlist(){
-    // When docked, the list is always visible beside the chat — the users
-    // button has nothing to toggle. (Undock via the dock's pop-out button.)
-    if (isUserlistDocked()) return;
+    // In dock mode the users button shows/hides the docked panel (the dock's
+    // own close button hides it without leaving dock mode; pop-out reverts to
+    // the floating popover).
+    if (isUserlistDocked()) {
+      if (isDockVisible()) hideUserlistDock();
+      else showUserlistDock();
+      return;
+    }
     ensureUserlistPopover();
     if (document._btfw_userlist_isOpen && document._btfw_userlist_isOpen()){
       document._btfw_userlist_close && document._btfw_userlist_close();
