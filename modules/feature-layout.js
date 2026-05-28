@@ -473,6 +473,16 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       resizeObserver.observe(navbar);
     }
 
+    // Refit the vertical chat whenever the video area's size settles or
+    // changes (boot, media change, desktop<->mobile transition). Without this
+    // the chat fill could latch onto an early, pre-settle measurement and get
+    // stuck at the 320px minimum instead of filling the viewport.
+    const vwatch = document.getElementById("videowrap");
+    if (vwatch && typeof ResizeObserver !== "undefined") {
+      const vo = new ResizeObserver(() => fitVerticalChat());
+      vo.observe(vwatch);
+    }
+
     // Watch for window resize
     window.addEventListener('resize', () => {
       setTimeout(() => {
