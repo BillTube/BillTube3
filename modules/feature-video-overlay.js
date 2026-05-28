@@ -151,7 +151,9 @@ BTFW.define("feature:videoOverlay", [], async () => {
         z-index: 1000;
         opacity: 0;
         transition: opacity 0.3s ease;
-        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.15) 12%, rgba(0, 0, 0, 0) 32%, rgba(0, 0, 0, 0) 55%, transparent 75%);
+        /* Gradient flipped to fade UP from the bottom — provides contrast
+           for the bottom-anchored bar without darkening YouTube's top UI. */
+        background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 8%, rgba(0,0,0,0.15) 18%, rgba(0,0,0,0) 32%, transparent 100%);
       }
 
       #btfw-video-overlay.btfw-vo-visible {
@@ -159,7 +161,7 @@ BTFW.define("feature:videoOverlay", [], async () => {
       }
 
       #btfw-video-overlay .btfw-vo-bar{
-        position:absolute; right:12px; top:12px; left:12px; display:flex; gap:8px; pointer-events:auto;
+        position:absolute; right:12px; bottom:60px; left:12px; display:flex; align-items:center; gap:8px; pointer-events:none;
         background:transparent;
       }
 
@@ -188,9 +190,9 @@ BTFW.define("feature:videoOverlay", [], async () => {
         background:rgba(0, 0, 0, 0.42);
         color:#fff;
         cursor:pointer;
+        pointer-events:auto;
         font:600 14px/1.05 "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
         letter-spacing: 0.01em;
-        backdrop-filter: blur(12px) saturate(120%);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         text-decoration:none;
