@@ -182,7 +182,7 @@ BTFW.define("feature:videoOverlay", [], async () => {
       }
 
       #videowrap.btfw-vo-bottombar #btfw-video-overlay .btfw-vo-bar{
-        top:auto; bottom:60px;
+        top:auto; bottom:125px;
       }
 
       #btfw-video-overlay .btfw-vo-section {
