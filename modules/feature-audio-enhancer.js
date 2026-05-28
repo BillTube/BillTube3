@@ -830,6 +830,22 @@ BTFW.define("feature:audioEnhancer", [], async () => {
     });
   }
 
+  // Web Audio can only attach to a real <video> element. CyTube media types
+  // that load via iframe (YouTube, Vimeo, Dailymotion, Twitch, etc.) can't
+  // be processed — the boost/normalize buttons are no-ops there, so we hide
+  // them. See CyTube's player.js for the full type list; HTML5 ones are:
+  // fi=raw file, cm=custom HTML5, gd=Google Drive raw, hl=HLS.
+  const HTML5_MEDIA_TYPES = new Set(["fi", "cm", "gd", "hl"]);
+  function isHtml5Media() {
+    const t = window.PLAYER && window.PLAYER.mediaType;
+    return t ? HTML5_MEDIA_TYPES.has(t) : false;
+  }
+  function applyMediaTypeVisibility() {
+    const show = isHtml5Media();
+    if (state.boostButton) state.boostButton.style.display = show ? "" : "none";
+    if (state.normButton)  state.normButton.style.display  = show ? "" : "none";
+  }
+
   function addButtonsToOverlay() {
     if (!state.enabled) return false;
     const voLeft = document.querySelector("#btfw-vo-left");
@@ -849,6 +865,7 @@ BTFW.define("feature:audioEnhancer", [], async () => {
 
     voLeft.appendChild(state.boostButton);
     voLeft.appendChild(state.normButton);
+    applyMediaTypeVisibility();
     return true;
   }
 
@@ -893,12 +910,17 @@ BTFW.define("feature:audioEnhancer", [], async () => {
 
   function handleMediaChange() {
     if (!state.enabled) return;
+    // Toggle button visibility based on the new media type immediately —
+    // even before the player re-init completes — so the buttons don't
+    // briefly flash on YouTube/iframe sources.
+    applyMediaTypeVisibility();
     setTimeout(() => {
       if (!state.enabled) return;
       sharedAudio.cleanup();
       sharedAudio.isProxied = false;
       updateButtonState(state.boostButton, false, { bg: "", border: "", color: "" });
       updateButtonState(state.normButton, false, { bg: "", border: "", color: "" });
+      applyMediaTypeVisibility();
       initializePlayer();
 
       if (state.shouldBoostAfterMediaChange) {

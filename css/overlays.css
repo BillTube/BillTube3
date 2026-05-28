@@ -136,12 +136,16 @@
 }
 
 #videowrap .btfw-video-overlay .btfw-vo-bar {
+  /* Bar sits at the BOTTOM of the video, above the native player's bottom
+     controls (YouTube ~40px tall; Video.js themed control bar 12–28px from
+     bottom). Top-anchored placement collided with YouTube's new top bar
+     (volume, settings) and made those buttons unreachable. */
   position: absolute;
-  top: 10px;
-  left: 10px;
-  right: 10px;
+  bottom: 60px;
+  left: 12px;
+  right: 12px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   pointer-events: none;
   gap: 10px;
@@ -177,6 +181,7 @@
   background: rgba(0, 0, 0, 0.42);
   color: #fff;
   cursor: pointer;
+  pointer-events: auto;
   font: 600 14px/1.05 "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   letter-spacing: 0.01em;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
