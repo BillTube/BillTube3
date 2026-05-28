@@ -1512,6 +1512,48 @@ const scheduleNormalizeChatActions = (() => {
     });
   }
 
+  /* ---------------- Group hover (consecutive same-user messages lift as one) ----------------
+     CSS can't select backwards to a run's head, so we tag every row of the
+     hovered group with .btfw-group-hover and let chat.css round the outer
+     corners + drop the shadow only on the top/bottom edges. */
+  function chatGroupRows(row){
+    // Walk back to the group head (the .btfw-new-user-msg), then forward
+    // through its continuation rows.
+    let head = row;
+    while (head && head.previousElementSibling &&
+           head.classList && head.classList.contains("btfw-continuation-msg")) {
+      head = head.previousElementSibling;
+    }
+    const rows = [head];
+    let n = head ? head.nextElementSibling : null;
+    while (n && n.classList && n.classList.contains("btfw-continuation-msg")) {
+      rows.push(n);
+      n = n.nextElementSibling;
+    }
+    return rows;
+  }
+
+  function wireGroupHover(){
+    const buf = document.getElementById("messagebuffer");
+    if (!buf || buf._btfwGroupHoverBound) return;
+    buf._btfwGroupHoverBound = true;
+    let current = [];
+    const clear = () => {
+      if (!current.length) return;
+      current.forEach(el => el.classList.remove("btfw-group-hover"));
+      current = [];
+    };
+    buf.addEventListener("mouseover", (e) => {
+      const row = e.target.closest && e.target.closest("#messagebuffer > div");
+      if (!row) { clear(); return; }
+      if (current.indexOf(row) !== -1) return; // still within the same group
+      clear();
+      current = chatGroupRows(row);
+      current.forEach(el => el && el.classList.add("btfw-group-hover"));
+    });
+    buf.addEventListener("mouseleave", clear);
+  }
+
   /* ---------------- Boot ---------------- */
   function boot(){
     refreshChatDom();
@@ -1523,6 +1565,7 @@ const scheduleNormalizeChatActions = (() => {
     scheduleMarkChatMessageGroups();
     wireDelegatedClicks();
     wireMentionClicks();
+    wireGroupHover();
     watchForStrayButtons();
   }
 

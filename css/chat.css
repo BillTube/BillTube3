@@ -96,8 +96,48 @@
   max-width: 100%;
 }
 
-#messagebuffer > div:hover {
-  background: rgba(255, 255, 255, 0.03);
+/* Chat rows lift on hover — a subtle card raise with a soft shadow (adapted
+   from a WhatsApp-style hover to our dark theme). When several messages come
+   from the same user in a row, the whole run lifts as ONE rounded blob rather
+   than a stack of separate cards: feature:chat tags every row of the hovered
+   group with .btfw-group-hover, and the rules below round only the blob's
+   outer corners and drop the shadow only on its top/bottom edges.
+   transform animates on the GPU; the shadow paints once per hover, not per
+   frame, so this stays cheap even with hardware acceleration off. */
+#messagebuffer > div {
+  border-radius: 10px;
+  transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+/* Flatten the inner seams so a same-user run reads as a single shell. */
+.btfw-continuation-msg {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+#messagebuffer > div:has(+ .btfw-continuation-msg) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* The whole hovered group lifts + tints together. */
+#messagebuffer > div.btfw-group-hover {
+  transform: translateY(-2px);
+  z-index: 1;
+}
+#messagebuffer > div.btfw-group-hover:not(.nick-highlight) {
+  background: color-mix(in srgb, var(--btfw-color-accent) 9%, transparent);
+}
+/* Rows where you're mentioned keep their distinct highlight (a touch brighter
+   on hover) so an @-mention still stands out within the blob. */
+#messagebuffer > div.btfw-group-hover.nick-highlight {
+  background: color-mix(in srgb, var(--btfw-theme-surface, #11141d) 78%, var(--btfw-color-accent) 22%);
+}
+/* Shadow only on the blob's outer edges: a faint top glow on the first row,
+   the main drop shadow on the last — so the run reads as one lifted card. */
+#messagebuffer > div.btfw-group-hover.btfw-new-user-msg {
+  box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.14);
+}
+#messagebuffer > div.btfw-group-hover:not(:has(+ .btfw-continuation-msg)) {
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
 }
 
 #messagebuffer .btfw-chat-avatar {
