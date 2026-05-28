@@ -215,16 +215,18 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     applyColumnTemplate();
     setTop();
     if (!shouldVertical) refreshVideoSizing();
+    watchVideoAspect();
+    fitVerticalChat();
   }
-  
+
   function setTop(){
     const header = document.querySelector(".navbar, #nav-collapsible, #navbar, .navbar-fixed-top");
     const h = header ? header.offsetHeight : 48;
     const newTop = h + "px";
-    
+
     // Update CSS custom property
     document.documentElement.style.setProperty("--btfw-top", newTop);
-    
+
     // Force layout recalculation for sticky elements
     const chatcol = document.getElementById("btfw-chatcol");
     if (chatcol) {
@@ -236,6 +238,56 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
         chatcol.style.height = `calc(100vh - ${newTop} - var(--btfw-gap) * 2)`;
       }
     }
+  }
+
+  // Set --btfw-video-aspect to the playing media's true ratio so the wrap
+  // hugs the video with no excess letterboxing. HTML5 <video> exposes its
+  // intrinsic size via videoWidth/videoHeight; iframe/YouTube can't be read
+  // cross-origin, so we clear the override and let the CSS 16/9 default apply
+  // (YouTube embeds are 16/9).
+  let _aspectVideoEl = null;
+  function applyVideoAspect(){
+    const wrap = document.getElementById("videowrap");
+    if (!wrap) return;
+    const v = wrap.querySelector("video");
+    if (v && v.videoWidth > 0 && v.videoHeight > 0) {
+      wrap.style.setProperty("--btfw-video-aspect", v.videoWidth + " / " + v.videoHeight);
+    } else {
+      wrap.style.removeProperty("--btfw-video-aspect"); // -> CSS default 16/9
+    }
+  }
+
+  // (Re)attach a loadedmetadata listener to the current <video> so the aspect
+  // updates the moment the browser knows the real dimensions.
+  function watchVideoAspect(){
+    const wrap = document.getElementById("videowrap");
+    const v = wrap ? wrap.querySelector("video") : null;
+    if (v && v !== _aspectVideoEl) {
+      _aspectVideoEl = v;
+      const onMeta = () => { applyVideoAspect(); fitVerticalChat(); };
+      v.addEventListener("loadedmetadata", onMeta);
+      v.addEventListener("resize", onMeta);
+    }
+    applyVideoAspect();
+  }
+
+  // In vertical (mobile) mode, stretch the chat so its bottom bar (composer +
+  // emoji/GIF actions) reaches the viewport bottom. The module stack sits
+  // below the chat inside #btfw-chatcol, so it remains reachable by scrolling.
+  function fitVerticalChat(){
+    const chatwrap = document.getElementById("chatwrap");
+    if (!chatwrap) return;
+    if (!isVertical) {
+      chatwrap.style.removeProperty("height");
+      return;
+    }
+    // rAF so we measure after any aspect-driven video reflow has committed.
+    requestAnimationFrame(() => {
+      if (!isVertical) { chatwrap.style.removeProperty("height"); return; }
+      const top = chatwrap.getBoundingClientRect().top;
+      const avail = window.innerHeight - top - 8;
+      chatwrap.style.height = Math.max(Math.round(avail), 320) + "px";
+    });
   }
 
   function makeResizable() {
@@ -451,6 +503,18 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
         updateResponsiveLayout();
       }, 0);
     });
+
+    // New media => new <video> element with a different intrinsic aspect.
+    // Re-attach the aspect watcher and refit the chat after it mounts.
+    if (window.socket && typeof socket.on === "function") {
+      try {
+        socket.on("changeMedia", () => {
+          _aspectVideoEl = null;
+          setTimeout(() => { watchVideoAspect(); fitVerticalChat(); }, 300);
+        });
+      } catch (_) {}
+    }
+    document.addEventListener("btfw:layout:orientation", () => fitVerticalChat());
   }
 
   document.addEventListener("btfw:layout:chatSideChanged", (ev) => {

@@ -86,10 +86,11 @@ body.btfw-mobile-nav-open{
     font-size: 15px;
   }
 
-  /* Give the video breathing room + a slightly wider aspect on phones */
+  /* Give the video breathing room. The aspect ratio is set dynamically by
+     feature-layout.js (applyVideoAspect) from the real video dimensions —
+     don't hardcode it here or 16:9 / 4:3 sources get letterboxed. */
   #btfw-grid.btfw-grid--vertical #videowrap{
     margin-top: clamp(5px, 5vw, 5px);
-    --btfw-video-aspect: 16 / 8.5;
   }
 
   /* Compact the playlist toolbar columns */
