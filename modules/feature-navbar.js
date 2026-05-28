@@ -7,6 +7,20 @@ BTFW.define("feature:navbar", [], async () => {
   let mobileNavHandlersBound = false;
   let lastMobileDispatch = { open: null, mobile: null };
 
+  // The navbar's burger/mobile state must track the LAYOUT's vertical state,
+  // not a separate width breakpoint. feature-layout.js flips to the stacked
+  // vertical layout at a dynamic ~900-940px threshold and marks it with
+  // `#btfw-grid.btfw-grid--vertical`. Using a fixed 768px here left an
+  // in-between band (768-940px) where the layout was vertical but the full
+  // desktop header still showed instead of collapsing into the burger.
+  // Defer to the grid class so the two switch together; fall back to the
+  // width breakpoint only if the grid isn't present yet.
+  function isLayoutVertical(){
+    const grid = document.getElementById("btfw-grid");
+    if (grid) return grid.classList.contains("btfw-grid--vertical");
+    return window.innerWidth <= MOBILE_BREAKPOINT;
+  }
+
   // ---------- Helpers ----------
   function getUserName(){
     try { return (window.CLIENT && CLIENT.name) ? CLIENT.name : ""; }
@@ -262,7 +276,7 @@ BTFW.define("feature:navbar", [], async () => {
     const host = document.getElementById("btfw-navhost");
     if (!host) return;
     const wasMobile = host.classList.contains("btfw-navhost--mobile");
-    const shouldEnable = window.innerWidth <= MOBILE_BREAKPOINT;
+    const shouldEnable = isLayoutVertical();
     host.classList.toggle("btfw-navhost--mobile", shouldEnable);
     if (shouldEnable) {
       if (!mobileNavActive || !wasMobile) {
@@ -285,8 +299,11 @@ BTFW.define("feature:navbar", [], async () => {
     if (mobileNavHandlersBound) return;
     mobileNavHandlersBound = true;
     window.addEventListener("resize", () => updateMobileNavState());
+    // Authoritative signal: the layout module fires this when it flips
+    // vertical/horizontal, so the navbar collapses/expands in lockstep.
+    document.addEventListener("btfw:layout:orientation", () => updateMobileNavState());
     host.addEventListener("click", (ev) => {
-      if (window.innerWidth > MOBILE_BREAKPOINT) return;
+      if (!isLayoutVertical()) return;
       const target = ev.target.closest?.('#btfw-navhost a, #btfw-navhost button');
       if (!target) return;
       setMobileNavOpen(false);
