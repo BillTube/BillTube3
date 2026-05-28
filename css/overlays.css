@@ -228,7 +228,13 @@
   font-weight: 700;
   letter-spacing: .02em;
 }
-#btfw-userlist-dock .btfw-dock-undock{
+#btfw-userlist-dock .btfw-dockhead-actions{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#btfw-userlist-dock .btfw-dock-popout,
+#btfw-userlist-dock .btfw-dock-close{
   width: 28px;
   height: 28px;
   border-radius: 8px;
@@ -242,7 +248,11 @@
   cursor: pointer;
   transition: background .12s ease, transform .12s ease;
 }
-#btfw-userlist-dock .btfw-dock-undock:hover{
+#btfw-userlist-dock .btfw-dock-close{
+  font-size: 18px;
+}
+#btfw-userlist-dock .btfw-dock-popout:hover,
+#btfw-userlist-dock .btfw-dock-close:hover{
   background: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent);
   transform: translateY(-1px);
 }
