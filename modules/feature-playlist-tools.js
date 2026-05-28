@@ -25,6 +25,9 @@ BTFW.define("feature:playlist-tools", [], async () => {
           <input id="btfw-pl-filter" class="input is-small" type="text" placeholder="Filter playlist…  (press / )">
         </p>
         <p class="control">
+          <button id="btfw-pl-favtoggle" class="button is-small" type="button" title="Show favorites only" aria-pressed="false"><i class="fa fa-star"></i></button>
+        </p>
+        <p class="control">
           <button id="btfw-pl-help" class="button is-small" type="button" title="Filter tips" aria-expanded="false"><i class="fa fa-circle-question"></i></button>
         </p>
         <p class="control">
@@ -54,6 +57,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     wireScrollToCurrent();
     bindFilterKeys();
     wireFilterHelp();
+    wireFavToggle();
     updateCount(); // initial count
   }
 
@@ -295,22 +299,25 @@ BTFW.define("feature:playlist-tools", [], async () => {
     if (!queue) return;
     const term = (q || "").trim();
     const parsed = parseQuery(q);
+    const active = !!term || favoritesOnly;
     let visible = 0;
     const entries = $$("#queue > .queue_entry");
     entries.forEach(li => {
-      const ok = term ? rowMatches(li, parsed) : true;
+      let ok = term ? rowMatches(li, parsed) : true;
+      if (ok && favoritesOnly) ok = isFavRow(li);
       li.style.display = ok ? "" : "none";
       if (ok) visible++;
     });
     updateCount(visible);
-    updateMatchInfo(term, visible, entries.length);
+    updateMatchInfo(active, visible, entries.length);
   }
 
-  /* Show "X of Y" (or "No matches") next to the filter while it's active. */
-  function updateMatchInfo(term, matches, total){
+  /* Show "X of Y" (or "No matches") next to the filter while a filter or the
+     favorites-only toggle is active. */
+  function updateMatchInfo(active, matches, total){
     const el = $("#btfw-pl-matchinfo");
     if (!el) return;
-    if (!term) {
+    if (!active) {
       el.textContent = "";
       el.classList.remove("is-visible", "is-empty");
       return;
@@ -574,13 +581,22 @@ BTFW.define("feature:playlist-tools", [], async () => {
     li.dataset.btfwBadged = "1";
     const a = li.querySelector("a.qe_title");
     if (!a) return;
-    const t = detectMediaType(a.getAttribute("href"));
+    const href = a.getAttribute("href");
+    const t = detectMediaType(href);
     const badge = document.createElement("span");
     badge.className = "btfw-pl-badge btfw-pl-badge--" + t.key;
     badge.title = t.label;
     badge.setAttribute("aria-label", t.label);
     badge.innerHTML = `<i class="${t.icon}" aria-hidden="true"></i>`;
     li.insertBefore(badge, li.firstChild);
+    // Favorite star (leftmost) — reflects the saved set.
+    const star = document.createElement("span");
+    star.className = "btfw-pl-star" + (favorites.has(favKeyOf(href, a.textContent)) ? " is-fav" : "");
+    star.title = "Favorite";
+    star.setAttribute("role", "button");
+    star.setAttribute("aria-label", "Toggle favorite");
+    star.innerHTML = `<i class="fa fa-star" aria-hidden="true"></i>`;
+    li.insertBefore(star, li.firstChild);
   }
   let badgeObserver = null;
   function ensureBadgeObserver(){
@@ -597,6 +613,109 @@ BTFW.define("feature:playlist-tools", [], async () => {
     }
     // Observe any rows that don't have a badge yet (cheap; IO handles the rest).
     queue.querySelectorAll(".queue_entry:not([data-btfw-badged])").forEach(li => badgeObserver.observe(li));
+  }
+
+  /* ---------- Favorites ----------
+     Star items and filter to favorites only. Keyed by a STABLE media identity
+     (video id / Drive file id / host+path) rather than the row uid or signed
+     URL, so favorites survive reloads and re-signed worker links. */
+  const FAV_KEY = "btfw:pl:favorites";
+  let favoritesOnly = false;
+  let favorites = (function(){ try { return new Set(JSON.parse(localStorage.getItem(FAV_KEY) || "[]")); } catch(_) { return new Set(); } })();
+  function saveFavorites(){ try { localStorage.setItem(FAV_KEY, JSON.stringify([...favorites])); } catch(_){} }
+  function favKeyOf(href, title){
+    try {
+      const u = new URL(href || "", location.href);
+      const host = u.hostname.toLowerCase();
+      if (/(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(host)) return "yt:" + (u.searchParams.get("v") || u.pathname.split("/").filter(Boolean).pop() || "");
+      if (/\.workers\.dev$/.test(host)) { const f = u.searchParams.get("file"); if (f) return "wk:" + f; }
+      return host + u.pathname; // ignore query (carries expiry/mac for signed links)
+    } catch(_) {}
+    return "t:" + String(title || "").trim().toLowerCase();
+  }
+  function favKeyOfRow(li){ const a = li.querySelector("a.qe_title"); return a ? favKeyOf(a.getAttribute("href"), a.textContent) : null; }
+  function isFavRow(li){ const k = favKeyOfRow(li); return k ? favorites.has(k) : false; }
+  function curFilterValue(){ const i = $("#btfw-pl-filter"); return (i && i.value) || ""; }
+  function wireFavStars(){
+    const queue = $("#queue");
+    if (!queue || queue._btfwFavDelegated) return;
+    queue._btfwFavDelegated = true;
+    queue.addEventListener("click", (e) => {
+      const star = e.target.closest && e.target.closest(".btfw-pl-star");
+      if (!star) return;
+      e.preventDefault(); e.stopPropagation();
+      const li = star.closest(".queue_entry");
+      const k = li && favKeyOfRow(li);
+      if (!k) return;
+      if (favorites.has(k)) { favorites.delete(k); star.classList.remove("is-fav"); }
+      else { favorites.add(k); star.classList.add("is-fav"); }
+      saveFavorites();
+      if (favoritesOnly) applyFilter(curFilterValue()); // drop it from view if unstarred
+    }, true);
+  }
+  function wireFavToggle(){
+    const btn = $("#btfw-pl-favtoggle");
+    if (!btn || btn._btfwWired) return;
+    btn._btfwWired = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      favoritesOnly = !favoritesOnly;
+      btn.classList.toggle("is-active", favoritesOnly);
+      btn.setAttribute("aria-pressed", favoritesOnly ? "true" : "false");
+      applyFilter(curFilterValue());
+    });
+  }
+
+  /* ---------- "Starts in ~Xh Ym" hover tooltip ----------
+     A single shared, body-level tooltip computed on hover only (nothing added
+     per row). Sums durations from the currently-playing item up to the hovered
+     one (subtracting elapsed time of the current item when the player exposes
+     it). Hover is user-paced, so the O(n) walk is cheap and never on a frame. */
+  function fmtDur(sec){
+    sec = Math.max(0, Math.round(sec));
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+    if (h) return `${h}h ${m}m`;
+    if (m) return `${m}m`;
+    return `${sec}s`;
+  }
+  function startsInFor(li){
+    const queue = document.getElementById("queue");
+    if (!queue) return null;
+    const rows = Array.from(queue.querySelectorAll(".queue_entry"));
+    const active = queue.querySelector(".queue_active");
+    if (!active) return null;
+    const ai = rows.indexOf(active), ti = rows.indexOf(li);
+    if (ai < 0 || ti < 0) return null;
+    if (ti === ai) return "Playing now";
+    if (ti < ai) return null; // already played (no loop assumption)
+    const qt = el => parseTimeText(el && el.querySelector(".qe_time") && el.querySelector(".qe_time").textContent) || 0;
+    let elapsed = 0;
+    try { if (window.PLAYER && typeof PLAYER.getTime === "function") elapsed = PLAYER.getTime() || 0; } catch(_){}
+    let sec = Math.max(0, qt(active) - elapsed);
+    for (let i = ai + 1; i < ti; i++) sec += qt(rows[i]);
+    return "Starts in ~" + fmtDur(sec);
+  }
+  function wireStartsInTip(){
+    const queue = $("#queue");
+    if (!queue || queue._btfwTipWired) return;
+    queue._btfwTipWired = true;
+    let tip = document.getElementById("btfw-pl-tip");
+    if (!tip) { tip = document.createElement("div"); tip.id = "btfw-pl-tip"; tip.className = "btfw-pl-tip"; document.body.appendChild(tip); }
+    const hide = () => { tip.classList.remove("is-visible"); tip._row = null; };
+    queue.addEventListener("mouseover", (e) => {
+      const li = e.target.closest && e.target.closest(".queue_entry");
+      if (!li || !queue.contains(li)) { hide(); return; }
+      if (tip._row === li && tip.classList.contains("is-visible")) return;
+      const txt = startsInFor(li);
+      if (!txt) { hide(); return; }
+      tip._row = li;
+      tip.textContent = txt;
+      const r = li.getBoundingClientRect();
+      tip.style.left = Math.round(r.right - 12) + "px";
+      tip.style.top  = Math.round(r.top - 8) + "px";
+      tip.classList.add("is-visible");
+    });
+    queue.addEventListener("mouseleave", hide);
   }
 
   /* ---------- OPTIMIZED: Playlist entry → Poll option helper ---------- */
@@ -951,6 +1070,8 @@ BTFW.define("feature:playlist-tools", [], async () => {
     wireAdderMap();      // socket-driven; only fires on playlist events
     wireDropToQueue();   // drag a link onto the playlist to add it
     wireSmartPaste();    // paste a media URL (outside a field) -> "Add this?"
+    wireFavStars();      // delegated star-toggle clicks
+    wireStartsInTip();   // hover tooltip: when an item will play
 
     // Set up optimized observers instead of the old ones
     setupOptimizedObservers();
