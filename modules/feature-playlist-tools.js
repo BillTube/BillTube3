@@ -31,12 +31,14 @@ BTFW.define("feature:playlist-tools", [], async () => {
           <button id="btfw-pl-scroll" class="button is-small" title="Scroll to current"><i class="fa fa-location-arrow"></i></button>
         </p>
       </div>
+      <span id="btfw-pl-matchinfo" class="btfw-pl-matchinfo" aria-live="polite"></span>
     `;
     // Put it at the top of the header container
     header.insertBefore(bar, header.firstChild);
 
     wireFilter();
     wireScrollToCurrent();
+    bindFilterKeys();
     updateCount(); // initial count
   }
 
@@ -196,15 +198,36 @@ BTFW.define("feature:playlist-tools", [], async () => {
     let visible = 0;
     const term = (q || "").trim().toLowerCase();
 
-    $$("#queue > .queue_entry").forEach(li => {
+    const entries = $$("#queue > .queue_entry");
+    entries.forEach(li => {
       const text = (li.textContent || "").toLowerCase();
       const ok = term ? text.includes(term) : true;
       li.style.display = ok ? "" : "none";
       if (ok) visible++;
     });
     updateCount(visible);
+    updateMatchInfo(term, visible, entries.length);
   }
-  
+
+  /* Show "X of Y" (or "No matches") next to the filter while it's active. */
+  function updateMatchInfo(term, matches, total){
+    const el = $("#btfw-pl-matchinfo");
+    if (!el) return;
+    if (!term) {
+      el.textContent = "";
+      el.classList.remove("is-visible", "is-empty");
+      return;
+    }
+    el.classList.add("is-visible");
+    if (!matches) {
+      el.textContent = "No matches";
+      el.classList.add("is-empty");
+    } else {
+      el.textContent = `${matches} of ${total}`;
+      el.classList.remove("is-empty");
+    }
+  }
+
   function wireFilter(){
     const input = $("#btfw-pl-filter");
     const clear = $("#btfw-pl-clear");
@@ -218,12 +241,39 @@ BTFW.define("feature:playlist-tools", [], async () => {
     }, 120);
 
     input.addEventListener("input", debounced);
+    // Esc clears the filter while it's focused.
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        input.value = "";
+        lastQ = "";
+        applyFilter("");
+        input.blur();
+      }
+    });
     clear.addEventListener("click", (e)=>{
       e.preventDefault();
       input.value = "";
       lastQ = "";
       applyFilter("");
       input.focus();
+    });
+  }
+
+  /* Press "/" anywhere (outside a text field) to jump to the playlist filter. */
+  function bindFilterKeys(){
+    if (document._btfwPlFilterKeys) return;
+    document._btfwPlFilterKeys = true;
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target;
+      const tag = (t && t.tagName || "").toUpperCase();
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+      const input = $("#btfw-pl-filter");
+      if (!input) return;
+      e.preventDefault();
+      input.focus();
+      input.select();
     });
   }
   
@@ -250,6 +300,23 @@ BTFW.define("feature:playlist-tools", [], async () => {
       // Center-ish the active item in view
       queue.scrollTop += (r.top - qR.top) - (qR.height * 0.3);
     });
+  }
+
+  /* ---------- Faster drag auto-scroll ----------
+     CyTube leaves jQuery UI's sortable on its defaults (scrollSpeed 20,
+     scrollSensitivity 20), which crawls when you drag an item across a long
+     queue. Widen the trigger zone and roughly double the speed so dragging
+     from the bottom of a few-hundred-item list to the top is bearable. */
+  function tuneSortableScroll(){
+    const jq = window.jQuery || window.$;
+    const $q = jq && jq("#queue");
+    if (!$q || !$q.length || !$q.data("uiSortable")) return false;
+    $q.sortable("option", {
+      scroll: true,
+      scrollSensitivity: 70,
+      scrollSpeed: 45
+    });
+    return true;
   }
 
   /* ---------- OPTIMIZED: Playlist entry → Poll option helper ---------- */
@@ -596,6 +663,9 @@ BTFW.define("feature:playlist-tools", [], async () => {
     // feature:stack sweeps the native controls into the toolbar; relocate the
     // lock button into the footer just after, and retry in case stack runs late.
     [0, 200, 600, 1200].forEach(t => setTimeout(ensureLockButton, t));
+    // The sortable is created once CyTube populates the queue — retry until it
+    // exists, then stop.
+    [0, 500, 1500, 3000].forEach(t => setTimeout(tuneSortableScroll, t));
 
     // Set up optimized observers instead of the old ones
     setupOptimizedObservers();
