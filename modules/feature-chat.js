@@ -1476,6 +1476,44 @@ const scheduleNormalizeChatActions = (() => {
     scheduleMarkChatMessageGroups();
   });
 
+  /* ---------------- Click a chat name/avatar to insert their name ---------------- */
+  function chatMentionName(target){
+    if (!target || !target.closest) return null;
+    if (!target.closest("#messagebuffer")) return null;
+    let nameEl = target.closest(".username");
+    if (!nameEl) {
+      const av = target.closest(".btfw-chat-avatarwrap, .btfw-chat-avatar");
+      if (av) {
+        const row = av.closest("#messagebuffer > div") || av.parentElement;
+        nameEl = row ? row.querySelector(".username") : null;
+      }
+    }
+    if (!nameEl) return null;
+    const raw = (nameEl.textContent || "").trim();
+    return raw.replace(/:\s*$/, "") || null;
+  }
+
+  function insertChatName(name){
+    const input = document.getElementById("chatline");
+    if (!input || !name) return;
+    const cur = input.value || "";
+    const sep = (cur.length && !/\s$/.test(cur)) ? " " : "";
+    input.value = cur + sep + name + " ";
+    input.focus();
+    try { const n = input.value.length; input.setSelectionRange(n, n); } catch (_) {}
+  }
+
+  function wireMentionClicks(){
+    if (document._btfwMentionClicksBound) return;
+    document._btfwMentionClicksBound = true;
+    document.addEventListener("click", function(e){
+      const name = chatMentionName(e.target);
+      if (!name) return;
+      e.preventDefault();
+      insertChatName(name);
+    });
+  }
+
   /* ---------------- Boot ---------------- */
   function boot(){
     refreshChatDom();
@@ -1486,6 +1524,7 @@ const scheduleNormalizeChatActions = (() => {
     observeChatDom();
     scheduleMarkChatMessageGroups();
     wireDelegatedClicks();
+    wireMentionClicks();
     watchForStrayButtons();
   }
 

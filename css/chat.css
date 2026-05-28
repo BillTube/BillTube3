@@ -75,6 +75,13 @@
   font-size: 1rem;
 }
 
+/* Click a chat name or its avatar to drop that name into the chat box. */
+#messagebuffer .username,
+#messagebuffer .btfw-chat-avatarwrap,
+#messagebuffer .btfw-chat-avatar {
+  cursor: pointer;
+}
+
 #messagebuffer > div > span:last-child {
   display: block;
   line-height: 1.375rem;
