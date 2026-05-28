@@ -108,8 +108,11 @@
   border-radius: 10px;
   transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
 }
-/* Flatten the inner seams so a same-user run reads as a single shell. */
-.btfw-continuation-msg {
+/* Flatten the inner seams so a same-user run reads as a single shell. These
+   need the #messagebuffer prefix to outweigh the base `#messagebuffer > div`
+   border-radius (otherwise every row keeps its rounded top and the blob shows
+   notches down the sides). */
+#messagebuffer > div.btfw-continuation-msg {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
 }
