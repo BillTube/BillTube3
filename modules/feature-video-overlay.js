@@ -26,6 +26,17 @@ BTFW.define("feature:videoOverlay", [], async () => {
     return type === "fi" || type === "gd";
   }
 
+  // Media providers whose own embed renders controls at the TOP of the frame.
+  // YouTube's newer embed layout puts volume/settings/title up top, which a
+  // top-anchored overlay bar covers. For these we drop our bar to the bottom.
+  // Everything else (HTML5/Video.js owns the bottom; Vimeo/Dailymotion/Twitch
+  // controls sit at the bottom) keeps the bar at the top where it's clear.
+  const TOP_UI_MEDIA_TYPES = new Set(["yt"]);
+  function isTopUiMedia() {
+    const type = (getMediaType() || "").toLowerCase();
+    return TOP_UI_MEDIA_TYPES.has(type);
+  }
+
   function getClient() {
     try {
       return window.CLIENT || window.client || null;
@@ -151,8 +162,13 @@ BTFW.define("feature:videoOverlay", [], async () => {
         z-index: 1000;
         opacity: 0;
         transition: opacity 0.3s ease;
-        /* Gradient flipped to fade UP from the bottom — provides contrast
-           for the bottom-anchored bar without darkening YouTube's top UI. */
+        /* Default: shade at the TOP for the top-anchored bar. */
+        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.15) 12%, rgba(0, 0, 0, 0) 32%, rgba(0, 0, 0, 0) 55%, transparent 75%);
+      }
+
+      /* YouTube (.btfw-vo-bottombar on #videowrap): bar drops to the bottom,
+         so flip the gradient to fade up from the bottom instead. */
+      #videowrap.btfw-vo-bottombar #btfw-video-overlay {
         background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 8%, rgba(0,0,0,0.15) 18%, rgba(0,0,0,0) 32%, transparent 100%);
       }
 
@@ -161,8 +177,12 @@ BTFW.define("feature:videoOverlay", [], async () => {
       }
 
       #btfw-video-overlay .btfw-vo-bar{
-        position:absolute; right:12px; bottom:60px; left:12px; display:flex; align-items:center; gap:8px; pointer-events:none;
+        position:absolute; right:12px; top:12px; left:12px; bottom:auto; display:flex; align-items:center; gap:8px; pointer-events:none;
         background:transparent;
+      }
+
+      #videowrap.btfw-vo-bottombar #btfw-video-overlay .btfw-vo-bar{
+        top:auto; bottom:60px;
       }
 
       #btfw-video-overlay .btfw-vo-section {
@@ -308,6 +328,10 @@ BTFW.define("feature:videoOverlay", [], async () => {
   function ensureOverlay() {
     const wrap = $("#videowrap");
     if (!wrap) return null;
+
+    // Bottom-anchor the bar only for top-UI providers (YouTube); top-anchor
+    // everywhere else so we don't stack on the Video.js control bar.
+    wrap.classList.toggle("btfw-vo-bottombar", isTopUiMedia());
 
     let overlay = $("#btfw-video-overlay");
     if (!overlay) {

@@ -136,12 +136,12 @@
 }
 
 #videowrap .btfw-video-overlay .btfw-vo-bar {
-  /* Bar sits at the BOTTOM of the video, above the native player's bottom
-     controls (YouTube ~40px tall; Video.js themed control bar 12–28px from
-     bottom). Top-anchored placement collided with YouTube's new top bar
-     (volume, settings) and made those buttons unreachable. */
+  /* Default: bar at the TOP. Video.js (HTML5) owns the bottom, and most
+     iframe providers put their controls at the bottom too, so the top is
+     clear. */
   position: absolute;
-  bottom: 60px;
+  top: 12px;
+  bottom: auto;
   left: 12px;
   right: 12px;
   display: flex;
@@ -149,6 +149,15 @@
   justify-content: space-between;
   pointer-events: none;
   gap: 10px;
+}
+
+/* YouTube's new embed layout puts volume/settings/title at the TOP, which a
+   top-anchored bar covered. For YouTube (feature-video-overlay.js adds
+   .btfw-vo-bottombar on #videowrap) we drop the bar to the bottom, above
+   YouTube's short bottom control strip. */
+#videowrap.btfw-vo-bottombar .btfw-video-overlay .btfw-vo-bar {
+  top: auto;
+  bottom: 60px;
 }
 
 #videowrap .btfw-video-overlay .btfw-vo-section {
