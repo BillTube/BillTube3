@@ -274,7 +274,15 @@ function positionPopover(){
 
     const onReflow = () => positionPopover(false);
     window.addEventListener("resize", onReflow);
-    window.addEventListener("scroll", onReflow, true);
+    // Capturing scroll listener catches page/layout scrolls — but it also fires
+    // for the popover's OWN internal scroll. Repositioning on every grid scroll
+    // tick is wasteful and janky, so ignore scrolls originating inside the popover.
+    window.addEventListener("scroll", (e) => {
+      const t = e.target;
+      const popEl = document.getElementById("btfw-emotes-pop");
+      if (popEl && t && t.nodeType === 1 && (t === popEl || popEl.contains(t))) return;
+      onReflow();
+    }, true);
 
 
     if (window.ResizeObserver) {

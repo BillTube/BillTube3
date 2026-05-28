@@ -642,11 +642,9 @@
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 5px;
-    content-visibility: auto;
-    contain-intrinsic-size: 320px 320px;
     scrollbar-gutter: stable;
     overflow-y: clip;
-    margin-bottom: 60px;
+    margin-bottom: 6px;
 }
 
 #btfw-emotes-grid .btfw-emote-tile {
@@ -710,8 +708,10 @@
 @media (max-width: 560px){ #btfw-emotes-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 
-/* Virtualized grid: avoid layout on offscreen parts */
-#btfw-emotes-grid { content-visibility: auto; contain-intrinsic-size: 320px 320px; }
+/* NOTE: content-visibility:auto was removed from #btfw-emotes-grid — on the
+   scroll content it made the browser collapse the grid to its tiny intrinsic
+   size mid-scroll, shrinking scrollHeight and snapping the scroll back to the
+   top. The grid is chunk-rendered in JS, so it doesn't need it. */
 
 
 
