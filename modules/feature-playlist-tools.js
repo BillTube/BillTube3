@@ -22,7 +22,10 @@ BTFW.define("feature:playlist-tools", [], async () => {
     bar.innerHTML = `
       <div class="field has-addons" style="margin:0;">
         <p class="control is-expanded">
-          <input id="btfw-pl-filter" class="input is-small" type="text" placeholder="Filter playlist…">
+          <input id="btfw-pl-filter" class="input is-small" type="text" placeholder="Filter playlist…  (press / )">
+        </p>
+        <p class="control">
+          <button id="btfw-pl-help" class="button is-small" type="button" title="Filter tips" aria-expanded="false"><i class="fa fa-circle-question"></i></button>
         </p>
         <p class="control">
           <button id="btfw-pl-clear" class="button is-small" title="Clear filter"><i class="fa fa-times"></i></button>
@@ -32,6 +35,17 @@ BTFW.define("feature:playlist-tools", [], async () => {
         </p>
       </div>
       <span id="btfw-pl-matchinfo" class="btfw-pl-matchinfo" aria-live="polite"></span>
+      <div id="btfw-pl-help-pop" class="btfw-pl-help-pop" hidden>
+        <div class="btfw-pl-help-title">Filter tips</div>
+        <ul>
+          <li><code>horror</code> — words match the title</li>
+          <li><code>type:</code><span>yt · drive · file · vimeo · twitch</span></li>
+          <li><code>user:</code><span>name — who added it</span></li>
+          <li><code>&gt;1h</code> <code>&lt;30m</code> — by duration</li>
+          <li><code>temp</code> — temporary items only</li>
+        </ul>
+        <div class="btfw-pl-help-eg">e.g. <code>type:yt &gt;10m space</code></div>
+      </div>
     `;
     // Put it at the top of the header container
     header.insertBefore(bar, header.firstChild);
@@ -39,6 +53,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     wireFilter();
     wireScrollToCurrent();
     bindFilterKeys();
+    wireFilterHelp();
     updateCount(); // initial count
   }
 
@@ -190,18 +205,100 @@ BTFW.define("feature:playlist-tools", [], async () => {
     }, true);
   }
 
-  /* ---------- Filter logic (client-side) ---------- */
+  /* ---------- uid -> adder map (for the user: filter) ----------
+     Queue rows don't carry the adder in the DOM, but the socket "playlist"
+     payload does (each item has {uid, queueby, ...}). Build a lazy map keyed
+     by uid (the pluid-N class) so `user:name` can filter. */
+  const adderByUid = Object.create(null);
+  function ingestPlaylist(items){
+    if (!Array.isArray(items)) return;
+    items.forEach(it => { if (it && it.uid != null) adderByUid[it.uid] = String(it.queueby || "").toLowerCase(); });
+  }
+  function wireAdderMap(){
+    const s = window.socket;
+    if (!s || s._btfwAdderWired) return;
+    s._btfwAdderWired = true;
+    try {
+      s.on("playlist", ingestPlaylist);
+      s.on("queue", (d) => { if (d && d.item) ingestPlaylist([d.item]); });
+      s.emit("requestPlaylist"); // populate for the items already loaded
+    } catch (_) {}
+  }
+  function uidOf(li){
+    const m = (li.className || "").match(/pluid-(\d+)/);
+    return m ? m[1] : null;
+  }
+
+  /* ---------- Filter logic (client-side, with operators) ----------
+     Plain words match the title. Operators (AND-combined):
+       type:yt|drive|file|vimeo|twitch|dm|sc   source
+       user:name                                who added it
+       >1h  <30m  >90m  <1:30                    duration
+       temp                                      temporary items only          */
+  function parseTimeText(txt){
+    const p = String(txt || "").trim().split(":").map(n => parseInt(n, 10));
+    if (p.some(isNaN) || !p.length) return null;
+    return p.reduce((acc, n) => acc * 60 + n, 0); // h:m:s or m:s
+  }
+  function parseDuration(s){
+    s = String(s || "").trim().toLowerCase();
+    if (s.includes(":")) return parseTimeText(s);
+    const m = s.match(/^(\d+(?:\.\d+)?)\s*(h|hr|hours?|m|min|minutes?|s|sec|seconds?)?$/);
+    if (!m) return null;
+    const n = parseFloat(m[1]); const unit = m[2] || "m";
+    if (/^h/.test(unit)) return Math.round(n * 3600);
+    if (/^s/.test(unit)) return Math.round(n);
+    return Math.round(n * 60); // default minutes
+  }
+  function normalizeType(t){
+    t = String(t || "").trim().toLowerCase();
+    const map = { youtube:"yt", yt:"yt", drive:"drive", gdrive:"drive", googledrive:"drive",
+      file:"file", files:"file", raw:"file", vimeo:"vimeo", twitch:"twitch",
+      dailymotion:"dm", dm:"dm", soundcloud:"sc", sc:"sc", niconico:"nico", nico:"nico" };
+    return map[t] || t;
+  }
+  function parseQuery(raw){
+    const q = { text: [], type: null, user: null, dur: null, temp: false };
+    (raw || "").trim().split(/\s+/).filter(Boolean).forEach(tok => {
+      let m;
+      if ((m = tok.match(/^type:(.+)$/i)))      q.type = normalizeType(m[1]);
+      else if ((m = tok.match(/^user:(.+)$/i))) q.user = m[1].toLowerCase();
+      else if (/^(temp|temporary)$/i.test(tok) || /^is:temp$/i.test(tok)) q.temp = true;
+      else if ((m = tok.match(/^([<>])(.+)$/))) {
+        const sec = parseDuration(m[2]);
+        if (sec != null) q.dur = { op: m[1], sec }; else q.text.push(tok.toLowerCase());
+      } else q.text.push(tok.toLowerCase());
+    });
+    return q;
+  }
+  function rowMatches(li, q){
+    const a = li.querySelector("a.qe_title");
+    const title = (a ? a.textContent : "").toLowerCase();
+    if (q.text.length && !q.text.every(t => title.includes(t))) return false;
+    if (q.type && detectMediaType(a && a.getAttribute("href")).key !== q.type) return false;
+    if (q.temp && !li.classList.contains("queue_temp")) return false;
+    if (q.user != null) {
+      const u = adderByUid[uidOf(li)] || "";
+      if (!u.includes(q.user)) return false;
+    }
+    if (q.dur) {
+      const sec = parseTimeText(li.querySelector(".qe_time") && li.querySelector(".qe_time").textContent);
+      if (sec == null) return false;
+      if (q.dur.op === ">" && !(sec > q.dur.sec)) return false;
+      if (q.dur.op === "<" && !(sec < q.dur.sec)) return false;
+    }
+    return true;
+  }
   let lastQ = "";
   function applyFilter(q){
     const queue = $("#queue");
     if (!queue) return;
+    const term = (q || "").trim();
+    const parsed = parseQuery(q);
     let visible = 0;
-    const term = (q || "").trim().toLowerCase();
-
     const entries = $$("#queue > .queue_entry");
     entries.forEach(li => {
-      const text = (li.textContent || "").toLowerCase();
-      const ok = term ? text.includes(term) : true;
+      const ok = term ? rowMatches(li, parsed) : true;
       li.style.display = ok ? "" : "none";
       if (ok) visible++;
     });
@@ -274,6 +371,139 @@ BTFW.define("feature:playlist-tools", [], async () => {
       e.preventDefault();
       input.focus();
       input.select();
+    });
+  }
+
+  /* "?" button toggles the filter-syntax popover. */
+  function wireFilterHelp(){
+    const btn = $("#btfw-pl-help");
+    const pop = $("#btfw-pl-help-pop");
+    if (!btn || !pop) return;
+    const close = () => { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); document.removeEventListener("click", onDoc, true); };
+    const onDoc = (e) => { if (!pop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) close(); };
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (pop.hidden) {
+        pop.hidden = false;
+        btn.setAttribute("aria-expanded", "true");
+        setTimeout(() => document.addEventListener("click", onDoc, true), 0);
+      } else close();
+    });
+  }
+
+  /* ---------- Add a URL to the queue (reuses CyTube's own add flow) ---------- */
+  function queueUrl(url, atEnd){
+    url = String(url || "").trim();
+    if (!url) return false;
+    // Validate it's a recognizable media link before doing anything.
+    let ok = true;
+    if (typeof window.parseMediaLink === "function") {
+      const d = window.parseMediaLink(url);
+      ok = !!(d && d.type && d.id);
+    }
+    if (!ok) return false;
+    const input = document.getElementById("mediaurl");
+    const btn = document.getElementById(atEnd ? "queue_end" : "queue_next");
+    if (input && btn) {
+      input.value = url;
+      btn.click();           // CyTube parses + emits + clears the field
+      return true;
+    }
+    // Fallback: emit directly.
+    try {
+      const d = window.parseMediaLink(url);
+      if (d && d.type && d.id && window.socket) {
+        window.socket.emit("queue", { id: d.id, type: d.type, pos: atEnd ? "end" : "next", temp: false });
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+  function looksLikeUrl(s){
+    s = String(s || "").trim();
+    if (!/^https?:\/\//i.test(s) && !/^[\w.-]+\.[a-z]{2,}\//i.test(s)) return false;
+    if (typeof window.parseMediaLink === "function") {
+      const d = window.parseMediaLink(s);
+      return !!(d && d.type && d.id);
+    }
+    return /^https?:\/\//i.test(s);
+  }
+
+  /* ---------- Drag-and-drop a link onto the playlist to queue it ---------- */
+  function wireDropToQueue(){
+    const zone = $("#queue") ? $("#queue").parentElement : null;
+    const queue = $("#queue");
+    const target = zone || queue;
+    if (!target || target._btfwDropWired) return;
+    target._btfwDropWired = true;
+
+    const show = (on) => { (queue || target).classList.toggle("btfw-pl-dropping", !!on); };
+    target.addEventListener("dragover", (e) => {
+      if (!e.dataTransfer) return;
+      // Only react to link/text drags.
+      const types = Array.from(e.dataTransfer.types || []);
+      if (!types.some(t => /uri-list|text\/plain|text\/uri/i.test(t))) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      show(true);
+    });
+    target.addEventListener("dragleave", (e) => {
+      if (e.target === target || !target.contains(e.relatedTarget)) show(false);
+    });
+    target.addEventListener("drop", (e) => {
+      show(false);
+      if (!e.dataTransfer) return;
+      const raw = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain") || "";
+      const url = raw.split(/\s+/).find(looksLikeUrl) || raw.trim();
+      if (!looksLikeUrl(url)) return;
+      e.preventDefault();
+      if (queueUrl(url, true)) toast("Added to playlist", "success");
+      else toast("That link isn't a recognized media URL", "error");
+    });
+  }
+
+  /* ---------- Smart paste: paste a media URL (not in a field) -> offer to add ---------- */
+  function showAddPrompt(url){
+    const bar = $("#btfw-plbar");
+    if (!bar) return;
+    let p = $("#btfw-pl-addprompt");
+    if (!p) {
+      p = document.createElement("div");
+      p.id = "btfw-pl-addprompt";
+      p.className = "btfw-pl-addprompt";
+      bar.appendChild(p);
+    }
+    p.innerHTML = `
+      <span class="btfw-pl-addprompt__label"><i class="fa fa-link"></i> Add pasted link?</span>
+      <span class="btfw-pl-addprompt__url"></span>
+      <button type="button" class="button is-small is-primary" data-act="end">Add</button>
+      <button type="button" class="button is-small" data-act="next">Play next</button>
+      <button type="button" class="button is-small btfw-pl-addprompt__x" data-act="dismiss">&times;</button>`;
+    p.querySelector(".btfw-pl-addprompt__url").textContent = url.length > 60 ? url.slice(0, 57) + "…" : url;
+    p.classList.add("is-visible");
+    const done = () => { p.classList.remove("is-visible"); clearTimeout(p._t); };
+    p.querySelectorAll("button").forEach(b => b.onclick = () => {
+      const act = b.getAttribute("data-act");
+      if (act === "end" || act === "next") {
+        if (queueUrl(url, act === "end")) toast(act === "end" ? "Added to playlist" : "Queued to play next", "success");
+        else toast("Couldn't add that link", "error");
+      }
+      done();
+    });
+    clearTimeout(p._t);
+    p._t = setTimeout(done, 12000); // auto-dismiss
+  }
+  function wireSmartPaste(){
+    if (document._btfwPlPaste) return;
+    document._btfwPlPaste = true;
+    document.addEventListener("paste", (e) => {
+      const t = e.target;
+      const tag = (t && t.tagName || "").toUpperCase();
+      // Ignore pastes into real input fields (incl. our filter / chat / mediaurl).
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+      const text = (e.clipboardData && e.clipboardData.getData("text")) || "";
+      const url = text.split(/\s+/).find(looksLikeUrl);
+      if (url) showAddPrompt(url);
     });
   }
   
@@ -718,6 +948,9 @@ BTFW.define("feature:playlist-tools", [], async () => {
     // exists, then stop.
     [0, 500, 1500, 3000].forEach(t => setTimeout(tuneSortableScroll, t));
     ensureBadgeObserver();
+    wireAdderMap();      // socket-driven; only fires on playlist events
+    wireDropToQueue();   // drag a link onto the playlist to add it
+    wireSmartPaste();    // paste a media URL (outside a field) -> "Add this?"
 
     // Set up optimized observers instead of the old ones
     setupOptimizedObservers();
