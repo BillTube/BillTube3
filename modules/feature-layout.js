@@ -273,13 +273,22 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       chatwrap.style.removeProperty("height");
       return;
     }
-    // rAF so we measure after any aspect-driven video reflow has committed.
-    requestAnimationFrame(() => {
+    // Double rAF so we measure after layout/reflow has fully committed (a
+    // single frame can still catch a mid-transition position on boot).
+    requestAnimationFrame(() => requestAnimationFrame(() => {
       if (!isVertical) { chatwrap.style.removeProperty("height"); return; }
       const top = chatwrap.getBoundingClientRect().top;
       const avail = window.innerHeight - top - 8;
       chatwrap.style.height = Math.max(Math.round(avail), 320) + "px";
-    });
+    }));
+  }
+
+  // Boot/transition settle timing is unpredictable (slow CSS, cached video,
+  // desktop->vertical flip), and a single fit can latch onto a pre-settle
+  // measurement and stick at the 320px minimum. Re-fit a handful of times
+  // over ~2s so one lands after the layout is stable.
+  function scheduleChatFitSettle(){
+    [0, 200, 500, 1000, 1800].forEach(d => setTimeout(fitVerticalChat, d));
   }
 
   function makeResizable() {
@@ -528,13 +537,13 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
         });
       } catch (_) {}
     }
-    document.addEventListener("btfw:layout:orientation", () => fitVerticalChat());
-    // Final boot signal — guarantees one fit after every module has loaded
-    // and the player has had time to settle, even on slow loads.
+    document.addEventListener("btfw:layout:orientation", () => scheduleChatFitSettle());
+    document.addEventListener("btfw:layoutReady", () => scheduleChatFitSettle());
+    // Final boot signal — re-fit across a settle window so the chat lands at
+    // the right height even when CSS/video load slowly.
     document.addEventListener("btfw:ready", () => {
       attachVideoFitListeners();
-      fitVerticalChat();
-      setTimeout(fitVerticalChat, 600);
+      scheduleChatFitSettle();
     });
   }
 
