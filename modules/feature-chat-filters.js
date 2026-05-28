@@ -10,6 +10,7 @@ const customFilters = [
   { name: "italic text", source: "\\[i\\](.+?)\\[\\/i\\]", flags: "g", replace: "<em>\\1</em>", active: true, filterlinks: false },
   { name: "monospace text", source: "\\[code\\](.+?)\\[\\/code\\]", flags: "gi", replace: "<code>\\1</code>", active: true, filterlinks: false },
   { name: "bold text", source: "\\[b\\](.+?)\\[\\/b\\]", flags: "gi", replace: "<strong>\\1</strong>", active: true, filterlinks: false },
+  { name: "underline text", source: "\\[u\\](.+?)\\[\\/u\\]", flags: "gi", replace: "<u>\\1</u>", active: true, filterlinks: false },
   { name: "striked text", source: "\\[s\\](.+?)\\[\\/s\\]", flags: "gi", replace: "<s>\\1</s>", active: true, filterlinks: false },
   { name: "short spoiler", source: "\\[sp\\]", flags: "g", replace: "<span class=\"spoiler\">", active: true, filterlinks: false },
   { name: "closing font style", source: "\\[\\/\\]", flags: "g", replace: "<span>", active: true, filterlinks: false },
