@@ -215,7 +215,6 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     applyColumnTemplate();
     setTop();
     if (!shouldVertical) refreshVideoSizing();
-    watchVideoAspect();
     fitVerticalChat();
   }
 
@@ -240,47 +239,14 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     }
   }
 
-  // Set --btfw-video-aspect to the playing media's true ratio so the wrap
-  // hugs the video with no excess letterboxing. HTML5 <video> exposes its
-  // intrinsic size via videoWidth/videoHeight; iframe/YouTube can't be read
-  // cross-origin, so we clear the override and let the CSS 16/9 default apply
-  // (YouTube embeds are 16/9).
-  let _aspectVideoEl = null;
-  function applyVideoAspect(){
-    const wrap = document.getElementById("videowrap");
-    if (!wrap) return;
-    // Dynamic aspect is ONLY for vertical/mobile, where the video sits at the
-    // top of a single column and we want it to hug its real ratio. In the
-    // horizontal/desktop layout the video column has its own sizing and
-    // forcing a real-aspect container can be SHORTER than the rendered video
-    // element, clipping its top/bottom under overflow:hidden. So outside
-    // vertical mode we always clear the override and let the CSS default
-    // (16/9) apply, restoring the original desktop behavior.
-    if (!isVertical) {
-      wrap.style.removeProperty("--btfw-video-aspect");
-      return;
-    }
-    const v = wrap.querySelector("video");
-    if (v && v.videoWidth > 0 && v.videoHeight > 0) {
-      wrap.style.setProperty("--btfw-video-aspect", v.videoWidth + " / " + v.videoHeight);
-    } else {
-      wrap.style.removeProperty("--btfw-video-aspect"); // -> CSS default 16/9
-    }
-  }
-
-  // (Re)attach a loadedmetadata listener to the current <video> so the aspect
-  // updates the moment the browser knows the real dimensions.
-  function watchVideoAspect(){
-    const wrap = document.getElementById("videowrap");
-    const v = wrap ? wrap.querySelector("video") : null;
-    if (v && v !== _aspectVideoEl) {
-      _aspectVideoEl = v;
-      const onMeta = () => { applyVideoAspect(); fitVerticalChat(); };
-      v.addEventListener("loadedmetadata", onMeta);
-      v.addEventListener("resize", onMeta);
-    }
-    applyVideoAspect();
-  }
+  // NOTE: We deliberately do NOT force --btfw-video-aspect to the media's
+  // intrinsic ratio. Video.js (and the YouTube iframe) size their player to a
+  // fixed 16:9; if the #videowrap (overflow:hidden) is forced to a different
+  // ratio than the player, the player overflows and its top/bottom — including
+  // the control bar — get clipped. So the wrap stays at the CSS 16:9 default,
+  // matching the player exactly. Non-16:9 source content letterboxes inside
+  // the player the same way it does on every major platform; that's expected
+  // and, crucially, never clips the controls.
 
   // In vertical (mobile) mode, stretch the chat so its bottom bar (composer +
   // emoji/GIF actions) reaches the viewport bottom. The module stack sits
@@ -515,13 +481,11 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       }, 0);
     });
 
-    // New media => new <video> element with a different intrinsic aspect.
-    // Re-attach the aspect watcher and refit the chat after it mounts.
+    // New media may change the player height; refit the chat after it mounts.
     if (window.socket && typeof socket.on === "function") {
       try {
         socket.on("changeMedia", () => {
-          _aspectVideoEl = null;
-          setTimeout(() => { watchVideoAspect(); fitVerticalChat(); }, 300);
+          setTimeout(() => fitVerticalChat(), 300);
         });
       } catch (_) {}
     }
