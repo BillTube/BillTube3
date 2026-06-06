@@ -2001,13 +2001,45 @@ nav.pagination.is-centered.btfw-gif-pager {
   border-color: color-mix(in srgb, var(--btfw-border) 85%, transparent 15%);
 }
 
+/* Custom checkbox — themed in both states (the native control was a grey/white
+   square that clashed with the dark theme; accent-color only tinted the check). */
 #btfw-theme-modal .btfw-checkbox input[type="checkbox"]{
+  appearance: none;
+  -webkit-appearance: none;
   margin: 0;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1.5px solid color-mix(in srgb, var(--btfw-color-text) 28%, transparent 72%);
+  background: color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%);
   cursor: pointer;
-  width: 16px;
-  height: 16px;
-  position: relative;
-  accent-color: var(--btfw-color-accent);
+  display: inline-grid;
+  place-content: center;
+  transition: background .14s ease, border-color .14s ease, box-shadow .14s ease;
+}
+#btfw-theme-modal .btfw-checkbox input[type="checkbox"]::before{
+  content: "";
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: transform .14s cubic-bezier(.2, .8, .3, 1.4);
+  background: var(--btfw-color-on-accent, #fff);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+#btfw-theme-modal .btfw-checkbox input[type="checkbox"]:hover{
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 55%, transparent 45%);
+}
+#btfw-theme-modal .btfw-checkbox input[type="checkbox"]:checked{
+  background: var(--btfw-color-accent);
+  border-color: var(--btfw-color-accent);
+}
+#btfw-theme-modal .btfw-checkbox input[type="checkbox"]:checked::before{
+  transform: scale(1);
+}
+#btfw-theme-modal .btfw-checkbox input[type="checkbox"]:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
 }
 
 #btfw-theme-modal .btfw-checkbox span{
