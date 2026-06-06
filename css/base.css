@@ -1506,6 +1506,13 @@ nav.pagination.is-centered.btfw-gif-pager {
 #btfw-theme-modal .modal-card,
 #btfw-theme-modal .btfw-theme-modal-card{
   width: min(920px, 94vw);
+  /* Consistent height across tabs — taller tabs (e.g. Notifications) scroll
+     inside instead of resizing the whole modal. Responsive: scales with the
+     viewport, but never smaller than ~540px or taller than 820px (so it's
+     roomy on 1080p+, doesn't get giant on 4K, and shrinks to fit on mobile —
+     max-height caps it for short/landscape phones). */
+  height: clamp(540px, 82vh, 820px);
+  max-height: 92vh;
   background: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
   border: 1px solid color-mix(in srgb, var(--btfw-border) 85%, transparent 15%);
   border-radius: 26px;
@@ -1534,12 +1541,20 @@ nav.pagination.is-centered.btfw-gif-pager {
   padding: 24px 28px 30px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden; /* the panels scroll, not the whole body */
 }
 
 #btfw-theme-modal #btfw-ts-panels{
   position: relative;
   z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px; /* room for the scrollbar so content doesn't shift */
 }
 
 #btfw-theme-modal .btfw-ts-panel[data-tab="notifications"]{
@@ -1583,26 +1598,41 @@ nav.pagination.is-centered.btfw-gif-pager {
   margin: 0;
 }
 
+/* Kill Bulma's default tab underline/border so our pills aren't fighting it. */
+#btfw-theme-modal .btfw-ts-tabs,
+#btfw-theme-modal .btfw-ts-tabs ul{
+  border-bottom: 0 !important;
+}
+
 #btfw-theme-modal .btfw-ts-tabs li a{
   display: inline-flex !important;
   visibility: visible !important;
   opacity: 1 !important;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: color-mix(in srgb, var(--btfw-color-panel) 80%, transparent 20%);
-  color: color-mix(in srgb, var(--btfw-color-text) 82%, transparent 18%);
-  padding: 8px 18px;
-  font-size: 0.75rem;
+  border-radius: 999px !important;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-text) 14%, transparent 86%) !important;
+  background: color-mix(in srgb, var(--btfw-color-panel) 72%, transparent 28%) !important;
+  color: color-mix(in srgb, var(--btfw-color-text) 84%, transparent 16%) !important;
+  padding: 8px 16px;
+  font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  transition: background .14s ease, color .14s ease, border-color .14s ease, box-shadow .14s ease !important;
 }
 
-#btfw-theme-modal .btfw-ts-tabs li.is-active a{
-  background: var(--btfw-navbar-pill-bg);
-  color: var(--btfw-navbar-pill-text);
-  border-color: color-mix(in srgb, var(--btfw-border) 80%, transparent 20%);
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
+/* Themed hover for inactive tabs (replaces Bulma's blue-underline hover). */
+#btfw-theme-modal .btfw-ts-tabs li:not(.is-active) a:hover{
+  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%) !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%) !important;
+  color: var(--btfw-color-text) !important;
+}
+
+#btfw-theme-modal .btfw-ts-tabs li.is-active a,
+#btfw-theme-modal .btfw-ts-tabs li.is-active a:hover{
+  background: var(--btfw-navbar-pill-bg) !important;
+  color: var(--btfw-navbar-pill-text) !important;
+  border-color: transparent !important;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%) !important;
 }
 
 #btfw-theme-modal .btfw-ts-grid{
@@ -1954,11 +1984,126 @@ nav.pagination.is-centered.btfw-gif-pager {
   flex: 1 1 auto;
 }
 
+/* Dropdowns (Bulma .select) — the wrapper was full-width while the <select>
+   stayed auto-sized, so Bulma's arrow floated far to the right of a tiny box.
+   Make the select fill the wrapper, theme the arrow, and give it a modern look. */
+#btfw-theme-modal .select{
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+#btfw-theme-modal .select:not(.is-multiple):not(.is-loading)::after{
+  /* Only recolour/reposition — keep Bulma's chevron geometry (border-right:0;
+     border-top:0) so the arrow renders whole, not half. */
+  border-color: var(--btfw-color-accent);
+  right: 16px;
+  z-index: 2;
+}
 #btfw-theme-modal .select select{
-  background: color-mix(in srgb, var(--btfw-color-bg) 82%, transparent 18%);
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 80%, transparent 20%);
+  width: 100%;
+  height: auto;
+  min-height: 40px;
+  padding: 9px 38px 9px 13px;
+  background: color-mix(in srgb, var(--btfw-color-panel) 84%, transparent 16%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 70%, transparent 30%);
   color: var(--btfw-color-text);
-  border-radius: 10px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: border-color .14s ease, background .14s ease, box-shadow .14s ease;
+}
+#btfw-theme-modal .select select:hover{
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 45%, transparent 55%);
+  background: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
+}
+#btfw-theme-modal .select select:focus{
+  outline: none;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 60%, transparent 40%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+}
+#btfw-theme-modal .select select option{
+  background: var(--btfw-color-surface);
+  color: var(--btfw-color-text);
+}
+
+/* Themed dropdown popup via the customizable-select API (Chrome 130+). The
+   native option list is normally an unstyled square OS popup; this makes it a
+   rounded, accent-bordered panel that matches the pill. Wrapped in @supports
+   so unsupported browsers cleanly fall back to the native popup. */
+@supports (appearance: base-select){
+  #btfw-theme-modal .select select,
+  #btfw-theme-modal .select select::picker(select){
+    appearance: base-select;
+  }
+  /* keep Bulma's themed wrapper arrow; hide the native picker icon */
+  #btfw-theme-modal .select select::picker-icon{ display: none; }
+  #btfw-theme-modal .select select::picker(select){
+    background: var(--btfw-color-surface);
+    border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+    padding: 6px;
+    margin-top: 6px;
+  }
+  #btfw-theme-modal .select select option{
+    border-radius: 9px;
+    padding: 9px 12px;
+    color: var(--btfw-color-text);
+    background: transparent;
+  }
+  #btfw-theme-modal .select select option:hover{
+    background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+  }
+  #btfw-theme-modal .select select option:checked{
+    background: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
+  }
+  #btfw-theme-modal .select select option::checkmark{
+    color: var(--btfw-color-accent);
+  }
+}
+
+/* Range sliders (chat text size, volumes) — themed track + thumb so they fit
+   the theme instead of the raw grey native control. */
+#btfw-theme-modal input[type="range"]{
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--btfw-color-text) 16%, transparent 84%);
+  cursor: pointer;
+}
+#btfw-theme-modal input[type="range"]::-webkit-slider-runnable-track{
+  height: 6px; border-radius: 999px; background: transparent;
+}
+#btfw-theme-modal input[type="range"]::-moz-range-track{
+  height: 6px; border-radius: 999px;
+  background: color-mix(in srgb, var(--btfw-color-text) 16%, transparent 84%);
+}
+#btfw-theme-modal input[type="range"]::-moz-range-progress{
+  height: 6px; border-radius: 999px; background: var(--btfw-color-accent);
+}
+#btfw-theme-modal input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px; height: 16px; margin-top: -5px;
+  border-radius: 50%;
+  background: var(--btfw-color-accent);
+  border: 2px solid color-mix(in srgb, var(--btfw-color-surface) 68%, white 32%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+#btfw-theme-modal input[type="range"]::-moz-range-thumb{
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--btfw-color-accent);
+  border: 2px solid color-mix(in srgb, var(--btfw-color-surface) 68%, white 32%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+#btfw-theme-modal input[type="range"]:focus{
+  outline: none;
+}
+#btfw-theme-modal input[type="range"]:focus::-webkit-slider-thumb{
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
 }
 
 #btfw-theme-modal .modal-card-foot{
