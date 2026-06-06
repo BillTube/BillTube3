@@ -181,8 +181,12 @@ html[data-btfw-theme="dark"] .button.is-focused{
   outline: none !important;
 }
 
-/* Range inputs — theme the native accent. */
-html[data-btfw-theme="dark"] input[type="range"]{ accent-color: var(--btfw-color-accent); }
+/* Range inputs + native checkboxes/radios — theme the native accent so they
+   aren't grey/blue OS defaults. (The Theme Settings modal fully custom-styles
+   its checkboxes; this covers everything else, e.g. CyTube's own options.) */
+html[data-btfw-theme="dark"] input[type="range"],
+html[data-btfw-theme="dark"] input[type="checkbox"],
+html[data-btfw-theme="dark"] input[type="radio"]{ accent-color: var(--btfw-color-accent); }
 
 /* Tabs (non-boxed) — Bulma colours hover/active blue with a blue underline. */
 html[data-btfw-theme="dark"] .tabs a{
