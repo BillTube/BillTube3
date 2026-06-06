@@ -1103,9 +1103,19 @@
   /* Bootstrap handles display/positioning; we only theme */
 }
 
+/* Center the dialog vertically (like the Bulma Theme Settings modal) instead
+   of Bootstrap's top-anchored layout. */
+.modal.btfw-bulma-skin.in,
+.modal.btfw-bulma-skin.show {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
 .modal.btfw-bulma-skin .modal-dialog {
-  max-width: 720px;
-  margin: 6vh auto;
+  max-width: min(920px, 94vw);
+  width: min(920px, 94vw);
+  margin: 0 auto !important;
 }
 
 /* Card chrome — modern radius, soft elevation, single border. The card
@@ -1125,7 +1135,11 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  max-height: 88vh;
+  /* Same fixed, responsive height as the Theme Settings modal so the two are
+     the same size; the body scrolls when a tab's content is taller. */
+  width: 100%;
+  height: clamp(540px, 82vh, 820px);
+  max-height: 92vh;
 }
 
 .modal.btfw-bulma-skin .btfw-card > .btfw-card-head,
