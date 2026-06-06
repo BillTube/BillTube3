@@ -144,6 +144,82 @@ html[data-btfw-theme="dark"] .modal .btn-default {
 }
 /* Scroll lock (Bootstrap) */
 body.modal-open { overflow: hidden; }
+
+/* ===================================================================
+   Bulma neutralizing layer
+   Bulma 0.9.x is Sass-compiled with hard-coded light-theme colours (blue
+   links/arrows/focus rings, grey native controls). Wherever a component
+   isn't explicitly re-themed, those defaults leak through. The rules below
+   redirect Bulma's common surfaces to our theme tokens so new Bulma markup
+   inherits the theme instead of fighting it. Scoped to the dark theme; the
+   per-component modal overrides still win via higher specificity.
+   =================================================================== */
+
+/* Select dropdowns — themed arrow + control everywhere (not just the modal). */
+html[data-btfw-theme="dark"] .select:not(.is-multiple):not(.is-loading)::after{
+  border-color: var(--btfw-color-accent) !important;
+}
+html[data-btfw-theme="dark"] .select select{
+  background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%) !important;
+  color: var(--btfw-color-text) !important;
+  border-color: color-mix(in srgb, var(--btfw-border) 70%, transparent 30%) !important;
+}
+html[data-btfw-theme="dark"] .select select option{
+  background: var(--btfw-color-surface);
+  color: var(--btfw-color-text);
+}
+
+/* Focus rings — replace Bulma's blue glow with the theme accent. */
+html[data-btfw-theme="dark"] .input:focus,
+html[data-btfw-theme="dark"] .input.is-focused,
+html[data-btfw-theme="dark"] .textarea:focus,
+html[data-btfw-theme="dark"] .select select:focus,
+html[data-btfw-theme="dark"] .button:focus,
+html[data-btfw-theme="dark"] .button.is-focused{
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 55%, transparent 45%) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%) !important;
+  outline: none !important;
+}
+
+/* Range inputs — theme the native accent. */
+html[data-btfw-theme="dark"] input[type="range"]{ accent-color: var(--btfw-color-accent); }
+
+/* Tabs (non-boxed) — Bulma colours hover/active blue with a blue underline. */
+html[data-btfw-theme="dark"] .tabs a{
+  border-bottom-color: transparent;
+  color: color-mix(in srgb, var(--btfw-color-text) 78%, transparent 22%);
+}
+html[data-btfw-theme="dark"] .tabs a:hover{
+  border-bottom-color: color-mix(in srgb, var(--btfw-color-accent) 60%, transparent 40%);
+  color: var(--btfw-color-text);
+}
+html[data-btfw-theme="dark"] .tabs li.is-active a{
+  border-bottom-color: var(--btfw-color-accent);
+  color: var(--btfw-color-accent);
+}
+
+/* Tags — neutral grey-blue tags inherit the panel surface. */
+html[data-btfw-theme="dark"] .tag:not(.is-primary):not(.is-link):not(.is-info):not(.is-success):not(.is-warning):not(.is-danger){
+  background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);
+  color: var(--btfw-color-text);
+}
+
+/* Checkbox / radio hover (Bulma turns the label blue). */
+html[data-btfw-theme="dark"] .checkbox:hover,
+html[data-btfw-theme="dark"] .radio:hover{ color: var(--btfw-color-text); }
+
+/* Inline links inside themed surfaces — kept scoped (not a global 'a') so chat
+   usernames / message links keep their own colours. */
+html[data-btfw-theme="dark"] .modal a:not(.button):not(.tag),
+html[data-btfw-theme="dark"] .box a:not(.button):not(.tag),
+html[data-btfw-theme="dark"] .panel a:not(.button):not(.tag),
+html[data-btfw-theme="dark"] .notification a:not(.button):not(.tag){
+  color: var(--btfw-color-accent);
+}
+html[data-btfw-theme="dark"] .modal a:not(.button):not(.tag):hover,
+html[data-btfw-theme="dark"] .box a:not(.button):not(.tag):hover{
+  color: color-mix(in srgb, var(--btfw-color-accent) 80%, white 20%);
+}
 `;
 
   // Color-scheme meta for proper form controls on some browsers
