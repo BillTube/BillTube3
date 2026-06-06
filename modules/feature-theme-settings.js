@@ -4,6 +4,46 @@ BTFW.define("feature:themeSettings", [], async () => {
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const motion = await BTFW.init("util:motion");
 
+  /* ---------- Info (ⓘ) tooltips ----------
+     One shared tooltip on <body> so it isn't clipped by the scrolling panels.
+     Positioned above the hovered/focused .btfw-ts-info button (flips below when
+     there isn't room above). */
+  function ensureInfoTip(){
+    let tip = document.getElementById("btfw-ts-tip");
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.id = "btfw-ts-tip";
+      tip.className = "btfw-ts-tip";
+      tip.setAttribute("role", "tooltip");
+      document.body.appendChild(tip);
+    }
+    return tip;
+  }
+  function wireInfoTips(m){
+    if (!m || m._btfwInfoTips) return;
+    m._btfwInfoTips = true;
+    const tip = ensureInfoTip();
+    const place = (btn) => {
+      const txt = btn.getAttribute("data-tip");
+      if (!txt) return;
+      tip.textContent = txt;
+      tip.classList.add("is-visible");
+      const r = btn.getBoundingClientRect();
+      const t = tip.getBoundingClientRect();
+      let top = r.top - t.height - 8;
+      if (top < 8) top = r.bottom + 8; // flip below
+      let left = r.left + r.width / 2 - t.width / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - t.width - 8));
+      tip.style.left = Math.round(left) + "px";
+      tip.style.top  = Math.round(top) + "px";
+    };
+    const hide = () => tip.classList.remove("is-visible");
+    m.addEventListener("mouseover", (e) => { const b = e.target.closest(".btfw-ts-info"); if (b) place(b); });
+    m.addEventListener("mouseout",  (e) => { const b = e.target.closest(".btfw-ts-info"); if (b) hide(); });
+    m.addEventListener("focusin",   (e) => { const b = e.target.closest(".btfw-ts-info"); if (b) place(b); });
+    m.addEventListener("focusout",  (e) => { const b = e.target.closest(".btfw-ts-info"); if (b) hide(); });
+  }
+
   // single key map
   const TS_KEYS = {
     chatTextPx  : "btfw:chat:textSize",       // "12" | "14" | "16" | "18"
@@ -192,15 +232,14 @@ BTFW.define("feature:themeSettings", [], async () => {
               <div class="btfw-ts-grid">
                 <section class="btfw-ts-card">
                   <header class="btfw-ts-card__header">
-                    <h3>Stack layout</h3>
-                    <p>Give desktop stack modules a little more breathing room.</p>
+                    <h3>Stack layout <button type="button" class="btfw-ts-info" aria-label="More info" data-tip="When on, the panels below the video (Now Playing, playlist, featured channels, polls…) get a little side padding on desktop so they aren't flush to the edges. Turn it off for a tighter, edge-to-edge look."><i class="fa fa-circle-info" aria-hidden="true"></i></button></h3>
+                    <p>Give the panels below the video a little more breathing room on desktop.</p>
                   </header>
                   <div class="btfw-ts-card__body">
                     <button type="button" class="btfw-compact-stack-btn" id="btfw-compact-stack-toggle" aria-pressed="true">
                       <span class="btfw-compact-stack-label">Compact stack</span>
                       <span class="btfw-compact-stack-status">On</span>
                     </button>
-                    <p class="btfw-help">Adds horizontal padding around <code>.btfw-stack-list</code> items whenever the desktop grid is active.</p>
                   </div>
                 </section>
 
@@ -232,7 +271,6 @@ BTFW.define("feature:themeSettings", [], async () => {
                         <input type="range" id="btfw-chat-textsize" min="10" max="20" step="1">
                         <span class="btfw-range-value" id="btfw-chat-textsize-value">14px</span>
                       </div>
-                      <p class="btfw-help">Set chat typography anywhere between 10&nbsp;px and 20&nbsp;px.</p>
                     </div>
                   </div>
                 </section>
@@ -252,7 +290,6 @@ BTFW.define("feature:themeSettings", [], async () => {
                           <option value="big">Big (170×170)</option>
                         </select>
                       </div>
-                      <p class="btfw-help">Applies to elements with <code>.channel-emote</code> and the GIF picker.</p>
                     </div>
                     <label class="checkbox btfw-checkbox">
                       <input type="checkbox" id="btfw-gif-autoplay"> <span>Autoplay GIFs in chat (otherwise play on hover)</span>
@@ -275,7 +312,6 @@ BTFW.define("feature:themeSettings", [], async () => {
                     <label class="checkbox btfw-checkbox">
                       <input type="checkbox" id="btfw-chat-join-notices"> <span>Show notifications when users join</span>
                     </label>
-                    <p class="btfw-help">Affects the “Joined” popups triggered by users entering the channel.</p>
                   </div>
                 </section>
 
@@ -285,7 +321,6 @@ BTFW.define("feature:themeSettings", [], async () => {
                     <p>Pick custom audio cues for channel activity.</p>
                   </header>
                   <div class="btfw-ts-card__body" id="btfw-notify-sounds-body">
-                    <p class="btfw-help">Open this panel to configure alert tones for joins, mentions, polls, and new videos.</p>
                   </div>
                 </section>
               </div>
@@ -309,14 +344,13 @@ BTFW.define("feature:themeSettings", [], async () => {
                         </select>
                       </div>
                     </div>
-                    <p class="btfw-help">Mobile screens automatically collapse into a stacked layout.</p>
                   </div>
                 </section>
 
                 <section class="btfw-ts-card">
                   <header class="btfw-ts-card__header">
                     <h3>Playback tools</h3>
-                    <p>Toggle experimental features for the HTML5 player.</p>
+                    <p>Optional extras for the video player.</p>
                   </header>
                   <div class="btfw-ts-card__body">
                     <label class="checkbox btfw-checkbox">
@@ -324,8 +358,8 @@ BTFW.define("feature:themeSettings", [], async () => {
                     </label>
                     <label class="checkbox btfw-checkbox">
                       <input type="checkbox" id="btfw-localsubs-toggle"> <span>Show the “Local Subtitles” button</span>
+                      <button type="button" class="btfw-ts-info" aria-label="More info" data-tip="Adds a button to the player so you can load your own subtitle file (.srt or .vtt) from your device for the current video. Your subtitles stay local to you and aren't shared with the room."><i class="fa fa-circle-info" aria-hidden="true"></i></button>
                     </label>
-                    <p class="btfw-help">Allows viewers to load local <code>.vtt</code> or <code>.srt</code> caption files.</p>
                   </div>
                 </section>
               </div>
@@ -381,6 +415,10 @@ BTFW.define("feature:themeSettings", [], async () => {
 
     // Apply button
     $("#btfw-ts-apply", m).addEventListener("click", applyAndPersist);
+
+    // Info (ⓘ) tooltips — a single body-level tooltip so it isn't clipped by
+    // the scrolling panels. Shown on hover/focus of any .btfw-ts-info button.
+    wireInfoTips(m);
 
     const chatTextSlider = $("#btfw-chat-textsize", m);
     const chatTextValue  = $("#btfw-chat-textsize-value", m);

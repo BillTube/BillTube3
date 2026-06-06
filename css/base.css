@@ -1929,6 +1929,58 @@ nav.pagination.is-centered.btfw-gif-pager {
   color: color-mix(in srgb, var(--btfw-color-text) 55%, transparent 45%);
 }
 
+/* Info (ⓘ) button — reveals detail on hover via the body-level tooltip. */
+#btfw-theme-modal .btfw-ts-info{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: color-mix(in srgb, var(--btfw-color-text) 46%, transparent 54%);
+  font-size: 12px;
+  line-height: 1;
+  vertical-align: middle;
+  cursor: help;
+  transition: color .12s ease, transform .12s ease;
+}
+#btfw-theme-modal .btfw-ts-info:hover,
+#btfw-theme-modal .btfw-ts-info:focus-visible{
+  color: var(--btfw-color-accent);
+  transform: translateY(-1px);
+  outline: none;
+}
+/* Shared tooltip lives on <body> (above the modal) so the panels' scroll
+   overflow can't clip it. */
+.btfw-ts-tip{
+  position: fixed;
+  z-index: 7000;
+  pointer-events: none;
+  max-width: 280px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--btfw-color-surface);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+  color: var(--btfw-color-text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: normal;
+  text-transform: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .14s ease, transform .14s ease;
+}
+.btfw-ts-tip.is-visible{
+  opacity: 1;
+  transform: translateY(0);
+}
+
 #btfw-theme-modal .btfw-checkbox{
   display: inline-flex;
   align-items: center;
