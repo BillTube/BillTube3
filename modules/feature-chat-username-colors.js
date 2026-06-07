@@ -89,6 +89,22 @@ BTFW.define("feature:chat-username-colors", [], async () => {
       mo.observe(buf, { childList:true, subtree:true });
       buf._btfwNameColorMO = mo;
     }
+
+    // Private messages are rendered with the same formatChatMessage() as chat
+    // (so they carry .username spans). Observe the PM bar too so PM sender
+    // names get the exact same per-name colors as in chat.
+    const pmbar = document.getElementById("pmbar");
+    if (pmbar && !pmbar._btfwNameColorMO){
+      const mo2 = new MutationObserver(muts=>{
+        for (const m of muts) {
+          if (m.type==="childList" && m.addedNodes) {
+            m.addedNodes.forEach(n => { if (n.nodeType===1) processNode(n); });
+          }
+        }
+      });
+      mo2.observe(pmbar, { childList:true, subtree:true });
+      pmbar._btfwNameColorMO = mo2;
+    }
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

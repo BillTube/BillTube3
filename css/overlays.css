@@ -1167,6 +1167,26 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* The full moderator menu can get tall — keep it on-screen and scroll if needed */
+.btfw-user-menu{ max-height: min(78vh, 560px); overflow-y: auto; }
+.btfw-user-menu .btfw-ctxmenu-body{ display: flex; flex-direction: column; gap: 2px; }
+/* Divider between user actions and moderator actions */
+.btfw-user-menu .btfw-ctxmenu-sep{
+  height: 1px;
+  margin: 5px 8px;
+  background: color-mix(in srgb, var(--btfw-border) 70%, transparent 30%);
+}
+/* Destructive actions (kick / ban) read in red */
+.btfw-user-menu .btfw-ctxmenu-item.is-danger i{
+  color: color-mix(in srgb, #ff6b7a 78%, var(--btfw-color-text) 22%);
+}
+.btfw-user-menu .btfw-ctxmenu-item.is-danger:hover,
+.btfw-user-menu .btfw-ctxmenu-item.is-danger:focus-visible{
+  background: color-mix(in srgb, #ff5a6a 20%, transparent 80%);
+  color: #ffe2e6;
+}
+.btfw-user-menu .btfw-ctxmenu-item.is-danger:hover i,
+.btfw-user-menu .btfw-ctxmenu-item.is-danger:focus-visible i{ color: #ffb3bb; }
 
 /* Hidden GIF — graceful dark blur, contained to the tile so the blur halo
    doesn't bleed into neighbouring chat content. Right-click → Show restores. */
