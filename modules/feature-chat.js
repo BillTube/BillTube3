@@ -439,6 +439,38 @@ if (!hasIcon) {
   }
 
   orderChatActions(actions);
+  groupLeftChatButtons(actions);
+}
+
+// The left action buttons (emotes / gif / tools / commands…) live inside a
+// single rounded "pill" so they read as one simplified control group, separate
+// from the users-count + cog on the right. orderChatActions only touches direct
+// children of #btfw-chat-actions, so once these are inside the pill it leaves
+// them alone.
+const LEFT_PILL_IDS = [
+  "btfw-btn-emotes",
+  "btfw-btn-gif",
+  "btfw-chattools-btn",
+  "btfw-ct-open",
+  "btfw-chatcmds-btn",
+  "btfw-btn-spookbingo"
+];
+function groupLeftChatButtons(actions){
+  actions = actions || actionsNode();
+  if (!actions) return;
+  let pill = document.getElementById("btfw-chatactions-pill");
+  if (!pill){
+    pill = document.createElement("div");
+    pill.id = "btfw-chatactions-pill";
+    pill.className = "btfw-chatactions-pill";
+    actions.insertBefore(pill, actions.firstChild);
+  } else if (pill.parentElement !== actions){
+    actions.insertBefore(pill, actions.firstChild);
+  }
+  LEFT_PILL_IDS.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el && el.parentElement !== pill) pill.appendChild(el);
+  });
 }
 
 const CHAT_ACTION_ORDER = [
@@ -1377,6 +1409,7 @@ const scheduleNormalizeChatActions = (() => {
 
   cleanUsercountText();
   orderChatActions(actions);
+  groupLeftChatButtons(actions);
   wireUsercountSocket();
 }
 
