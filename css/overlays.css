@@ -1227,8 +1227,12 @@
 }
 
 .modal.btfw-bulma-skin .modal-dialog {
-  max-width: min(1160px, 94vw);
-  width: min(1160px, 94vw);
+  /* Same fixed width as the Theme Settings modal so the settings modals match.
+     !important because Bootstrap/CyTube otherwise out-specifies this into
+     width:auto, which makes the dialog size to its content and visibly resize
+     from tab to tab. */
+  max-width: min(920px, 94vw) !important;
+  width: min(920px, 94vw) !important;
   margin: 0 auto !important;
 }
 
@@ -1249,13 +1253,14 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  /* Fixed, responsive height (~30% roomier than before so the modal isn't
-     claustrophobic); the body scrolls when a tab's content is taller. Tracks the
-     viewport via vh, and max-width:none lets the card fill the wider dialog. */
-  width: 100%;
-  max-width: none;
-  height: clamp(560px, 88vh, 1070px);
-  max-height: 94vh;
+  /* Same fixed, responsive height as the Theme Settings modal so the two match:
+     a tall tab scrolls inside instead of resizing the whole modal. The width
+     overrides are !important to fill the (forced) fixed-width dialog rather than
+     shrink to content. */
+  width: 100% !important;
+  max-width: none !important;
+  height: clamp(540px, 82vh, 820px);
+  max-height: 92vh;
 }
 
 .modal.btfw-bulma-skin .btfw-card > .btfw-card-head,
