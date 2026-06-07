@@ -2006,6 +2006,10 @@ nav.pagination.is-centered.btfw-gif-pager {
 #btfw-theme-modal .btfw-checkbox input[type="checkbox"]{
   appearance: none;
   -webkit-appearance: none;
+  /* slate.css forces .checkbox input to position:absolute (Bootstrap layout),
+     which makes it escape this flex chip and overlay the label — keep it in
+     normal flex flow. */
+  position: static;
   margin: 0;
   flex: 0 0 auto;
   width: 18px;
