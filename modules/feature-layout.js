@@ -96,6 +96,9 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     videoColumnPx = width;
     try { localStorage.setItem(SPLIT_KEY, String(width)); } catch (_) {}
     applyColumnTemplate();
+    // Re-fit any open chat popover in real time as the column resizes. Driven
+    // here (every drag move) rather than via ResizeObserver so it can't stall.
+    if (window.BTFW_repositionOpenPopins) window.BTFW_repositionOpenPopins();
   }
 
   function computeThreshold(){
