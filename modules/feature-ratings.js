@@ -1579,6 +1579,11 @@ BTFW.define("feature:ratings", [], async () => {
     if (state.ratingWindowAnnounced) return;
     state.ratingWindowAnnounced = true;
 
+    // Skip the toast on re-sync replays (initial load / reconnect). The flag is
+    // already set so it won't re-fire for this media; a genuine later media
+    // change resets it and will announce normally. See feature:connection-status.
+    if (window.BTFW_stateToastsSuppressed && window.BTFW_stateToastsSuppressed()) return;
+
     try {
       const notify = window.BTFW_notify;
       if (notify && typeof notify.info === "function") {
