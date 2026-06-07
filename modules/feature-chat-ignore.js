@@ -268,10 +268,15 @@ BTFW.define("feature:chat-ignore", [], async () => {
   }
 
   /* ============================================================
-     Right-click menu on chat usernames / avatars → Ignore user
+     Right-click menu on chat usernames / avatars.
+       • Ignore / Unignore (ours)
+       • Private message + CyTube's native moderation actions
+         (leader, kick, mute/shadow-mute, ban) — each gated by
+         hasPermission() and login/presence so users never see an
+         action they cannot perform.
      Single delegated contextmenu listener; covers existing AND future
-     messages with no per-row wiring. The username is derived from the
-     row's chat-msg-<name> class (works on grouped continuation rows too).
+     messages. The username is derived from the row's chat-msg-<name>
+     class (works on grouped continuation rows too).
      ============================================================ */
   const USER_TARGET_SEL = "#messagebuffer .username, #messagebuffer img.btfw-chat-avatar";
 
@@ -287,6 +292,67 @@ BTFW.define("feature:chat-ignore", [], async () => {
     return "";
   }
 
+  /* ---- CyTube native action bridges (page globals) ---- */
+  function myName() { try { return (window.CLIENT && window.CLIENT.name) || ""; } catch (_) { return ""; } }
+  function isLoggedIn() { try { return !!(window.CLIENT && window.CLIENT.logged_in); } catch (_) { return false; } }
+  function sameName(a, b) { return (a || "").toLowerCase() === (b || "").toLowerCase(); }
+  function can(perm) { try { return typeof window.hasPermission === "function" && !!window.hasPermission(perm); } catch (_) { return false; } }
+  function chatCmd(msg) { try { if (window.socket) window.socket.emit("chatMsg", { msg, meta: {} }); } catch (_) {} }
+
+  // CyTube's own findUserlistItem matches children[1], but our theme inserts an
+  // avatar + spacer span ahead of the name, so look the entry up by its
+  // jQuery data("name") instead (which stays correct).
+  function findUserEntry(name) {
+    if (!window.jQuery) return null;
+    const lower = (name || "").toLowerCase();
+    const items = document.querySelectorAll("#userlist .userlist_item");
+    for (const it of items) {
+      const $it = window.jQuery(it);
+      if ((((($it.data("name")) || "") + "").toLowerCase()) === lower) return $it;
+    }
+    return null;
+  }
+
+  function userContext(name) {
+    const $e = findUserEntry(name);
+    const present = !!($e && $e.length);
+    const meta = present ? ($e.data("meta") || {}) : {};
+    return {
+      self: sameName(name, myName()),
+      present,
+      loggedIn: isLoggedIn(),
+      leader: present ? !!$e.data("leader") : false,
+      muted: !!(meta.muted || meta.smuted),
+      ignored: has(name)
+    };
+  }
+
+  // Build the action model for a name, honoring login state, presence and
+  // per-permission gating so users never see actions they can't perform.
+  function buildUserMenuModel(name) {
+    const c = userContext(name);
+    const main = [], mod = [];
+    if (!c.self) {
+      if (c.loggedIn && c.present) main.push({ act: "pm", icon: "fa fa-comment", label: "Private message" });
+      main.push({ act: "ignore", icon: c.ignored ? "fa fa-user-check" : "fa fa-user-slash", label: c.ignored ? "Unignore user" : "Ignore user", active: c.ignored });
+
+      if (c.present && can("leaderctl")) mod.push({ act: "leader", icon: "fa fa-star", label: c.leader ? "Remove leader" : "Give leader" });
+      if (c.present && can("kick")) mod.push({ act: "kick", icon: "fa fa-right-from-bracket", label: "Kick", danger: true });
+      if (c.present && can("mute")) {
+        if (c.muted) mod.push({ act: "unmute", icon: "fa fa-volume-high", label: "Unmute" });
+        else {
+          mod.push({ act: "mute", icon: "fa fa-volume-xmark", label: "Mute" });
+          mod.push({ act: "smute", icon: "fa fa-volume-off", label: "Shadow mute" });
+        }
+      }
+      if (can("ban")) {
+        mod.push({ act: "nameban", icon: "fa fa-gavel", label: "Name ban", danger: true });
+        mod.push({ act: "ipban", icon: "fa fa-ban", label: "IP ban", danger: true });
+      }
+    }
+    return { name, main, mod, hasAny: (main.length + mod.length) > 0 };
+  }
+
   let umenu = null, umenuName = "", uDismissBound = false;
 
   function ensureUserMenu() {
@@ -296,30 +362,39 @@ BTFW.define("feature:chat-ignore", [], async () => {
     umenu.className = "btfw-ctxmenu btfw-user-menu";
     umenu.setAttribute("role", "menu");
     umenu.hidden = true;
-    umenu.innerHTML = `
-      <div class="btfw-ctxmenu-title"></div>
-      <button type="button" class="btfw-ctxmenu-item" data-act="ignore" role="menuitem">
-        <i class="fa fa-user-slash" aria-hidden="true"></i><span class="btfw-ctxmenu-label">Ignore user</span>
-      </button>`;
+    umenu.innerHTML = `<div class="btfw-ctxmenu-title"></div><div class="btfw-ctxmenu-body"></div>`;
     document.body.appendChild(umenu);
     umenu.addEventListener("click", onUserMenuClick);
     umenu.addEventListener("contextmenu", (e) => e.preventDefault());
     return umenu;
   }
 
-  function syncUserMenu(name) {
-    const ignored = has(name);
-    umenu.querySelector(".btfw-ctxmenu-title").textContent = name;
-    const item = umenu.querySelector('[data-act="ignore"]');
-    item.querySelector(".btfw-ctxmenu-label").textContent = ignored ? "Unignore user" : "Ignore user";
-    item.querySelector("i").className = ignored ? "fa fa-user-check" : "fa fa-user-slash";
-    item.classList.toggle("is-active", ignored);
+  function renderUserMenu(model) {
+    umenu.querySelector(".btfw-ctxmenu-title").textContent = model.name;
+    const body = umenu.querySelector(".btfw-ctxmenu-body");
+    body.innerHTML = "";
+    const addItem = (it) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btfw-ctxmenu-item" + (it.active ? " is-active" : "") + (it.danger ? " is-danger" : "");
+      b.dataset.act = it.act;
+      b.setAttribute("role", "menuitem");
+      const i = document.createElement("i"); i.className = it.icon; i.setAttribute("aria-hidden", "true");
+      const s = document.createElement("span"); s.className = "btfw-ctxmenu-label"; s.textContent = it.label;
+      b.appendChild(i); b.appendChild(s);
+      body.appendChild(b);
+    };
+    model.main.forEach(addItem);
+    if (model.mod.length) {
+      const sep = document.createElement("div"); sep.className = "btfw-ctxmenu-sep"; body.appendChild(sep);
+      model.mod.forEach(addItem);
+    }
   }
 
-  function showUserMenu(x, y, name) {
+  function showUserMenu(x, y, name, model) {
     ensureUserMenu();
     umenuName = name;
-    syncUserMenu(name);
+    renderUserMenu(model);
     umenu.hidden = false;
     umenu.style.left = "0px";
     umenu.style.top = "0px";
@@ -351,8 +426,48 @@ BTFW.define("feature:chat-ignore", [], async () => {
     if (!btn) return;
     e.preventDefault();
     const name = umenuName;
-    if (name && btn.dataset.act === "ignore") toggle(name);
-    hideUserMenu();
+    const act = btn.dataset.act;
+    hideUserMenu(); // close before any blocking prompt()
+    if (name) runUserAction(act, name);
+  }
+
+  function runUserAction(act, name) {
+    switch (act) {
+      case "pm":
+        try { if (window.initPm) window.initPm(name).find(".panel-heading").click(); } catch (_) {}
+        break;
+      case "ignore":
+        toggle(name);
+        break;
+      case "leader": {
+        // re-read live leader state so the toggle is always correct
+        const $e = findUserEntry(name);
+        const lead = !!($e && $e.data("leader"));
+        try { if (window.socket) window.socket.emit("assignLeader", { name: lead ? "" : name }); } catch (_) {}
+        break;
+      }
+      case "kick": {
+        const reason = prompt("Enter kick reason (optional)");
+        if (reason === null) return;
+        chatCmd("/kick " + name + " " + reason);
+        break;
+      }
+      case "mute":   chatCmd("/mute " + name); break;
+      case "smute":  chatCmd("/smute " + name); break;
+      case "unmute": chatCmd("/unmute " + name); break;
+      case "nameban": {
+        const reason = prompt("Enter ban reason (optional)");
+        if (reason === null) return;
+        chatCmd("/ban " + name + " " + reason);
+        break;
+      }
+      case "ipban": {
+        const reason = prompt("Enter ban reason (optional)");
+        if (reason === null) return;
+        chatCmd("/ipban " + name + " " + reason);
+        break;
+      }
+    }
   }
 
   function onUserMenuDocDown(e) { if (umenu && !umenu.contains(e.target)) hideUserMenu(); }
@@ -387,9 +502,11 @@ BTFW.define("feature:chat-ignore", [], async () => {
     if (!hit) return;
     const name = nameFromTarget(hit);
     if (!name) return;
+    const model = buildUserMenuModel(name);
+    if (!model.hasAny) return; // nothing to offer (e.g. yourself) → leave native menu
     e.preventDefault();
     e.stopPropagation();
-    showUserMenu(e.clientX, e.clientY, name);
+    showUserMenu(e.clientX, e.clientY, name, model);
   }
 
   function wireChatUserMenu() {

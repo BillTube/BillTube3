@@ -483,10 +483,22 @@
 /* ------------------------------------------------------------------
    Private message popovers ("PM bar")
    ------------------------------------------------------------------ */
+/* Lift the whole PM bar off the bottom-left corner so panels don't sit flush
+   against the screen edges. #pmbar is fixed bottom:0/left:0/right:0 in
+   cytube.css; re-anchor it as an auto-width bar inset from the corner. */
+#pmbar {
+  left: 16px !important;
+  right: auto !important;
+  bottom: 16px !important;
+  width: auto !important;
+  background: transparent !important;
+}
+
 .pm-panel {
   background: color-mix(in srgb, var(--btfw-overlay-bg) 96%, transparent 4%) !important;
   border: 1px solid var(--btfw-overlay-border) !important;
-  border-radius: calc(var(--btfw-radius, 14px) + 2px);
+  /* cytube.css forces border-radius:0 !important on the panel + heading */
+  border-radius: 16px !important;
   box-shadow: var(--btfw-overlay-shadow);
   color: var(--btfw-color-text);
   overflow: hidden;
@@ -544,7 +556,10 @@
 .pm-panel .pm-input {
   background: color-mix(in srgb, var(--btfw-color-surface) 88%, transparent 12%);
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%);
-  border-radius: var(--btfw-radius, 12px);
+  /* cytube.css rounds only the bottom corners — force a uniform pill-less box */
+  border-radius: 10px !important;
+  height: auto;
+  padding: 9px 12px;
   color: var(--btfw-color-text);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -1155,8 +1170,9 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 }
 #messagebuffer img.twemoji.is-ready { opacity: 1; }
 
-/* Username color */
-#messagebuffer .username.btfw-username-colored {
+/* Username color (chat + private messages share the same per-name colors) */
+#messagebuffer .username.btfw-username-colored,
+#pmbar .username.btfw-username-colored {
   color: var(--btfw-name-color) !important;
 }
 
