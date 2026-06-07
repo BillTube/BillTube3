@@ -33,26 +33,32 @@ BTFW.define("feature:connection-status", [], async () => {
   }
   window.BTFW_stateToastsSuppressed = function () { return Date.now() < suppressUntil; };
 
-  /* ---------- 1) dedupe exact re-sent messages ---------- */
+  /* ---------- 1) dedupe re-sent messages ----------
+     On reconnect the server replays the recent buffer. CyTube's own guard is
+     `if (data.time < LASTCHAT.time) return;` — it uses `<`, so the message
+     whose time EQUALS LASTCHAT.time (the last one shown) slips through and is
+     duplicated. We track the last-shown time + signature and effectively make
+     that an `<=` check. We seed from CyTube's LASTCHAT so the message already
+     in the buffer when we wrap (rendered before us, on page load) is covered
+     too — that's the one that was still duplicating. A genuinely different
+     message that happens to share the exact millisecond is still allowed
+     through via the signature tie-breaker. */
   function wrapAddChatMessage() {
     const orig = window.addChatMessage;
     if (typeof orig !== "function" || orig._btfwDedup) return;
 
-    const seen = new Set();
-    const order = [];
-    const MAX = 500;
     const sigOf = (d) => (d && d.time || 0) + "|" + (d && d.username || "") + "|" + (d && d.msg || "");
+    let lastTime = (window.LASTCHAT && typeof window.LASTCHAT.time === "number") ? window.LASTCHAT.time : -Infinity;
+    let lastSig = null; // unknown for the pre-wrap message → treat an equal-time resend as a dup
 
     const wrapped = function (data) {
       try {
-        // Only dedupe real chat messages (have username + msg). Exact resends
-        // (same server time, author and text) are dropped.
-        if (data && data.username !== undefined && data.msg !== undefined) {
-          const sig = sigOf(data);
-          if (seen.has(sig)) return;
-          seen.add(sig);
-          order.push(sig);
-          if (order.length > MAX) seen.delete(order.shift());
+        if (data && data.username !== undefined && data.msg !== undefined && typeof data.time === "number") {
+          const t = data.time;
+          if (t < lastTime) return;                 // older replay → already shown
+          if (t === lastTime && (lastSig === null || sigOf(data) === lastSig)) return; // exact resend of the last message
+          lastTime = t;
+          lastSig = sigOf(data);
         }
       } catch (_) {}
       return orig.apply(this, arguments);
