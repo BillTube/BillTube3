@@ -1042,6 +1042,44 @@
   transform: translateY(-1px);
 }
 
+/* ---- Left chat actions grouped as one simplified pill ----
+   Emotes / GIF / Tools / Commands sit inside a single rounded container and
+   drop their individual gradient/border/shadow for flat icon buttons. All
+   colors derive from theme tokens (color-mix tints) so they follow the theme. */
+#btfw-chat-actions #btfw-chatactions-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--btfw-color-panel) 72%, transparent 28%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 42%, transparent 58%);
+}
+#btfw-chatactions-pill .button.btfw-chatbtn,
+#btfw-chatactions-pill .btfw-chatbtn{
+  width: 34px; height: 34px; min-width: 34px;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: color-mix(in srgb, var(--btfw-color-chat-text) 78%, transparent 22%) !important;
+  transition: background .14s ease, color .14s ease !important;
+}
+#btfw-chatactions-pill .btfw-chatbtn i{ font-size: 15px; }
+#btfw-chatactions-pill .button.btfw-chatbtn:hover,
+#btfw-chatactions-pill .btfw-chatbtn:hover{
+  background: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%) !important;
+  color: var(--btfw-color-text) !important;
+  filter: none !important;
+  transform: none !important;
+}
+#btfw-chatactions-pill .button.btfw-chatbtn:active,
+#btfw-chatactions-pill .btfw-chatbtn:active{
+  background: color-mix(in srgb, var(--btfw-color-accent) 40%, transparent 60%) !important;
+  color: var(--btfw-color-on-accent) !important;
+}
+
 /* Format buttons stay in one tidy row even on phones */
 @media (max-width: 768px){
   #btfw-ct-modal .btfw-ct-grid{ grid-template-columns: repeat(5, 1fr); }
@@ -1431,7 +1469,8 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
   order: 101;                 /* sit just after #usercount (order:100) */
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: 0; box-shadow: none;
-  margin: 0; padding: 6px 8px;
+  /* Pull a little closer to the users-count chip (cancels most of the row gap). */
+  margin: 0 0 0 -10px; padding: 6px 8px;
   color: color-mix(in srgb, var(--btfw-color-chat-text) 86%, transparent 14%);
   opacity: .9; cursor: pointer; line-height: 1;
   transition: opacity .15s ease, color .15s ease;
