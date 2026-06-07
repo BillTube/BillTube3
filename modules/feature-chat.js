@@ -140,6 +140,12 @@ function repositionOpenPopins(){
     helper(ctCard, { widthPx: 420, widthVw: 92, maxHpx: 360, maxHvh: 60 });
   }
 
+  // Chat Commands (popover above chat bar -> re-fit to the chat column)
+  const cmdCard = document.querySelector("#btfw-cmds-modal .btfw-cmds-card[data-btfw-popover-state=\"open\"]");
+  if (cmdCard) {
+    helper(cmdCard, { widthPx: 480, widthVw: 92, maxHpx: 440, maxHvh: 66 });
+  }
+
   // Userlist (uses display toggling)
   const ul = document.getElementById("btfw-userlist-pop");
   if (ul && ul.dataset.btfwPopoverState === "open") {

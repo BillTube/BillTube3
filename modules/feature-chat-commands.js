@@ -576,9 +576,8 @@ addCommand("cast", async (ctx)=>{
       if (e.target.closest && e.target.closest("#btfw-chatcmds-btn")) return;
       closeCommandsModal();
     }, true);
-    window.addEventListener("resize", positionCommandsModal);
-    const cw = document.getElementById("chatwrap");
-    if (cw) cw.addEventListener("scroll", positionCommandsModal, { passive:true });
+    // Re-fitting to the chat column on resize/scroll/layout is handled centrally
+    // by repositionOpenPopins() in feature:chat (same as Emotes / Chat Tools).
   }
 
   function injectCommandsButton(into){
