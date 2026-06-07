@@ -2,8 +2,9 @@
    Mini panel above chat input: BBCode buttons, AFK/Clear, and Color tools.
    Color uses BillTube2 format: prefix 'col:#RRGGBB:' at the start of the message.
 */
-BTFW.define("feature:chat-tools", ["feature:chat"], async ({ init }) => {
+BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async ({ init }) => {
   const motion = await init("util:motion");
+  const chatPopover = await init("util:chat-popover");
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
@@ -88,81 +89,20 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({ init }) => {
   }
 
   /* ---------- UI: actions button + mini panel ---------- */
-  function ensureMiniModal(){
-    const cw = document.getElementById("chatwrap") || document.body;
+  // Built on the shared util:chat-popover — same open/close, positioning,
+  // live-resize re-fit, click-outside and Escape as the other mini popovers.
+  // The card keeps its #btfw-ct-modal / .btfw-ct-card structure so all existing
+  // CSS and the in-panel action handlers below keep working unchanged.
+  function syncKeepColorUI(){
+    const keep  = document.getElementById("btfw-ct-keepcolor");
+    const hexEl = document.getElementById("btfw-ct-hex");
+    const stored = (typeof getStickColor === "function" && getStickColor()) || "";
+    if (keep) keep.checked = !!stored;
+    if (hexEl && stored) hexEl.value = stored;
+    if (keep && keep.checked && !stored) keep.checked = false;
+  }
 
-    let modal = document.getElementById("btfw-ct-modal");
-    if (!modal) {
-      modal = document.createElement("div");
-      modal.id = "btfw-ct-modal";
-      modal.setAttribute("hidden", "");
-      modal.setAttribute("aria-hidden", "true");
-      cw.appendChild(modal);
-    }
-
-    modal.innerHTML = `
-      <div class="btfw-ct-card">
-        <div class="btfw-ct-cardhead">
-          <span>Chat Tools</span>
-          <button class="btfw-ct-close" aria-label="Close">&times;</button>
-        </div>
-
-        <div class="btfw-ct-body">
-          <!-- BBCode grid -->
-          <div class="btfw-ct-grid">
-            <button class="btfw-ct-item" data-tag="b"><strong>B</strong><span>Bold</span></button>
-            <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
-            <button class="btfw-ct-item" data-tag="u"><u>U</u><span>Underline</span></button>
-            <button class="btfw-ct-item" data-tag="s"><span style="text-decoration:line-through">S</span><span>Strike</span></button>
-            <button class="btfw-ct-item" data-tag="sp"><span>🙈</span><span>Spoiler</span></button>
-          </div>
-
-          <!-- Color tools -->
-          <div class="btfw-ct-color">
-            <label class="btfw-ct-keep">
-              <input type="checkbox" id="btfw-ct-keepcolor"> Keep color
-            </label>
-            <div class="btfw-ct-swatch" id="btfw-ct-swatch"></div>
-
-            <div class="btfw-ct-hexrow" style="display:flex; gap:6px; align-items:center; margin-top:6px;">
-              <input id="btfw-ct-hex" type="text" placeholder="#rrggbb" maxlength="7" class="input is-small" style="max-width:120px;" />
-              <button id="btfw-ct-insertcolor" class="button is-small">Insert</button>
-              <button id="btfw-ct-clearcolor" class="button is-small">Clear Keep</button>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="btfw-ct-actions" style="display:flex; gap:6px; margin-top:8px;">
-            <button class="btfw-ct-item button is-small" data-act="clear">Clear</button>
-            <button class="btfw-ct-item button is-small" data-act="afk">AFK</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    // container inert; only the card is interactive
-    modal.style.background = "transparent";
-    modal.style.pointerEvents = "none";
-
-    // sync UI to stored stick color now
-    (function syncKeepColorUI(){
-      const keep = $("#btfw-ct-keepcolor");
-      const hexEl = $("#btfw-ct-hex");
-      const stored = (getStickColor && getStickColor()) || "";
-      if (keep) keep.checked = !!stored;
-      if (hexEl && stored) hexEl.value = stored;
-    })();
-
-    const card = modal.querySelector(".btfw-ct-card");
-    if (card) {
-      card.classList.add("btfw-popover");
-      card.style.pointerEvents = "auto";
-      card.dataset.btfwPopoverState = "closed";
-      card.setAttribute("hidden", "");
-      card.setAttribute("aria-hidden", "true");
-    }
-
-    // Build color swatches
+  function buildSwatchesOnce(){
     const sw = document.querySelector("#btfw-ct-swatch");
     if (sw && !sw.hasChildNodes()) {
       COLORS.forEach(c => {
@@ -173,73 +113,69 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({ init }) => {
         sw.appendChild(b);
       });
     }
-
-    return modal;
   }
 
-  function openMiniModal(){
-    const m = ensureMiniModal(); if (!m) return;
+  let _ctPop = null;
+  function getPopover(){
+    if (_ctPop) return _ctPop;
+    _ctPop = chatPopover.create({
+      id: "btfw-ct-modal",
+      cardClass: "btfw-ct-card",
+      parent: () => document.getElementById("chatwrap") || document.body,
+      once: true,
+      opts: { widthPx: 420, widthVw: 92, maxHpx: 360, maxHvh: 60 },
+      toggleSelector: "#btfw-chattools-btn, #btfw-ct-open",
+      build: () => `
+        <div class="btfw-ct-card">
+          <div class="btfw-ct-cardhead">
+            <span>Chat Tools</span>
+            <button class="btfw-ct-close" data-btfw-popover-close aria-label="Close">&times;</button>
+          </div>
 
-    // Sync Keep + Hex with stored value so UI matches the current state
-    (function syncKeepColorUI(){
-      const keep  = document.getElementById("btfw-ct-keepcolor");
-      const hexEl = document.getElementById("btfw-ct-hex");
-      const stored = (typeof getStickColor === "function" && getStickColor()) || "";
-      if (keep) keep.checked = !!stored;
-      if (hexEl && stored) hexEl.value = stored;
-      if (keep && keep.checked && !stored) keep.checked = false;
-    })();
+          <div class="btfw-ct-body">
+            <!-- BBCode grid -->
+            <div class="btfw-ct-grid">
+              <button class="btfw-ct-item" data-tag="b"><strong>B</strong><span>Bold</span></button>
+              <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
+              <button class="btfw-ct-item" data-tag="u"><u>U</u><span>Underline</span></button>
+              <button class="btfw-ct-item" data-tag="s"><span style="text-decoration:line-through">S</span><span>Strike</span></button>
+              <button class="btfw-ct-item" data-tag="sp"><span>🙈</span><span>Spoiler</span></button>
+            </div>
 
-    m.removeAttribute("hidden");
-    m.removeAttribute("aria-hidden");
-    positionMiniModal();
-    const card = m.querySelector(".btfw-ct-card");
-    if (card) motion.openPopover(card);
-  }
+            <!-- Color tools -->
+            <div class="btfw-ct-color">
+              <label class="btfw-ct-keep">
+                <input type="checkbox" id="btfw-ct-keepcolor"> Keep color
+              </label>
+              <div class="btfw-ct-swatch" id="btfw-ct-swatch"></div>
 
-  function closeMiniModal(){
-    const m = $("#btfw-ct-modal");
-    if (!m) return;
-    const card = m.querySelector(".btfw-ct-card");
-    if (!card) {
-      m.setAttribute("hidden", "");
-      m.setAttribute("aria-hidden", "true");
-      return;
-    }
-    motion.closePopover(card).then(() => {
-      if (card.dataset.btfwPopoverState === "open") return;
-      m.setAttribute("hidden", "");
-      m.setAttribute("aria-hidden", "true");
+              <div class="btfw-ct-hexrow" style="display:flex; gap:6px; align-items:center; margin-top:6px;">
+                <input id="btfw-ct-hex" type="text" placeholder="#rrggbb" maxlength="7" class="input is-small" style="max-width:120px;" />
+                <button id="btfw-ct-insertcolor" class="button is-small">Insert</button>
+                <button id="btfw-ct-clearcolor" class="button is-small">Clear Keep</button>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="btfw-ct-actions" style="display:flex; gap:6px; margin-top:8px;">
+              <button class="btfw-ct-item button is-small" data-act="clear">Clear</button>
+              <button class="btfw-ct-item button is-small" data-act="afk">AFK</button>
+            </div>
+          </div>
+        </div>`,
+      onOpen: () => syncKeepColorUI()
     });
+    return _ctPop;
   }
 
-  function positionMiniModal(){
-    const m = document.getElementById("btfw-ct-modal"); if (!m) return;
-    const card = m.querySelector(".btfw-ct-card"); if (!card) return;
-
-    if (window.BTFW_positionPopoverAboveChatBar) {
-      window.BTFW_positionPopoverAboveChatBar(card, {
-        widthPx: 420,
-        widthVw: 92,
-        maxHpx: 360,
-        maxHvh: 60
-      });
-      return;
-    }
-
-    // Fallback (should rarely run)
-    const c = (document.getElementById("chatcontrols")
-          || document.getElementById("chat-controls")
-          || (document.getElementById("chatline") && document.getElementById("chatline").parentElement));
-    if (!c) return;
-
-    const bottom = (c.offsetHeight || 48) + 12;
-    card.style.position = "fixed";
-    card.style.right    = "8px";
-    card.style.bottom   = bottom + "px";
-    card.style.maxHeight = "60vh";
-    card.style.width     = "min(420px,92vw)";
+  function ensureMiniModal(){
+    getPopover().ensure();
+    buildSwatchesOnce();
+    return document.getElementById("btfw-ct-modal");
   }
+
+  function openMiniModal(){ ensureMiniModal(); getPopover().open(); }
+  function closeMiniModal(){ if (_ctPop) _ctPop.close(); }
 
   function ensureActionsButton(){
     const actions = $("#chatwrap .btfw-chat-bottombar #btfw-chat-actions");
@@ -293,22 +229,13 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({ init }) => {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        const m = $("#btfw-ct-modal");
-        const card = m?.querySelector?.(".btfw-ct-card");
-        const isOpen = !!(card && card.dataset.btfwPopoverState === "open");
-        if (isOpen) closeMiniModal(); else openMiniModal();
+        getPopover().isOpen() ? closeMiniModal() : openMiniModal();
       }, { capture: true });
     }
 
-    // Doc-level: close + handle actions inside the Tools panel
+    // Doc-level: in-panel actions inside the Tools panel. Close, click-outside
+    // and Escape are owned by util:chat-popover now.
     document.addEventListener("click", (e) => {
-      // close via X
-      if (e.target.closest && e.target.closest(".btfw-ct-close")) {
-        e.preventDefault();
-        closeMiniModal();
-        return;
-      }
-
       // --- In-panel actions (run only if click happened inside the card) ---
       const inCard = e.target.closest && e.target.closest("#btfw-ct-modal .btfw-ct-card");
 
@@ -370,14 +297,6 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({ init }) => {
         const keep = $("#btfw-ct-keepcolor"); if (keep) keep.checked = false;
         return;
       }
-
-      // Outside click closes (don’t close if the click was on the Tools button)
-      if (!inCard &&
-          !e.target.closest("#btfw-chattools-btn") &&
-          !e.target.closest("#btfw-ct-open")) {
-        closeMiniModal();
-        return;
-      }
     }, true);
 
     // Keep color toggle
@@ -413,11 +332,6 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({ init }) => {
       }
     }, true);
 
-    // Close on Escape
-    document.addEventListener("keydown", (e)=>{
-      if (e.key === "Escape") closeMiniModal();
-    }, true);
-
     // Chatline helpers: history + sticky color before send
     const l = chatline(); if (l) {
       l.addEventListener("keydown", (ev)=>{
@@ -434,11 +348,9 @@ BTFW.define("feature:chat-tools", ["feature:chat"], async ({ init }) => {
       });
     }
 
-    window.addEventListener("resize", positionMiniModal);
-    $("#chatwrap")?.addEventListener("scroll", positionMiniModal, { passive:true });
   }
 
-  function boot(){ wire(); positionMiniModal(); }
+  function boot(){ wire(); }
   document.addEventListener("btfw:layoutReady", ()=>setTimeout(boot,0));
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 
