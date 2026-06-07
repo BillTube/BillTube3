@@ -822,6 +822,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-checkbox { display: inline-flex; gap: 10px; align-items: center; font-weight: 600; color: color-mix(in srgb, var(--btfw-admin-text) 92%, transparent 8%); }
       .btfw-theme-admin .btfw-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--btfw-theme-accent, #6d4df6); }
       .btfw-theme-admin .btfw-switch-field { display: flex; flex-direction: column; gap: 6px; }
+      /* The pill switch is the visible control; its bound checkbox is a hidden state-holder.
+         CyTube/Bulma force display:grid on every checkbox, overriding the [hidden] attribute,
+         so re-assert it here (the visible .btfw-checkbox inputs aren't marked hidden). */
+      .btfw-theme-admin input[type="checkbox"][hidden] { display: none !important; }
       .btfw-theme-admin .btfw-switch {
         display: inline-flex;
         align-items: center;

@@ -1493,29 +1493,30 @@ nav.pagination.is-centered.btfw-gif-pager {
 
 #btfw-stack-footer .btfw-footer__auth input[type="submit"],
 #btfw-stack-footer .btfw-footer__auth .navbar-link {
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--btfw-color-accent) 90%, white 10%),
-    color-mix(in srgb, var(--btfw-color-accent) 68%, transparent 32%));
-  border: 0;
-  border-radius: 10px;
-  padding: 6px 14px;
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 8px 24px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.03em;
-  color: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
+  letter-spacing: 0.01em;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--btfw-color-accent) 88%, transparent 12%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 70%, white 8%);
+  color: var(--btfw-color-on-accent, #fff);
+  text-shadow: rgba(0, 0, 0, 0.3) 1px 1px 1px;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
   cursor: pointer;
-  transition: transform 0.16s ease, filter 0.16s ease;
+  filter: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
 #btfw-stack-footer .btfw-footer__auth input[type="submit"]:hover,
-#btfw-stack-footer .btfw-footer__auth .navbar-link:hover {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
-}
-
+#btfw-stack-footer .btfw-footer__auth .navbar-link:hover,
 #btfw-stack-footer .btfw-footer__auth input[type="submit"]:focus,
 #btfw-stack-footer .btfw-footer__auth .navbar-link:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--btfw-color-accent) 40%, transparent 60%);
   outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
 }
 
 #mainpage > #btfw-footer:not(.btfw-footer--standalone),
@@ -2503,6 +2504,65 @@ body:not(.is-scrolling) #queue li {
 #channeloptions .form-control:focus {
   border-color: var(--btfw-color-accent);
   background: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+}
+
+/* Channel JS editor: scale its height with the modal/viewport instead of a
+   fixed 10 rows, so it grows with the (now larger) settings modal. */
+#channeloptions #cs-jstext {
+  height: clamp(260px, 64vh, 820px);
+  min-height: 220px;
+  resize: vertical;
+}
+
+/* Channel Settings modal buttons — match the themed accent buttons used across
+   the rest of the UI (New Poll / Log out): rounded, accent fill, readable text
+   shadow. Save/submit actions get the accent treatment; the footer Close button
+   gets a calmer neutral treatment. */
+#channeloptions [id$="submit"] {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 70%, white 8%);
+  border-radius: 10px;
+  padding: 7px 18px;
+  height: auto;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  background: color-mix(in srgb, var(--btfw-color-accent) 88%, transparent 12%);
+  color: var(--btfw-color-on-accent, #fff);
+  text-shadow: rgba(0, 0, 0, 0.3) 1px 1px 1px;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+#channeloptions [id$="submit"]:hover,
+#channeloptions [id$="submit"]:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--btfw-color-accent) 38%, transparent 62%);
+  outline: none;
+}
+
+#channeloptions .modal-footer button[data-dismiss="modal"] {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 80%, transparent 20%);
+  border-radius: 10px;
+  padding: 7px 18px;
+  height: auto;
+  font-weight: 600;
+  font-size: 13px;
+  background: color-mix(in srgb, var(--btfw-color-panel) 85%, transparent 15%);
+  color: var(--btfw-color-text);
+  box-shadow: none;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+#channeloptions .modal-footer button[data-dismiss="modal"]:hover,
+#channeloptions .modal-footer button[data-dismiss="modal"]:focus {
+  background: color-mix(in srgb, var(--btfw-color-panel) 92%, white 6%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 45%, var(--btfw-border));
+  transform: translateY(-1px);
+  outline: none;
 }
 /* =========================================================================
    BillTube3 Theme-Aware Modernization Override
