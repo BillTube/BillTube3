@@ -1875,18 +1875,7 @@ html[data-btfw-theme="dark"] .panel {
   max-width: calc(100cqi - 16px);
 }
 
-/* 3) Make the button grid & swatches auto-flow with width (only affects Tools panel) */
-#btfw-ct-modal .btfw-ct-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-  gap: 8px;
-}
-
-#btfw-ct-modal #btfw-ct-swatch {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(28px, 1fr));
-  gap: 6px;
-}
+/* Chat Tools panel layout (grid, swatches, switch, actions) lives in chat.css. */
 
 #btfw-ct-modal .btfw-ct-card,
 #btfw-emotes-pop {

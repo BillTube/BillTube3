@@ -13,10 +13,22 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
     stickColor: "btfw:chat:stickColor" // "#rrggbb" or ""
   };
 
-  const COLORS = ["#1abc9c","#16a085","#f1c40f","#f39c12","#2ecc71","#27ae60","#e67e22",
-                  "#d35400","#3498db","#2980b9","#e74c3c","#c0392b","#9b59b6","#8e44ad",
-                  "#0080a5","#34495e","#2c3e50","#87724b","#7300a7","#ec87bf","#d870ad",
-                  "#f69785","#9ba37e","#b49255","#a94136"];
+  const COLORS = [
+    // reds / oranges
+    "#e74c3c","#c0392b","#ff6b6b","#a94136","#e67e22","#d35400","#ff9f43",
+    // yellows / warm
+    "#f1c40f","#f39c12","#feca57","#b49255","#87724b",
+    // greens
+    "#2ecc71","#27ae60","#1abc9c","#16a085","#00b894","#55efc4","#9ba37e",
+    // blues / teals
+    "#3498db","#2980b9","#0984e3","#0080a5","#00cec9","#54a0ff","#74b9ff",
+    // purples
+    "#9b59b6","#8e44ad","#6c5ce7","#a29bfe","#7300a7",
+    // pinks
+    "#e84393","#fd79a8","#ec87bf","#d870ad","#f69785",
+    // neutrals
+    "#ffffff","#dfe6e9","#b2bec3","#95a5a6","#7f8c8d","#34495e","#2c3e50"
+  ];
 
   /* ---------- one-time cleanup: never color usernames ---------- */
   try { localStorage.removeItem("btfw:chat:nameColor"); } catch(e){}
@@ -93,6 +105,22 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
   // live-resize re-fit, click-outside and Escape as the other mini popovers.
   // The card keeps its #btfw-ct-modal / .btfw-ct-card structure so all existing
   // CSS and the in-panel action handlers below keep working unchanged.
+  // Tint the little preview chip + reflect the current hex value.
+  function updateHexPreview(hex){
+    const pv = document.getElementById("btfw-ct-hexpreview");
+    if (!pv) return;
+    const h = normalizeHex(hex || "");
+    pv.style.background = h || "transparent";
+    pv.classList.toggle("is-empty", !h);
+  }
+  // Highlight the swatch matching the given hex (clears others).
+  function markSelectedSwatch(hex){
+    const h = normalizeHex(hex || "");
+    document.querySelectorAll("#btfw-ct-swatch .btfw-ct-swatchbtn").forEach(b => {
+      b.classList.toggle("is-selected", !!h && normalizeHex(b.dataset.color || "") === h);
+    });
+  }
+
   function syncKeepColorUI(){
     const keep  = document.getElementById("btfw-ct-keepcolor");
     const hexEl = document.getElementById("btfw-ct-hex");
@@ -100,6 +128,8 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
     if (keep) keep.checked = !!stored;
     if (hexEl && stored) hexEl.value = stored;
     if (keep && keep.checked && !stored) keep.checked = false;
+    updateHexPreview(stored || (hexEl && hexEl.value) || "");
+    markSelectedSwatch(stored || (hexEl && hexEl.value) || "");
   }
 
   function buildSwatchesOnce(){
@@ -107,9 +137,12 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
     if (sw && !sw.hasChildNodes()) {
       COLORS.forEach(c => {
         const b = document.createElement("button");
+        b.type = "button";
         b.className = "btfw-ct-swatchbtn";
         b.style.background = c;
         b.dataset.color = c;
+        b.title = c;
+        b.setAttribute("aria-label", "Color " + c);
         sw.appendChild(b);
       });
     }
@@ -133,34 +166,44 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
           </div>
 
           <div class="btfw-ct-body">
-            <!-- BBCode grid -->
-            <div class="btfw-ct-grid">
-              <button class="btfw-ct-item" data-tag="b"><strong>B</strong><span>Bold</span></button>
-              <button class="btfw-ct-item" data-tag="i"><em>I</em><span>Italic</span></button>
-              <button class="btfw-ct-item" data-tag="u"><u>U</u><span>Underline</span></button>
-              <button class="btfw-ct-item" data-tag="s"><span style="text-decoration:line-through">S</span><span>Strike</span></button>
-              <button class="btfw-ct-item" data-tag="sp"><span>🙈</span><span>Spoiler</span></button>
-            </div>
-
-            <!-- Color tools -->
-            <div class="btfw-ct-color">
-              <label class="btfw-ct-keep">
-                <input type="checkbox" id="btfw-ct-keepcolor"> Keep color
-              </label>
-              <div class="btfw-ct-swatch" id="btfw-ct-swatch"></div>
-
-              <div class="btfw-ct-hexrow" style="display:flex; gap:6px; align-items:center; margin-top:6px;">
-                <input id="btfw-ct-hex" type="text" placeholder="#rrggbb" maxlength="7" class="input is-small" style="max-width:120px;" />
-                <button id="btfw-ct-insertcolor" class="button is-small">Insert</button>
-                <button id="btfw-ct-clearcolor" class="button is-small">Clear Keep</button>
+            <!-- Formatting -->
+            <section class="btfw-ct-sec">
+              <div class="btfw-ct-seclabel">Format</div>
+              <div class="btfw-ct-grid">
+                <button class="btfw-ct-item" data-tag="b" title="Bold"><strong>B</strong><span>Bold</span></button>
+                <button class="btfw-ct-item" data-tag="i" title="Italic"><em>I</em><span>Italic</span></button>
+                <button class="btfw-ct-item" data-tag="u" title="Underline"><u>U</u><span>Underline</span></button>
+                <button class="btfw-ct-item" data-tag="s" title="Strikethrough"><span class="btfw-ct-strike">S</span><span>Strike</span></button>
+                <button class="btfw-ct-item" data-tag="sp" title="Spoiler"><span>🙈</span><span>Spoiler</span></button>
               </div>
-            </div>
+            </section>
+
+            <!-- Color -->
+            <section class="btfw-ct-sec">
+              <div class="btfw-ct-seclabel">Color</div>
+              <div class="btfw-ct-swatch" id="btfw-ct-swatch"></div>
+              <div class="btfw-ct-colorrow">
+                <div class="btfw-ct-hexwrap">
+                  <span class="btfw-ct-hexpreview" id="btfw-ct-hexpreview" aria-hidden="true"></span>
+                  <input id="btfw-ct-hex" type="text" placeholder="#rrggbb" maxlength="7" spellcheck="false" autocomplete="off" />
+                  <button id="btfw-ct-insertcolor" type="button" class="btfw-ct-apply">Apply</button>
+                </div>
+                <label class="btfw-ct-switch" title="Keep this color on your next messages">
+                  <input type="checkbox" id="btfw-ct-keepcolor">
+                  <span class="btfw-ct-switchtrack"><span class="btfw-ct-switchknob"></span></span>
+                  <span class="btfw-ct-switchlabel">Keep color</span>
+                </label>
+              </div>
+            </section>
 
             <!-- Actions -->
-            <div class="btfw-ct-actions" style="display:flex; gap:6px; margin-top:8px;">
-              <button class="btfw-ct-item button is-small" data-act="clear">Clear</button>
-              <button class="btfw-ct-item button is-small" data-act="afk">AFK</button>
-            </div>
+            <section class="btfw-ct-sec">
+              <div class="btfw-ct-seclabel">Actions</div>
+              <div class="btfw-ct-actions">
+                <button class="btfw-ct-action" data-act="afk" type="button"><i class="fa fa-mug-hot" aria-hidden="true"></i><span>AFK</span></button>
+                <button class="btfw-ct-action" data-act="clear" type="button"><i class="fa fa-eraser" aria-hidden="true"></i><span>Clear chat</span></button>
+              </div>
+            </section>
           </div>
         </div>`,
       onOpen: () => syncKeepColorUI()
@@ -249,14 +292,14 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
       }
 
       // AFK / Clear
-      const afk = e.target.closest && e.target.closest('.btfw-ct-item[data-act="afk"]');
+      const afk = e.target.closest && e.target.closest('[data-act="afk"]');
       if (afk && inCard) {
         e.preventDefault();
         if (window.socket?.emit) window.socket.emit("chatMsg", { msg: "/afk" });
         closeMiniModal();
         return;
       }
-      const clr = e.target.closest && e.target.closest('.btfw-ct-item[data-act="clear"]');
+      const clr = e.target.closest && e.target.closest('[data-act="clear"]');
       if (clr && inCard) {
         e.preventDefault();
         const mb = $("#messagebuffer"); if (mb) mb.innerHTML = "";
@@ -271,13 +314,15 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
         const swHex = normalizeHex(swb.dataset.color || "");
         const hexEl = $("#btfw-ct-hex");
         if (hexEl) hexEl.value = swHex;
+        markSelectedSwatch(swHex);
+        updateHexPreview(swHex);
         const keep = $("#btfw-ct-keepcolor");
         if (keep && keep.checked) setStickColor(swHex);
         return;
       }
 
-      // Insert Color button -> apply prefix in input now
-      if (e.target && e.target.id === "btfw-ct-insertcolor" && inCard) {
+      // Apply color button -> apply prefix in input now
+      if (e.target && e.target.closest && e.target.closest("#btfw-ct-insertcolor") && inCard) {
         e.preventDefault();
         const hexEl = $("#btfw-ct-hex");
         const hex = normalizeHex((hexEl?.value || "").trim());
@@ -287,14 +332,6 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
           if (keep && keep.checked) setStickColor(hex);
           closeMiniModal();
         }
-        return;
-      }
-
-      // Clear Keep
-      if (e.target && e.target.id === "btfw-ct-clearcolor" && inCard) {
-        e.preventDefault();
-        setStickColor("");
-        const keep = $("#btfw-ct-keepcolor"); if (keep) keep.checked = false;
         return;
       }
     }, true);
@@ -321,14 +358,14 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
       }
     }, true);
 
-    // Update stored color live while typing (only if Keep is checked)
+    // Live preview while typing a hex; persist too if Keep is checked.
     document.addEventListener("input", (e)=>{
       if (e.target && e.target.id === "btfw-ct-hex") {
+        const val = normalizeHex((e.target.value || "").trim());
+        updateHexPreview(val);
+        markSelectedSwatch(val);
         const keep = $("#btfw-ct-keepcolor");
-        if (keep && keep.checked) {
-          const val = normalizeHex((e.target.value || "").trim());
-          setStickColor(val);
-        }
+        if (keep && keep.checked) setStickColor(val);
       }
     }, true);
 
