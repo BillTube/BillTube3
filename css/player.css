@@ -151,8 +151,10 @@
 #videowrap .video-js.btfw-videojs-themed .vjs-big-play-button .vjs-icon-placeholder:before{
   font-size: 40px;
   line-height: 1;
-  /* tiny optical nudge so the play triangle (left-heavy) reads as centred */
-  margin-left: 2px;
+  /* The VideoJS play glyph carries a right-bearing inside its font cell, so it
+     renders right-of-centre even when its box is centred. Pull it back left so
+     the triangle sits centred in the button. */
+  margin-left: -4px;
   color: var(--btfw-vjs-text-strong);
 }
 
