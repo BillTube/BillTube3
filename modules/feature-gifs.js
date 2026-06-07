@@ -141,6 +141,7 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
         state.provider = modal?.querySelector(".btfw-gif-tabs li.is-active")?.getAttribute("data-p") || "giphy";
         if (state.provider !== "favorites") renderSkeleton();
         setTimeout(search, 0);
+        lockGifHeight();
         const input = $("#btfw-gif-q", modal);
         if (input && state.provider !== "favorites") {
           setTimeout(() => { try { input.focus(); input.select(); } catch(_){} }, 40);
@@ -156,6 +157,26 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
     modal = getPopover().getCard();
     if (modal && !modalWired) wireModal(modal);
     return modal;
+  }
+
+  // Keep the card height constant across tabs: the util computes a max-height
+  // (accounting for the viewport & chat-bar position) each time it positions
+  // the popover; we pin the card's height to that so a sparse Favorites tab
+  // doesn't collapse the panel. A MutationObserver re-pins whenever the util
+  // re-positions (chat resize, splitter drag…). The equality guard avoids a loop.
+  let _heightMO = null;
+  function lockGifHeight(){
+    const card = modal;
+    if (!card) return;
+    const apply = () => {
+      const mh = card.style.maxHeight;
+      if (mh && card.style.height !== mh) card.style.height = mh;
+    };
+    apply();
+    if (!_heightMO) {
+      _heightMO = new MutationObserver(apply);
+      _heightMO.observe(card, { attributes: true, attributeFilter: ["style"] });
+    }
   }
 
   function wireModal(card){
