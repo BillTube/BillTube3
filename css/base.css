@@ -2506,9 +2506,11 @@ body:not(.is-scrolling) #queue li {
   background: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
 }
 
-/* Channel JS editor: scale its height with the modal/viewport instead of a
-   fixed 10 rows, so it grows with the (now larger) settings modal. */
-#channeloptions #cs-jstext {
+/* Channel JS + CSS editors: scale their height with the modal/viewport instead
+   of a fixed 10 rows, so they grow with the (now larger) settings modal. Both
+   share the rule so the CSS editor fits and resizes exactly like the JS one. */
+#channeloptions #cs-jstext,
+#channeloptions #cs-csstext {
   height: clamp(260px, 64vh, 820px);
   min-height: 220px;
   resize: vertical;
