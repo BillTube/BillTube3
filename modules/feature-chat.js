@@ -166,7 +166,10 @@ document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopi
     const ro = new ResizeObserver(() => {
       if (pending) return;
       pending = true;
-      requestAnimationFrame(() => { pending = false; repositionOpenPopins(); });
+      // setTimeout, not rAF — rAF is paused when the tab is backgrounded, which
+      // would stall the re-fit; setTimeout still fires. The flag batches bursts
+      // (e.g. continuous splitter drag) to one reposition per tick.
+      setTimeout(() => { pending = false; repositionOpenPopins(); }, 0);
     });
     ro.observe(cw);
     cw._btfwPopinRO = ro;
