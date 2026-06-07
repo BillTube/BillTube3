@@ -332,6 +332,7 @@ function resolveBranchToSHA(){
       "modules/feature-motd-editor.js",
       "modules/feature-video-enhancements.js",
       "modules/feature-channel-theme-admin.js",
+      "modules/feature-js-editor.js",
       "modules/feature-theme-settings.js",
       "modules/feature-ratings.js",
       "modules/feature-theater.js"
@@ -392,6 +393,7 @@ function resolveBranchToSHA(){
       BTFW.init("feature:motd-editor"),
       BTFW.init("feature:videoEnhancements"),
       BTFW.init("feature:channelThemeAdmin"),
+      BTFW.init("feature:js-editor"),
       BTFW.init("feature:themeSettings"),
       BTFW.init("feature:ratings"),
       BTFW.init("feature:theater")
