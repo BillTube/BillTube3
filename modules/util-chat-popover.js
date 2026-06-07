@@ -73,6 +73,7 @@ BTFW.define("util:chat-popover", ["util:motion"], async () => {
       modal.removeAttribute("hidden");
       modal.removeAttribute("aria-hidden");
       REG.set(card, { opts: cfg.opts, modalId: cfg.id, toggleSelector: cfg.toggleSelector, close });
+      installChatColumnWatch(); // ensure the live re-fit observer is attached
       position(card, cfg.opts);
       motion.openPopover(card);
     }
@@ -110,6 +111,38 @@ BTFW.define("util:chat-popover", ["util:motion"], async () => {
     });
   }
   window.BTFW_repositionChatPopovers = repositionAll;
+
+  // Live re-fit, copied from feature:emotes' watchPosition: a ResizeObserver on
+  // the chat column AND the bottom bar that re-fits open popovers the instant the
+  // column changes size — including a continuous splitter drag. The reflow is
+  // called DIRECTLY (no setTimeout / rAF debounce) so it tracks the drag
+  // frame-by-frame, exactly like the Emotes popover. (A debounced version lagged
+  // a frame behind, which read as "only updates after reopen".) Repositioning
+  // only ever resizes the popover card — never #chatwrap or the anchor — so this
+  // can't feed back into the observer.
+  function findBottomBar(){
+    return document.getElementById("btfw-chat-bottombar")
+        || document.getElementById("chatcontrols")
+        || document.getElementById("chatline");
+  }
+  function installChatColumnWatch(){
+    const wrap = document.getElementById("chatwrap");
+    if (!wrap || wrap._btfwPopoverWatch) return;
+    wrap._btfwPopoverWatch = true;
+    // Prefer the union refit (covers popovers not yet migrated to this util);
+    // fall back to our own registry if feature:chat hasn't exposed it yet.
+    const onReflow = () => (window.BTFW_repositionOpenPopins || repositionAll)();
+    window.addEventListener("resize", onReflow);
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(onReflow);
+      ro.observe(wrap);
+      const anchor = findBottomBar();
+      if (anchor && anchor !== wrap) ro.observe(anchor);
+      wrap._btfwPopoverRO = ro;
+    }
+  }
+  installChatColumnWatch();
+  document.addEventListener("btfw:layoutReady", installChatColumnWatch);
 
   // One delegated handler for close-button + click-outside across all popovers.
   if (!window.__btfwChatPopoverClickWired) {
