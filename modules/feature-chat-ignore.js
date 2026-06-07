@@ -515,6 +515,45 @@ BTFW.define("feature:chat-ignore", [], async () => {
     document.addEventListener("contextmenu", onChatUserContextMenu, true);
   }
 
+  /* ---- Userlist: replace CyTube's native .user-dropdown with our menu ----
+     CyTube binds its dropdown to each entry's click + contextmenu, and the
+     chat "click a name" proxy dispatches a synthetic contextmenu onto the same
+     entry — so intercepting userlist entries here covers both. Our menu is
+     position:fixed on <body>, so unlike the native dropdown it is never clipped
+     by the userlist panel. */
+  function nameFromUserlistEntry(entry) {
+    if (!entry) return "";
+    if (window.jQuery) {
+      const n = window.jQuery(entry).data("name");
+      if (n) return String(n);
+    }
+    const span = entry.querySelector("span[class^='userlist_']") || entry.querySelector(".nick");
+    return span ? (span.textContent || "").trim() : "";
+  }
+
+  function onUserlistEntryMenu(e) {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest(".btfw-ctxmenu")) return;        // clicks inside our own menu
+    const entry = t.closest("#userlist .userlist_item");
+    if (!entry) return;
+    const name = nameFromUserlistEntry(entry);
+    if (!name) return;
+    // Always suppress CyTube's native dropdown for userlist entries.
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const model = buildUserMenuModel(name);
+    if (!model.hasAny) { hideUserMenu(); return; }  // e.g. yourself → no menu
+    showUserMenu(e.clientX || 0, e.clientY || 0, name, model);
+  }
+
+  function wireUserlistMenu() {
+    if (document._btfwUserlistMenuWired) return;
+    document._btfwUserlistMenuWired = true;
+    document.addEventListener("click", onUserlistEntryMenu, true);
+    document.addEventListener("contextmenu", onUserlistEntryMenu, true);
+  }
+
   // Main initialization
   function boot() {
     // Observer is the reliable path; socket handler is an extra fast trigger
@@ -525,6 +564,7 @@ BTFW.define("feature:chat-ignore", [], async () => {
     processExistingMessages();
     decorateUserlist();
     wireChatUserMenu();
+    wireUserlistMenu();
   }
 
   // Initialize when ready
