@@ -151,6 +151,10 @@ function repositionOpenPopins(){
     helper(ul);
   }
 }
+// Expose so the splitter drag (feature:layout) can drive a deterministic re-fit
+// on every move — that path doesn't depend on ResizeObserver delivery timing,
+// which is throttled in backgrounded/automated tabs.
+window.BTFW_repositionOpenPopins = repositionOpenPopins;
 window.addEventListener("resize", repositionOpenPopins);
 window.addEventListener("scroll", repositionOpenPopins, true);
 document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopins, 0));
