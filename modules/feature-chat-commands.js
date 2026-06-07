@@ -2,6 +2,7 @@ BTFW.define("feature:chat-commands", [], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
   const motion = await BTFW.init("util:motion");
+  const chatPopover = await BTFW.init("util:chat-popover");
   const now = ()=>Date.now();
 
   // ---------- Utils ----------
@@ -494,91 +495,29 @@ addCommand("cast", async (ctx)=>{
     }).join("");
   }
 
-  function ensureCommandsModal(){
-    injectCmdsCSS();
-    const cw = document.getElementById("chatwrap") || document.body;
-    let modal = document.getElementById("btfw-cmds-modal");
-    if (!modal) {
-      modal = document.createElement("div");
-      modal.id = "btfw-cmds-modal";
-      modal.setAttribute("hidden", "");
-      modal.setAttribute("aria-hidden", "true");
-      cw.appendChild(modal);
+  // Shared popover plumbing (open/close/position/reposition/click-outside) all
+  // lives in util:chat-popover now — this is the whole UI wiring.
+  const cmdsPop = chatPopover.create({
+    id: "btfw-cmds-modal",
+    cardClass: "btfw-cmds-card",
+    opts: { widthPx: 480, widthVw: 92, maxHpx: 440, maxHvh: 66 },
+    toggleSelector: "#btfw-chatcmds-btn",
+    build: () => {
+      injectCmdsCSS();
+      return `
+        <div class="btfw-cmds-card">
+          <div class="btfw-cmds-head">
+            <span>Chat Commands</span>
+            <button class="btfw-cmds-close" data-btfw-popover-close aria-label="Close">&times;</button>
+          </div>
+          <div class="btfw-cmds-hint">Type these in chat. Some need moderator rank.</div>
+          <div class="btfw-cmds-body">${buildCommandsList()}</div>
+        </div>`;
     }
-    modal.innerHTML = `
-      <div class="btfw-cmds-card btfw-popover">
-        <div class="btfw-cmds-head">
-          <span>Chat Commands</span>
-          <button class="btfw-cmds-close" aria-label="Close">&times;</button>
-        </div>
-        <div class="btfw-cmds-hint">Type these in chat. Some need moderator rank.</div>
-        <div class="btfw-cmds-body">${buildCommandsList()}</div>
-      </div>`;
-    // container inert; only the card is interactive (mirrors Chat Tools)
-    modal.style.background = "transparent";
-    modal.style.pointerEvents = "none";
-    const card = modal.querySelector(".btfw-cmds-card");
-    if (card) {
-      card.style.pointerEvents = "auto";
-      card.dataset.btfwPopoverState = "closed";
-      card.setAttribute("hidden", "");
-      card.setAttribute("aria-hidden", "true");
-    }
-    const closeBtn = modal.querySelector(".btfw-cmds-close");
-    if (closeBtn) closeBtn.addEventListener("click", (e)=>{ e.preventDefault(); closeCommandsModal(); });
-    return modal;
-  }
-
-  function positionCommandsModal(){
-    const modal = document.getElementById("btfw-cmds-modal"); if (!modal) return;
-    const card = modal.querySelector(".btfw-cmds-card"); if (!card) return;
-    if (window.BTFW_positionPopoverAboveChatBar) {
-      window.BTFW_positionPopoverAboveChatBar(card, { widthPx: 480, widthVw: 92, maxHpx: 440, maxHvh: 66 });
-    }
-  }
-
-  function openCommandsModal(){
-    const modal = ensureCommandsModal();
-    const body = modal.querySelector(".btfw-cmds-body");
-    if (body) body.innerHTML = buildCommandsList();
-    // The container must be visible (not [hidden]) before positioning, otherwise
-    // the card can't lay out and renders 0×0.
-    modal.removeAttribute("hidden");
-    modal.removeAttribute("aria-hidden");
-    positionCommandsModal();
-    const card = modal.querySelector(".btfw-cmds-card");
-    if (card) motion.openPopover(card);
-  }
-
-  function closeCommandsModal(){
-    const modal = document.getElementById("btfw-cmds-modal"); if (!modal) return;
-    const card = modal.querySelector(".btfw-cmds-card");
-    if (!card) { modal.setAttribute("hidden", ""); modal.setAttribute("aria-hidden", "true"); return; }
-    motion.closePopover(card).then(() => {
-      if (card.dataset.btfwPopoverState === "open") return;
-      modal.setAttribute("hidden", "");
-      modal.setAttribute("aria-hidden", "true");
-    });
-  }
-
-  function cmdsIsOpen(){
-    const card = document.querySelector("#btfw-cmds-modal .btfw-cmds-card");
-    return !!(card && card.dataset.btfwPopoverState === "open");
-  }
-
-  // close on outside click; reposition while open
-  if (!window.__btfwCmdsWired) {
-    window.__btfwCmdsWired = true;
-    document.addEventListener("click", (e)=>{
-      if (!cmdsIsOpen()) return;
-      const card = document.querySelector("#btfw-cmds-modal .btfw-cmds-card");
-      if (card && card.contains(e.target)) return;
-      if (e.target.closest && e.target.closest("#btfw-chatcmds-btn")) return;
-      closeCommandsModal();
-    }, true);
-    // Re-fitting to the chat column on resize/scroll/layout is handled centrally
-    // by repositionOpenPopins() in feature:chat (same as Emotes / Chat Tools).
-  }
+  });
+  function openCommandsModal(){ cmdsPop.open(); }
+  function closeCommandsModal(){ cmdsPop.close(); }
+  function cmdsIsOpen(){ return cmdsPop.isOpen(); }
 
   function injectCommandsButton(into){
     if (!into || into._btfwCmdBtn) return false;
@@ -587,7 +526,7 @@ addCommand("cast", async (ctx)=>{
     btn.className = "button is-dark is-small btfw-chatbtn";
     btn.innerHTML = `<i class="fa fa-question-circle" aria-hidden="true"></i>`;
     btn.title = "Commands";
-    btn.addEventListener("click", (e)=>{ e.preventDefault(); cmdsIsOpen() ? closeCommandsModal() : openCommandsModal(); });
+    btn.addEventListener("click", (e)=>{ e.preventDefault(); cmdsPop.toggle(); });
     into.appendChild(btn);
     into._btfwCmdBtn = true;
     return true;

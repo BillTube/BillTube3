@@ -128,6 +128,11 @@ window.addEventListener('scroll', () => {
 function repositionOpenPopins(){
   const helper = (el, opts) => window.BTFW_positionPopoverAboveChatBar && window.BTFW_positionPopoverAboveChatBar(el, opts);
 
+  // Popovers built on util:chat-popover (Chat Commands + any future ones)
+  // self-register and are re-fitted here automatically — no hardcoding needed.
+  if (window.BTFW_repositionChatPopovers) window.BTFW_repositionChatPopovers();
+
+  // --- Not yet migrated to util:chat-popover (hand-positioned for now): ---
   // Emotes (visible when NOT .hidden)
   const em = document.getElementById("btfw-emotes-pop");
   if (em && em.dataset.btfwPopoverState === "open") {
@@ -138,12 +143,6 @@ function repositionOpenPopins(){
   const ctCard = document.querySelector("#btfw-ct-modal .btfw-ct-card[data-btfw-popover-state=\"open\"]");
   if (ctCard) {
     helper(ctCard, { widthPx: 420, widthVw: 92, maxHpx: 360, maxHvh: 60 });
-  }
-
-  // Chat Commands (popover above chat bar -> re-fit to the chat column)
-  const cmdCard = document.querySelector("#btfw-cmds-modal .btfw-cmds-card[data-btfw-popover-state=\"open\"]");
-  if (cmdCard) {
-    helper(cmdCard, { widthPx: 480, widthVw: 92, maxHpx: 440, maxHvh: 66 });
   }
 
   // Userlist (uses display toggling)
