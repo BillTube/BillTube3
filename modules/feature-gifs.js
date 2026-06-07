@@ -82,6 +82,7 @@ BTFW.define("feature:gifs", [], async () => {
 
   /* ---- Modal ---- */
   let modal = null;
+  let modalOpen = false;
   function ensureModal(){
     if (modal) return modal;
     modal = document.createElement("div");
@@ -525,6 +526,7 @@ BTFW.define("feature:gifs", [], async () => {
   /* ---- open / close ---- */
   function open(){
     ensureModal();
+    modalOpen = true;
     showNotice("");
     state.page = 1;
     state.provider = modal.querySelector(".btfw-gif-tabs li.is-active")?.getAttribute("data-p") || "giphy";
@@ -541,7 +543,7 @@ BTFW.define("feature:gifs", [], async () => {
       });
     }
   }
-  function close(){ if (modal) motion.closeModal(modal); }
+  function close(){ modalOpen = false; if (modal) motion.closeModal(modal); }
 
   function handleProviderChange() {
     updateToolbarForProvider();
@@ -621,37 +623,54 @@ BTFW.define("feature:gifs", [], async () => {
     return item;
   }
 
-  function toggleFavorite(item) {
+  // Low-level favorites mutation (no rendering). Shared by the modal's star
+  // controls AND the in-chat right-click menu so both stay in sync against the
+  // same in-memory list + localStorage.
+  function addFavorite(item) {
     const key = item.favKey || makeFavoriteKey(item);
-    if (!item.urlClassic) return;
-    if (favoriteLookup.has(key)) {
-      removeFavorite(item);
-      return;
-    }
-    favorites.push({
+    if (!item.urlClassic || favoriteLookup.has(key)) return false;
+    const rec = {
       provider: item.provider,
       id: item.id,
       thumb: item.thumb || item.urlClassic,
       urlClassic: item.urlClassic
-    });
-    favoriteLookup.set(key, favorites[favorites.length - 1]);
+    };
+    favorites.push(rec);
+    favoriteLookup.set(key, rec);
     saveFavorites();
-    if (state.provider === "favorites") {
-      applyFavoritesToState();
-    }
+    return true;
+  }
+
+  function deleteFavorite(item) {
+    const key = item.favKey || makeFavoriteKey(item);
+    const idx = favorites.findIndex(f => makeFavoriteKey(f) === key);
+    if (idx === -1) return false;
+    favorites.splice(idx, 1);
+    favoriteLookup.delete(key);
+    saveFavorites();
+    return true;
+  }
+
+  // Re-render the modal grid only when it's actually open (so favoriting from
+  // chat doesn't build/touch the modal needlessly).
+  function refreshFavoritesUIIfOpen() {
+    if (!modal || !modalOpen) return;
+    if (state.provider === "favorites") applyFavoritesToState();
+    render();
+  }
+
+  function toggleFavorite(item) {
+    if (!item.urlClassic) return;
+    const key = item.favKey || makeFavoriteKey(item);
+    if (favoriteLookup.has(key)) deleteFavorite(item);
+    else addFavorite(item);
+    if (state.provider === "favorites") applyFavoritesToState();
     render();
   }
 
   function removeFavorite(item) {
-    const key = item.favKey || makeFavoriteKey(item);
-    const idx = favorites.findIndex(f => makeFavoriteKey(f) === key);
-    if (idx === -1) return;
-    favorites.splice(idx, 1);
-    favoriteLookup.delete(key);
-    saveFavorites();
-    if (state.provider === "favorites") {
-      applyFavoritesToState();
-    }
+    if (!deleteFavorite(item)) return;
+    if (state.provider === "favorites") applyFavoritesToState();
     render();
   }
 
@@ -669,10 +688,199 @@ BTFW.define("feature:gifs", [], async () => {
     return true;
   }
 
+  /* ============================================================
+     In-chat right-click menu for Giphy/Tenor GIFs
+       • Favorite / Unfavorite  → same favorites list as the modal
+       • Hide / Show            → graceful blur toggle (per element)
+     One delegated contextmenu listener covers EXISTING and FUTURE
+     GIFs with zero per-image wiring and no observers. Channel emotes
+     (img.channel-emote without .giphy/.tenor) are intentionally
+     excluded — this only targets user-posted Giphy/Tenor GIFs.
+     ============================================================ */
+  const CHAT_GIF_SEL = "#messagebuffer img.giphy.chat-picture, #messagebuffer img.tenor.chat-picture";
+
+  function parseChatGif(img){
+    if (!img) return null;
+    const isG = img.classList.contains("giphy");
+    const isT = img.classList.contains("tenor");
+    if (!isG && !isT) return null;
+    const src = img.getAttribute("src") || img.src || "";
+    let item;
+    if (isG) {
+      const m = src.match(/\/media\/([A-Za-z0-9_-]+)\//);
+      const id = m ? m[1] : "";
+      const urlClassic = id ? buildGiphyClassic(id) : stripQuery(src);
+      item = { provider: "giphy", id, thumb: src || urlClassic, urlClassic };
+    } else {
+      const urlClassic = normTenor(src);
+      item = { provider: "tenor", id: "", thumb: src || urlClassic, urlClassic };
+    }
+    item.favKey = makeFavoriteKey(item);
+    return item;
+  }
+
+  function setGifHidden(img, hidden){
+    if (!img) return;
+    img.classList.toggle("btfw-gif-hidden", !!hidden);
+    if (hidden){
+      if (img.dataset.btfwTitle0 == null) img.dataset.btfwTitle0 = img.getAttribute("title") || "";
+      img.setAttribute("title", "Hidden GIF — right-click to show");
+    } else {
+      const t0 = img.dataset.btfwTitle0 || "";
+      if (t0) img.setAttribute("title", t0); else img.removeAttribute("title");
+      delete img.dataset.btfwTitle0;
+    }
+  }
+
+  let gmenu = null;
+  let gmenuImg = null;
+  let dismissBound = false;
+
+  function ensureGifMenu(){
+    if (gmenu) return gmenu;
+    gmenu = document.createElement("div");
+    gmenu.id = "btfw-gif-menu";
+    gmenu.className = "btfw-gif-menu";
+    gmenu.setAttribute("role", "menu");
+    gmenu.hidden = true;
+    gmenu.innerHTML = `
+      <button type="button" class="btfw-gif-menu-item" data-act="fav" role="menuitem">
+        <i class="far fa-star" aria-hidden="true"></i><span class="btfw-gif-menu-label">Favorite</span>
+      </button>
+      <button type="button" class="btfw-gif-menu-item" data-act="hide" role="menuitem">
+        <i class="fa fa-eye-slash" aria-hidden="true"></i><span class="btfw-gif-menu-label">Hide</span>
+      </button>`;
+    document.body.appendChild(gmenu);
+    gmenu.addEventListener("click", onGifMenuClick);
+    gmenu.addEventListener("contextmenu", (e)=> e.preventDefault());
+    return gmenu;
+  }
+
+  function syncGifMenu(img){
+    const item = parseChatGif(img);
+    const isFav = item ? favoriteLookup.has(item.favKey) : false;
+    const favBtn = gmenu.querySelector('[data-act="fav"]');
+    favBtn.querySelector(".btfw-gif-menu-label").textContent = isFav ? "Unfavorite" : "Favorite";
+    favBtn.querySelector("i").className = isFav ? "fa fa-star" : "far fa-star";
+    favBtn.classList.toggle("is-active", isFav);
+
+    const hidden = img.classList.contains("btfw-gif-hidden");
+    const hideBtn = gmenu.querySelector('[data-act="hide"]');
+    hideBtn.querySelector(".btfw-gif-menu-label").textContent = hidden ? "Show" : "Hide";
+    hideBtn.querySelector("i").className = hidden ? "fa fa-eye" : "fa fa-eye-slash";
+  }
+
+  function showGifMenu(x, y, img){
+    ensureGifMenu();
+    gmenuImg = img;
+    syncGifMenu(img);
+    gmenu.hidden = false;
+    gmenu.style.left = "0px";
+    gmenu.style.top = "0px";
+    gmenu.style.visibility = "hidden";
+    gmenu.classList.add("is-open");
+    const r = gmenu.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let left = x, top = y;
+    if (left + r.width + 8 > vw) left = Math.max(8, vw - r.width - 8);
+    if (top + r.height + 8 > vh) top = Math.max(8, vh - r.height - 8);
+    if (left < 8) left = 8;
+    if (top < 8) top = 8;
+    gmenu.style.left = left + "px";
+    gmenu.style.top = top + "px";
+    gmenu.style.visibility = "";
+    bindGifMenuDismiss();
+  }
+
+  function hideGifMenu(){
+    if (!gmenu) return;
+    gmenu.classList.remove("is-open");
+    gmenu.hidden = true;
+    gmenuImg = null;
+    unbindGifMenuDismiss();
+  }
+
+  function onGifMenuClick(e){
+    const btn = e.target.closest(".btfw-gif-menu-item");
+    if (!btn) return;
+    e.preventDefault();
+    const img = gmenuImg;
+    const act = btn.dataset.act;
+    if (img){
+      if (act === "fav"){
+        const item = parseChatGif(img);
+        if (item){
+          if (favoriteLookup.has(item.favKey)) deleteFavorite(item);
+          else addFavorite(item);
+          refreshFavoritesUIIfOpen();
+        }
+      } else if (act === "hide"){
+        setGifHidden(img, !img.classList.contains("btfw-gif-hidden"));
+      }
+    }
+    hideGifMenu();
+  }
+
+  function onGifMenuDocDown(e){
+    if (gmenu && !gmenu.contains(e.target)) hideGifMenu();
+  }
+  function onGifMenuKey(e){ if (e.key === "Escape") hideGifMenu(); }
+  function onGifMenuReflow(){ hideGifMenu(); }
+
+  function bindGifMenuDismiss(){
+    if (dismissBound) return;
+    dismissBound = true;
+    document.addEventListener("mousedown", onGifMenuDocDown, true);
+    document.addEventListener("keydown", onGifMenuKey, true);
+    window.addEventListener("resize", onGifMenuReflow, true);
+    window.addEventListener("scroll", onGifMenuReflow, true);
+    const buf = document.getElementById("messagebuffer");
+    if (buf) buf.addEventListener("scroll", onGifMenuReflow, true);
+  }
+  function unbindGifMenuDismiss(){
+    if (!dismissBound) return;
+    dismissBound = false;
+    document.removeEventListener("mousedown", onGifMenuDocDown, true);
+    document.removeEventListener("keydown", onGifMenuKey, true);
+    window.removeEventListener("resize", onGifMenuReflow, true);
+    window.removeEventListener("scroll", onGifMenuReflow, true);
+    const buf = document.getElementById("messagebuffer");
+    if (buf) buf.removeEventListener("scroll", onGifMenuReflow, true);
+  }
+
+  function onChatGifContextMenu(e){
+    const t = e.target;
+    const img = (t && t.closest) ? t.closest(CHAT_GIF_SEL) : null;
+    if (!img) return; // not a chat GIF → leave the native menu alone
+    e.preventDefault();
+    e.stopPropagation();
+    showGifMenu(e.clientX, e.clientY, img);
+  }
+
+  function wireChatGifMenu(){
+    if (document._btfwGifMenuWired) return;
+    document._btfwGifMenuWired = true;
+    document.addEventListener("contextmenu", onChatGifContextMenu, true);
+  }
+
   /* ---- boot ---- */
-  function boot(){ ensureOpeners(); }
+  function boot(){ ensureOpeners(); wireChatGifMenu(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
-  return { name:"feature:gifs", open, close };
+  return {
+    name: "feature:gifs",
+    open,
+    close,
+    parseChatGif,
+    isFavoritedData: (item) => item ? favoriteLookup.has(item.favKey || makeFavoriteKey(item)) : false,
+    toggleFavoriteData: (item) => {
+      if (!item) return;
+      const it = Object.assign({}, item);
+      it.favKey = it.favKey || makeFavoriteKey(it);
+      if (favoriteLookup.has(it.favKey)) deleteFavorite(it);
+      else addFavorite(it);
+      refreshFavoritesUIIfOpen();
+    }
+  };
 });

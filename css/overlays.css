@@ -1085,6 +1085,76 @@
 }
 .btfw-gif-pages { color: var(--btfw-color-text-soft); min-width: 72px; text-align:center; }
 
+/* === In-chat right-click menu for Giphy/Tenor GIFs === */
+.btfw-gif-menu{
+  position: fixed;
+  z-index: 100000;
+  min-width: 172px;
+  padding: 6px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 85%, transparent 15%);
+  box-shadow:
+    0 18px 40px color-mix(in srgb, var(--btfw-color-bg) 62%, transparent 38%),
+    0 6px 16px color-mix(in srgb, var(--btfw-color-bg) 48%, transparent 52%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+  transform-origin: top left;
+  transition: opacity .12s ease, transform .12s ease;
+  pointer-events: none;
+}
+.btfw-gif-menu.is-open{
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.btfw-gif-menu-item{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--btfw-color-text);
+  font: inherit;
+  font-size: .92rem;
+  line-height: 1.1;
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.btfw-gif-menu-item i{
+  width: 16px;
+  text-align: center;
+  font-size: .95em;
+  opacity: .85;
+}
+.btfw-gif-menu-item:hover,
+.btfw-gif-menu-item:focus-visible{
+  background: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+  color: var(--btfw-color-text-strong, #fff);
+  outline: none;
+}
+.btfw-gif-menu-item:hover i,
+.btfw-gif-menu-item:focus-visible i{ opacity: 1; }
+.btfw-gif-menu-item[data-act="fav"].is-active i{ color: var(--btfw-color-accent); opacity: 1; }
+
+/* Hidden GIF — graceful dark blur, contained to the tile so the blur halo
+   doesn't bleed into neighbouring chat content. Right-click → Show restores. */
+#messagebuffer img.giphy.btfw-gif-hidden,
+#messagebuffer img.tenor.btfw-gif-hidden{
+  filter: blur(15px) brightness(.25) saturate(.7);
+  clip-path: inset(0 round 8px);
+  opacity: .9;
+  cursor: pointer;
+  transition: filter .2s ease, opacity .2s ease;
+}
+
 /* === Bulma-style skin for CyTube Bootstrap modals === */
 
 .modal-backdrop {
