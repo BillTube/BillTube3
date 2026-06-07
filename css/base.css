@@ -209,8 +209,16 @@ footer {
 #pollwrap {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 14px;
   margin-top: 12px;
+}
+
+/* Keep the poll form / active poll / controls at a comfortable width instead of
+   stretching the full stack panel on wide screens (which looked off). */
+#pollwrap > * {
+  width: 100%;
+  max-width: 700px;
 }
 
 #pollwrap .poll-menu {
@@ -226,9 +234,29 @@ footer {
   box-shadow: 0 18px 48px color-mix(in srgb, var(--btfw-color-bg) 32%, transparent 68%);
 }
 
+/* Cancel — pinned to the top-right of the form, neutral (no red glow); turns
+   subtly red only on hover. */
 #pollwrap .poll-menu > .btn-danger {
-  align-self: flex-end;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--btfw-color-danger, #ff4d6d) 38%, transparent 62%);
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 2;
+  align-self: auto;
+  margin: 0;
+  padding: 5px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--btfw-color-surface) 86%, transparent 14%);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 70%, transparent 30%);
+  color: color-mix(in srgb, var(--btfw-color-text) 84%, transparent 16%);
+  box-shadow: none;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+#pollwrap .poll-menu > .btn-danger:hover,
+#pollwrap .poll-menu > .btn-danger:focus {
+  background: color-mix(in srgb, #ff5a6a 20%, transparent 80%);
+  border-color: color-mix(in srgb, #ff5a6a 42%, transparent 58%);
+  color: #ffe2e6;
+  box-shadow: none;
 }
 
 .table-container {
@@ -462,18 +490,45 @@ footer {
   align-self: stretch;
   font-weight: 600;
   letter-spacing: 0.02em;
+  margin-top: 4px;
+  background: color-mix(in srgb, var(--btfw-color-accent) 86%, transparent 14%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 70%, white 8%);
+  color: var(--btfw-color-on-accent, #fff);
+}
+#pollwrap .poll-menu .btn.btn-block:hover,
+#pollwrap .poll-menu .btn.btn-block:focus {
+  background: color-mix(in srgb, var(--btfw-color-accent) 100%, transparent 0%);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
 }
 
 #pollwrap .poll-controls {
-  justify-content: flex-end;
+  justify-content: center;
   background: color-mix(in srgb, var(--btfw-color-surface) 88%, transparent 12%);
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
-  padding: 8px 12px;
+  padding: 10px 12px;
 }
 
-#pollwrap .poll-controls .button {
-  margin-left: auto;
+/* New Poll — centered, themed accent CTA. */
+#pollwrap .poll-controls .button,
+#pollwrap .poll-controls #newpollbtn {
+  margin: 0;
+  padding: 8px 24px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--btfw-color-accent) 88%, transparent 12%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 70%, white 8%);
+  color: var(--btfw-color-on-accent, #fff);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+#pollwrap .poll-controls #newpollbtn:hover,
+#pollwrap .poll-controls #newpollbtn:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--btfw-color-accent) 40%, transparent 60%);
 }
 
 #chatwrap {
