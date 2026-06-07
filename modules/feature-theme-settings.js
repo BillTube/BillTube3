@@ -51,6 +51,9 @@ BTFW.define("feature:themeSettings", [], async () => {
     emoteSize   : "btfw:chat:emoteSize",      // "small" | "medium" | "big"
     gifAutoplay : "btfw:chat:gifAutoplay",    // "1" | "0"
     chatJoinNotices: "btfw:chat:joinNotices", // "1" | "0"
+    notifyNowPlaying: "btfw:notify:nowPlaying",   // "1" | "0"
+    notifyPolls    : "btfw:notify:polls",         // "1" | "0"
+    notifyMovieVoting: "btfw:notify:movieVoting", // "1" | "0"
     stackCompact: "btfw:stack:compact",       // "1" | "0"
     localSubs   : "btfw:video:localsubs",     // "1" | "0"
     billcastEnabled: "btfw:billcast:enabled", // "1" | "0"
@@ -232,14 +235,26 @@ BTFW.define("feature:themeSettings", [], async () => {
               <div class="btfw-ts-grid">
                 <section class="btfw-ts-card">
                   <header class="btfw-ts-card__header">
-                    <h3>Stack layout <button type="button" class="btfw-ts-info" aria-label="More info" data-tip="When on, the panels below the video (Now Playing, playlist, featured channels, polls…) get a little side padding on desktop so they aren't flush to the edges. Turn it off for a tighter, edge-to-edge look."><i class="fa fa-circle-info" aria-hidden="true"></i></button></h3>
-                    <p>Give the panels below the video a little more breathing room on desktop.</p>
+                    <h3>Layout</h3>
+                    <p>Position the chat column and adjust the panel spacing below the video.</p>
                   </header>
                   <div class="btfw-ts-card__body">
-                    <button type="button" class="btfw-compact-stack-btn" id="btfw-compact-stack-toggle" aria-pressed="true">
-                      <span class="btfw-compact-stack-label">Compact stack</span>
-                      <span class="btfw-compact-stack-status">On</span>
-                    </button>
+                    <div class="btfw-ts-control">
+                      <label class="btfw-input__label" for="btfw-chat-side">Chat position</label>
+                      <div class="select is-small">
+                        <select id="btfw-chat-side">
+                          <option value="right">Video left, chat right</option>
+                          <option value="left">Chat left, video right</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="btfw-ts-control">
+                      <label class="btfw-input__label">Stack spacing <button type="button" class="btfw-ts-info" aria-label="More info" data-tip="When on, the panels below the video (Now Playing, playlist, featured channels, polls…) get a little side padding on desktop so they aren't flush to the edges. Turn it off for a tighter, edge-to-edge look."><i class="fa fa-circle-info" aria-hidden="true"></i></button></label>
+                      <button type="button" class="btfw-compact-stack-btn" id="btfw-compact-stack-toggle" aria-pressed="true">
+                        <span class="btfw-compact-stack-label">Compact stack</span>
+                        <span class="btfw-compact-stack-status">On</span>
+                      </button>
+                    </div>
                   </div>
                 </section>
 
@@ -305,12 +320,21 @@ BTFW.define("feature:themeSettings", [], async () => {
               <div class="btfw-ts-grid">
                 <section class="btfw-ts-card">
                   <header class="btfw-ts-card__header">
-                    <h3>Join alerts</h3>
-                    <p>Decide whether to show join popups for new users.</p>
+                    <h3>Alerts</h3>
+                    <p>Choose which toast popups appear in the corner of the chat.</p>
                   </header>
                   <div class="btfw-ts-card__body">
                     <label class="checkbox btfw-checkbox">
-                      <input type="checkbox" id="btfw-chat-join-notices"> <span>Show notifications when users join</span>
+                      <input type="checkbox" id="btfw-chat-join-notices"> <span>User join alerts</span>
+                    </label>
+                    <label class="checkbox btfw-checkbox">
+                      <input type="checkbox" id="btfw-notify-nowplaying"> <span>Movie changes (&ldquo;Now playing&rdquo;)</span>
+                    </label>
+                    <label class="checkbox btfw-checkbox">
+                      <input type="checkbox" id="btfw-notify-polls"> <span>Polls (&ldquo;Poll started&rdquo;)</span>
+                    </label>
+                    <label class="checkbox btfw-checkbox">
+                      <input type="checkbox" id="btfw-notify-movievoting"> <span>Movie voting (&ldquo;Rating has started&rdquo;)</span>
                     </label>
                   </div>
                 </section>
@@ -329,24 +353,6 @@ BTFW.define("feature:themeSettings", [], async () => {
             <!-- Video -->
             <div class="btfw-ts-panel" data-tab="video" style="display:none;">
               <div class="btfw-ts-grid">
-                <section class="btfw-ts-card">
-                  <header class="btfw-ts-card__header">
-                    <h3>Layout</h3>
-                    <p>Choose how the desktop layout positions chat and video.</p>
-                  </header>
-                  <div class="btfw-ts-card__body">
-                    <div class="btfw-ts-control">
-                      <label class="btfw-input__label" for="btfw-chat-side">Layout mode</label>
-                      <div class="select is-small">
-                        <select id="btfw-chat-side">
-                          <option value="right">Video left, chat right</option>
-                          <option value="left">Chat left, video right</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
                 <section class="btfw-ts-card">
                   <header class="btfw-ts-card__header">
                     <h3>Playback tools</h3>
@@ -529,6 +535,9 @@ BTFW.define("feature:themeSettings", [], async () => {
     const emoteSize   = $("#btfw-emote-size", m)?.value   || "medium";
     const gifAutoOn   = $("#btfw-gif-autoplay", m)?.checked;
     const joinNoticesOn = $("#btfw-chat-join-notices", m)?.checked;
+    const notifyNowPlayingOn  = $("#btfw-notify-nowplaying", m)?.checked;
+    const notifyPollsOn       = $("#btfw-notify-polls", m)?.checked;
+    const notifyMovieVotingOn = $("#btfw-notify-movievoting", m)?.checked;
     const compactBtn  = $("#btfw-compact-stack-toggle", m);
     const compactOn   = compactBtn ? compactBtn.getAttribute("aria-pressed") === "true" : true;
     const localSubsOn = $("#btfw-localsubs-toggle", m)?.checked;
@@ -541,6 +550,9 @@ BTFW.define("feature:themeSettings", [], async () => {
     set(TS_KEYS.emoteSize, emoteSize);
     set(TS_KEYS.gifAutoplay, gifAutoOn ? "1":"0");
     set(TS_KEYS.chatJoinNotices, joinNoticesOn ? "1":"0");
+    set(TS_KEYS.notifyNowPlaying, notifyNowPlayingOn ? "1":"0");
+    set(TS_KEYS.notifyPolls, notifyPollsOn ? "1":"0");
+    set(TS_KEYS.notifyMovieVoting, notifyMovieVotingOn ? "1":"0");
     set(TS_KEYS.stackCompact, compactOn ? "1":"0");
     set(TS_KEYS.localSubs,   localSubsOn ? "1":"0");
     set(TS_KEYS.billcastEnabled, billcastOn ? "1":"0");
@@ -566,6 +578,9 @@ BTFW.define("feature:themeSettings", [], async () => {
         emoteSize, gifAutoplay: !!gifAutoOn, compactStack: !!compactOn,
         localSubs: !!localSubsOn, billcastEnabled: !!billcastOn,
         joinNotices: !!joinNoticesOn,
+        notifyNowPlaying: !!notifyNowPlayingOn,
+        notifyPolls: !!notifyPollsOn,
+        notifyMovieVoting: !!notifyMovieVotingOn,
         chatSide
       }
     }}));
@@ -596,6 +611,9 @@ BTFW.define("feature:themeSettings", [], async () => {
     $("#btfw-emote-size").value   = get(TS_KEYS.emoteSize,   "medium");
     $("#btfw-gif-autoplay").checked = get(TS_KEYS.gifAutoplay, "1") === "1";
     $("#btfw-chat-join-notices").checked = get(TS_KEYS.chatJoinNotices, "1") === "1";
+    { const c = $("#btfw-notify-nowplaying");  if (c) c.checked = get(TS_KEYS.notifyNowPlaying,  "1") === "1"; }
+    { const c = $("#btfw-notify-polls");       if (c) c.checked = get(TS_KEYS.notifyPolls,       "1") === "1"; }
+    { const c = $("#btfw-notify-movievoting"); if (c) c.checked = get(TS_KEYS.notifyMovieVoting,  "1") === "1"; }
     $("#btfw-localsubs-toggle").checked = get(TS_KEYS.localSubs, "1") === "1";
     const bc = $("#btfw-billcast-toggle"); if (bc) bc.checked = get(TS_KEYS.billcastEnabled, "0") === "1";
     const compactStored = get(TS_KEYS.stackCompact, "1") === "1";

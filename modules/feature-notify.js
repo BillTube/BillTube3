@@ -20,11 +20,16 @@ BTFW.define("feature:notify", [], async () => {
   let enabled = true;
   try { const v = localStorage.getItem(LS_ENABLED); if (v !== null) enabled = v === "1"; } catch(e){}
 
-  let joinNoticesEnabled = true;
-  try {
-    const stored = localStorage.getItem(LS_JOIN_NOTICES);
-    if (stored !== null) joinNoticesEnabled = stored === "1";
-  } catch(_){}
+  const LS_NP_NOTICES  = "btfw:notify:nowPlaying"; // "1"|"0"
+  const LS_POLL_NOTICES= "btfw:notify:polls";      // "1"|"0"
+
+  function loadBool(key, def){
+    try { const v = localStorage.getItem(key); return v === null ? def : v === "1"; } catch(_){ return def; }
+  }
+
+  let joinNoticesEnabled  = loadBool(LS_JOIN_NOTICES, true);
+  let nowPlayingNoticesEnabled = loadBool(LS_NP_NOTICES, true);
+  let pollNoticesEnabled  = loadBool(LS_POLL_NOTICES, true);
 
   document.addEventListener("btfw:chat:joinNoticesChanged", (ev)=>{
     if (!ev || !ev.detail) return;
@@ -32,8 +37,11 @@ BTFW.define("feature:notify", [], async () => {
   });
 
   document.addEventListener("btfw:themeSettings:apply", (ev)=>{
-    const value = ev?.detail?.values?.joinNotices;
-    if (value != null) joinNoticesEnabled = !!value;
+    const v = ev?.detail?.values;
+    if (!v) return;
+    if (v.joinNotices != null)      joinNoticesEnabled = !!v.joinNotices;
+    if (v.notifyNowPlaying != null) nowPlayingNoticesEnabled = !!v.notifyNowPlaying;
+    if (v.notifyPolls != null)      pollNoticesEnabled = !!v.notifyPolls;
   });
 
   // ---- container (absolute overlay) ------------------------------------------
@@ -353,6 +361,7 @@ function startAutoclose(o){
     // Now playing: changeMedia & setCurrent often both fire → de-dupe
     try {
       const scheduleNowPlaying = (payload) => {
+        if (!nowPlayingNoticesEnabled) return;
         // Skip re-sync replays (initial load / reconnect) — see feature:connection-status
         if (window.BTFW_stateToastsSuppressed && window.BTFW_stateToastsSuppressed()) return;
         const direct = titleFromData(payload);
@@ -381,6 +390,7 @@ function startAutoclose(o){
 
     try {
       socket.on("newPoll", (p)=>{
+        if (!pollNoticesEnabled) return;
         // Skip re-sync replays (reconnect re-sends the active poll)
         if (window.BTFW_stateToastsSuppressed && window.BTFW_stateToastsSuppressed()) return;
         const title = (p && p.title) ? String(p.title) : "A new poll started";
