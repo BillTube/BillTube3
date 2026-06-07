@@ -949,37 +949,70 @@
 .btfw-gif-toolbar .btfw-gif-search {
   margin-left:0; min-width:0; display:flex; gap:6px; align-items:center; flex-wrap:wrap;
 }
-/* Input takes the full row; the two buttons share the next line when it's tight. */
-.btfw-gif-toolbar .btfw-gif-search .input { flex:1 1 140px; min-width:0; }
-.btfw-gif-toolbar .btfw-gif-search .button { flex:1 1 auto; }
-.btfw-gif-toolbar .btfw-gif-search.is-hidden {
-  display: none;
-}
-/* Tabs wrap rather than overflow on a very narrow chat. */
-#btfw-gif-modal .btfw-gif-tabs ul { flex-wrap: wrap; }
+.btfw-gif-toolbar .btfw-gif-search.is-hidden { display: none; }
 
-/* Tabs: clean pill style (override Bulma is-boxed) */
+/* Tabs — segmented buttons using theme tokens (matches the Emotes tabs) */
 #btfw-gif-modal .btfw-gif-tabs{ margin:0; }
 #btfw-gif-modal .btfw-gif-tabs ul{
-  display:flex; gap:6px; margin:0; padding:0; list-style:none; border-bottom:0;
+  display:flex; gap:6px; margin:0; padding:0; list-style:none; border-bottom:0; flex-wrap:wrap;
 }
 #btfw-gif-modal .btfw-gif-tabs li{ margin:0; }
 #btfw-gif-modal .btfw-gif-tabs li a,
 #btfw-gif-modal .btfw-gif-tabs li.is-active a {
-  display:block; padding:5px 13px; border-radius:999px; font-size:12.5px; font-weight:600;
-  border:1px solid color-mix(in srgb, var(--btfw-border) 62%, transparent 38%);
-  background: color-mix(in srgb, var(--btfw-color-surface) 78%, transparent 22%);
-  color: color-mix(in srgb, var(--btfw-color-text) 82%, transparent);
+  display:block; padding:6px 12px; border-radius:8px; font-size:12px; font-weight:600; line-height:1;
+  background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
+  border:1px solid var(--btfw-border);
+  color: var(--btfw-color-text-soft);
   transition: background .14s ease, color .14s ease, border-color .14s ease;
 }
 #btfw-gif-modal .btfw-gif-tabs li a:hover{
   background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 38%, transparent 62%);
+  color: var(--btfw-color-text);
 }
 #btfw-gif-modal .btfw-gif-tabs li.is-active a{
-  background: var(--btfw-color-accent); color: var(--btfw-color-on-accent);
-  border-color: var(--btfw-color-accent);
+  background: color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 64%, transparent 36%);
+  color: var(--btfw-color-on-accent);
 }
+
+/* Search input — themed (matches the Emotes search field) */
+#btfw-gif-modal #btfw-gif-q{
+  flex:1 1 140px; min-width:0; height:32px;
+  background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);
+  border:1px solid var(--btfw-border); color: var(--btfw-color-text);
+  border-radius:8px; font-size:12.5px; padding:0 10px; outline:none;
+  transition: border-color .14s ease, box-shadow .14s ease;
+}
+#btfw-gif-modal #btfw-gif-q::placeholder{ color: color-mix(in srgb, var(--btfw-color-text) 42%, transparent); }
+#btfw-gif-modal #btfw-gif-q:focus{
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 60%, transparent 40%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%);
+}
+
+/* Search + Trending buttons — themed (override Bulma) */
+#btfw-gif-modal .btfw-gif-sbtn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  height:32px; padding:0 12px; border-radius:8px; cursor:pointer;
+  font-size:12px; font-weight:600; white-space:nowrap;
+  border:1px solid color-mix(in srgb, var(--btfw-border) 65%, transparent 35%);
+  background: color-mix(in srgb, var(--btfw-color-surface) 80%, transparent 20%);
+  color: var(--btfw-color-text);
+  transition: background .14s ease, border-color .14s ease, transform .06s ease, filter .14s ease;
+}
+#btfw-gif-modal .btfw-gif-sbtn:hover{
+  background: color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);
+}
+#btfw-gif-modal .btfw-gif-sbtn:active{ transform: translateY(1px); }
+#btfw-gif-modal .btfw-gif-sbtn i{ font-size:12px; opacity:.9; }
+/* Search = primary action → accent icon button */
+#btfw-gif-modal #btfw-gif-go{
+  flex:0 0 auto; width:34px; padding:0;
+  background: color-mix(in srgb, var(--btfw-color-accent) 88%, transparent 12%);
+  border-color: var(--btfw-color-accent); color: var(--btfw-color-on-accent);
+}
+#btfw-gif-modal #btfw-gif-go:hover{ background: var(--btfw-color-accent); filter: brightness(1.08); }
+#btfw-gif-modal #btfw-gif-trending{ flex:0 0 auto; }
 
 #btfw-gif-notice {
   margin: 6px 0 10px;

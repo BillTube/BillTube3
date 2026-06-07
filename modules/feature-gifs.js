@@ -106,9 +106,9 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
               </ul>
             </div>
             <div class="btfw-gif-search">
-              <input id="btfw-gif-q" class="input is-small" type="text" placeholder="Search GIFs…">
-              <button id="btfw-gif-go" class="button is-link is-small">Search</button>
-              <button id="btfw-gif-trending" class="button is-dark is-small">Trending</button>
+              <input id="btfw-gif-q" type="text" placeholder="Search GIFs…" autocomplete="off">
+              <button id="btfw-gif-go" class="btfw-gif-sbtn" type="button" title="Search" aria-label="Search"><i class="fa fa-search" aria-hidden="true"></i></button>
+              <button id="btfw-gif-trending" class="btfw-gif-sbtn" type="button" title="Trending"><i class="fa fa-fire" aria-hidden="true"></i><span>Trending</span></button>
             </div>
           </div>
 
