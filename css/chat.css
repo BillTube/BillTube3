@@ -1423,6 +1423,27 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
   opacity: .75;
   line-height: 1;
 }
+
+/* Theme cog — buttonless icon, grouped with the users-count chip on the right
+   (bottom-right of the bar), separated from the bordered emotes/gif/tools/
+   commands buttons on the left. */
+#btfw-chat-actions #btfw-theme-cog-chat.btfw-chat-ghosticon{
+  order: 101;                 /* sit just after #usercount (order:100) */
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; box-shadow: none;
+  margin: 0; padding: 6px 8px;
+  color: color-mix(in srgb, var(--btfw-color-chat-text) 86%, transparent 14%);
+  opacity: .9; cursor: pointer; line-height: 1;
+  transition: opacity .15s ease, color .15s ease;
+}
+#btfw-chat-actions #btfw-theme-cog-chat.btfw-chat-ghosticon i{ font-size: 14px; }
+#btfw-chat-actions #btfw-theme-cog-chat.btfw-chat-ghosticon:hover{
+  opacity: 1; color: var(--btfw-color-accent);
+}
+
+/* The bordered Users button is redundant now — the users-count chip is the
+   single users icon and already toggles the userlist. */
+#btfw-chat-actions #btfw-users-toggle{ display: none !important; }
 .server-msg-reconnect {
   border: 0px solid #009900!important;
   border-radius: 10px;
