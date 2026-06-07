@@ -1085,8 +1085,9 @@
 }
 .btfw-gif-pages { color: var(--btfw-color-text-soft); min-width: 72px; text-align:center; }
 
-/* === In-chat right-click menu for Giphy/Tenor GIFs === */
-.btfw-gif-menu{
+/* === In-chat right-click context menus (GIF actions + user actions) === */
+.btfw-gif-menu,
+.btfw-user-menu{
   position: fixed;
   z-index: 100000;
   min-width: 172px;
@@ -1106,12 +1107,14 @@
   transition: opacity .12s ease, transform .12s ease;
   pointer-events: none;
 }
-.btfw-gif-menu.is-open{
+.btfw-gif-menu.is-open,
+.btfw-user-menu.is-open{
   opacity: 1;
   transform: none;
   pointer-events: auto;
 }
-.btfw-gif-menu-item{
+.btfw-gif-menu-item,
+.btfw-user-menu .btfw-ctxmenu-item{
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1128,21 +1131,42 @@
   cursor: pointer;
   transition: background .12s ease, color .12s ease;
 }
-.btfw-gif-menu-item i{
+.btfw-gif-menu-item i,
+.btfw-user-menu .btfw-ctxmenu-item i{
   width: 16px;
   text-align: center;
   font-size: .95em;
   opacity: .85;
 }
 .btfw-gif-menu-item:hover,
-.btfw-gif-menu-item:focus-visible{
+.btfw-gif-menu-item:focus-visible,
+.btfw-user-menu .btfw-ctxmenu-item:hover,
+.btfw-user-menu .btfw-ctxmenu-item:focus-visible{
   background: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
   color: var(--btfw-color-text-strong, #fff);
   outline: none;
 }
 .btfw-gif-menu-item:hover i,
-.btfw-gif-menu-item:focus-visible i{ opacity: 1; }
+.btfw-gif-menu-item:focus-visible i,
+.btfw-user-menu .btfw-ctxmenu-item:hover i,
+.btfw-user-menu .btfw-ctxmenu-item:focus-visible i{ opacity: 1; }
 .btfw-gif-menu-item[data-act="fav"].is-active i{ color: var(--btfw-color-accent); opacity: 1; }
+.btfw-user-menu .btfw-ctxmenu-item.is-active i{ color: var(--btfw-color-accent); opacity: 1; }
+
+/* User menu header — shows whose name was right-clicked */
+.btfw-user-menu .btfw-ctxmenu-title{
+  padding: 6px 12px 7px;
+  margin-bottom: 2px;
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--btfw-color-text-soft, #9aa3b2);
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-border) 70%, transparent 30%);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* Hidden GIF — graceful dark blur, contained to the tile so the blur halo
    doesn't bleed into neighbouring chat content. Right-click → Show restores. */
