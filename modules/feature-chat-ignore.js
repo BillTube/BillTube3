@@ -65,20 +65,34 @@ BTFW.define("feature:chat-ignore", [], async () => {
     has(name) ? remove(name) : add(name);
   }
 
-  // Extract username from message element (cached result)
+  // Extract username from a message row (cached). CyTube tags EVERY message
+  // row — including grouped continuation rows that have no visible .username —
+  // with a `chat-msg-<name>` class, so read that first and fall back to the
+  // visible username span only when the class is missing.
   const usernameCache = new WeakMap();
+  function nameFromRowClass(el) {
+    const cls = el && el.className ? String(el.className) : "";
+    const m = cls.match(/(?:^|\s)chat-msg-([^\s]+)/);
+    return m ? m[1] : "";
+  }
   function getUserFromMessage(el) {
     if (usernameCache.has(el)) return usernameCache.get(el);
 
-    const u = el.querySelector(".username");
-    if (!u) {
-      usernameCache.set(el, "");
-      return "";
+    let name = nameFromRowClass(el);
+    if (!name) {
+      const u = el.querySelector(".username");
+      if (u) name = (u.textContent || "").trim().replace(/:\s*$/, "");
     }
+    usernameCache.set(el, name || "");
+    return name || "";
+  }
 
-    const name = (u.textContent || "").trim().replace(/:\s*$/, "");
-    usernameCache.set(el, name);
-    return name;
+  // Apply / clear the ignored visual on a row. Discord-style: the message
+  // stays in place but is blurred out (peek on hover) rather than removed.
+  function applyIgnored(el, ignored) {
+    el.classList.toggle("btfw-ignored", ignored);
+    if (ignored) el.setAttribute("data-btfw-ignored", "true");
+    else el.removeAttribute("data-btfw-ignored");
   }
 
   // Process single message (optimized)
@@ -87,14 +101,13 @@ BTFW.define("feature:chat-ignore", [], async () => {
 
     const name = getUserFromMessage(el);
     if (name && has(name)) {
-      el.style.display = "none";
-      el.setAttribute("data-btfw-ignored", "true");
+      applyIgnored(el, true);
     }
 
     processedMessages.add(el);
   }
 
-  // Hide existing messages from a specific user
+  // Blur existing messages from a specific user (retroactive)
   function hideExistingMessages(username) {
     const buf = $("#messagebuffer");
     if (!buf) return;
@@ -104,13 +117,12 @@ BTFW.define("feature:chat-ignore", [], async () => {
       if (el.nodeType !== 1) continue;
       const msgUser = getUserFromMessage(el);
       if (msgUser.toLowerCase() === lower) {
-        el.style.display = "none";
-        el.setAttribute("data-btfw-ignored", "true");
+        applyIgnored(el, true);
       }
     }
   }
 
-  // Show existing messages from a specific user
+  // Reveal previously-blurred messages from a specific user
   function showExistingMessages(username) {
     const buf = $("#messagebuffer");
     if (!buf) return;
@@ -121,8 +133,7 @@ BTFW.define("feature:chat-ignore", [], async () => {
       if (el.getAttribute("data-btfw-ignored")) {
         const msgUser = getUserFromMessage(el);
         if (msgUser.toLowerCase() === lower) {
-          el.style.display = "";
-          el.removeAttribute("data-btfw-ignored");
+          applyIgnored(el, false);
         }
       }
     }
@@ -177,8 +188,10 @@ BTFW.define("feature:chat-ignore", [], async () => {
     return true;
   }
 
-  // Fallback: minimal DOM observer for when socket isn't available
-  function wireDOMFallback() {
+  // Reliable DOM observer — processes every appended row exactly once
+  // (deduped via WeakSet). This is the primary mechanism; the socket handler
+  // alone can miss rows when several arrive in the same tick.
+  function wireMessageObserver() {
     const buf = $("#messagebuffer");
     if (!buf || buf._btfwIgnoreMO) return;
 
@@ -254,15 +267,147 @@ BTFW.define("feature:chat-ignore", [], async () => {
     li.classList.toggle("btfw-muted", has(name));
   }
 
+  /* ============================================================
+     Right-click menu on chat usernames / avatars → Ignore user
+     Single delegated contextmenu listener; covers existing AND future
+     messages with no per-row wiring. The username is derived from the
+     row's chat-msg-<name> class (works on grouped continuation rows too).
+     ============================================================ */
+  const USER_TARGET_SEL = "#messagebuffer .username, #messagebuffer img.btfw-chat-avatar";
+
+  function nameFromTarget(t) {
+    if (!t) return "";
+    const row = t.closest('[class*="chat-msg-"]');
+    if (row) {
+      const n = nameFromRowClass(row);
+      if (n) return n;
+    }
+    const span = (t.classList && t.classList.contains("username")) ? t : (t.closest ? t.closest(".username") : null);
+    if (span) return (span.textContent || "").trim().replace(/:\s*$/, "");
+    return "";
+  }
+
+  let umenu = null, umenuName = "", uDismissBound = false;
+
+  function ensureUserMenu() {
+    if (umenu) return umenu;
+    umenu = document.createElement("div");
+    umenu.id = "btfw-user-menu";
+    umenu.className = "btfw-ctxmenu btfw-user-menu";
+    umenu.setAttribute("role", "menu");
+    umenu.hidden = true;
+    umenu.innerHTML = `
+      <div class="btfw-ctxmenu-title"></div>
+      <button type="button" class="btfw-ctxmenu-item" data-act="ignore" role="menuitem">
+        <i class="fa fa-user-slash" aria-hidden="true"></i><span class="btfw-ctxmenu-label">Ignore user</span>
+      </button>`;
+    document.body.appendChild(umenu);
+    umenu.addEventListener("click", onUserMenuClick);
+    umenu.addEventListener("contextmenu", (e) => e.preventDefault());
+    return umenu;
+  }
+
+  function syncUserMenu(name) {
+    const ignored = has(name);
+    umenu.querySelector(".btfw-ctxmenu-title").textContent = name;
+    const item = umenu.querySelector('[data-act="ignore"]');
+    item.querySelector(".btfw-ctxmenu-label").textContent = ignored ? "Unignore user" : "Ignore user";
+    item.querySelector("i").className = ignored ? "fa fa-user-check" : "fa fa-user-slash";
+    item.classList.toggle("is-active", ignored);
+  }
+
+  function showUserMenu(x, y, name) {
+    ensureUserMenu();
+    umenuName = name;
+    syncUserMenu(name);
+    umenu.hidden = false;
+    umenu.style.left = "0px";
+    umenu.style.top = "0px";
+    umenu.style.visibility = "hidden";
+    umenu.classList.add("is-open");
+    const r = umenu.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let L = x, T = y;
+    if (L + r.width + 8 > vw) L = Math.max(8, vw - r.width - 8);
+    if (T + r.height + 8 > vh) T = Math.max(8, vh - r.height - 8);
+    if (L < 8) L = 8;
+    if (T < 8) T = 8;
+    umenu.style.left = L + "px";
+    umenu.style.top = T + "px";
+    umenu.style.visibility = "";
+    bindUserMenuDismiss();
+  }
+
+  function hideUserMenu() {
+    if (!umenu) return;
+    umenu.classList.remove("is-open");
+    umenu.hidden = true;
+    umenuName = "";
+    unbindUserMenuDismiss();
+  }
+
+  function onUserMenuClick(e) {
+    const btn = e.target.closest(".btfw-ctxmenu-item");
+    if (!btn) return;
+    e.preventDefault();
+    const name = umenuName;
+    if (name && btn.dataset.act === "ignore") toggle(name);
+    hideUserMenu();
+  }
+
+  function onUserMenuDocDown(e) { if (umenu && !umenu.contains(e.target)) hideUserMenu(); }
+  function onUserMenuKey(e) { if (e.key === "Escape") hideUserMenu(); }
+  function onUserMenuReflow() { hideUserMenu(); }
+
+  function bindUserMenuDismiss() {
+    if (uDismissBound) return;
+    uDismissBound = true;
+    document.addEventListener("mousedown", onUserMenuDocDown, true);
+    document.addEventListener("keydown", onUserMenuKey, true);
+    window.addEventListener("resize", onUserMenuReflow, true);
+    window.addEventListener("scroll", onUserMenuReflow, true);
+    const buf = $("#messagebuffer");
+    if (buf) buf.addEventListener("scroll", onUserMenuReflow, true);
+  }
+  function unbindUserMenuDismiss() {
+    if (!uDismissBound) return;
+    uDismissBound = false;
+    document.removeEventListener("mousedown", onUserMenuDocDown, true);
+    document.removeEventListener("keydown", onUserMenuKey, true);
+    window.removeEventListener("resize", onUserMenuReflow, true);
+    window.removeEventListener("scroll", onUserMenuReflow, true);
+    const buf = $("#messagebuffer");
+    if (buf) buf.removeEventListener("scroll", onUserMenuReflow, true);
+  }
+
+  function onChatUserContextMenu(e) {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    const hit = t.closest(USER_TARGET_SEL);
+    if (!hit) return;
+    const name = nameFromTarget(hit);
+    if (!name) return;
+    e.preventDefault();
+    e.stopPropagation();
+    showUserMenu(e.clientX, e.clientY, name);
+  }
+
+  function wireChatUserMenu() {
+    if (document._btfwUserMenuWired) return;
+    document._btfwUserMenuWired = true;
+    document.addEventListener("contextmenu", onChatUserContextMenu, true);
+  }
+
   // Main initialization
   function boot() {
-    // Try socket first (most efficient), fallback to DOM observer
-    if (!wireSocketEvents()) {
-      wireDOMFallback();
-    }
+    // Observer is the reliable path; socket handler is an extra fast trigger
+    // (both deduped via the processed WeakSet).
+    wireMessageObserver();
+    wireSocketEvents();
 
     processExistingMessages();
     decorateUserlist();
+    wireChatUserMenu();
   }
 
   // Initialize when ready

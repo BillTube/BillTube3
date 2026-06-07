@@ -1202,6 +1202,20 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
   background: var(--btfw-chip-bg-hover);
 }
 
+/* Ignored users — Discord-style: the message stays in place but is blurred
+   out (peek on hover) instead of being removed. Applies to head AND grouped
+   continuation rows. */
+#messagebuffer > .btfw-ignored{
+  filter: blur(5px) saturate(.6);
+  opacity: .5;
+  cursor: pointer;
+  transition: filter .16s ease, opacity .16s ease;
+}
+#messagebuffer > .btfw-ignored:hover{
+  filter: none;
+  opacity: .92;
+}
+
 #usercount.btfw-usercount {
     display: inline-flex;
     align-items: center;
