@@ -84,7 +84,14 @@
 
 #messagebuffer > div > span:last-child {
   display: block;
-  line-height: 1.375rem;
+  /* Readable line-height that scales with the chat font size. calc(8px + 1em)
+     equals the old fixed 22px at the 14px default (no change there), but small
+     text gets proportionally more leading and large text tightens up, so the
+     chat stays comfortable across the whole text-size slider. */
+  line-height: calc(8px + 1em);
+  /* Keep lines in a readable measure on very wide chat columns
+     (4K / ultrawide / wide layout). Inert at normal column widths. */
+  max-width: 80ch;
   word-wrap: break-word;
   margin-top: 0;
 }
