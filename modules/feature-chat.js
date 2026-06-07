@@ -129,24 +129,16 @@ window.addEventListener('scroll', () => {
 function repositionOpenPopins(){
   const helper = (el, opts) => window.BTFW_positionPopoverAboveChatBar && window.BTFW_positionPopoverAboveChatBar(el, opts);
 
-  // Popovers built on util:chat-popover (Chat Commands + any future ones)
+  // Popovers built on util:chat-popover (Chat Commands, Emotes, Userlist…)
   // self-register and are re-fitted here automatically — no hardcoding needed.
   if (window.BTFW_repositionChatPopovers) window.BTFW_repositionChatPopovers();
 
   // --- Not yet migrated to util:chat-popover (hand-positioned for now): ---
-  // Emotes (visible when NOT .hidden)
-  const em = document.getElementById("btfw-emotes-pop");
-  if (em && em.dataset.btfwPopoverState === "open") {
-    helper(em, { widthPx: 560, widthVw: 92, maxHpx: 480, maxHvh: 70 });
-  }
-
   // Chat Tools (modal active -> position its card)
   const ctCard = document.querySelector("#btfw-ct-modal .btfw-ct-card[data-btfw-popover-state=\"open\"]");
   if (ctCard) {
     helper(ctCard, { widthPx: 420, widthVw: 92, maxHpx: 360, maxHvh: 60 });
   }
-
-  // Userlist now rides on util:chat-popover (handled by the registry refit above).
 }
 // Expose so the splitter drag (feature:layout) can drive a deterministic re-fit
 // on every move — that path doesn't depend on ResizeObserver delivery timing,
