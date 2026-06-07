@@ -1561,14 +1561,15 @@ nav.pagination.is-centered.btfw-gif-pager {
 
 #btfw-theme-modal .modal-card,
 #btfw-theme-modal .btfw-theme-modal-card{
-  width: min(920px, 94vw);
+  width: min(1160px, 94vw);
   /* Consistent height across tabs — taller tabs (e.g. Notifications) scroll
      inside instead of resizing the whole modal. Responsive: scales with the
-     viewport, but never smaller than ~540px or taller than 820px (so it's
+     viewport, but never smaller than ~560px or taller than 1070px (so it's
      roomy on 1080p+, doesn't get giant on 4K, and shrinks to fit on mobile —
-     max-height caps it for short/landscape phones). */
-  height: clamp(540px, 82vh, 820px);
-  max-height: 92vh;
+     max-height caps it for short/landscape phones). Matched to the Channel
+     Settings modal so the two are the same size. */
+  height: clamp(560px, 88vh, 1070px);
+  max-height: 94vh;
   background: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
   border: 1px solid color-mix(in srgb, var(--btfw-border) 85%, transparent 15%);
   border-radius: 26px;
