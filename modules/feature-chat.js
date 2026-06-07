@@ -448,8 +448,8 @@ const CHAT_ACTION_ORDER = [
   "#btfw-ct-open",
   "#btfw-chatcmds-btn",
   "#btfw-users-toggle",
-  "#btfw-theme-cog-chat",
-  "#usercount"
+  "#usercount",
+  "#btfw-theme-cog-chat"
 ];
 
 function orderChatActions(actions){
@@ -1228,7 +1228,9 @@ const scheduleNormalizeChatActions = (() => {
     if (!$("#btfw-theme-cog-chat")) {
       const b = document.createElement("button");
       b.id = "btfw-theme-cog-chat";
-      b.className = "button is-dark is-small btfw-chatbtn btfw-theme-open";
+      // Buttonless (ghost) styling to match the users-count icon; grouped with it
+      // on the right, away from the bordered emotes/gif/tools/commands buttons.
+      b.className = "btfw-theme-open btfw-chat-ghosticon";
       b.title = "Theme settings";
       b.setAttribute("aria-label", "Theme settings");
       b.innerHTML = '<i class="fa fa-cog" aria-hidden="true"></i>';
