@@ -1,5 +1,6 @@
-BTFW.define("feature:chat", ["feature:layout"], async ({ init }) => {
+BTFW.define("feature:chat", ["feature:layout", "util:chat-popover"], async ({ init }) => {
   const motion = await init("util:motion");
+  const chatPopover = await init("util:chat-popover");
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const MESSAGE_SELECTOR = ".chat-msg, .message, [class*=message]";
@@ -145,11 +146,7 @@ function repositionOpenPopins(){
     helper(ctCard, { widthPx: 420, widthVw: 92, maxHpx: 360, maxHvh: 60 });
   }
 
-  // Userlist (uses display toggling)
-  const ul = document.getElementById("btfw-userlist-pop");
-  if (ul && ul.dataset.btfwPopoverState === "open") {
-    helper(ul);
-  }
+  // Userlist now rides on util:chat-popover (handled by the registry refit above).
 }
 // Expose so the splitter drag (feature:layout) can drive a deterministic re-fit
 // on every move — that path doesn't depend on ResizeObserver delivery timing,
@@ -983,71 +980,73 @@ const scheduleNormalizeChatActions = (() => {
       slot.appendChild(indicator);
     }
   }
-  function ensureUserlistPopover(){
-    if ($("#btfw-userlist-pop")) return;
+  // The floating Users popover now rides on util:chat-popover — shared open/close,
+  // positioning, live-resize re-fit, click-outside and Escape with the other mini
+  // chat popovers. The DOCKING mechanism is untouched: setUserlistDocked, the dock
+  // element and the orientation handler all stay as-is and drive this popover
+  // through the document._btfw_userlist_* shims below (their interface is unchanged).
+  let _ulPop = null;
+  function getUserlistPopover(){
+    if (_ulPop) return _ulPop;
+    _ulPop = chatPopover.create({
+      id: "btfw-userlist-modal",
+      cardClass: "btfw-userlist-pop",
+      parent: () => document.body,
+      once: true,           // build once so the adopted live #userlist survives re-opens
+      backdrop: true,       // preserve the click-catcher backdrop (transparent)
+      backdropZ: "6001",
+      // Userlist is a fixed-width panel (CSS pins #btfw-userlist-pop width); these
+      // caps just bound the height — the helper anchors it to the chat's right edge.
+      opts: { widthPx: 560, widthVw: 92, maxHpx: 480, maxHvh: 70 },
+      // Clicking the users-count toggle must not register as an outside click.
+      toggleSelector: ".btfw-usercount, #btfw-users-toggle, #usercount",
+      build: () => `
+        <div id="btfw-userlist-pop" class="btfw-userlist-pop">
+          <div class="btfw-pophead">
+            <span>Users</span>
+            <div class="btfw-pophead-actions">
+              <button class="btfw-popdock" type="button" aria-label="Dock users list to chat" title="Dock to chat">
+                <i class="fa fa-columns" aria-hidden="true"></i>
+              </button>
+              <button class="btfw-popclose" type="button" data-btfw-popover-close aria-label="Close">&times;</button>
+            </div>
+          </div>
+          <div class="btfw-popbody"></div>
+        </div>`,
+      onOpen: () => {
+        adoptUserlistIntoPopover();
+        const ul = $("#userlist");
+        if (ul) ul.classList.add("btfw-userlist-overlay--open");
+      },
+      onClose: () => {
+        const ul = $("#userlist");
+        if (ul) ul.classList.remove("btfw-userlist-overlay--open");
+      }
+    });
 
-    // Backdrop — same family as emote popover
-    const back = document.createElement("div");
-    back.id = "btfw-userlist-backdrop";
-    back.className = "btfw-popover-backdrop";
-    back.dataset.btfwPopoverState = "closed";
-    back.setAttribute("hidden", "");
-    back.setAttribute("aria-hidden", "true");
-    back.style.zIndex = "6001";
-    document.body.appendChild(back);
-
-    // Panel
-    const pop = document.createElement("div");
-    pop.id = "btfw-userlist-pop";
-    pop.className = "btfw-popover btfw-userlist-pop";
-    pop.dataset.btfwPopoverState = "closed";
-    pop.setAttribute("hidden", "");
-    pop.setAttribute("aria-hidden", "true");
-    pop.style.zIndex = "6002";
-    pop.innerHTML = `
-      <div class="btfw-pophead">
-        <span>Users</span>
-        <div class="btfw-pophead-actions">
-          <button class="btfw-popdock" type="button" aria-label="Dock users list to chat" title="Dock to chat">
-            <i class="fa fa-columns" aria-hidden="true"></i>
-          </button>
-          <button class="btfw-popclose" type="button" aria-label="Close">&times;</button>
-        </div>
-      </div>
-      <div class="btfw-popbody"></div>
-    `;
-    document.body.appendChild(pop);
-
-    adoptUserlistIntoPopover();
-
-    const close = () => {
-      const ul = $("#userlist");
-      if (ul) ul.classList.remove("btfw-userlist-overlay--open");
-      motion.closePopover(pop, { backdrop: back });
-    };
-
-    back.addEventListener("click", close);
-    pop.querySelector(".btfw-popclose").addEventListener("click", close);
-    const dockBtn = pop.querySelector(".btfw-popdock");
-    if (dockBtn) dockBtn.addEventListener("click", () => setUserlistDocked(true));
-    document.addEventListener("keydown", (ev)=>{ if (ev.key === "Escape") close(); }, true);
-
-    function position(){
-    positionAboveChatBar(pop);
+    // Dock button → switch to docked mode. Delegated so it survives the once-build.
+    if (!document._btfwUlDockWired) {
+      document._btfwUlDockWired = true;
+      document.addEventListener("click", (e) => {
+        const dock = e.target.closest && e.target.closest("#btfw-userlist-pop .btfw-popdock");
+        if (dock) { e.preventDefault(); setUserlistDocked(true); }
+      });
     }
-    window.addEventListener("resize", position);
-    window.addEventListener("scroll", position, true);
 
-    document._btfw_userlist_isOpen = () => pop.dataset.btfwPopoverState === "open";
-    document._btfw_userlist_open   = () => {
-      adoptUserlistIntoPopover();
-      const ul = $("#userlist");
-      if (ul) ul.classList.add("btfw-userlist-overlay--open");
-      motion.openPopover(pop, { backdrop: back });
-      positionAboveChatBar(pop);
-    };
-    document._btfw_userlist_close  = close;
-    document._btfw_userlist_position = position;
+    // Public shims used by the docking code — same interface, now backed by the util.
+    document._btfw_userlist_isOpen   = () => _ulPop.isOpen();
+    document._btfw_userlist_open     = () => { _ulPop.open(); };
+    document._btfw_userlist_close    = () => { _ulPop.close(); };
+    document._btfw_userlist_position = () => { if (window.BTFW_repositionChatPopovers) window.BTFW_repositionChatPopovers(); };
+
+    return _ulPop;
+  }
+
+  function ensureUserlistPopover(){
+    // Build the popover DOM (container + card + empty body) without opening, so
+    // setUserlistDocked()/adoptUserlistIntoPopover() can find #btfw-userlist-pop
+    // .btfw-popbody. The card keeps the legacy id so all existing CSS still applies.
+    getUserlistPopover().ensure();
   }
 
   function toggleUserlist(){
