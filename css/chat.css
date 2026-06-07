@@ -1196,6 +1196,52 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
   display: block;
 }
 
+/* ------------------------------------------------------------------
+   Presence rings around avatars (feature:user-status)
+   online = green · away = amber · offline = grey + dimmed.
+   Static box-shadows only (no animation) so they cost nothing to paint,
+   and the ring/glow scale with --btfw-avatar-size so they look right at
+   every avatar size (small 28px / big 40px).
+   ------------------------------------------------------------------ */
+#messagebuffer .btfw-chat-avatar {
+  --btfw-status-ring: max(1.5px, calc(var(--btfw-avatar-size, 40px) * 0.045));
+  transition: box-shadow .25s ease, filter .25s ease, opacity .25s ease;
+}
+.btfw-chat-avatarwrap[data-btfw-status="online"] .btfw-chat-avatar {
+  box-shadow: 0 0 0 var(--btfw-status-ring) color-mix(in srgb, #68d391 40%, transparent),
+              0 0 calc(var(--btfw-status-ring) * 3.5) color-mix(in srgb, #68d391 22%, transparent),
+              0 0 calc(var(--btfw-status-ring) * 7)   color-mix(in srgb, #68d391 10%, transparent);
+}
+.btfw-chat-avatarwrap[data-btfw-status="away"] .btfw-chat-avatar {
+  box-shadow: 0 0 0 var(--btfw-status-ring) color-mix(in srgb, #f5a524 44%, transparent),
+              0 0 calc(var(--btfw-status-ring) * 3.5) color-mix(in srgb, #f5a524 22%, transparent),
+              0 0 calc(var(--btfw-status-ring) * 7)   color-mix(in srgb, #f5a524 10%, transparent);
+}
+.btfw-chat-avatarwrap[data-btfw-status="offline"] .btfw-chat-avatar {
+  box-shadow: 0 0 0 var(--btfw-status-ring) color-mix(in srgb, #8b93a7 26%, transparent);
+  filter: grayscale(.22);
+  opacity: .9;
+}
+/* No avatars → no rings */
+#chatwrap.btfw-avatars-off #messagebuffer .btfw-chat-avatar { box-shadow: none; }
+
+/* Userlist presence — pure CSS off CyTube's .userlist_afk class. No JS, and
+   only painted while the list is visible, so it's free when the list is
+   closed. Userlist users are present by definition → online / away only. */
+#userlist .userlist_item .btfw-ul-avatar {
+  transition: box-shadow .25s ease, filter .25s ease, opacity .25s ease;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, #68d391 38%, transparent),
+              0 0 6px color-mix(in srgb, #68d391 18%, transparent),
+              0 0 11px color-mix(in srgb, #68d391 9%, transparent);
+}
+#userlist .userlist_item.userlist_afk .btfw-ul-avatar {
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, #f5a524 48%, transparent),
+              0 0 7px color-mix(in srgb, #f5a524 18%, transparent),
+              0 0 12px color-mix(in srgb, #f5a524 9%, transparent);
+  filter: grayscale(.1);
+  opacity: .94;
+}
+
 /* consecutive compaction: remove top gap */
 #messagebuffer > div.btfw-compact { margin-top: 2px !important; }
 
