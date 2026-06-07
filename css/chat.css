@@ -1470,7 +1470,7 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: 0; box-shadow: none;
   /* Pull a little closer to the users-count chip (cancels most of the row gap). */
-  margin: 0 0 0 -10px; padding: 6px 8px;
+  margin: 0 0 0 -5px; padding: 6px 8px;
   color: color-mix(in srgb, var(--btfw-color-chat-text) 86%, transparent 14%);
   opacity: .9; cursor: pointer; line-height: 1;
   transition: opacity .15s ease, color .15s ease;
