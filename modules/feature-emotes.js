@@ -1,8 +1,9 @@
 
-BTFW.define("feature:emotes", [], async () => {
+BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const motion = await BTFW.init("util:motion");
+  const chatPopover = await BTFW.init("util:chat-popover");
 
   /* ------------------------ helpers ------------------------ */
   function insertAtCursor(input, text){
@@ -19,9 +20,9 @@ BTFW.define("feature:emotes", [], async () => {
 
   // Ensure single-codepoint emoji render as emoji (VS16)
   function normalizeEmojiForInsert(s){
-    if (/\uFE0F/.test(s)) return s;
+    if (/️/.test(s)) return s;
     const cps = Array.from(s);
-    if (cps.length === 1) return s + "\uFE0F";
+    if (cps.length === 1) return s + "️";
     return s;
   }
 
@@ -111,35 +112,67 @@ BTFW.define("feature:emotes", [], async () => {
   }
 
   /* ------------------------ popover UI ------------------------ */
+  // Built on the shared util:chat-popover — same open/close, positioning,
+  // live-resize re-fit, click-outside and Escape as the other mini popovers.
+  // The card keeps its legacy #btfw-emotes-pop id so all existing CSS + the
+  // internal #btfw-emotes-grid / #btfw-emotes-search selectors keep working.
+  let _emotesPop = null;
+  function getPopover(){
+    if (_emotesPop) return _emotesPop;
+    _emotesPop = chatPopover.create({
+      id: "btfw-emotes-modal",
+      cardClass: "btfw-emotes-pop",
+      parent: () => $("#chatwrap") || document.body,
+      once: true,
+      // Matches the legacy positionPopover sizing; helper caps width to the chat.
+      opts: { widthPx: 530, widthVw: 92, maxHpx: 480, maxHvh: 70 },
+      // Clicking the emotes button must not count as an outside click.
+      toggleSelector: "#btfw-btn-emotes, .btfw-btn-emotes",
+      build: () => `
+        <div id="btfw-emotes-pop" class="btfw-emotes-pop">
+          <div class="btfw-emotes-head">
+            <div class="btfw-emotes-tabs">
+              <button class="btfw-tab is-active" data-tab="emotes">Channel</button>
+              <button class="btfw-tab" data-tab="emoji">Emoji</button>
+              <button class="btfw-tab" data-tab="recent">Recent</button>
+            </div>
+            <div class="btfw-emotes-search">
+              <input id="btfw-emotes-search" type="search" placeholder="Search…" autocomplete="off" />
+              <button id="btfw-emotes-clear" class="btfw-emotes-clear" type="button" title="Clear search" aria-label="Clear search" aria-hidden="true" tabindex="-1">×</button>
+            </div>
+            <button class="btfw-emotes-close" data-btfw-popover-close title="Close">×</button>
+          </div>
+          <div id="btfw-emotes-grid" class="btfw-emotes-grid" tabindex="0" aria-label="Emote grid"></div>
+        </div>`,
+      onOpen: () => {
+        const pop = _emotesPop.getCard();
+        loadChannelEmotes();
+        loadRecent();
+        state.tab = "emotes"; state.search = ""; state.highlight = 0;
+        const si = $("#btfw-emotes-search"); if (si) si.value = "";
+        pop?._btfwSyncSearchClear?.();
+        pop?.querySelectorAll(".btfw-tab").forEach(b =>
+          b.classList.toggle("is-active", b.getAttribute("data-tab") === "emotes"));
+        render(true);
+        // focusGrid runs from open() once the popover is actually visible —
+        // onOpen fires before util:motion flips the card visible.
+      }
+    });
+    return _emotesPop;
+  }
+
+  // Build the card (once) and wire its internal controls (once).
   function ensurePopover(){
-    let pop = $("#btfw-emotes-pop");
-    if (pop) return pop;
+    const api = getPopover();
+    api.ensure();
+    const pop = api.getCard();
+    if (pop && !pop._btfwWired) wireCard(pop);
+    return pop;
+  }
 
+  function wireCard(pop){
+    pop._btfwWired = true;
     ensureChatwrapRelative();
-
-    pop = document.createElement("div");
-    pop.id = "btfw-emotes-pop";
-    pop.className = "btfw-popover btfw-emotes-pop";
-    pop.dataset.btfwPopoverState = "closed";
-    pop.setAttribute("hidden", "");
-    pop.setAttribute("aria-hidden", "true");
-    pop.innerHTML = `
-      <div class="btfw-emotes-head">
-        <div class="btfw-emotes-tabs">
-          <button class="btfw-tab is-active" data-tab="emotes">Channel</button>
-          <button class="btfw-tab" data-tab="emoji">Emoji</button>
-          <button class="btfw-tab" data-tab="recent">Recent</button>
-        </div>
-        <div class="btfw-emotes-search">
-          <input id="btfw-emotes-search" type="search" placeholder="Search…" autocomplete="off" />
-          <button id="btfw-emotes-clear" class="btfw-emotes-clear" type="button" title="Clear search" aria-label="Clear search" aria-hidden="true" tabindex="-1">×</button>
-        </div>
-        <button class="btfw-emotes-close" title="Close">×</button>
-      </div>
-      <div id="btfw-emotes-grid" class="btfw-emotes-grid" tabindex="0" aria-label="Emote grid"></div>
-    `;
-    const wrap = $("#chatwrap") || document.body;
-    wrap.appendChild(pop);
 
     const gridEl = pop.querySelector("#btfw-emotes-grid");
     if (gridEl) {
@@ -147,7 +180,6 @@ BTFW.define("feature:emotes", [], async () => {
       gridEl.classList.add("btfw-emoji-grid--native");
     }
 
-    // Tabs
     const syncSearchClear = ()=>{
       const input = $("#btfw-emotes-search", pop);
       const btn   = $("#btfw-emotes-clear", pop);
@@ -158,6 +190,7 @@ BTFW.define("feature:emotes", [], async () => {
       btn.tabIndex = hasValue ? 0 : -1;
     };
 
+    // Tabs
     pop.querySelector(".btfw-emotes-tabs").addEventListener("click", ev=>{
       const btn = ev.target.closest(".btfw-tab");
       if (!btn) return;
@@ -186,9 +219,6 @@ BTFW.define("feature:emotes", [], async () => {
       render(true); focusGrid();
     });
 
-    // Close button
-    $(".btfw-emotes-close", pop).addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); close(); });
-
     // Keyboard navigation (full list)
     $("#btfw-emotes-grid", pop).addEventListener("keydown", ev=>{
       const grid = $("#btfw-emotes-grid");
@@ -214,20 +244,8 @@ BTFW.define("feature:emotes", [], async () => {
       ensureVisible();
     });
 
-    // Click-outside to close
-    document.addEventListener("click", (e)=>{
-      if (pop.dataset.btfwPopoverState !== "open") return;
-      const within = e.target.closest("#btfw-emotes-pop") || e.target.closest("#btfw-btn-emotes");
-      if (!within) close();
-    }, true);
-
-    // First position & fixed height
-    positionPopover(true);
-
-    syncSearchClear();
     pop._btfwSyncSearchClear = syncSearchClear;
-
-    return pop;
+    syncSearchClear();
   }
 
   function focusGrid(preventScroll = true){
@@ -242,7 +260,7 @@ BTFW.define("feature:emotes", [], async () => {
     try { grid.focus(); } catch(_) {}
   }
 
-  /* ------------------- anchoring & watchers ------------------- */
+  /* ------------------- anchoring ------------------- */
   function findBottomBar(){
     // Prefer custom bottom bar → fallback to CyTube controls → final fallback: input itself
     return document.getElementById("btfw-chat-bottombar")
@@ -250,51 +268,18 @@ BTFW.define("feature:emotes", [], async () => {
         || document.getElementById("chatline");
   }
 
-function positionPopover(){
-  const pop = document.getElementById("btfw-emotes-pop");
-  if (!pop) return;
-  if (window.BTFW_positionPopoverAboveChatBar) {
-    window.BTFW_positionPopoverAboveChatBar(pop, {
-      widthPx: 530,
-      widthVw: 92,
-      maxHpx: 480,
-      maxHvh: 70
-    });
-  }
-}
-
-
-
-
-  function watchPosition(){
-    const wrap   = document.getElementById("chatwrap") || document.body;
-    const anchor = findBottomBar() || wrap;
-    if (wrap._btfwEmoteWatch) return;
-    wrap._btfwEmoteWatch = true;
-
-    const onReflow = () => positionPopover(false);
-    window.addEventListener("resize", onReflow);
-    // Capturing scroll listener catches page/layout scrolls — but it also fires
-    // for the popover's OWN internal scroll. Repositioning on every grid scroll
-    // tick is wasteful and janky, so ignore scrolls originating inside the popover.
-    window.addEventListener("scroll", (e) => {
-      const t = e.target;
-      const popEl = document.getElementById("btfw-emotes-pop");
-      if (popEl && t && t.nodeType === 1 && (t === popEl || popEl.contains(t))) return;
-      onReflow();
-    }, true);
-
-
-    if (window.ResizeObserver) {
-      const ro = new ResizeObserver(onReflow);
-      ro.observe(wrap);
-      if (anchor && anchor !== wrap) ro.observe(anchor);
-      wrap._btfwEmoteRO = ro;
-    } else {
-      const mo = new MutationObserver(onReflow);
-      mo.observe(wrap, { attributes:true, childList:true, subtree:true });
-      if (anchor && anchor !== wrap) mo.observe(anchor, { attributes:true, childList:true, subtree:true });
-      wrap._btfwEmoteMO = mo;
+  // Kept as an exported convenience; the open/resize re-fit is now driven by
+  // util:chat-popover (registry + chat-column watcher).
+  function positionPopover(){
+    const pop = document.getElementById("btfw-emotes-pop");
+    if (!pop) return;
+    if (window.BTFW_positionPopoverAboveChatBar) {
+      window.BTFW_positionPopoverAboveChatBar(pop, {
+        widthPx: 530,
+        widthVw: 92,
+        maxHpx: 480,
+        maxHvh: 70
+      });
     }
   }
 
@@ -457,11 +442,9 @@ function positionPopover(){
     else bar.appendChild(btn);
 
     btn.addEventListener("click", ev=>{
-  ev.preventDefault(); ev.stopPropagation();
-  const pop = document.getElementById("btfw-emotes-pop");
-  (pop && pop.dataset.btfwPopoverState === "open") ? close() : open();
-}, {capture:true});
-
+      ev.preventDefault(); ev.stopPropagation();
+      toggle();
+    }, {capture:true});
   }
 
   function bindAnyExistingOpeners(){
@@ -470,42 +453,38 @@ function positionPopover(){
         el.removeAttribute("onclick");
         if (window.jQuery) { try { jQuery(el).off("click"); } catch(_){} }
         const c = el.cloneNode(true);
-el.parentNode.replaceChild(c, el);
-c.addEventListener("click", ev=>{
-  ev.preventDefault(); ev.stopPropagation();
-  const pop = document.getElementById("btfw-emotes-pop");
-  (pop && pop.dataset.btfwPopoverState === "open") ? close() : open();
-}, {capture:true});
+        el.parentNode.replaceChild(c, el);
+        c.addEventListener("click", ev=>{
+          ev.preventDefault(); ev.stopPropagation();
+          toggle();
+        }, {capture:true});
       });
     });
   }
 
   /* ------------------- open / close / boot ------------------- */
   function open(){
-    const pop = ensurePopover();
-    loadChannelEmotes();
-    loadRecent();
-    state.tab="emotes"; state.search=""; state.highlight=0;
-    $("#btfw-emotes-search").value = "";
-    pop?._btfwSyncSearchClear?.();
-    // activate correct tab styling
-    pop.querySelectorAll(".btfw-tab").forEach(b=>b.classList.toggle("is-active", b.getAttribute("data-tab")==="emotes"));
-    motion.openPopover(pop);
-    positionPopover(true);            // compute fixed height once per open
-    render(true);
+    ensurePopover();
+    getPopover().open();
+    // util:motion sets the card to "opening" (visibility:visible) synchronously,
+    // so the grid is focusable by the time open() returns.
     focusGrid();
   }
 
   function close(){
-    const pop = $("#btfw-emotes-pop");
-    if (pop) motion.closePopover(pop);
+    if (_emotesPop) _emotesPop.close();
+  }
+
+  function toggle(){
+    ensurePopover();
+    getPopover().isOpen() ? close() : open();
   }
 
   function boot(){
     removeLegacyButtons();
     ensureOurButton();
     bindAnyExistingOpeners();
-    watchPosition();
+    ensurePopover();   // build + wire up front
     // NO warm-up emoji fetch; loads on first Emoji tab open
   }
 
