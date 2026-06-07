@@ -333,6 +333,7 @@ function resolveBranchToSHA(){
       "modules/feature-video-enhancements.js",
       "modules/feature-channel-theme-admin.js",
       "modules/feature-js-editor.js",
+      "modules/feature-emotes-admin.js",
       "modules/feature-theme-settings.js",
       "modules/feature-ratings.js",
       "modules/feature-theater.js"
@@ -394,6 +395,7 @@ function resolveBranchToSHA(){
       BTFW.init("feature:videoEnhancements"),
       BTFW.init("feature:channelThemeAdmin"),
       BTFW.init("feature:js-editor"),
+      BTFW.init("feature:emotes-admin"),
       BTFW.init("feature:themeSettings"),
       BTFW.init("feature:ratings"),
       BTFW.init("feature:theater")
