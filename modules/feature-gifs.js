@@ -1,9 +1,10 @@
 
-BTFW.define("feature:gifs", [], async () => {
+BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const PER_PAGE = 12;
   const motion = await BTFW.init("util:motion");
+  const chatPopover = await BTFW.init("util:chat-popover");
 
   /* ---- Keys (BillTube2 defaults; can override via localStorage) ---- */
   const K = { giphy: "btfw:giphy:key", tenor: "btfw:tenor:key" };
@@ -59,7 +60,7 @@ BTFW.define("feature:gifs", [], async () => {
         el.removeAttribute("onclick");
         const c = el.cloneNode(true);
         el.parentNode.replaceChild(c, el);
-        c.addEventListener("click", e => { e.preventDefault(); open(); }, { capture:true });
+        c.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); toggle(); }, { capture:true });
       });
     });
     if (!$("#btfw-btn-gif")) {
@@ -75,30 +76,27 @@ BTFW.define("feature:gifs", [], async () => {
         btn.innerHTML = (document.querySelector(".fa")) ? '<i class="fa fa-file-video-o"></i>' : 'GIF';
         btn.title = "GIFs";
         bar.appendChild(btn);
-        btn.addEventListener("click", e => { e.preventDefault(); open(); }, { capture:true });
+        btn.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); toggle(); }, { capture:true });
       }
     }
   }
 
-  /* ---- Modal ---- */
+  /* ---- Popover (in-chat, built on the shared util:chat-popover) ---- */
+  // `modal` holds the CARD element so all the existing $(sel, modal) lookups
+  // (grid, search box, pager…) keep working unchanged.
   let modal = null;
   let modalOpen = false;
-  function ensureModal(){
-    if (modal) return modal;
-    modal = document.createElement("div");
-    modal.id = "btfw-gif-modal";
-    modal.className = "modal";
-    modal.dataset.btfwModalState = "closed";
-    modal.setAttribute("hidden", "");
-    modal.setAttribute("aria-hidden", "true");
-    modal.innerHTML = `
-      <div class="modal-background"></div>
-      <div class="modal-card btfw-modal">
-        <header class="modal-card-head">
-          <p class="modal-card-title">GIFs</p>
-          <button class="delete" aria-label="close"></button>
+  let gifPop = null;
+  let modalWired = false;
+
+  function gifCardHTML(){
+    return `
+      <div class="btfw-gif-pop">
+        <header class="btfw-gif-head">
+          <span class="btfw-gif-title">GIFs</span>
+          <button class="btfw-gif-close" data-btfw-popover-close aria-label="Close">&times;</button>
         </header>
-        <section class="modal-card-body">
+        <div class="btfw-gif-body">
           <div class="btfw-gif-toolbar">
             <div class="tabs is-boxed is-small btfw-gif-tabs">
               <ul>
@@ -122,42 +120,69 @@ BTFW.define("feature:gifs", [], async () => {
             <span id="btfw-gif-pages" class="btfw-gif-pages">1 / 1</span>
             <button id="btfw-gif-next" class="button is-dark is-small">Next</button>
           </nav>
-        </section>
-        <footer class="modal-card-foot">
-          <button class="button is-link" id="btfw-gif-close">Close</button>
-        </footer>
-      </div>
-    `;
-    document.body.appendChild(modal);
+        </div>
+      </div>`;
+  }
 
-    modal.querySelector(".modal-background").addEventListener("click", close);
-    modal.querySelector(".delete").addEventListener("click", close);
-    $("#btfw-gif-close", modal).addEventListener("click", close);
+  function getPopover(){
+    if (gifPop) return gifPop;
+    gifPop = chatPopover.create({
+      id: "btfw-gif-modal",
+      cardClass: "btfw-gif-pop",
+      parent: () => document.getElementById("chatwrap") || document.body,
+      once: true,
+      opts: { widthPx: 560, widthVw: 94, maxHpx: 520, maxHvh: 78 },
+      toggleSelector: "#btfw-btn-gif, .btfw-btn-gif, #giphybtn, #gifbtn",
+      build: gifCardHTML,
+      onOpen: () => {
+        modalOpen = true;
+        showNotice("");
+        state.page = 1;
+        state.provider = modal?.querySelector(".btfw-gif-tabs li.is-active")?.getAttribute("data-p") || "giphy";
+        if (state.provider !== "favorites") renderSkeleton();
+        setTimeout(search, 0);
+        const input = $("#btfw-gif-q", modal);
+        if (input && state.provider !== "favorites") {
+          setTimeout(() => { try { input.focus(); input.select(); } catch(_){} }, 40);
+        }
+      },
+      onClose: () => { modalOpen = false; }
+    });
+    return gifPop;
+  }
 
-    modal.querySelector(".btfw-gif-tabs ul").addEventListener("click", e=>{
+  function ensureModal(){
+    getPopover().ensure();
+    modal = getPopover().getCard();
+    if (modal && !modalWired) wireModal(modal);
+    return modal;
+  }
+
+  function wireModal(card){
+    modalWired = true;
+
+    card.querySelector(".btfw-gif-tabs ul").addEventListener("click", e=>{
       const li = e.target.closest("li[data-p]"); if (!li) return;
-      modal.querySelectorAll(".btfw-gif-tabs li").forEach(x=>x.classList.toggle("is-active", x===li));
+      card.querySelectorAll(".btfw-gif-tabs li").forEach(x=>x.classList.toggle("is-active", x===li));
       state.provider = li.getAttribute("data-p");
       state.page = 1;
       handleProviderChange();
     });
 
-    $("#btfw-gif-go", modal).addEventListener("click", ()=> { state.page = 1; search(); });
-    $("#btfw-gif-q",  modal).addEventListener("keydown", e=> { if (e.key === "Enter") { state.page = 1; search(); }});
-    $("#btfw-gif-trending", modal).addEventListener("click", ()=>{
-      $("#btfw-gif-q").value = "";
+    $("#btfw-gif-go", card).addEventListener("click", ()=> { state.page = 1; search(); });
+    $("#btfw-gif-q",  card).addEventListener("keydown", e=> { if (e.key === "Enter") { state.page = 1; search(); }});
+    $("#btfw-gif-trending", card).addEventListener("click", ()=>{
+      const q = $("#btfw-gif-q", card); if (q) q.value = "";
       state.page = 1; search();
     });
 
-    $("#btfw-gif-prev", modal).addEventListener("click", ()=>{
+    $("#btfw-gif-prev", card).addEventListener("click", ()=>{
       if (state.page > 1) { state.page--; debouncedRender(); }
     });
-    $("#btfw-gif-next", modal).addEventListener("click", ()=>{
+    $("#btfw-gif-next", card).addEventListener("click", ()=>{
       const totalPages = Math.max(1, Math.ceil(state.total / PER_PAGE));
       if (state.page < totalPages) { state.page++; debouncedRender(); }
     });
-
-    return modal;
   }
 
   function showNotice(msg){
@@ -518,32 +543,17 @@ BTFW.define("feature:gifs", [], async () => {
     }, 16); // ~60fps
   }
 
-  // Open the GIF modal when the bridge asks
+  // Open the GIF popover when the bridge asks
   document.addEventListener('btfw:openGifs', ()=> {
-    try { openGifModal(); } catch(e){}
+    try { open(); } catch(e){}
   });
 
   /* ---- open / close ---- */
-  function open(){
-    ensureModal();
-    modalOpen = true;
-    showNotice("");
-    state.page = 1;
-    state.provider = modal.querySelector(".btfw-gif-tabs li.is-active")?.getAttribute("data-p") || "giphy";
-    if (state.provider !== "favorites") {
-      renderSkeleton();
-    }
-    setTimeout(search, 0);
-    motion.openModal(modal);
-    const input = $("#btfw-gif-q", modal);
-    if (input && state.provider !== "favorites") {
-      requestAnimationFrame(() => {
-        input.focus();
-        input.select();
-      });
-    }
-  }
-  function close(){ modalOpen = false; if (modal) motion.closeModal(modal); }
+  // All the initial render/search/focus work happens in the popover's onOpen
+  // hook (see getPopover) so it runs once the card is positioned & visible.
+  function open(){ ensureModal(); getPopover().open(); }
+  function close(){ if (gifPop) gifPop.close(); }
+  function toggle(){ ensureModal(); getPopover().isOpen() ? close() : open(); }
 
   function handleProviderChange() {
     updateToolbarForProvider();
