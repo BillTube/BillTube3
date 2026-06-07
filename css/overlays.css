@@ -1227,8 +1227,8 @@
 }
 
 .modal.btfw-bulma-skin .modal-dialog {
-  max-width: min(920px, 94vw);
-  width: min(920px, 94vw);
+  max-width: min(1160px, 94vw);
+  width: min(1160px, 94vw);
   margin: 0 auto !important;
 }
 
@@ -1249,11 +1249,13 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  /* Same fixed, responsive height as the Theme Settings modal so the two are
-     the same size; the body scrolls when a tab's content is taller. */
+  /* Fixed, responsive height (~30% roomier than before so the modal isn't
+     claustrophobic); the body scrolls when a tab's content is taller. Tracks the
+     viewport via vh, and max-width:none lets the card fill the wider dialog. */
   width: 100%;
-  height: clamp(540px, 82vh, 820px);
-  max-height: 92vh;
+  max-width: none;
+  height: clamp(560px, 88vh, 1070px);
+  max-height: 94vh;
 }
 
 .modal.btfw-bulma-skin .btfw-card > .btfw-card-head,
