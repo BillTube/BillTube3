@@ -43,6 +43,14 @@ BTFW.define("feature:ratings", [], async () => {
   const PLAYBACK_POLL_INTERVAL_MS = 5000;
   const LS_ANON_ID_KEY = "btfw:ratings:anonid";
   const LS_SELF_PREFIX = "btfw:ratings:self:"; // + mediaKey
+  const LS_VOTING_NOTICE = "btfw:notify:movieVoting"; // "1"|"0" — toggled from Theme Settings → Notifications
+
+  let movieVotingNoticeEnabled = true;
+  try { const v = localStorage.getItem(LS_VOTING_NOTICE); if (v !== null) movieVotingNoticeEnabled = v === "1"; } catch(_){}
+  document.addEventListener("btfw:themeSettings:apply", (ev) => {
+    const v = ev?.detail?.values?.notifyMovieVoting;
+    if (v != null) movieVotingNoticeEnabled = !!v;
+  });
 
   const state = {
     enabled: false,
@@ -1579,6 +1587,8 @@ BTFW.define("feature:ratings", [], async () => {
     if (state.ratingWindowAnnounced) return;
     state.ratingWindowAnnounced = true;
 
+    // Disabled from Theme Settings → Notifications → Movie voting.
+    if (!movieVotingNoticeEnabled) return;
     // Skip the toast on re-sync replays (initial load / reconnect). The flag is
     // already set so it won't re-fire for this media; a genuine later media
     // change resets it and will announce normally. See feature:connection-status.
