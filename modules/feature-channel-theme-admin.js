@@ -915,11 +915,30 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin input[type="color"] { width: 100%; height: 32px; padding: 0; border-radius: 8px; border: 1px solid var(--btfw-admin-border-soft); background: var(--btfw-admin-surface-alt); cursor: pointer; }
       .btfw-theme-admin .help { font-size: 0.76rem; color: var(--btfw-admin-text-soft); line-height: 1.4; margin: 0; }
       .btfw-theme-admin .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-      .btfw-theme-admin .preview { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--btfw-admin-surface-alt) 88%, transparent 12%); border: 1px solid var(--btfw-admin-border-soft); }
-      .btfw-theme-admin .preview__main { display: flex; flex-direction: column; gap: 8px; }
-      .btfw-theme-admin .preview__chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px,1fr)); gap: 6px; }
-      .btfw-theme-admin .preview__chip { padding: 6px 8px; border-radius: 6px; background: var(--btfw-admin-chip); color: color-mix(in srgb, var(--btfw-admin-text) 96%, white 4%); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
-      .btfw-theme-admin .preview__accent { display: inline-flex; align-items: center; justify-content: center; padding: 6px 12px; border-radius: 999px; font-weight: 600; letter-spacing: 0.06em; color: color-mix(in srgb, var(--btfw-admin-text) 98%, white 2%); background: var(--btfw-theme-accent, #6d4df6); font-size: 0.78rem; }
+      /* Palette swatches — one responsive row, each shows the readable hex */
+      .btfw-theme-admin .btfw-palette__swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+      .btfw-theme-admin .btfw-swatch { display: flex; flex-direction: column; gap: 7px; padding: 9px; border-radius: 11px; background: var(--btfw-admin-surface); border: 1px solid var(--btfw-admin-border-soft); cursor: pointer; transition: border-color 0.15s ease; }
+      .btfw-theme-admin .btfw-swatch:hover { border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 50%, var(--btfw-admin-border-soft)); }
+      .btfw-theme-admin .btfw-swatch input[type="color"] { width: 100%; height: 34px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 0; background: none; cursor: pointer; }
+      .btfw-theme-admin .btfw-swatch input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+      .btfw-theme-admin .btfw-swatch input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 7px; }
+      .btfw-theme-admin .btfw-swatch input[type="color"]::-moz-color-swatch { border: 0; border-radius: 7px; }
+      .btfw-theme-admin .btfw-swatch__name { font-size: 0.78rem; font-weight: 600; color: var(--btfw-admin-text); letter-spacing: 0.02em; }
+      .btfw-theme-admin .btfw-swatch__hex { font-size: 0.7rem; font-family: "JetBrains Mono", monospace; color: var(--btfw-admin-text-soft); text-transform: uppercase; }
+      /* Live preview — a real mini-mockup that renders the colors in context */
+      .btfw-theme-admin .preview.btfw-tp { display: block; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--btfw-admin-border-soft); background: var(--bg, #05060d); grid-template-columns: none; }
+      .btfw-theme-admin .btfw-tp__bar { display: flex; align-items: center; gap: 6px; padding: 9px 13px; background: var(--surface, #0b111d); }
+      .btfw-theme-admin .btfw-tp__dot { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, var(--text, #fff) 28%, transparent); }
+      .btfw-theme-admin .btfw-tp__barlabel { margin-left: 7px; font-size: 0.72rem; color: color-mix(in srgb, var(--text, #fff) 62%, transparent); letter-spacing: 0.05em; text-transform: uppercase; }
+      .btfw-theme-admin .btfw-tp__body { display: grid; grid-template-columns: 1.05fr 1fr; gap: 12px; padding: 14px; background: var(--bg, #05060d); }
+      .btfw-theme-admin .btfw-tp__panel { background: var(--panel, #141f36); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 7px; }
+      .btfw-theme-admin .btfw-tp__heading { font-size: 0.95rem; font-weight: 700; color: var(--text, #e8ecf7); }
+      .btfw-theme-admin .btfw-tp__sub { font-size: 0.77rem; line-height: 1.5; color: color-mix(in srgb, var(--text, #e8ecf7) 75%, transparent); }
+      .btfw-theme-admin .btfw-tp__btn { align-self: flex-start; margin-top: 5px; padding: 7px 16px; border: 0; border-radius: 8px; background: var(--accent, #6d4df6); color: var(--on-accent, #fff); font-weight: 600; font-size: 0.8rem; cursor: default; }
+      .btfw-theme-admin .btfw-tp__chat { background: var(--surface, #0b111d); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 9px; }
+      .btfw-theme-admin .btfw-tp__msg { font-size: 0.79rem; line-height: 1.45; color: var(--chat, #cfd6e6); }
+      .btfw-theme-admin .btfw-tp__user { color: var(--accent, #6d4df6); font-weight: 700; margin-right: 5px; }
+      @media (max-width: 600px){ .btfw-theme-admin .btfw-tp__body { grid-template-columns: 1fr; } }
       .btfw-theme-admin .preview--font { padding: 10px 12px; border-radius: 8px; background: color-mix(in srgb, var(--btfw-admin-surface) 94%, transparent 6%); border: 1px solid var(--btfw-admin-border-soft); display: flex; flex-direction: column; gap: 4px; }
       .btfw-theme-admin .preview__font-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--btfw-admin-text-soft); }
       .btfw-theme-admin .preview__font-text { font-size: 0.92rem; color: var(--btfw-admin-text); }
@@ -1861,26 +1880,42 @@ function replaceBlock(original, startMarker, endMarker, block){
     return { tabContainer, contentContainer };
   }
 
+  // Pick black or white for text drawn on top of `hex`, based on luminance.
+  function readableTextOn(hex){
+    const c = String(hex || "").replace("#", "");
+    if (c.length < 6) return "#ffffff";
+    const r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
+    if ([r, g, b].some(Number.isNaN)) return "#ffffff";
+    return ((0.299 * r + 0.587 * g + 0.114 * b) / 255) > 0.6 ? "#0b0e16" : "#ffffff";
+  }
+
   function renderPreview(panel, cfg){
-    const preview = panel.querySelector(".preview");
-    if (!preview) return;
     const colors = cfg.colors || {};
     const typography = applyLiveTypographyAssets(cfg.typography || {}, { scope: "preview" });
-    preview.style.setProperty("--bg", colors.background || "#05060d");
-    preview.style.setProperty("--surface", colors.surface || colors.panel || "#0b111d");
-    preview.style.setProperty("--panel", colors.panel || "#141f36");
-    preview.style.setProperty("--accent", colors.accent || "#6d4df6");
-    preview.style.background = `linear-gradient(160deg, ${colors.background || "#05060d"}, ${colors.surface || colors.panel || "#0b111d"})`;
-    const accent = panel.querySelector(".preview__accent");
-    if (accent) {
-      accent.style.background = colors.accent || "#6d4df6";
+
+    // Live mini-mockup: feed the palette into CSS vars so the preview renders the
+    // colors in real context (panel card + chat + accent button), all readable.
+    const preview = panel.querySelector(".preview");
+    if (preview) {
+      const bg = colors.background || "#05060d";
+      const surface = colors.surface || colors.panel || "#0b111d";
+      const pnl = colors.panel || "#141f36";
+      const text = colors.text || "#e8ecf7";
+      const chat = colors.chatText || colors.text || "#cfd6e6";
+      const accent = colors.accent || "#6d4df6";
+      preview.style.setProperty("--bg", bg);
+      preview.style.setProperty("--surface", surface);
+      preview.style.setProperty("--panel", pnl);
+      preview.style.setProperty("--text", text);
+      preview.style.setProperty("--chat", chat);
+      preview.style.setProperty("--accent", accent);
+      preview.style.setProperty("--on-accent", readableTextOn(accent));
+      preview.style.background = "";
     }
-    const chips = panel.querySelectorAll(".preview__chip");
-    chips.forEach(chip => {
-      const key = chip.dataset.key;
-      const value = colors[key] || "#6d4df6";
-      chip.style.background = value;
-      chip.textContent = `${key.replace(/([A-Z])/g, ' $1')}: ${value}`;
+    // Show each swatch's current hex, readably.
+    panel.querySelectorAll(".btfw-swatch__hex[data-hex]").forEach(h => {
+      const v = colors[h.dataset.hex];
+      h.textContent = v ? String(v).toUpperCase() : "";
     });
 
     const fontPreview = panel.querySelector('.preview--font');
@@ -2188,43 +2223,27 @@ function replaceBlock(original, startMarker, endMarker, block){
               </select>
               <p class="help">Choose a curated palette to start from, then fine-tune any swatch.</p>
             </div>
-            <div class="grid">
-              <div class="field">
-                <label>Background</label>
-                <input type="color" data-btfw-bind="colors.background">
-              </div>
-              <div class="field">
-                <label>Surface</label>
-                <input type="color" data-btfw-bind="colors.surface">
-              </div>
-              <div class="field">
-                <label>Panel</label>
-                <input type="color" data-btfw-bind="colors.panel">
-              </div>
-              <div class="field">
-                <label>Primary text</label>
-                <input type="color" data-btfw-bind="colors.text">
-              </div>
-              <div class="field">
-                <label>Chat text</label>
-                <input type="color" data-btfw-bind="colors.chatText">
-              </div>
-              <div class="field">
-                <label>Accent</label>
-                <input type="color" data-btfw-bind="colors.accent">
-              </div>
+            <div class="btfw-palette__swatches">
+              <label class="btfw-swatch"><input type="color" data-btfw-bind="colors.background"><span class="btfw-swatch__name">Background</span><span class="btfw-swatch__hex" data-hex="background"></span></label>
+              <label class="btfw-swatch"><input type="color" data-btfw-bind="colors.surface"><span class="btfw-swatch__name">Surface</span><span class="btfw-swatch__hex" data-hex="surface"></span></label>
+              <label class="btfw-swatch"><input type="color" data-btfw-bind="colors.panel"><span class="btfw-swatch__name">Panel</span><span class="btfw-swatch__hex" data-hex="panel"></span></label>
+              <label class="btfw-swatch"><input type="color" data-btfw-bind="colors.text"><span class="btfw-swatch__name">Primary text</span><span class="btfw-swatch__hex" data-hex="text"></span></label>
+              <label class="btfw-swatch"><input type="color" data-btfw-bind="colors.chatText"><span class="btfw-swatch__name">Chat text</span><span class="btfw-swatch__hex" data-hex="chatText"></span></label>
+              <label class="btfw-swatch"><input type="color" data-btfw-bind="colors.accent"><span class="btfw-swatch__name">Accent</span><span class="btfw-swatch__hex" data-hex="accent"></span></label>
             </div>
-            <div class="preview" aria-hidden="true">
-              <div class="preview__main">
-                <div class="preview__chips">
-                  <div class="preview__chip" data-key="background"></div>
-                  <div class="preview__chip" data-key="surface"></div>
-                  <div class="preview__chip" data-key="panel"></div>
-                  <div class="preview__chip" data-key="text"></div>
-                  <div class="preview__chip" data-key="chatText"></div>
+            <div class="preview btfw-tp" data-role="theme-preview" aria-hidden="true">
+              <div class="btfw-tp__bar"><span class="btfw-tp__dot"></span><span class="btfw-tp__dot"></span><span class="btfw-tp__dot"></span><span class="btfw-tp__barlabel">Live preview</span></div>
+              <div class="btfw-tp__body">
+                <div class="btfw-tp__panel">
+                  <div class="btfw-tp__heading">Primary text heading</div>
+                  <div class="btfw-tp__sub">The quick brown fox jumps over the lazy dog.</div>
+                  <button type="button" class="btfw-tp__btn">Accent button</button>
+                </div>
+                <div class="btfw-tp__chat">
+                  <div class="btfw-tp__msg"><b class="btfw-tp__user">Nova</b>the theme looks great in here</div>
+                  <div class="btfw-tp__msg"><b class="btfw-tp__user">Vex</b>chat text reads cleanly</div>
                 </div>
               </div>
-              <div class="preview__accent">Accent</div>
             </div>
           </div>
         </details>
