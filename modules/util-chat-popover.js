@@ -92,11 +92,19 @@ BTFW.define("util:chat-popover", ["util:motion"], async () => {
     return { open, close, toggle, isOpen, ensure, getCard };
   }
 
+  // "Active" = visible (open) or mid open-animation. The motion util flips
+  // opening→open on a double-rAF, so accept both so re-fit / close work
+  // immediately rather than only after the animation settles.
+  function isActive(card){
+    const s = card && card.dataset.btfwPopoverState;
+    return s === "open" || s === "opening";
+  }
+
   // Re-fit every open popover to the chat column. feature:chat calls this from
   // repositionOpenPopins on resize / scroll / layout.
   function repositionAll(){
     REG.forEach((info, card) => {
-      if (card && document.body.contains(card) && card.dataset.btfwPopoverState === "open") {
+      if (card && document.body.contains(card) && isActive(card)) {
         position(card, info.opts);
       }
     });
@@ -108,7 +116,7 @@ BTFW.define("util:chat-popover", ["util:motion"], async () => {
     window.__btfwChatPopoverClickWired = true;
     document.addEventListener("click", (e) => {
       REG.forEach((info, card) => {
-        if (card.dataset.btfwPopoverState !== "open") return;
+        if (!isActive(card)) return;
         const inCard = card.contains(e.target);
         // explicit close affordance inside the card
         if (inCard && e.target.closest && e.target.closest("[data-btfw-popover-close]")) { info.close(); return; }
