@@ -420,10 +420,12 @@ function normalizeChatActionButtons() {
     actions.appendChild(b);
   }
 
-  // if some other module created them elsewhere, adopt them
+  // if some other module created them elsewhere, adopt them — but NOT if they
+  // already live inside the actions subtree (e.g. the left-buttons pill), or we
+  // would yank them out of the pill and fight groupLeftChatButtons.
   ["btfw-btn-emotes", "btfw-btn-gif", "btfw-chatcmds-btn", "btfw-users-toggle", "usercount"].forEach(id=>{
     const el = document.getElementById(id);
-    if (el && el.parentElement !== actions) actions.appendChild(el);
+    if (el && !actions.contains(el)) actions.appendChild(el);
   });
 
   const gifBtn = actions.querySelector("#btfw-btn-gif");
@@ -1244,9 +1246,10 @@ const scheduleNormalizeChatActions = (() => {
       actions.appendChild(b);
     }
 
-    // 🔹 Chat commands button — move into actions if it exists elsewhere
+    // 🔹 Chat commands button — move into actions if it lives OUTSIDE the bar
+    // (not merely nested in the pill, which is inside actions).
     const cmds = $("#btfw-chatcmds-btn");
-    if (cmds && cmds.parentElement !== actions) {
+    if (cmds && !actions.contains(cmds)) {
       cmds.classList.add("button","is-dark","is-small","btfw-chatbtn");
       actions.appendChild(cmds);
     }
