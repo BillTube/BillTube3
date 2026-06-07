@@ -69,8 +69,12 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     }
 
     const stored = videoColumnPx ? Math.max(videoColumnPx, VIDEO_MIN_PX) : null;
-    const fallbackVideo = `minmax(${VIDEO_MIN_PX}px, 7fr)`;
-    const fallbackChat = "minmax(var(--btfw-chat-min, 320px), 3fr)";
+    // Starter split for users who haven't dragged the splitter: video-dominant
+    // 80/20 on wide screens. The chat minmax floor (320px) means narrower
+    // screens automatically hand chat more than 20% so it stays readable, and
+    // below the mobile threshold the layout switches to vertical entirely.
+    const fallbackVideo = `minmax(${VIDEO_MIN_PX}px, 8fr)`;
+    const fallbackChat = "minmax(var(--btfw-chat-min, 320px), 2fr)";
     const videoSegment = stored
       ? `minmax(${VIDEO_MIN_PX}px, ${stored}px)`
       : fallbackVideo;
