@@ -916,21 +916,65 @@
 /* Optional: compact content spacing inside modal bodies */
 .modal-card-body .content h4 { color: var(--btfw-text-1); }
 .modal-card-body .field { margin-bottom: 1rem; }
-/* ===== GIF modal grid ===== */
+/* ===== GIFs popover (in-chat, on util:chat-popover) ===== */
+#btfw-gif-modal .btfw-gif-pop{
+  position:absolute; display:flex; flex-direction:column;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%),
+    color-mix(in srgb, var(--btfw-color-surface) 90%, transparent 10%));
+  border:1px solid var(--btfw-border); border-radius:14px;
+  box-shadow:0 18px 44px color-mix(in srgb, var(--btfw-color-bg) 36%, transparent 64%);
+  color:var(--btfw-color-text); overflow:hidden;
+}
+#btfw-gif-modal .btfw-gif-head{
+  flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; border-bottom:1px solid var(--btfw-border);
+}
+#btfw-gif-modal .btfw-gif-title{ font-size:14px; font-weight:700; letter-spacing:.2px; }
+#btfw-gif-modal .btfw-gif-close{
+  background:transparent; border:0; padding:0 4px; cursor:pointer; line-height:1;
+  font-size:18px; color:color-mix(in srgb, var(--btfw-color-text) 70%, transparent);
+  transition:color .14s ease;
+}
+#btfw-gif-modal .btfw-gif-close:hover{ color:var(--btfw-color-accent); }
+#btfw-gif-modal .btfw-gif-body{
+  flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+  padding:10px 12px 12px;
+}
+
+/* Toolbar: tabs row + search row, stacked to fit the narrow popover */
 .btfw-gif-toolbar {
-  display:flex; align-items:flex-start; gap:10px; margin-bottom:10px;
+  display:flex; flex-direction:column; align-items:stretch; gap:8px; margin-bottom:8px;
 }
 .btfw-gif-toolbar .btfw-gif-search {
-  margin-left:auto; display:flex; gap:8px; align-items:center;
-  min-width: 280px;
+  margin-left:0; min-width:0; display:flex; gap:6px; align-items:center;
 }
+.btfw-gif-toolbar .btfw-gif-search .input { flex:1 1 auto; min-width:0; }
 .btfw-gif-toolbar .btfw-gif-search.is-hidden {
   display: none;
 }
 
+/* Tabs: clean pill style (override Bulma is-boxed) */
+#btfw-gif-modal .btfw-gif-tabs{ margin:0; }
+#btfw-gif-modal .btfw-gif-tabs ul{
+  display:flex; gap:6px; margin:0; padding:0; list-style:none; border-bottom:0;
+}
+#btfw-gif-modal .btfw-gif-tabs li{ margin:0; }
 #btfw-gif-modal .btfw-gif-tabs li a,
 #btfw-gif-modal .btfw-gif-tabs li.is-active a {
-  border-radius: 4px;
+  display:block; padding:5px 13px; border-radius:999px; font-size:12.5px; font-weight:600;
+  border:1px solid color-mix(in srgb, var(--btfw-border) 62%, transparent 38%);
+  background: color-mix(in srgb, var(--btfw-color-surface) 78%, transparent 22%);
+  color: color-mix(in srgb, var(--btfw-color-text) 82%, transparent);
+  transition: background .14s ease, color .14s ease, border-color .14s ease;
+}
+#btfw-gif-modal .btfw-gif-tabs li a:hover{
+  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 38%, transparent 62%);
+}
+#btfw-gif-modal .btfw-gif-tabs li.is-active a{
+  background: var(--btfw-color-accent); color: var(--btfw-color-on-accent);
+  border-color: var(--btfw-color-accent);
 }
 
 #btfw-gif-notice {
@@ -944,13 +988,13 @@
 
 #btfw-gif-modal #btfw-gif-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 5px;
-    min-height: 300px;
-    height: auto;
-    align-items: stretch;
+    grid-template-columns: repeat(auto-fill, minmax(94px, 1fr));
+    gap: 6px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    align-content: start;
     justify-items: stretch;
-    align-content: space-between;
 }
 
 #btfw-gif-modal .btfw-gif-cell {
@@ -964,7 +1008,7 @@
   padding: 0;
   display: block;
   min-inline-size: 0;
-  min-height: 130px;
+  min-height: 0;
 }
 
 #btfw-gif-modal .btfw-gif-fav-toggle {
@@ -1079,9 +1123,12 @@
   100% { background-position: -200% 0; }
 }
 
-.btfw-gif-pager {
-  margin-top: 14px;
-  display:flex; align-items:center; gap:10px;
+#btfw-gif-modal .btfw-gif-pager {
+  flex:0 0 auto;
+  margin: 8px 0 0 !important;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--btfw-border) 58%, transparent 42%);
+  display:flex; align-items:center; justify-content:center; gap:10px;
 }
 .btfw-gif-pages { color: var(--btfw-color-text-soft); min-width: 72px; text-align:center; }
 
