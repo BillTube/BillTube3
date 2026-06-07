@@ -231,10 +231,15 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
     b.id = "btfw-chattools-btn";
     b.className = "button is-dark is-small btfw-chatbtn";
     b.innerHTML = '<span style="font-weight:700;letter-spacing:.5px;">Aa</span>';
-    const insertBefore = actions.querySelector("#btfw-chatcmds-btn")
+    // The reference button may live inside the left-actions pill (a nested
+    // container), so insertBefore would throw ("not a child of this node").
+    // Only insert before it when it's a direct child; otherwise append and let
+    // feature:chat's grouping place it into the pill.
+    const ref = actions.querySelector("#btfw-chatcmds-btn")
       || actions.querySelector("#btfw-users-toggle")
       || actions.querySelector("#usercount");
-    actions.insertBefore(b, insertBefore || null);
+    if (ref && ref.parentElement === actions) actions.insertBefore(b, ref);
+    else actions.appendChild(b);
   }
 
   /* ---------- History ---------- */
