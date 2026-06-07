@@ -947,12 +947,16 @@
   display:flex; flex-direction:column; align-items:stretch; gap:8px; margin-bottom:8px;
 }
 .btfw-gif-toolbar .btfw-gif-search {
-  margin-left:0; min-width:0; display:flex; gap:6px; align-items:center;
+  margin-left:0; min-width:0; display:flex; gap:6px; align-items:center; flex-wrap:wrap;
 }
-.btfw-gif-toolbar .btfw-gif-search .input { flex:1 1 auto; min-width:0; }
+/* Input takes the full row; the two buttons share the next line when it's tight. */
+.btfw-gif-toolbar .btfw-gif-search .input { flex:1 1 140px; min-width:0; }
+.btfw-gif-toolbar .btfw-gif-search .button { flex:1 1 auto; }
 .btfw-gif-toolbar .btfw-gif-search.is-hidden {
   display: none;
 }
+/* Tabs wrap rather than overflow on a very narrow chat. */
+#btfw-gif-modal .btfw-gif-tabs ul { flex-wrap: wrap; }
 
 /* Tabs: clean pill style (override Bulma is-boxed) */
 #btfw-gif-modal .btfw-gif-tabs{ margin:0; }
@@ -988,7 +992,11 @@
 
 #btfw-gif-modal #btfw-gif-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(94px, 1fr));
+    /* auto-fill flows from ~4 columns at full width down to 2 on a narrow chat;
+       cell height is driven by the thumb's padding-bottom square (see below),
+       NOT aspect-ratio, so grid rows can't collapse and overlap. */
+    grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+    grid-auto-rows: max-content;
     gap: 6px;
     flex: 1 1 auto;
     min-height: 0;
@@ -999,7 +1007,9 @@
 
 #btfw-gif-modal .btfw-gif-cell {
   position: relative;
-  aspect-ratio: 1 / 1;        /* square */
+  /* No aspect-ratio here on purpose — the inner .btfw-gif-thumb is squared via
+     padding-bottom:100%, giving the cell a DEFINITE height the grid row honors.
+     Using aspect-ratio instead let the auto row collapse and rows overlapped. */
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--btfw-border);
@@ -1128,9 +1138,23 @@
   margin: 8px 0 0 !important;
   padding-top: 8px;
   border-top: 1px solid color-mix(in srgb, var(--btfw-border) 58%, transparent 42%);
-  display:flex; align-items:center; justify-content:center; gap:10px;
+  display:flex; align-items:center; justify-content:center; gap:12px;
 }
-.btfw-gif-pages { color: var(--btfw-color-text-soft); min-width: 72px; text-align:center; }
+#btfw-gif-modal .btfw-gif-pagebtn {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:30px; height:30px; padding:0; border-radius:8px; cursor:pointer;
+  background: color-mix(in srgb, var(--btfw-color-surface) 80%, transparent 20%);
+  border:1px solid color-mix(in srgb, var(--btfw-border) 62%, transparent 38%);
+  color: var(--btfw-color-text); font-size:13px; line-height:1;
+  transition: background .14s ease, border-color .14s ease, transform .06s ease, opacity .14s ease;
+}
+#btfw-gif-modal .btfw-gif-pagebtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);
+}
+#btfw-gif-modal .btfw-gif-pagebtn:active:not(:disabled) { transform: translateY(1px); }
+#btfw-gif-modal .btfw-gif-pagebtn:disabled { opacity:.35; cursor:default; }
+.btfw-gif-pages { color: var(--btfw-color-text-soft); min-width: 56px; text-align:center; font-variant-numeric: tabular-nums; }
 
 /* === In-chat right-click context menus (GIF actions + user actions) === */
 .btfw-gif-menu,

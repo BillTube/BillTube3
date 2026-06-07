@@ -115,10 +115,10 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
           <div id="btfw-gif-notice" class="btfw-gif-notice is-hidden"></div>
           <div id="btfw-gif-grid" class="btfw-gif-grid"></div>
 
-          <nav class="pagination is-centered btfw-gif-pager" role="navigation" aria-label="pagination">
-            <button id="btfw-gif-prev" class="button is-dark is-small">Prev</button>
+          <nav class="btfw-gif-pager" role="navigation" aria-label="pagination">
+            <button id="btfw-gif-prev" class="btfw-gif-pagebtn" type="button" aria-label="Previous page"><i class="fa fa-chevron-left" aria-hidden="true"></i></button>
             <span id="btfw-gif-pages" class="btfw-gif-pages">1 / 1</span>
-            <button id="btfw-gif-next" class="button is-dark is-small">Next</button>
+            <button id="btfw-gif-next" class="btfw-gif-pagebtn" type="button" aria-label="Next page"><i class="fa fa-chevron-right" aria-hidden="true"></i></button>
           </nav>
         </div>
       </div>`;
