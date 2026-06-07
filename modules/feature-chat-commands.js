@@ -478,8 +478,10 @@ addCommand("cast", async (ctx)=>{
       #btfw-cmds-modal .btfw-cmds-close:hover{ color:var(--btfw-color-accent); }
       #btfw-cmds-modal .btfw-cmds-hint{ padding:8px 12px 0; font-size:.74rem; color:color-mix(in srgb, var(--btfw-color-text) 60%, transparent); }
       #btfw-cmds-modal .btfw-cmds-body{ padding:6px 8px 8px; overflow-y:auto; flex:1 1 auto; }
-      #btfw-cmds-modal .btfw-cmd-row{ display:flex; align-items:baseline; gap:10px; padding:6px 8px; border-radius:8px; }
+      #btfw-cmds-modal .btfw-cmd-row{ display:flex; align-items:baseline; gap:10px; padding:6px 8px; border-radius:8px; cursor:pointer; user-select:none; transition:background .12s ease, transform .06s ease; }
       #btfw-cmds-modal .btfw-cmd-row:hover{ background:color-mix(in srgb, var(--btfw-color-accent) 12%, transparent); }
+      #btfw-cmds-modal .btfw-cmd-row:focus-visible{ outline:none; background:color-mix(in srgb, var(--btfw-color-accent) 16%, transparent); box-shadow:0 0 0 2px color-mix(in srgb, var(--btfw-color-accent) 55%, transparent); }
+      #btfw-cmds-modal .btfw-cmd-row:active{ transform:translateY(1px); background:color-mix(in srgb, var(--btfw-color-accent) 20%, transparent); }
       #btfw-cmds-modal .btfw-cmd-name{ flex:0 0 auto; color:var(--btfw-color-accent); font-weight:700; font-family:"JetBrains Mono",monospace; font-size:.84rem; }
       #btfw-cmds-modal .btfw-cmd-desc{ color:color-mix(in srgb, var(--btfw-color-text) 82%, transparent); font-size:.84rem; }
     `;
@@ -490,9 +492,21 @@ addCommand("cast", async (ctx)=>{
     return listPrimary().map(name=>{
       const c = REG.get(name);
       const desc  = c?.desc || "";
-      const usage = (c?.usage || ("!"+name)).replace(/"/g,"&quot;");
-      return `<div class="btfw-cmd-row" title="Usage: ${usage}"><code class="btfw-cmd-name">!${name}</code><span class="btfw-cmd-desc">${desc}</span></div>`;
+      const token = name.startsWith("/") ? name : ("!"+name); // /me has no "!"
+      const usage = (c?.usage || token).replace(/"/g,"&quot;");
+      return `<div class="btfw-cmd-row" role="button" tabindex="0" data-cmd="${token}" title="Click to insert — ${usage}"><code class="btfw-cmd-name">${token}</code><span class="btfw-cmd-desc">${desc}</span></div>`;
     }).join("");
+  }
+
+  // Drop a command into the chat input so it's ready to send/edit — we don't
+  // auto-send because most commands take args or need a rank.
+  function insertCommandToInput(token){
+    const input = document.getElementById("chatline");
+    if (!input) return;
+    input.value = /\s$/.test(token) ? token : (token + " ");
+    input.focus();
+    try { const L = input.value.length; input.setSelectionRange(L, L); } catch(_){}
+    try { input.dispatchEvent(new Event("input", { bubbles:true })); } catch(_){}
   }
 
   // Shared popover plumbing (open/close/position/reposition/click-outside) all
@@ -510,7 +524,7 @@ addCommand("cast", async (ctx)=>{
             <span>Chat Commands</span>
             <button class="btfw-cmds-close" data-btfw-popover-close aria-label="Close">&times;</button>
           </div>
-          <div class="btfw-cmds-hint">Type these in chat. Some need moderator rank.</div>
+          <div class="btfw-cmds-hint">Click a command to drop it into chat. Some need moderator rank.</div>
           <div class="btfw-cmds-body">${buildCommandsList()}</div>
         </div>`;
     }
@@ -518,6 +532,29 @@ addCommand("cast", async (ctx)=>{
   function openCommandsModal(){ cmdsPop.open(); }
   function closeCommandsModal(){ cmdsPop.close(); }
   function cmdsIsOpen(){ return cmdsPop.isOpen(); }
+
+  // Click (or Enter/Space) a command row → insert it into chat, then close the
+  // popover and leave focus in the input. Delegated because build() re-creates
+  // the rows on every open. Bubble phase, so util:chat-popover's capture-phase
+  // outside-click handler (which ignores in-card clicks) doesn't interfere.
+  if (!window.__btfwCmdRowWired) {
+    window.__btfwCmdRowWired = true;
+    const rowFrom = (t) => t && t.closest && t.closest("#btfw-cmds-modal .btfw-cmd-row");
+    const useRow = (row) => {
+      const token = row.getAttribute("data-cmd");
+      if (!token) return;
+      insertCommandToInput(token);
+      cmdsPop.close();
+    };
+    document.addEventListener("click", (e)=>{
+      const row = rowFrom(e.target); if (row) useRow(row);
+    });
+    document.addEventListener("keydown", (e)=>{
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const row = rowFrom(e.target); if (!row) return;
+      e.preventDefault(); useRow(row);
+    });
+  }
 
   function injectCommandsButton(into){
     if (!into || into._btfwCmdBtn) return false;
