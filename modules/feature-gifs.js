@@ -98,7 +98,7 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
         </header>
         <div class="btfw-gif-body">
           <div class="btfw-gif-toolbar">
-            <div class="tabs is-boxed is-small btfw-gif-tabs">
+            <div class="btfw-gif-tabs">
               <ul>
                 <li class="is-active" data-p="giphy"><a>Giphy</a></li>
                 <li data-p="tenor"><a>Tenor</a></li>

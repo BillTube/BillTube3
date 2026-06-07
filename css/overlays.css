@@ -951,15 +951,17 @@
 }
 .btfw-gif-toolbar .btfw-gif-search.is-hidden { display: none; }
 
-/* Tabs — segmented buttons using theme tokens (matches the Emotes tabs) */
-#btfw-gif-modal .btfw-gif-tabs{ margin:0; }
+/* Tabs — segmented buttons using theme tokens (matches the Emotes tabs).
+   overflow:visible + line-height undo Bulma's .tabs clipping that cut off the
+   descenders (the "p"/"y" in Giphy) at the bottom. */
+#btfw-gif-modal .btfw-gif-tabs{ margin:0; overflow:visible; }
 #btfw-gif-modal .btfw-gif-tabs ul{
-  display:flex; gap:6px; margin:0; padding:0; list-style:none; border-bottom:0; flex-wrap:wrap;
+  display:flex; gap:6px; margin:0; padding:0; list-style:none; border-bottom:0; flex-wrap:wrap; overflow:visible;
 }
 #btfw-gif-modal .btfw-gif-tabs li{ margin:0; }
 #btfw-gif-modal .btfw-gif-tabs li a,
 #btfw-gif-modal .btfw-gif-tabs li.is-active a {
-  display:block; padding:6px 12px; border-radius:8px; font-size:12px; font-weight:600; line-height:1;
+  display:block; padding:6px 12px; border-radius:8px; font-size:12px; font-weight:600; line-height:1.25;
   background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
   border:1px solid var(--btfw-border);
   color: var(--btfw-color-text-soft);
