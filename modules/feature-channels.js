@@ -67,13 +67,13 @@ BTFW.define("feature:channels", [], async () => {
     prev.type = 'button';
     prev.className = 'btfw-channels__arrow btfw-channels__arrow--prev';
     prev.setAttribute('aria-label', 'Scroll featured channels left');
-    prev.innerHTML = '<span aria-hidden="true">‹</span>';
+    prev.innerHTML = '<i class="fa fa-chevron-left" aria-hidden="true"></i>';
 
     const next = document.createElement('button');
     next.type = 'button';
     next.className = 'btfw-channels__arrow btfw-channels__arrow--next';
     next.setAttribute('aria-label', 'Scroll featured channels right');
-    next.innerHTML = '<span aria-hidden="true">›</span>';
+    next.innerHTML = '<i class="fa fa-chevron-right" aria-hidden="true"></i>';
 
     const viewport = document.createElement('div');
     viewport.className = 'btfw-channels__viewport';
@@ -156,6 +156,8 @@ BTFW.define("feature:channels", [], async () => {
       .btfw-channels__viewport {
         flex: 1 1 auto;
         overflow: hidden;
+        /* vertical room so the hover scale doesn't get clipped */
+        padding: 9px 2px;
         touch-action: pan-y;
       }
 
@@ -167,42 +169,39 @@ BTFW.define("feature:channels", [], async () => {
       }
 
       .btfw-channels__item {
-        flex: 0 0 clamp(160px, 18vw, 220px);
-        max-width: clamp(160px, 18vw, 220px);
+        flex: 0 0 clamp(180px, 16vw, 230px);
+        max-width: clamp(180px, 16vw, 230px);
       }
 
+      /* Frosted-glass card: full-bleed banner, title on a blurred gradient. */
       .btfw-channels__link {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+        position: relative;
+        display: block;
+        aspect-ratio: 2 / 1;
         text-decoration: none;
-        color: color-mix(in srgb, var(--btfw-theme-text, #e8ecfb) 96%, transparent 4%);
-        background: var(--btfw-theme-surface, #0b111d);
-        background: color-mix(in srgb, var(--btfw-theme-surface, #0b111d) 88%, transparent 12%);
         border-radius: 12px;
-        border: 1px solid color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 22%, transparent 78%);
         overflow: hidden;
-        box-shadow: 0 14px 30px color-mix(in srgb, var(--btfw-theme-panel, #141f36) 28%, transparent 72%);
-        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
-        cursor: grab;
+        background: color-mix(in srgb, var(--btfw-theme-panel, #141f36) 88%, black 12%);
+        border: 1px solid color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 26%, transparent 74%);
+        box-shadow: 0 10px 22px color-mix(in srgb, var(--btfw-theme-panel, #141f36) 34%, transparent 66%);
+        transition: transform 0.26s cubic-bezier(.2,.7,.3,1), box-shadow 0.26s ease, border-color 0.26s ease;
+        cursor: pointer;
         user-select: none;
       }
 
       .btfw-channels__link:hover,
       .btfw-channels__link:focus {
-        transform: translateY(-4px);
-        border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 70%, white 30%);
-        background: color-mix(in srgb, var(--btfw-theme-panel, #141f36) 82%, var(--btfw-theme-accent, #6d4df6) 18%);
-        box-shadow: 0 18px 36px color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 35%, transparent 65%);
+        transform: scale(1.04);
+        z-index: 3;
+        border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 60%, white 40%);
+        box-shadow: 0 16px 32px color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 30%, transparent 70%);
       }
 
       .btfw-channels__media {
-        position: relative;
+        position: absolute;
+        inset: 0;
         width: 100%;
-        aspect-ratio: 16 / 6;
-        overflow: hidden;
-        background: var(--btfw-theme-panel, #141f36);
-        background: color-mix(in srgb, var(--btfw-theme-panel, #141f36) 88%, black 12%);
+        height: 100%;
       }
 
       .btfw-channels__thumb {
@@ -210,7 +209,7 @@ BTFW.define("feature:channels", [], async () => {
         height: 100%;
         object-fit: cover;
         display: block;
-        transition: transform 0.2s ease;
+        transition: transform 0.5s cubic-bezier(.2,.7,.3,1);
       }
 
       .btfw-channels__thumb.is-missing {
@@ -219,39 +218,71 @@ BTFW.define("feature:channels", [], async () => {
       }
 
       .btfw-channels__link:hover .btfw-channels__thumb {
-        transform: scale(1.05);
+        transform: scale(1.1);
+      }
+
+      /* Frosted glass — blur + a gradient mask that fades the frost in toward
+         the bottom, where the title sits. */
+      .btfw-channels__link::after {
+        content: "";
+        position: absolute;
+        inset: -0.5rem;
+        z-index: 1;
+        pointer-events: none;
+        -webkit-backdrop-filter: blur(9px) saturate(1.4) brightness(0.82);
+        backdrop-filter: blur(9px) saturate(1.4) brightness(0.82);
+        background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.12) 100%);
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.1) 36%, rgba(0,0,0,0.55) 54%, #000 74%);
+        mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.1) 36%, rgba(0,0,0,0.55) 54%, #000 74%);
       }
 
       .btfw-channels__label {
-        padding: 10px 12px 14px;
-        font-weight: 600;
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 2;
+        padding: 7px 10px 8px;
+        font-weight: 700;
         letter-spacing: 0.01em;
-        font-size: 14px;
-        color: color-mix(in srgb, var(--btfw-theme-text, #e6edf3) 92%, transparent 8%);
-        text-overflow: ellipsis;
+        font-size: 12px;
+        line-height: 1.22;
+        color: #fff;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.55);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
         overflow: hidden;
-        white-space: nowrap;
       }
 
       .btfw-channels__arrow {
+        /* flex:0 0 keeps them from being squished into ovals by the flex row */
+        flex: 0 0 38px;
         width: 38px;
         height: 38px;
+        padding: 0;
         border-radius: 50%;
-        border: 0;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 18%, rgba(255,255,255,0.08) 82%);
-        color: color-mix(in srgb, var(--btfw-theme-text, #e6edf3) 98%, transparent 2%);
-        font-size: 20px;
+        line-height: 1;
+        font-size: 15px;
+        background: color-mix(in srgb, var(--btfw-theme-panel, #141f36) 86%, transparent 14%);
+        border: 1px solid color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 30%, transparent 70%);
+        color: color-mix(in srgb, var(--btfw-theme-text, #e6edf3) 92%, transparent 8%);
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--btfw-theme-panel, #141f36) 40%, transparent 60%);
         cursor: pointer;
-        transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
       }
 
+      .btfw-channels__arrow i { line-height: 1; }
+
       .btfw-channels__arrow:hover:not([disabled]) {
-        background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 65%, white 35%);
-        box-shadow: 0 12px 24px color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 30%, transparent 70%);
-        transform: translateY(-2px);
+        background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 70%, white 8%);
+        border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 80%, white 20%);
+        color: #fff;
+        box-shadow: 0 10px 22px color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 30%, transparent 70%);
+        transform: translateY(-1px);
       }
 
       .btfw-channels__arrow[disabled] {
@@ -276,39 +307,20 @@ BTFW.define("feature:channels", [], async () => {
         display: none;
       }
 
-      @media (max-width: 960px) {
-        .btfw-channels {
-          padding: 16px 44px;
-        }
-        .btfw-channels__item {
-          flex-basis: 190px;
-        }
-      }
-
       @media (max-width: 768px) {
         .btfw-channels {
-          padding: 14px 38px;
-          gap: 10px;
+          padding: 10px 14px;
+          gap: 8px;
         }
         .btfw-channels__item {
-          flex-basis: 170px;
-        }
-        .btfw-channels__label {
-          font-size: 13px;
+          flex: 0 0 clamp(150px, 42vw, 200px);
+          max-width: clamp(150px, 42vw, 200px);
         }
         .btfw-channels__arrow {
+          flex-basis: 34px;
           width: 34px;
           height: 34px;
-          font-size: 18px;
-        }
-      }
-
-      @media (max-width: 600px) {
-        .btfw-channels {
-          padding: 12px 32px;
-        }
-        .btfw-channels__item {
-          flex-basis: 150px;
+          font-size: 14px;
         }
       }
     `;
