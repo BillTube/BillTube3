@@ -1570,6 +1570,59 @@ cubic-bezier(0.4, 0, 1, 1) 0s running;
   -webkit-box-orient: vertical;
 }
 
+/* ------------------------------------------------------------------
+   Connection status pill (feature:connection-status)
+   Replaces CyTube's inline "Disconnected from server." / "Connected" chat
+   lines with a small pill in the bottom-right of the chat.
+   ------------------------------------------------------------------ */
+/* Belt-and-suspenders: never flash the inline lines even if JS removal lags */
+#messagebuffer .server-msg-disconnect,
+#messagebuffer .server-msg-reconnect { display: none !important; }
+
+.btfw-conn-pill {
+  position: absolute;
+  right: 30px;
+  bottom: var(--btfw-conn-pill-bottom, 152px);
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 17px;
+  border-radius: 999px;
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+  color: var(--btfw-color-text, #e7ebf3);
+  background: color-mix(in srgb, var(--btfw-color-surface) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 80%, transparent);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--btfw-color-bg) 58%, transparent);
+  opacity: 0;
+  transform: translateY(10px) scale(.9);
+  transform-origin: bottom right;
+  pointer-events: none;
+  /* pop-in / pop-out: fade + a little overshoot on scale */
+  transition: opacity .2s ease, transform .28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.btfw-conn-pill.is-open { opacity: 1; transform: translateY(0) scale(1); }
+.btfw-conn-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #9aa3b2; flex: 0 0 auto;
+}
+.btfw-conn-pill.is-reconnecting { border-color: color-mix(in srgb, #f5a524 48%, transparent); }
+.btfw-conn-pill.is-reconnecting .btfw-conn-dot {
+  background: #f5a524;
+  animation: btfw-conn-pulse 1s ease-in-out infinite;
+}
+.btfw-conn-pill.is-connected { border-color: color-mix(in srgb, #68d391 48%, transparent); }
+.btfw-conn-pill.is-connected .btfw-conn-dot {
+  background: #68d391;
+  box-shadow: 0 0 6px color-mix(in srgb, #68d391 60%, transparent);
+}
+@keyframes btfw-conn-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .35; transform: scale(.72); }
+}
+
 
 
 

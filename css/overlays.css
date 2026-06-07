@@ -1650,7 +1650,7 @@ html[data-btfw-theme="dark"] .panel {
   box-shadow: 0 18px 32px color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%);
   backdrop-filter: blur(14px);
   overflow: hidden;
-  animation: btfw-nt-in .16s ease-out;
+  animation: btfw-nt-in .28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   --btfw-notice-accent: color-mix(in srgb, var(--btfw-color-accent) 70%, #4a9eff 30%);
   --btfw-notice-icon-bg: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
   --btfw-notice-icon-color: color-mix(in srgb, var(--btfw-color-on-accent) 88%, white 12%);
@@ -1828,10 +1828,13 @@ html[data-btfw-theme="dark"] .panel {
 
 .btfw-notice--pinned .btfw-notice-progress{ display:none; }
 
-.btfw-notice--leaving{ animation: btfw-nt-out .16s ease-in forwards; opacity:.0; transform: translateY(-8px); }
+/* Pop OUT — must NOT also set a static opacity/transform, or the toast snaps
+   invisible instantly and the animation has nothing to play. */
+.btfw-notice--leaving{ animation: btfw-nt-out .2s cubic-bezier(0.4, 0, 1, 1) forwards; pointer-events:none; }
 
-@keyframes btfw-nt-in { from{opacity:.0; transform:translateY(-8px)} to{opacity:1; transform:none} }
-@keyframes btfw-nt-out{ to{opacity:.0; transform:translateY(-8px)} }
+/* Pop in (with a little overshoot/bounce) and pop out (fade + shrink). */
+@keyframes btfw-nt-in { from{opacity:0; transform:translateY(10px) scale(.9)} to{opacity:1; transform:none} }
+@keyframes btfw-nt-out{ from{opacity:1; transform:none} to{opacity:0; transform:translateY(6px) scale(.92)} }
 
 #btfw-notify-stack .np-title{ font-weight:600; opacity:.95; }
 #btfw-notify-stack .poll-title{ font-weight:600; margin-bottom:4px; }

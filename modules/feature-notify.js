@@ -312,7 +312,7 @@ function startAutoclose(o){
     o._state = null;
     if (o.el && o.el.parentNode) {
       o.el.classList.add("btfw-notice--leaving");
-      setTimeout(()=>{ try { o.el.remove(); } catch(_){}; }, 160);
+      setTimeout(()=>{ try { o.el.remove(); } catch(_){}; }, 230);
     }
     const i = visible.indexOf(o);
     if (i>=0) visible.splice(i,1);
@@ -353,6 +353,8 @@ function startAutoclose(o){
     // Now playing: changeMedia & setCurrent often both fire → de-dupe
     try {
       const scheduleNowPlaying = (payload) => {
+        // Skip re-sync replays (initial load / reconnect) — see feature:connection-status
+        if (window.BTFW_stateToastsSuppressed && window.BTFW_stateToastsSuppressed()) return;
         const direct = titleFromData(payload);
         if (direct) {
           return postNowPlayingToast(direct);
@@ -379,6 +381,8 @@ function startAutoclose(o){
 
     try {
       socket.on("newPoll", (p)=>{
+        // Skip re-sync replays (reconnect re-sends the active poll)
+        if (window.BTFW_stateToastsSuppressed && window.BTFW_stateToastsSuppressed()) return;
         const title = (p && p.title) ? String(p.title) : "A new poll started";
         postOnce("poll:"+title, 2000, ()=>{
           const items = Array.isArray(p?.options)
