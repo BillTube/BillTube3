@@ -438,15 +438,14 @@ if (!hasIcon) {
 }
   }
 
-  orderChatActions(actions);
   groupLeftChatButtons(actions);
 }
 
 // The left action buttons (emotes / gif / tools / commands…) live inside a
 // single rounded "pill" so they read as one simplified control group, separate
-// from the users-count + cog on the right. orderChatActions only touches direct
-// children of #btfw-chat-actions, so once these are inside the pill it leaves
-// them alone.
+// from the users-count + cog on the right (those are positioned by CSS `order`).
+// This is the single layout authority now — orderChatActions used to fight it
+// over DOM position and oscillate, so it's no longer called.
 const LEFT_PILL_IDS = [
   "btfw-btn-emotes",
   "btfw-btn-gif",
@@ -463,13 +462,22 @@ function groupLeftChatButtons(actions){
     pill = document.createElement("div");
     pill.id = "btfw-chatactions-pill";
     pill.className = "btfw-chatactions-pill";
-    actions.insertBefore(pill, actions.firstChild);
-  } else if (pill.parentElement !== actions){
+  }
+  // Pill is always the first child (left group).
+  if (pill.parentElement !== actions || actions.firstChild !== pill){
     actions.insertBefore(pill, actions.firstChild);
   }
+  // Place each left button inside the pill, in order — only mutate when a node
+  // is missing or out of position, so this settles (no observer thrash).
+  let prev = null;
   LEFT_PILL_IDS.forEach((id) => {
     const el = document.getElementById(id);
-    if (el && el.parentElement !== pill) pill.appendChild(el);
+    if (!el) return;
+    const want = prev ? prev.nextSibling : pill.firstChild;
+    if (el.parentElement !== pill || el !== want){
+      pill.insertBefore(el, prev ? prev.nextSibling : pill.firstChild);
+    }
+    prev = el;
   });
 }
 
@@ -1408,7 +1416,6 @@ const scheduleNormalizeChatActions = (() => {
   }
 
   cleanUsercountText();
-  orderChatActions(actions);
   groupLeftChatButtons(actions);
   wireUsercountSocket();
 }
