@@ -1385,6 +1385,12 @@ body.btfw-ts-hide #messagebuffer .timestamp { display:none !important; }
     font-size: 12px;
     opacity: .9;
     margin-left: auto;
+    /* Content-sized only. CyTube's native #usercount has flex-grow:2, which made
+       the chip span a whole wrapped row, so the empty space (left of the right-
+       aligned count) was still clickable and opened the userlist. Pin it to its
+       content so only the icon+count is the click target. */
+    flex: 0 0 auto;
+    width: auto;
     padding: 6px 12px;
     background: transparent;
     border: 0;
