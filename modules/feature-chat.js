@@ -155,6 +155,26 @@ window.addEventListener("resize", repositionOpenPopins);
 window.addEventListener("scroll", repositionOpenPopins, true);
 document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopins, 0));
 
+// Real-time re-fit when the CHAT COLUMN itself resizes (splitter drag, layout
+// switches, dock toggles…) — window 'resize' doesn't fire for those. Benefits
+// every popover (Emotes, Chat Tools, Commands, and anything on util:chat-popover).
+(function observeChatColumn(){
+  function attach(){
+    const cw = document.getElementById("chatwrap");
+    if (!cw || cw._btfwPopinRO || typeof ResizeObserver === "undefined") return !!cw;
+    let pending = false;
+    const ro = new ResizeObserver(() => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(() => { pending = false; repositionOpenPopins(); });
+    });
+    ro.observe(cw);
+    cw._btfwPopinRO = ro;
+    return true;
+  }
+  if (!attach()) document.addEventListener("btfw:layoutReady", attach);
+})();
+
 
   /* ---------------- Userlist docking ---------------- */
   const UL_DOCK_KEY = "btfw:userlist:docked";
