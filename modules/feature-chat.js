@@ -159,28 +159,12 @@ window.addEventListener("resize", repositionOpenPopins);
 window.addEventListener("scroll", repositionOpenPopins, true);
 document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopins, 0));
 
-// Real-time re-fit when the CHAT COLUMN itself resizes (splitter drag, layout
-// switches, dock toggles…) — window 'resize' doesn't fire for those. Benefits
-// every popover (Emotes, Chat Tools, Commands, and anything on util:chat-popover).
-(function observeChatColumn(){
-  function attach(){
-    const cw = document.getElementById("chatwrap");
-    if (!cw || cw._btfwPopinRO || typeof ResizeObserver === "undefined") return !!cw;
-    let pending = false;
-    const ro = new ResizeObserver(() => {
-      if (pending) return;
-      pending = true;
-      // setTimeout, not rAF — rAF is paused when the tab is backgrounded, which
-      // would stall the re-fit; setTimeout still fires. The flag batches bursts
-      // (e.g. continuous splitter drag) to one reposition per tick.
-      setTimeout(() => { pending = false; repositionOpenPopins(); }, 0);
-    });
-    ro.observe(cw);
-    cw._btfwPopinRO = ro;
-    return true;
-  }
-  if (!attach()) document.addEventListener("btfw:layoutReady", attach);
-})();
+// The live re-fit on chat-column resize (splitter drag, dock/layout switches) is
+// owned by util:chat-popover's watcher — a ResizeObserver on #chatwrap + the
+// bottom bar that calls window.BTFW_repositionOpenPopins directly, mirroring how
+// feature:emotes tracks the column. (Kept there so every mini popover shares one
+// mechanism.) The splitter drag in feature:layout also calls that global on each
+// move as a deterministic belt-and-suspenders.
 
 
   /* ---------------- Userlist docking ---------------- */
