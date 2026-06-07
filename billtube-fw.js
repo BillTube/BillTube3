@@ -4,13 +4,21 @@
   var BASE=(document.currentScript&&document.currentScript.src)||scripts[scripts.length-1].src; BASE=BASE.replace(/\/[^\/]*$/, "");
 
   var Registry=Object.create(null);
-  function define(name,deps,factory){ Registry[name]={deps:deps||[],factory:factory,instance:null}; }
-  async function init(name){
-    var m=Registry[name]; if(!m) throw new Error("Module not found: "+name);
-    if(m.instance) return m.instance;
-    for(var i=0;i<m.deps.length;i++){ await init(m.deps[i]); }
-    m.instance = await m.factory({define, init, BASE});
-    return m.instance;
+  function define(name,deps,factory){ Registry[name]={deps:deps||[],factory:factory,instance:null,promise:null}; }
+  function init(name){
+    var m=Registry[name]; if(!m) return Promise.reject(new Error("Module not found: "+name));
+    // Memoize the PROMISE, not just the resolved instance. The factory is async,
+    // so m.instance stays null until it resolves; two concurrent init() calls for
+    // the same module would both pass an instance-only guard and run the factory
+    // twice (two separate instances). Guarding on the promise makes init run the
+    // factory exactly once even under concurrent callers.
+    if(m.promise) return m.promise;
+    m.promise = (async function(){
+      for(var i=0;i<m.deps.length;i++){ await init(m.deps[i]); }
+      m.instance = await m.factory({define, init, BASE});
+      return m.instance;
+    })();
+    return m.promise;
   }
   window.BTFW = { define, init, BASE };
 
