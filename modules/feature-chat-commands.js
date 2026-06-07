@@ -541,6 +541,10 @@ addCommand("cast", async (ctx)=>{
     const modal = ensureCommandsModal();
     const body = modal.querySelector(".btfw-cmds-body");
     if (body) body.innerHTML = buildCommandsList();
+    // The container must be visible (not [hidden]) before positioning, otherwise
+    // the card can't lay out and renders 0×0.
+    modal.removeAttribute("hidden");
+    modal.removeAttribute("aria-hidden");
     positionCommandsModal();
     const card = modal.querySelector(".btfw-cmds-card");
     if (card) motion.openPopover(card);
@@ -548,8 +552,13 @@ addCommand("cast", async (ctx)=>{
 
   function closeCommandsModal(){
     const modal = document.getElementById("btfw-cmds-modal"); if (!modal) return;
-    const card = modal.querySelector(".btfw-cmds-card"); if (!card) return;
-    motion.closePopover(card);
+    const card = modal.querySelector(".btfw-cmds-card");
+    if (!card) { modal.setAttribute("hidden", ""); modal.setAttribute("aria-hidden", "true"); return; }
+    motion.closePopover(card).then(() => {
+      if (card.dataset.btfwPopoverState === "open") return;
+      modal.setAttribute("hidden", "");
+      modal.setAttribute("aria-hidden", "true");
+    });
   }
 
   function cmdsIsOpen(){
