@@ -124,6 +124,9 @@
 #videowrap .video-js.btfw-videojs-themed .vjs-big-play-button{
   top: 50%;
   left: 50%;
+  /* We center with transform; zero VideoJS's default centering margin
+     (-0.81em/-1.5em) so the two don't stack and push the button off-centre. */
+  margin: 0;
   transform: translate(-50%, -50%);
   width: 84px;
   height: 84px;
@@ -138,10 +141,18 @@
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
+#videowrap .video-js.btfw-videojs-themed .vjs-big-play-button .vjs-icon-placeholder{
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+}
 #videowrap .video-js.btfw-videojs-themed .vjs-big-play-button .vjs-icon-placeholder:before{
   font-size: 40px;
   line-height: 1;
-  margin-left: 4px;
+  /* tiny optical nudge so the play triangle (left-heavy) reads as centred */
+  margin-left: 2px;
   color: var(--btfw-vjs-text-strong);
 }
 
