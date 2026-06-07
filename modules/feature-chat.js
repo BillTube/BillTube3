@@ -448,6 +448,7 @@ const CHAT_ACTION_ORDER = [
   "#btfw-ct-open",
   "#btfw-chatcmds-btn",
   "#btfw-users-toggle",
+  "#btfw-theme-cog-chat",
   "#usercount"
 ];
 
@@ -1217,6 +1218,20 @@ const scheduleNormalizeChatActions = (() => {
       b.className = "button is-dark is-small btfw-chatbtn";
       b.title = "Users";
       b.innerHTML = '<i class="fa fa-users"></i>';
+      actions.appendChild(b);
+    }
+
+    // Theme settings cog — always available from the chat bar. The navbar Theme
+    // button is hidden in theater mode, so this keeps Theme Settings reachable.
+    // The .btfw-theme-open class is picked up by feature:themeSettings' delegated
+    // opener (no extra wiring needed). Two openers (navbar + here) is intended.
+    if (!$("#btfw-theme-cog-chat")) {
+      const b = document.createElement("button");
+      b.id = "btfw-theme-cog-chat";
+      b.className = "button is-dark is-small btfw-chatbtn btfw-theme-open";
+      b.title = "Theme settings";
+      b.setAttribute("aria-label", "Theme settings");
+      b.innerHTML = '<i class="fa fa-cog" aria-hidden="true"></i>';
       actions.appendChild(b);
     }
 
