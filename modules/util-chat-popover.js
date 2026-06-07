@@ -23,7 +23,11 @@ BTFW.define("util:chat-popover", ["util:motion"], async () => {
   const motion = await BTFW.init("util:motion");
 
   // card element -> { opts, modalId, toggleSelector, close }
-  const REG = new Map();
+  // Shared on window: the delegated click/Escape handlers below are window-global
+  // singletons (guarded by window flags), so the registry they read must be the
+  // same Map every popover registers into — even if this module is ever
+  // instantiated more than once. Without this they could read an empty registry.
+  const REG = window.__btfwChatPopoverREG || (window.__btfwChatPopoverREG = new Map());
 
   function position(card, opts){
     if (card && window.BTFW_positionPopoverAboveChatBar) {
