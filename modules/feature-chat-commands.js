@@ -453,58 +453,123 @@ addCommand("cast", async (ctx)=>{
     try { if (window.socket && socket.on) socket.on("chatMsg", onIncomingChatMsg); } catch(_) {}
   }
 
-  // ---------- Commands UI (robust injection) ----------
-  function buildCommandsTable(){
-    const rows = listPrimary().map(name=>{
+  // ---------- Commands UI (in-chat popover, matching Chat Tools / Emotes) ----------
+  function injectCmdsCSS(){
+    if (document.getElementById("btfw-cmds-css")) return;
+    const st = document.createElement("style");
+    st.id = "btfw-cmds-css";
+    st.textContent = `
+      #btfw-cmds-modal .btfw-cmds-card{
+        position:absolute; display:flex; flex-direction:column;
+        background: linear-gradient(180deg,
+          color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%),
+          color-mix(in srgb, var(--btfw-color-surface) 88%, transparent 12%));
+        border:1px solid var(--btfw-border); border-radius:14px;
+        box-shadow:0 18px 44px color-mix(in srgb, var(--btfw-color-bg) 34%, transparent 66%);
+        color:var(--btfw-color-text); overflow:hidden;
+      }
+      #btfw-cmds-modal .btfw-cmds-head{
+        display:flex; align-items:center; justify-content:space-between;
+        padding:10px 12px; font-weight:600; letter-spacing:.2px;
+        border-bottom:1px solid var(--btfw-border); flex:0 0 auto;
+      }
+      #btfw-cmds-modal .btfw-cmds-close{ background:transparent; border:0; color:var(--btfw-color-text); font-size:18px; line-height:1; padding:0 4px; cursor:pointer; }
+      #btfw-cmds-modal .btfw-cmds-close:hover{ color:var(--btfw-color-accent); }
+      #btfw-cmds-modal .btfw-cmds-hint{ padding:8px 12px 0; font-size:.74rem; color:color-mix(in srgb, var(--btfw-color-text) 60%, transparent); }
+      #btfw-cmds-modal .btfw-cmds-body{ padding:6px 8px 8px; overflow-y:auto; flex:1 1 auto; }
+      #btfw-cmds-modal .btfw-cmd-row{ display:flex; align-items:baseline; gap:10px; padding:6px 8px; border-radius:8px; }
+      #btfw-cmds-modal .btfw-cmd-row:hover{ background:color-mix(in srgb, var(--btfw-color-accent) 12%, transparent); }
+      #btfw-cmds-modal .btfw-cmd-name{ flex:0 0 auto; color:var(--btfw-color-accent); font-weight:700; font-family:"JetBrains Mono",monospace; font-size:.84rem; }
+      #btfw-cmds-modal .btfw-cmd-desc{ color:color-mix(in srgb, var(--btfw-color-text) 82%, transparent); font-size:.84rem; }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function buildCommandsList(){
+    return listPrimary().map(name=>{
       const c = REG.get(name);
       const desc  = c?.desc || "";
-      const usage = c?.usage || ("!"+name);
-      return `<tr><td><code>!${name}</code></td><td>${desc}</td><td><code>${usage}</code></td></tr>`;
+      const usage = (c?.usage || ("!"+name)).replace(/"/g,"&quot;");
+      return `<div class="btfw-cmd-row" title="Usage: ${usage}"><code class="btfw-cmd-name">!${name}</code><span class="btfw-cmd-desc">${desc}</span></div>`;
     }).join("");
-    return `
-      <div class="content">
-        <p>Type these in chat. Some require moderator permissions.</p>
-        <div class="table-container">
-          <table class="table is-fullwidth is-striped is-narrow">
-            <thead><tr><th>Command</th><th>Description</th><th>Usage</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-      </div>`;
   }
+
   function ensureCommandsModal(){
-    let m = $("#btfw-cmds-modal");
-    if (m) return m;
-    m = document.createElement("div");
-    m.id = "btfw-cmds-modal";
-    m.className = "modal";
-    m.dataset.btfwModalState = "closed";
-    m.setAttribute("hidden", "");
-    m.setAttribute("aria-hidden", "true");
-    m.innerHTML = `
-      <div class="modal-background"></div>
-      <div class="modal-card btfw-modal">
-        <header class="modal-card-head">
-          <p class="modal-card-title">Chat Commands</p>
-          <button class="delete" aria-label="close"></button>
-        </header>
-        <section class="modal-card-body">${buildCommandsTable()}</section>
-        <footer class="modal-card-foot">
-          <button class="button is-link" id="btfw-cmds-close">Close</button>
-        </footer>
+    injectCmdsCSS();
+    const cw = document.getElementById("chatwrap") || document.body;
+    let modal = document.getElementById("btfw-cmds-modal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "btfw-cmds-modal";
+      modal.setAttribute("hidden", "");
+      modal.setAttribute("aria-hidden", "true");
+      cw.appendChild(modal);
+    }
+    modal.innerHTML = `
+      <div class="btfw-cmds-card btfw-popover">
+        <div class="btfw-cmds-head">
+          <span>Chat Commands</span>
+          <button class="btfw-cmds-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="btfw-cmds-hint">Type these in chat. Some need moderator rank.</div>
+        <div class="btfw-cmds-body">${buildCommandsList()}</div>
       </div>`;
-    document.body.appendChild(m);
-    const dismiss = () => motion.closeModal(m);
-    $(".modal-background", m).addEventListener("click", dismiss);
-    $(".delete", m).addEventListener("click", dismiss);
-    $("#btfw-cmds-close", m).addEventListener("click", dismiss);
-    return m;
+    // container inert; only the card is interactive (mirrors Chat Tools)
+    modal.style.background = "transparent";
+    modal.style.pointerEvents = "none";
+    const card = modal.querySelector(".btfw-cmds-card");
+    if (card) {
+      card.style.pointerEvents = "auto";
+      card.dataset.btfwPopoverState = "closed";
+      card.setAttribute("hidden", "");
+      card.setAttribute("aria-hidden", "true");
+    }
+    const closeBtn = modal.querySelector(".btfw-cmds-close");
+    if (closeBtn) closeBtn.addEventListener("click", (e)=>{ e.preventDefault(); closeCommandsModal(); });
+    return modal;
   }
+
+  function positionCommandsModal(){
+    const modal = document.getElementById("btfw-cmds-modal"); if (!modal) return;
+    const card = modal.querySelector(".btfw-cmds-card"); if (!card) return;
+    if (window.BTFW_positionPopoverAboveChatBar) {
+      window.BTFW_positionPopoverAboveChatBar(card, { widthPx: 480, widthVw: 92, maxHpx: 440, maxHvh: 66 });
+    }
+  }
+
   function openCommandsModal(){
-    const m = ensureCommandsModal();
-    const body = m.querySelector(".modal-card-body");
-    if (body) body.innerHTML = buildCommandsTable();
-    motion.openModal(m);
+    const modal = ensureCommandsModal();
+    const body = modal.querySelector(".btfw-cmds-body");
+    if (body) body.innerHTML = buildCommandsList();
+    positionCommandsModal();
+    const card = modal.querySelector(".btfw-cmds-card");
+    if (card) motion.openPopover(card);
+  }
+
+  function closeCommandsModal(){
+    const modal = document.getElementById("btfw-cmds-modal"); if (!modal) return;
+    const card = modal.querySelector(".btfw-cmds-card"); if (!card) return;
+    motion.closePopover(card);
+  }
+
+  function cmdsIsOpen(){
+    const card = document.querySelector("#btfw-cmds-modal .btfw-cmds-card");
+    return !!(card && card.dataset.btfwPopoverState === "open");
+  }
+
+  // close on outside click; reposition while open
+  if (!window.__btfwCmdsWired) {
+    window.__btfwCmdsWired = true;
+    document.addEventListener("click", (e)=>{
+      if (!cmdsIsOpen()) return;
+      const card = document.querySelector("#btfw-cmds-modal .btfw-cmds-card");
+      if (card && card.contains(e.target)) return;
+      if (e.target.closest && e.target.closest("#btfw-chatcmds-btn")) return;
+      closeCommandsModal();
+    }, true);
+    window.addEventListener("resize", positionCommandsModal);
+    const cw = document.getElementById("chatwrap");
+    if (cw) cw.addEventListener("scroll", positionCommandsModal, { passive:true });
   }
 
   function injectCommandsButton(into){
@@ -514,7 +579,7 @@ addCommand("cast", async (ctx)=>{
     btn.className = "button is-dark is-small btfw-chatbtn";
     btn.innerHTML = `<i class="fa fa-question-circle" aria-hidden="true"></i>`;
     btn.title = "Commands";
-    btn.addEventListener("click", (e)=>{ e.preventDefault(); openCommandsModal(); });
+    btn.addEventListener("click", (e)=>{ e.preventDefault(); cmdsIsOpen() ? closeCommandsModal() : openCommandsModal(); });
     into.appendChild(btn);
     into._btfwCmdBtn = true;
     return true;
