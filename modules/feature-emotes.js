@@ -377,6 +377,10 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
       } else {
         tile.classList.add("btfw-emote-tile--emote");
         tile.dataset.kind = "emote";
+        // Marketplace pack emotes (7TV/BTTV/emoji.gg) carry a token; tag the
+        // tile so the modal can cap their display size smaller than native
+        // channel emotes without affecting the Channel/Emoji tabs.
+        if (item.token) tile.classList.add("btfw-emote-tile--pack");
         const img = document.createElement("img");
         img.className = "btfw-emote-img";
         img.src = item.image || "";
