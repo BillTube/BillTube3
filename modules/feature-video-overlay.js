@@ -176,6 +176,14 @@ BTFW.define("feature:videoOverlay", [], async () => {
         opacity: 1;
       }
 
+      /* While hidden, the bar's buttons must not be tappable — otherwise on a
+         touch device the first tap could hit an invisible button instead of
+         revealing the bar. They become interactive again once .btfw-vo-visible. */
+      #btfw-video-overlay:not(.btfw-vo-visible) .btfw-vo-btn,
+      #btfw-video-overlay:not(.btfw-vo-visible) .btfw-vo-adopted {
+        pointer-events: none;
+      }
+
       #btfw-video-overlay .btfw-vo-bar{
         position:absolute; right:12px; top:12px; left:12px; bottom:auto; display:flex; align-items:center; gap:8px; pointer-events:none;
         background:transparent;
@@ -481,9 +489,29 @@ BTFW.define("feature:videoOverlay", [], async () => {
       overlay.classList.remove("btfw-vo-visible");
     }
 
-    function scheduleHide() {
+    function scheduleHide(ms) {
       clearTimeout(hideTimer);
-      hideTimer = setTimeout(hideOverlay, 3000);
+      hideTimer = setTimeout(hideOverlay, ms || 3000);
+    }
+
+    // Touch devices have no hover, so the hover-reveal never fires and the bar
+    // (skip / fullscreen / local subs / etc.) is unreachable. On those, a tap
+    // toggles the overlay and it auto-hides a few seconds after being shown.
+    const isTouch = !!(window.matchMedia &&
+      window.matchMedia("(hover: none), (pointer: coarse)").matches);
+
+    if (isTouch) {
+      videowrap.addEventListener("click", (e) => {
+        // Taps on the bar's own buttons should run the button, not toggle.
+        if (e.target.closest(".btfw-vo-btn, .btfw-vo-adopted")) return;
+        if (overlay.classList.contains("btfw-vo-visible")) {
+          hideOverlay();
+        } else {
+          showOverlay();
+          scheduleHide(4500);
+        }
+      });
+      return;
     }
 
     videowrap.addEventListener("mouseenter", showOverlay);
