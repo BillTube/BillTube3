@@ -58,26 +58,64 @@ BTFW.define("feature:emote-marketplace", [], async () => {
       return { name: setName, emotes: out };
     },
 
-    // emoji.gg: id is a pack slug ("598443-frieren") or its number prefix
-    // ("598443"), taken from an emoji.gg/pack/<slug> URL. emoji.gg has no
-    // per-pack endpoint — /api/packs lists ~100 packs, each with an inline
-    // comma-separated "emojis" field of CDN filenames, so we resolve from there.
+    // FrankerFaceZ: id is "global", a Twitch channel name (-> that channel's
+    // FFZ emotes), or a numeric FFZ set id. CORS-friendly, no proxy needed.
+    "ffz": async (id) => {
+      const out = [];
+      const push = (arr) => {
+        for (const e of (arr || [])) {
+          if (!e || !e.id || !e.name) continue;
+          const img = (e.urls && (e.urls["2"] || e.urls["1"])) || `https://cdn.frankerfacez.com/emote/${e.id}/2`;
+          out.push({ name: e.name, image: img, token: `[ffz]${e.id}[/ffz]` });
+        }
+      };
+      const key = String(id).trim();
+      let setName = "FFZ";
+      if (/^global$/i.test(key)) {
+        const r = await fetch("https://api.frankerfacez.com/v1/set/global");
+        if (!r.ok) throw new Error("ffz " + r.status);
+        const d = await r.json();
+        const sets = d.sets || {};
+        Object.keys(sets).forEach(k => push(sets[k] && sets[k].emoticons));
+        setName = "FFZ Global";
+      } else if (/^\d+$/.test(key)) {
+        const r = await fetch(`https://api.frankerfacez.com/v1/set/${key}`);
+        if (!r.ok) throw new Error("ffz " + r.status);
+        const d = await r.json();
+        push(d.set && d.set.emoticons);
+        setName = (d.set && d.set.title) || ("FFZ set " + key);
+      } else {
+        const r = await fetch(`https://api.frankerfacez.com/v1/room/${encodeURIComponent(key)}`);
+        if (!r.ok) throw new Error(r.status === 404 ? "no FrankerFaceZ emotes for that channel" : "ffz " + r.status);
+        const d = await r.json();
+        const sets = d.sets || {};
+        Object.keys(sets).forEach(k => push(sets[k] && sets[k].emoticons));
+        setName = "FFZ " + key;
+      }
+      return { name: setName, emotes: out };
+    },
+
+    // emoji.gg: id is a pack slug ("598443-frieren") or its number prefix,
+    // taken from an emoji.gg/pack/<slug> URL. emoji.gg's API only exposes the
+    // ~100 packs currently listed on emoji.gg/packs (no per-pack endpoint), so
+    // only those resolve — anything else points the owner at 7TV/FFZ.
     "egg": async (id) => {
+      const wanted = String(id).trim().toLowerCase();
+      const num = wanted.split("-")[0];
       const r = await fetch("https://emoji.gg/api/packs");
       if (!r.ok) throw new Error("egg " + r.status);
       const packs = await r.json();
-      const wanted = String(id).trim().toLowerCase();
-      const num = wanted.split("-")[0];
       const pack = (Array.isArray(packs) ? packs : []).find(p => {
-        const slug = String((p && p.slug) || "").toLowerCase();
-        return slug === wanted || (num && slug.split("-")[0] === num) || String(p && p.id) === wanted;
+        const s = String((p && p.slug) || "").toLowerCase();
+        return s === wanted || (num && s.split("-")[0] === num) || String(p && p.id) === wanted;
       });
-      if (!pack) throw new Error("pack not found in emoji.gg's pack list");
+      if (!pack) {
+        throw new Error("emoji.gg only serves its ~100 currently-listed packs through its API, and this isn't one of them. Pick a pack shown on emoji.gg/packs, or use a 7TV set / FrankerFaceZ channel instead.");
+      }
       const files = String(pack.emojis || "").split(",").map(s => s.trim()).filter(Boolean);
       const out = [];
       for (const file of files) {
-        // file looks like "526842-frierendance.gif" -> name "frierendance"
-        const name = file.replace(/^\d+-/, "").replace(/\.[a-z0-9]+$/i, "");
+        const name = file.replace(/^\d+[-_]/, "").replace(/\.[a-z0-9]+$/i, "");
         out.push({ name, image: `https://cdn3.emoji.gg/emojis/${file}`, token: `[egg]${file}[/egg]` });
       }
       return { name: (pack.name || "emoji.gg pack").trim(), emotes: out };

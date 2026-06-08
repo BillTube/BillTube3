@@ -1087,6 +1087,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         background: var(--btfw-theme-accent, #6d4df6);
       }
       .btfw-theme-admin .btfw-emote-pack__badge[data-provider="bttv"] { background: #d50014; }
+      .btfw-theme-admin .btfw-emote-pack__badge[data-provider="ffz"]  { background: #33559b; }
       .btfw-theme-admin .btfw-emote-pack__badge[data-provider="egg"]  { background: #5865f2; }
       .btfw-theme-admin .btfw-emote-pack__info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
       .btfw-theme-admin .btfw-emote-pack__label { font-weight: 600; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1866,7 +1867,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   // Emote Marketplace packs -> clean [{provider, id, label, enabled}] array.
   function normalizeEmotePacks(list){
     if (!Array.isArray(list)) return [];
-    const allowed = { "7tv": 1, "bttv": 1, "egg": 1 };
+    const allowed = { "7tv": 1, "bttv": 1, "ffz": 1, "egg": 1 };
     const seen = {};
     const out = [];
     list.forEach(p => {
@@ -1899,9 +1900,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   }
 
   const EMOTE_PROVIDER_META = {
-    "7tv":  { name: "7TV",       badge: "7TV" },
-    "bttv": { name: "BetterTTV", badge: "BTTV" },
-    "egg":  { name: "emoji.gg",  badge: "EGG" }
+    "7tv":  { name: "7TV",          badge: "7TV" },
+    "bttv": { name: "BetterTTV",    badge: "BTTV" },
+    "ffz":  { name: "FrankerFaceZ", badge: "FFZ" },
+    "egg":  { name: "emoji.gg",     badge: "EGG" }
   };
 
   // Pull the usable id out of whatever the owner pasted (a provider URL or a
@@ -1919,6 +1921,14 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       if (/^global$/i.test(s)) return "global";
       const m = s.match(/(\d{2,})/); // a twitch numeric user id
       return m ? m[1] : "";
+    }
+    if (provider === "ffz") {
+      if (/^global$/i.test(s)) return "global";
+      // a frankerfacez.com/channel/<name> URL, or a bare channel name / set id
+      const ch = s.match(/frankerfacez\.com\/channel\/([A-Za-z0-9_]+)/i);
+      if (ch) return ch[1].toLowerCase();
+      const m2 = s.match(/^([A-Za-z0-9_]+)$/);
+      return m2 ? m2[1].toLowerCase() : "";
     }
     if (provider === "egg") {
       // emoji.gg pack slug from a /pack/<slug> URL, else a raw slug/number.
@@ -2509,6 +2519,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                   <select id="btfw-emote-mkt-provider">
                     <option value="7tv">7TV — emote set</option>
                     <option value="bttv">BetterTTV — channel / global</option>
+                    <option value="ffz">FrankerFaceZ — channel / global</option>
                     <option value="egg">emoji.gg — pack</option>
                   </select>
                 </div>
@@ -2994,7 +3005,8 @@ function replaceBlock(original, startMarker, endMarker, block){
       const HINTS = {
         "7tv":  { label: "7TV set URL or ID", hint: 'Browse emotes on <a href="https://7tv.app/emotes" target="_blank" rel="noopener">7tv.app</a>, open a set, and paste its URL (looks like <code>7tv.app/emote-sets/…</code>).', ph: "https://7tv.app/emote-sets/01F6…" },
         "bttv": { label: "BetterTTV: \"global\" or Twitch user ID", hint: 'Type <code>global</code> for BTTV global emotes, or a channel\'s numeric Twitch user ID.', ph: "global" },
-        "egg":  { label: "emoji.gg pack URL", hint: 'Browse packs on <a href="https://emoji.gg/packs" target="_blank" rel="noopener">emoji.gg/packs</a> and paste a pack URL (e.g. <code>emoji.gg/pack/598443-frieren</code>).', ph: "https://emoji.gg/pack/598443-frieren" }
+        "ffz":  { label: "FrankerFaceZ: channel name or \"global\"", hint: 'Type a Twitch channel name for its FFZ emotes (or a <a href="https://www.frankerfacez.com/" target="_blank" rel="noopener">frankerfacez.com</a>/channel/&lt;name&gt; URL), or <code>global</code>.', ph: "lirik" },
+        "egg":  { label: "emoji.gg pack URL", hint: 'Pick from the packs currently listed on <a href="https://emoji.gg/packs" target="_blank" rel="noopener">emoji.gg/packs</a> (only those ~100 work via emoji.gg\'s API) and paste the pack URL.', ph: "https://emoji.gg/pack/598443-frieren" }
       };
       const idLabel = panel.querySelector('[data-role="id-label"]');
       const idHint  = panel.querySelector('[data-role="id-hint"]');
