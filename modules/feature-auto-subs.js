@@ -3,7 +3,11 @@ BTFW.define("feature:auto-subs", [], async () => {
   const MODULE_NAME = "feature:auto-subs";
   const WYZIE_API = "https://sub.wyzie.io/search";
   const TMDB_API = "https://api.themoviedb.org/3";
-  const STREMIO_DEFAULT_ADDON = "https://opensubtitles-v3.strem.io";
+  // CORS proxy for the Stremio OpenSubtitles v3 addon. The raw addon (and its
+  // subtitle files) send no CORS headers, so the browser can't read them; this
+  // worker mirrors the addon's paths and rewrites subtitle URLs through itself.
+  // Override via Theme Toolkit integrations or localStorage "btfw:stremio:subs".
+  const STREMIO_DEFAULT_ADDON = "https://subs-proxy.billtube.workers.dev";
   const LOCAL_LABEL_PREFIX = "Local: ";
 
   function isLocalSubTrack(track) {
