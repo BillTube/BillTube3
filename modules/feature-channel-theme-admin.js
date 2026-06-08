@@ -1025,28 +1025,30 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         outline: none; border-color: var(--btfw-admin-border);
       }
 
-      /* Themed form buttons (also fixes the Wyzie/SubDL test buttons, which
-         live in .key-test-row and otherwise fall back to Bootstrap styling). */
-      .btfw-theme-admin .key-test-row .btn-primary,
-      .btfw-theme-admin .key-test-row .btn-secondary {
+      /* Dedicated marketplace buttons. We avoid .btn-primary/.btn-secondary on
+         purpose: an injected ".modal .btn-primary { … !important }" rule forces
+         a washed-out translucent accent fill that we can't override without
+         these custom classes. */
+      .btfw-theme-admin .btfw-emote-mkt__actions-row { display: flex; flex-wrap: wrap; gap: 8px; }
+      .btfw-theme-admin .btfw-mkt-btn {
         box-sizing: border-box; padding: 8px 16px; border-radius: 8px;
-        border: 1px solid transparent; font-weight: 600; font-size: 0.82rem;
-        letter-spacing: 0.01em; line-height: 1.2; cursor: pointer;
+        font-weight: 600; font-size: 0.82rem; letter-spacing: 0.01em; line-height: 1.2;
+        cursor: pointer; border: 1px solid var(--btfw-admin-border-soft);
+        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 90%, transparent 10%);
+        color: var(--btfw-admin-text);
         transition: filter 0.16s ease, border-color 0.18s ease, background 0.16s ease;
       }
-      .btfw-theme-admin .key-test-row .btn-secondary {
-        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 90%, transparent 10%);
-        color: var(--btfw-admin-text); border-color: var(--btfw-admin-border-soft);
+      .btfw-theme-admin .btfw-mkt-btn:hover { border-color: var(--btfw-admin-border); filter: brightness(1.1); }
+      .btfw-theme-admin .btfw-mkt-btn:disabled { opacity: 0.55; cursor: default; filter: none; }
+      .btfw-theme-admin .btfw-mkt-btn--primary {
+        background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 26%, var(--btfw-admin-surface) 74%);
+        border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 60%, transparent);
+        color: var(--btfw-admin-text);
       }
-      .btfw-theme-admin .key-test-row .btn-primary {
-        background: var(--btfw-theme-accent, #6d4df6);
-        color: var(--btfw-color-on-accent, #fff); border-color: transparent;
+      .btfw-theme-admin .btfw-mkt-btn--primary:hover {
+        background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 40%, var(--btfw-admin-surface) 60%);
+        border-color: var(--btfw-theme-accent, #6d4df6); filter: none;
       }
-      .btfw-theme-admin .key-test-row .btn-secondary:hover { border-color: var(--btfw-admin-border); filter: brightness(1.1); }
-      .btfw-theme-admin .key-test-row .btn-primary:hover { filter: brightness(1.08); }
-      .btfw-theme-admin .key-test-row .btn-primary:disabled,
-      .btfw-theme-admin .key-test-row .btn-secondary:disabled { opacity: 0.55; cursor: default; filter: none; }
-      .btfw-theme-admin .btfw-emote-mkt__actions-row { gap: 8px; }
 
       /* Emote preview grid (shown after Preview / before Add) */
       .btfw-theme-admin .btfw-emote-mkt__preview {
@@ -2510,16 +2512,16 @@ function replaceBlock(original, startMarker, endMarker, block){
                 <div class="field">
                   <label for="btfw-emote-mkt-id" data-role="id-label">7TV set URL or ID</label>
                   <input type="text" id="btfw-emote-mkt-id" placeholder="https://7tv.app/emote-sets/01F6…">
-                  <p class="help" data-role="id-hint">Open a set on <a href="https://7tv.app/emote-sets" target="_blank" rel="noopener">7tv.app</a> and paste its URL.</p>
+                  <p class="help" data-role="id-hint">Browse emotes on <a href="https://7tv.app/emotes" target="_blank" rel="noopener">7tv.app</a>, open a set, and paste its URL (looks like <code>7tv.app/emote-sets/…</code>).</p>
                 </div>
                 <div class="field">
                   <label for="btfw-emote-mkt-label">Tab name (optional)</label>
                   <input type="text" id="btfw-emote-mkt-label" placeholder="Defaults to the pack's own name">
                 </div>
                 <div class="btfw-emote-mkt__preview" data-role="emote-mkt-preview" hidden></div>
-                <div class="key-test-row btfw-emote-mkt__actions-row">
-                  <button type="button" class="btn-secondary" id="btfw-emote-mkt-preview-btn">Preview</button>
-                  <button type="button" class="btn-primary" id="btfw-emote-mkt-add">Add pack</button>
+                <div class="btfw-emote-mkt__actions-row">
+                  <button type="button" class="btfw-mkt-btn" id="btfw-emote-mkt-preview-btn">Preview</button>
+                  <button type="button" class="btfw-mkt-btn btfw-mkt-btn--primary" id="btfw-emote-mkt-add">Add pack</button>
                 </div>
                 <p class="help" data-role="emote-mkt-result" hidden></p>
               </div>
@@ -2974,7 +2976,7 @@ function replaceBlock(original, startMarker, endMarker, block){
 
     if (mktProvider && mktId) {
       const HINTS = {
-        "7tv":  { label: "7TV set URL or ID", hint: 'Open a set on <a href="https://7tv.app/emote-sets" target="_blank" rel="noopener">7tv.app</a> and paste its URL.', ph: "https://7tv.app/emote-sets/01F6…" },
+        "7tv":  { label: "7TV set URL or ID", hint: 'Browse emotes on <a href="https://7tv.app/emotes" target="_blank" rel="noopener">7tv.app</a>, open a set, and paste its URL (looks like <code>7tv.app/emote-sets/…</code>).', ph: "https://7tv.app/emote-sets/01F6…" },
         "bttv": { label: "BetterTTV: \"global\" or Twitch user ID", hint: 'Type <code>global</code> for BTTV global emotes, or a channel\'s numeric Twitch user ID.', ph: "global" },
         "egg":  { label: "emoji.gg category number", hint: 'A category id from <a href="https://emoji.gg/api/?request=categories" target="_blank" rel="noopener">emoji.gg/api</a> (e.g. 1 = memes).', ph: "1" }
       };
