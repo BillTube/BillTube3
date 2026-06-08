@@ -715,12 +715,13 @@
   display:flex;
   align-items:center;
   justify-content:flex-start;
-  flex-wrap:wrap;
-  gap:8px;
+  flex-wrap:nowrap;            /* icons stay on one line — never wrap the cog off */
+  gap:6px;                     /* tightened so more fits inline before the burger */
   width:100%;
   padding-top:6px;
   border-top:0;
   margin-top:4px;
+  position:relative;          /* anchor for the collapsed pill flyout */
 }
 .btfw-chat-actions #usercount{
   margin-left:auto;
@@ -1049,8 +1050,8 @@
 #btfw-chat-actions #btfw-chatactions-pill{
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px;
+  gap: 3px;
+  padding: 3px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--btfw-color-panel) 72%, transparent 28%);
   border: 1px solid color-mix(in srgb, var(--btfw-border) 42%, transparent 58%);
@@ -1081,6 +1082,57 @@
 #btfw-chatactions-pill .btfw-chatbtn:active{
   background: color-mix(in srgb, var(--btfw-color-accent) 40%, transparent 60%) !important;
   color: var(--btfw-color-on-accent) !important;
+}
+
+/* ---- Burger collapse ----------------------------------------------------
+   When the chat column is too narrow to keep the left pill + the right
+   users-count/cog cluster on one line, JS adds .btfw-actions-collapsed and the
+   pill detaches into a flyout opened by this burger. This keeps every icon in a
+   single row at all widths (no cog wrapping to a second line). */
+#btfw-chatactions-burger{
+  display:none;
+  order:-1;                                  /* always leftmost, ignore DOM order */
+  width:34px; height:34px; min-width:34px;
+  padding:0 !important;
+  border-radius:12px;
+  align-items:center; justify-content:center;
+  border:1px solid color-mix(in srgb, var(--btfw-border) 42%, transparent 58%);
+  background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
+  color: var(--btfw-color-text);
+  transition: background .14s ease, color .14s ease;
+}
+#btfw-chatactions-burger i{ font-size:15px; }
+#btfw-chatactions-burger:hover{
+  background: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+  color: var(--btfw-color-text);
+}
+.btfw-chat-actions.btfw-actions-collapsed #btfw-chatactions-burger{ display:inline-flex; }
+.btfw-chat-actions.btfw-actions-collapsed.btfw-actions-open #btfw-chatactions-burger{
+  background: color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%);
+  color: var(--btfw-color-on-accent);
+}
+
+/* Collapsed pill = flyout above the burger. Kept measurable (visibility, not
+   display:none) so the resize math can decide when there's room to expand back. */
+/* ID prefix (#btfw-chat-actions) so these out-specify the two-ID base pill rule. */
+#btfw-chat-actions.btfw-actions-collapsed #btfw-chatactions-pill{
+  position:absolute;
+  left:0; bottom:calc(100% + 8px);
+  flex-wrap:wrap;
+  gap:6px;
+  max-width:min(260px, 86vw);
+  padding:8px;
+  z-index:60;
+  visibility:hidden; opacity:0; pointer-events:none;
+  transform:translateY(4px);
+  transition:opacity .14s ease, transform .14s ease, visibility .14s ease;
+  border:1px solid color-mix(in srgb, var(--btfw-border) 70%, transparent 30%) !important;
+  border-radius:14px;
+  background: var(--btfw-color-panel, #1a1e2e) !important;   /* solid so the input can't bleed through */
+  box-shadow:0 16px 38px color-mix(in srgb, var(--btfw-color-bg) 60%, transparent 40%);
+}
+#btfw-chat-actions.btfw-actions-collapsed.btfw-actions-open #btfw-chatactions-pill{
+  visibility:visible; opacity:1; pointer-events:auto; transform:none;
 }
 
 /* Format buttons stay in one tidy row even on phones */
