@@ -64,9 +64,16 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
       .map(x => ({ name: x.name, image: x.image || "" }));
   }
 
+  // The Emoji tab uses Google's Noto Animated Emoji (Apache-2.0): animated WebP
+  // served from the gstatic CDN, inserted into chat as [ae]<codepoint>[/ae]
+  // tokens that the BillTube chat filters render as images for everyone.
+  const NOTO_META = "https://googlefonts.github.io/noto-emoji-animation/data/api.json";
+  const NOTO_CDN  = "https://fonts.gstatic.com/s/e/notoemoji/latest";
+  const NOTO_CACHE = "btfw:emoji:noto:v1";
+
   async function loadEmoji(){
     try {
-      const raw = localStorage.getItem("btfw:emoji:cache");
+      const raw = localStorage.getItem(NOTO_CACHE);
       if (raw) {
         state.list.emoji = JSON.parse(raw);
         state.emojiReady = true;
@@ -75,24 +82,24 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
       }
     } catch(_){}
 
-    const url = "https://cdn.jsdelivr.net/npm/emoji.json@13.1.0/emoji.json";
+    const mk = (cp, name) => ({ name, keywords: name, image: `${NOTO_CDN}/${cp}/512.webp`, token: `[ae]${cp}[/ae]` });
     try {
-      const res = await fetch(url, { cache: "force-cache" });
-      const arr = await res.json();
-      state.list.emoji = arr.map(e => ({
-        char: e.char,
-        name: (e.name || "").toLowerCase(),
-        keywords: (e.keywords || "").toLowerCase()
-      }));
-      localStorage.setItem("btfw:emoji:cache", JSON.stringify(state.list.emoji));
+      const res = await fetch(NOTO_META, { cache: "force-cache" });
+      const data = await res.json();
+      const icons = Array.isArray(data.icons) ? data.icons : [];
+      // api.json is ordered by popularity; keep that order so common emoji lead.
+      state.list.emoji = icons.map(e => {
+        const cp = String(e.codepoint);
+        const tag0 = (e.tags && e.tags[0]) ? e.tags[0].replace(/:/g, "").replace(/[-_]+/g, " ").trim() : cp;
+        const kw = ((e.tags || []).join(" ") + " " + (e.categories || []).join(" ")).replace(/:/g, " ").toLowerCase();
+        return { name: tag0.toLowerCase(), keywords: kw, image: `${NOTO_CDN}/${cp}/512.webp`, token: `[ae]${cp}[/ae]` };
+      }).filter(x => x.token);
+      try { localStorage.setItem(NOTO_CACHE, JSON.stringify(state.list.emoji)); } catch(_){}
     } catch(_) {
       state.list.emoji = [
-        {char:"😀", name:"grinning face",                keywords:"smile happy"},
-        {char:"😂", name:"face with tears of joy",       keywords:"laugh cry"},
-        {char:"😍", name:"smiling face with heart-eyes", keywords:"love"},
-        {char:"👍", name:"thumbs up",                    keywords:"like ok yes"},
-        {char:"🔥", name:"fire",                         keywords:"lit hot"},
-        {char:"🎉", name:"party popper",                 keywords:"celebrate confetti"},
+        mk("1f600","grinning face"), mk("1f602","face with tears of joy"),
+        mk("1f60d","smiling face with heart eyes"), mk("1f44d","thumbs up"),
+        mk("1f525","fire"), mk("1f389","party popper")
       ];
     }
     state.emojiReady = true;
@@ -363,7 +370,8 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
       tile.className = "btfw-emote-tile";
       tile.setAttribute("data-index", String(idxAbs));
 
-      if (state.tab==="emoji" || item.kind==="emoji") {
+      if (item.char) {
+        // Native unicode emoji (legacy entries / older "recent" items).
         tile.classList.add("btfw-emote-tile--emoji");
         tile.dataset.kind = "emoji";
         tile.setAttribute("aria-label", item.name || item.char || "Emoji");
@@ -377,9 +385,8 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
       } else {
         tile.classList.add("btfw-emote-tile--emote");
         tile.dataset.kind = "emote";
-        // Marketplace pack emotes (7TV/BTTV/emoji.gg) carry a token; tag the
-        // tile so the modal can cap their display size smaller than native
-        // channel emotes without affecting the Channel/Emoji tabs.
+        // Token-bearing tiles (marketplace packs + Noto animated emoji) get the
+        // smaller capped size so they don't dwarf native channel emotes.
         if (item.token) tile.classList.add("btfw-emote-tile--pack");
         const img = document.createElement("img");
         img.className = "btfw-emote-img";
@@ -395,11 +402,12 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
 
       tile.addEventListener("click", ()=>{
         const input = $("#chatline"); if (!input) return;
-        if (state.tab==="emoji" || item.kind==="emoji") {
+        if (item.char) {
           insertAtCursor(input, normalizeEmojiForInsert(item.char) + " ");
           pushRecent({kind:"emoji", char:item.char, name:item.name, keywords:item.keywords});
         } else if (item.token) {
-          // Pack emote — insert the short token; the chat filters render it for everyone.
+          // Pack emote / animated emoji — insert the short token; the chat
+          // filters render it as an image for everyone.
           insertAtCursor(input, " " + item.token + " ");
           pushRecent({kind:"pack", name:item.name, image:item.image, token:item.token});
         } else {
