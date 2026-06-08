@@ -317,6 +317,7 @@ function resolveBranchToSHA(){
       "modules/feature-auto-subs.js",
       "modules/feature-chat-username-colors.js",
       "modules/feature-emotes.js",
+      "modules/feature-emote-marketplace.js",
       "modules/feature-chat-media.js",
       "modules/feature-emoji-compat.js",
       "modules/feature-chat-avatars.js",
