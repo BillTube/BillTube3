@@ -566,7 +566,9 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
 
         const updateToggle = () => {
           const isOpen = wrapper.dataset.open !== "false";
-          toggleBtn.textContent = isOpen ? "👁️" : "👁️‍🗨️";
+          toggleBtn.innerHTML = isOpen
+            ? '<i class="fa fa-eye" aria-hidden="true"></i>'
+            : '<i class="fa fa-eye-slash" aria-hidden="true"></i>';
           toggleBtn.title = isOpen ? "Hide playlist (improves performance)" : "Show playlist";
           toggleBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
           wrapper.classList.toggle("is-open", isOpen);
