@@ -1542,6 +1542,25 @@ nav.pagination.is-centered.btfw-gif-pager {
   margin-top: 10px;
 }
 
+/* Edit MOTD button — themed to fit the rest of the UI instead of Bulma's
+   is-link blue. Subtle surface button, accent tint on hover (theme tokens). */
+#btfw-motd-editbtn.button{
+  background: color-mix(in srgb, var(--btfw-color-surface) 82%, transparent 18%) !important;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 55%, transparent 45%) !important;
+  color: var(--btfw-color-text) !important;
+  border-radius: 10px !important;
+  font-weight: 600;
+  box-shadow: none !important;
+  transition: background .14s ease, border-color .14s ease, color .14s ease;
+}
+#btfw-motd-editbtn.button:hover,
+#btfw-motd-editbtn.button:focus{
+  background: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%) !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, transparent 52%) !important;
+  color: var(--btfw-color-text) !important;
+}
+#btfw-motd-editbtn.button i{ margin-right: 6px; opacity: .9; }
+
 #btfw-theme-modal .btfw-range-control{
   display: flex;
   align-items: center;
