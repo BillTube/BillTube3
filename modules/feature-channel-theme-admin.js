@@ -2959,14 +2959,27 @@ function replaceBlock(original, startMarker, endMarker, block){
       if (text && tone) mktResult.classList.add(`is-${tone}`);
     };
 
-    // Keep the working config's emote-pack list and the runtime loader in sync,
-    // then mark the panel dirty so Apply persists it into Channel JS.
+    // Unlike the staged form fields, a pack add/remove/toggle/rename is a
+    // discrete action the owner expects to *save*. So besides updating the
+    // working config + the live runtime, we write it straight into the Channel
+    // JS block and submit (same as clicking Apply) — debounced so a burst of
+    // changes collapses into one save. This is why pack edits show up in the
+    // Channel JS editor without a separate Apply click.
+    let _emotePersistTimer = null;
+    const persistEmotePacks = () => {
+      const applyBtn = panel.querySelector('#btfw-theme-apply');
+      if (!applyBtn) { onChange(); return; } // fallback: at least stage the change
+      if (_emotePersistTimer) clearTimeout(_emotePersistTimer);
+      _emotePersistTimer = setTimeout(() => {
+        try { applyBtn.click(); } catch (_) { onChange(); }
+      }, 450);
+    };
     const commitEmotePacks = () => {
       if (!Array.isArray(cfg.emotePacks)) cfg.emotePacks = [];
       renderEmotePackList(panel, cfg);
       const snapshot = cfg.emotePacks.map(p => ({ provider: p.provider, id: p.id, label: p.label, enabled: p.enabled }));
       getEmoteMktApi().then(api => { if (api && api.setConfig) api.setConfig(snapshot); });
-      onChange();
+      persistEmotePacks();
     };
 
     // Cache the last good preview so "Add pack" can reuse it; cleared when the
@@ -3051,7 +3064,7 @@ function replaceBlock(original, startMarker, endMarker, block){
           enabled: true
         });
         commitEmotePacks();
-        setMktResult(`✓ Added “${data.name || id}” — ${count} emote${count === 1 ? '' : 's'}. It's now a tab in the emote picker. Click Apply to save.`, 'success');
+        setMktResult(`✓ Added “${data.name || id}” — ${count} emote${count === 1 ? '' : 's'}. Saved to the channel — it's now a tab in the emote picker.`, 'success');
         if (mktLabel) mktLabel.value = "";
         mktId.value = "";
         clearPreview();
