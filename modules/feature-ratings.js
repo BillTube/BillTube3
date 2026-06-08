@@ -1594,6 +1594,28 @@ BTFW.define("feature:ratings", [], async () => {
     // change resets it and will announce normally. See feature:connection-status.
     if (window.BTFW_stateToastsSuppressed && window.BTFW_stateToastsSuppressed()) return;
 
+    // Anti-spam dedupe at window scope (survives setMedia re-inits, which reset
+    // the per-instance flag above). The initial-load / reconnect replay fires
+    // changeMedia + setCurrent + Callbacks.changeMedia, and a late nowplaying
+    // lookup can refine the title into a slightly different media key — each
+    // re-init re-announces. Ratings only apply to media >= 60 min and two real
+    // announces are >= ~45 min apart, so it's safe to (a) never repeat the same
+    // media key and (b) collapse a sub-minute burst of near-identical keys.
+    try {
+      const now = Date.now();
+      const rec = window.__btfwRatingAnnounce || { key: "", at: 0 };
+      const key = state.currentKey || "";
+      if (key && rec.key === key) return;          // same movie already announced
+      if (now - (rec.at || 0) < 60000) {
+        // Burst of refined keys for the same media: collapse to one toast, but
+        // remember the latest key (keeping the original timestamp) so a later
+        // reconnect that replays this refined key stays deduped.
+        window.__btfwRatingAnnounce = { key, at: rec.at || now };
+        return;
+      }
+      window.__btfwRatingAnnounce = { key, at: now };
+    } catch (_) {}
+
     try {
       const notify = window.BTFW_notify;
       if (notify && typeof notify.info === "function") {
