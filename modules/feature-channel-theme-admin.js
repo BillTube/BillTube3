@@ -1921,8 +1921,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       return m ? m[1] : "";
     }
     if (provider === "egg") {
-      const m = s.match(/(\d+)/); // emoji.gg category number
-      return m ? m[1] : "";
+      // emoji.gg pack slug from a /pack/<slug> URL, else a raw slug/number.
+      const m = s.match(/\/pack\/([A-Za-z0-9][A-Za-z0-9-]*)/i);
+      if (m) return m[1];
+      const m2 = s.match(/^([A-Za-z0-9][A-Za-z0-9-]*)$/);
+      return m2 ? m2[1] : "";
     }
     return s;
   }
@@ -2506,7 +2509,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                   <select id="btfw-emote-mkt-provider">
                     <option value="7tv">7TV — emote set</option>
                     <option value="bttv">BetterTTV — channel / global</option>
-                    <option value="egg">emoji.gg — category</option>
+                    <option value="egg">emoji.gg — pack</option>
                   </select>
                 </div>
                 <div class="field">
@@ -2978,7 +2981,7 @@ function replaceBlock(original, startMarker, endMarker, block){
       const HINTS = {
         "7tv":  { label: "7TV set URL or ID", hint: 'Browse emotes on <a href="https://7tv.app/emotes" target="_blank" rel="noopener">7tv.app</a>, open a set, and paste its URL (looks like <code>7tv.app/emote-sets/…</code>).', ph: "https://7tv.app/emote-sets/01F6…" },
         "bttv": { label: "BetterTTV: \"global\" or Twitch user ID", hint: 'Type <code>global</code> for BTTV global emotes, or a channel\'s numeric Twitch user ID.', ph: "global" },
-        "egg":  { label: "emoji.gg category number", hint: 'A category id from <a href="https://emoji.gg/api/?request=categories" target="_blank" rel="noopener">emoji.gg/api</a> (e.g. 1 = memes).', ph: "1" }
+        "egg":  { label: "emoji.gg pack URL", hint: 'Browse packs on <a href="https://emoji.gg/packs" target="_blank" rel="noopener">emoji.gg/packs</a> and paste a pack URL (e.g. <code>emoji.gg/pack/598443-frieren</code>).', ph: "https://emoji.gg/pack/598443-frieren" }
       };
       const idLabel = panel.querySelector('[data-role="id-label"]');
       const idHint  = panel.querySelector('[data-role="id-hint"]');
