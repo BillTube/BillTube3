@@ -50,6 +50,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       wyzie: {
         apiKey: ""
       },
+      subdl: {
+        apiKey: ""
+      },
       ratings: {
         endpoint: ""
       },
@@ -581,6 +584,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
     const wyzieKey = typeof integrations.wyzie.apiKey === "string" ? integrations.wyzie.apiKey.trim() : "";
     integrations.wyzie.apiKey = wyzieKey;
+    if (!integrations.subdl || typeof integrations.subdl !== "object") {
+      integrations.subdl = { apiKey: "" };
+    }
+    const subdlKey = typeof integrations.subdl.apiKey === "string" ? integrations.subdl.apiKey.trim() : "";
+    integrations.subdl.apiKey = subdlKey;
     if (!integrations.ratings || typeof integrations.ratings !== "object") {
       integrations.ratings = { endpoint: "" };
     }
@@ -614,6 +622,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       window.BTFW_CONFIG.wyzie = window.BTFW_CONFIG.wyzie || {};
       window.BTFW_CONFIG.wyzie.apiKey = wyzieKey;
       window.BTFW_CONFIG.wyzieKey = wyzieKey;
+      window.BTFW_CONFIG.subdl = window.BTFW_CONFIG.subdl || {};
+      window.BTFW_CONFIG.subdl.apiKey = subdlKey;
+      window.BTFW_CONFIG.subdlKey = subdlKey;
       window.BTFW_CONFIG.integrationsEnabled = integrations.enabled;
       if (typeof window.BTFW_CONFIG.ratings !== "object") {
         window.BTFW_CONFIG.ratings = {};
@@ -630,6 +641,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       window.BTFW_CONFIG.integrations.autoSubs.enabled = autoSubsEnabled;
       window.BTFW_CONFIG.integrations.wyzie = window.BTFW_CONFIG.integrations.wyzie || {};
       window.BTFW_CONFIG.integrations.wyzie.apiKey = wyzieKey;
+      window.BTFW_CONFIG.integrations.subdl = window.BTFW_CONFIG.integrations.subdl || {};
+      window.BTFW_CONFIG.integrations.subdl.apiKey = subdlKey;
       window.BTFW_CONFIG.integrations.audioEnhancer = window.BTFW_CONFIG.integrations.audioEnhancer || {};
       window.BTFW_CONFIG.integrations.audioEnhancer.enabled = audioEnhancerEnabled;
       window.BTFW_CONFIG.movieInfo = window.BTFW_CONFIG.movieInfo || {};
@@ -656,6 +669,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         if (document?.body) {
           if (wyzieKey) document.body.dataset.wyzieKey = wyzieKey;
           else if (document.body.dataset?.wyzieKey) delete document.body.dataset.wyzieKey;
+        }
+        if (document?.body) {
+          if (subdlKey) document.body.dataset.subdlKey = subdlKey;
+          else if (document.body.dataset?.subdlKey) delete document.body.dataset.subdlKey;
         }
         if (document?.body) {
           if (ratingsEndpoint) {
@@ -687,6 +704,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
           enabled: integrations.enabled,
           tmdbKey: key,
           wyzieKey,
+          subdlKey,
           ratingsEndpoint,
           movieInfoEnabled,
           autoSubsEnabled,
@@ -1640,6 +1658,13 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     } else {
       normalized.integrations.wyzie.apiKey = normalized.integrations.wyzie.apiKey.trim();
     }
+    if (!normalized.integrations.subdl || typeof normalized.integrations.subdl !== "object") {
+      normalized.integrations.subdl = { apiKey: "" };
+    } else if (typeof normalized.integrations.subdl.apiKey !== "string") {
+      normalized.integrations.subdl.apiKey = "";
+    } else {
+      normalized.integrations.subdl.apiKey = normalized.integrations.subdl.apiKey.trim();
+    }
     if (!normalized.integrations.ratings || typeof normalized.integrations.ratings !== "object") {
       normalized.integrations.ratings = { endpoint: "" };
     } else if (typeof normalized.integrations.ratings.endpoint !== "string") {
@@ -2019,8 +2044,12 @@ function replaceBlock(original, startMarker, endMarker, block){
       const keyFromField = typeof tmdbField?.value === 'string' ? tmdbField.value.trim() : '';
       const wyzieFromCfg = typeof integrations.wyzie?.apiKey === 'string' ? integrations.wyzie.apiKey.trim() : '';
       const wyzieFromField = typeof wyzieField?.value === 'string' ? wyzieField.value.trim() : '';
+      const subdlField = panel.querySelector('#btfw-theme-integrations-subdl');
+      const subdlFromCfg = typeof integrations.subdl?.apiKey === 'string' ? integrations.subdl.apiKey.trim() : '';
+      const subdlFromField = typeof subdlField?.value === 'string' ? subdlField.value.trim() : '';
       const hasTmdb = Boolean(keyFromCfg || keyFromField);
       const hasWyzie = Boolean(wyzieFromCfg || wyzieFromField);
+      const hasSubdl = Boolean(subdlFromCfg || subdlFromField);
       if (!enabled) {
         notice.hidden = true;
         notice.classList.remove('is-warning', 'is-success');
@@ -2030,10 +2059,11 @@ function replaceBlock(original, startMarker, endMarker, block){
         notice.classList.toggle('is-success', hasTmdb);
         if (!hasTmdb) {
           notice.textContent = 'Requires a TMDB API key before enabling.';
-        } else if (hasWyzie) {
-          notice.textContent = 'Auto subtitles will use your Wyzie key, then fall back to a community Stremio addon if Wyzie has no match.';
+        } else if (hasWyzie || hasSubdl) {
+          const sources = [hasWyzie && 'Wyzie', hasSubdl && 'SubDL'].filter(Boolean).join(' + ');
+          notice.textContent = `Auto subtitles will use ${sources}, with a community Stremio addon as a keyless fallback.`;
         } else {
-          notice.textContent = 'No Wyzie key set — using the community Stremio subtitle addon as the source. Add a Wyzie key above for higher reliability.';
+          notice.textContent = 'No Wyzie or SubDL key set — using the community Stremio addon (less reliable). Add a key above for better coverage.';
         }
       }
     }
@@ -2145,22 +2175,31 @@ function replaceBlock(original, startMarker, endMarker, block){
               <button type="button" class="btfw-switch" id="btfw-theme-auto-subs-toggle" role="switch" aria-pressed="false">
                 <span class="btfw-switch__track" aria-hidden="true"><span class="btfw-switch__knob"></span></span>
                 <span class="btfw-switch__meta">
-                  <span class="btfw-switch__title">Auto subtitles (Wyzie)</span>
+                  <span class="btfw-switch__title">Auto subtitles</span>
                   <span class="btfw-switch__state" data-role="state-label">Off</span>
                 </span>
               </button>
               <input type="checkbox" id="btfw-theme-auto-subs-enabled" data-btfw-bind="integrations.autoSubs.enabled" hidden>
               <p class="help is-warning" data-role="auto-subs-requirements" hidden>Requires a TMDB API key before enabling.</p>
-              <p class="help">Pulls English subtitles for direct file uploads. Uses your Wyzie key when set; otherwise falls back to a community Stremio subtitle addon.</p>
+              <p class="help">Pulls English subtitles for direct file uploads from the optional sources below (Wyzie and/or SubDL), with a community Stremio addon as a keyless fallback.</p>
             </div>
             <div class="field">
-              <label for="btfw-theme-integrations-wyzie">Wyzie API key</label>
+              <label for="btfw-theme-integrations-wyzie">Wyzie API key (optional)</label>
               <div class="key-test-row">
                 <input type="text" id="btfw-theme-integrations-wyzie" data-btfw-bind="integrations.wyzie.apiKey" placeholder="YOUR_WYZIE_KEY">
                 <button type="button" class="btn-secondary" id="btfw-theme-integrations-wyzie-test">Test key</button>
               </div>
               <p class="help" data-role="wyzie-test-result" hidden></p>
-              <p class="help">Don't have a key? Claim a free one at <a href="https://store.wyzie.io/redeem" target="_blank" rel="noopener">store.wyzie.io/redeem</a>.</p>
+              <p class="help">Claim a free key at <a href="https://store.wyzie.io/redeem" target="_blank" rel="noopener">store.wyzie.io/redeem</a>.</p>
+            </div>
+            <div class="field">
+              <label for="btfw-theme-integrations-subdl">SubDL API key (optional)</label>
+              <div class="key-test-row">
+                <input type="text" id="btfw-theme-integrations-subdl" data-btfw-bind="integrations.subdl.apiKey" placeholder="YOUR_SUBDL_KEY">
+                <button type="button" class="btn-secondary" id="btfw-theme-integrations-subdl-test">Test key</button>
+              </div>
+              <p class="help" data-role="subdl-test-result" hidden></p>
+              <p class="help">A second optional source, searched in-browser. Claim a free key at <a href="https://subdl.com/panel/api" target="_blank" rel="noopener">subdl.com/panel/api</a>.</p>
             </div>
             <div class="field btfw-switch-field">
               <button type="button" class="btfw-switch" id="btfw-theme-audio-enhancer-toggle" role="switch" aria-pressed="false">
@@ -2544,6 +2583,51 @@ function replaceBlock(original, startMarker, endMarker, block){
         } finally {
           wyzieTestBtn.disabled = false;
           wyzieTestBtn.textContent = originalLabel;
+        }
+      });
+    }
+
+    // SubDL test key — searched directly from the browser (residential IP);
+    // SubDL blocks datacenter/worker IPs, which is why it runs client-side.
+    const subdlTestBtn = panel.querySelector('#btfw-theme-integrations-subdl-test');
+    const subdlField = panel.querySelector('#btfw-theme-integrations-subdl');
+    const subdlResult = panel.querySelector('[data-role="subdl-test-result"]');
+    if (subdlTestBtn && subdlField && subdlResult) {
+      const setResult = (text, tone) => {
+        subdlResult.hidden = false;
+        subdlResult.textContent = text;
+        subdlResult.classList.remove('is-success', 'is-error', 'is-pending');
+        if (tone) subdlResult.classList.add(`is-${tone}`);
+      };
+      subdlTestBtn.addEventListener('click', async () => {
+        const key = (subdlField.value || '').trim();
+        if (!key) {
+          setResult('Enter a key above first.', 'error');
+          return;
+        }
+        subdlTestBtn.disabled = true;
+        const originalLabel = subdlTestBtn.textContent;
+        subdlTestBtn.textContent = 'Testing…';
+        setResult('Checking with api.subdl.com…', 'pending');
+        try {
+          const url = `https://api.subdl.com/api/v1/subtitles?api_key=${encodeURIComponent(key)}&imdb_id=tt0081505&languages=EN&type=movie`;
+          const resp = await fetch(url, { credentials: 'omit' });
+          const body = await resp.json().catch(() => null);
+          if (resp.ok && body && body.status === true && Array.isArray(body.subtitles)) {
+            setResult(`✓ Valid key — SubDL returned ${body.subtitles.length} subtitle${body.subtitles.length === 1 ? '' : 's'} for the test movie.`, 'success');
+          } else if (resp.status === 401 || (body && body.error === 'not_authorized')) {
+            setResult('✗ Key not recognized. Copy it again from subdl.com/panel/api.', 'error');
+          } else if (resp.status === 403 || (body && body.error === 'not allowed')) {
+            setResult('✗ HTTP 403 — your network/IP was rejected. (Note: this works from your browser, but not from datacenter IPs.)', 'error');
+          } else {
+            const msg = body && body.error ? body.error : `${resp.status} ${resp.statusText || ''}`;
+            setResult(`✗ Unexpected response: ${String(msg).trim()}`, 'error');
+          }
+        } catch (err) {
+          setResult(`✗ Network error: ${err && err.message ? err.message : err}`, 'error');
+        } finally {
+          subdlTestBtn.disabled = false;
+          subdlTestBtn.textContent = originalLabel;
         }
       });
     }

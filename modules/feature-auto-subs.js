@@ -19,6 +19,7 @@ BTFW.define("feature:auto-subs", [], async () => {
     active: false,
     tmdbKey: null,
     wyzieKey: null,
+    subdlKey: null,
     warnedNoKey: false,
     warnedNoWyzieKey: false,
     currentTitle: "",
@@ -128,6 +129,25 @@ BTFW.define("feature:auto-subs", [], async () => {
       return adminWyzie.apiKey?.trim?.() || intWyzie.apiKey?.trim?.() || cfgWyzie.apiKey?.trim?.() ||
         g(cfg.wyzieKey) || lsKey || g(window.WYZIE_API_KEY) || g(window.BTFW_WYZIE_KEY) ||
         g(window.wyzie_key) || (document.body?.dataset?.wyzieKey || "").trim() || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getSubDLKey() {
+    try {
+      const cfg = (window.BTFW_CONFIG && typeof window.BTFW_CONFIG === "object") ? window.BTFW_CONFIG : {};
+      const admin = (window.BTFW_THEME_ADMIN && typeof window.BTFW_THEME_ADMIN === "object") ? window.BTFW_THEME_ADMIN : {};
+      const integrations = (cfg.integrations && typeof cfg.integrations === "object") ? cfg.integrations : {};
+      const cfgSubdl = (cfg.subdl && typeof cfg.subdl === "object") ? cfg.subdl : {};
+      const adminSubdl = (admin.integrations?.subdl && typeof admin.integrations.subdl === "object") ? admin.integrations.subdl : {};
+      const intSubdl = (integrations.subdl && typeof integrations.subdl === "object") ? integrations.subdl : {};
+      let lsKey = "";
+      try { lsKey = (localStorage.getItem("btfw:subdl:key") || "").trim(); } catch (_) {}
+      const g = v => (v == null ? "" : String(v)).trim();
+      return adminSubdl.apiKey?.trim?.() || intSubdl.apiKey?.trim?.() || cfgSubdl.apiKey?.trim?.() ||
+        g(cfg.subdlKey) || lsKey || g(window.SUBDL_API_KEY) || g(window.BTFW_SUBDL_KEY) ||
+        (document.body?.dataset?.subdlKey || "").trim() || null;
     } catch (_) {
       return null;
     }
@@ -533,9 +553,14 @@ BTFW.define("feature:auto-subs", [], async () => {
 
   async function fetchSubtitles(imdbId, season, episode) {
     if (!imdbId) return null;
+    // Optional keyed sources first (reliable), then the keyless Stremio addon.
     if (state.wyzieKey) {
       const wyzie = await fetchSubtitlesWyzie(imdbId, season, episode);
       if (wyzie && wyzie.length > 0) return wyzie;
+    }
+    if (state.subdlKey) {
+      const subdl = await fetchSubtitlesSubDL(imdbId, season, episode);
+      if (subdl && subdl.length > 0) return subdl;
     }
     return await fetchSubtitlesStremio(imdbId, season, episode);
   }
@@ -564,6 +589,97 @@ BTFW.define("feature:auto-subs", [], async () => {
       .replace(/^\d+\n/gm, "")
       .trim();
     return vtt;
+  }
+
+  /* ---- SubDL (client-side) ----------------------------------------------
+     SubDL blocks datacenter/worker IPs, so it has to run here in the browser
+     (residential IP, and api.subdl.com/dl.subdl.com both allow CORS). SubDL
+     ships subtitles as .zip; we inflate the .srt locally with the browser's
+     built-in DecompressionStream — no worker, no external library. */
+  function _u16(b, o) { return b[o] | (b[o + 1] << 8); }
+  function _u32(b, o) { return (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0; }
+
+  async function extractSrtFromZip(buf) {
+    const b = new Uint8Array(buf);
+    let eocd = -1;
+    const minScan = Math.max(0, b.length - 22 - 65536);
+    for (let i = b.length - 22; i >= minScan; i--) { if (_u32(b, i) === 0x06054b50) { eocd = i; break; } }
+    if (eocd < 0) return null;
+    const count = _u16(b, eocd + 10);
+    let off = _u32(b, eocd + 16);
+    let best = null;
+    for (let n = 0; n < count && off + 46 <= b.length; n++) {
+      if (_u32(b, off) !== 0x02014b50) break;
+      const method = _u16(b, off + 10);
+      const compSize = _u32(b, off + 20);
+      const nameLen = _u16(b, off + 28);
+      const extraLen = _u16(b, off + 30);
+      const commentLen = _u16(b, off + 32);
+      const localOff = _u32(b, off + 42);
+      const name = new TextDecoder().decode(b.subarray(off + 46, off + 46 + nameLen));
+      const entry = { method, compSize, localOff };
+      if (/\.srt$/i.test(name)) { best = entry; break; }
+      if (!best && /\.(vtt|ssa|ass|sub|txt)$/i.test(name)) best = entry;
+      if (!best) best = entry;
+      off += 46 + nameLen + extraLen + commentLen;
+    }
+    if (!best) return null;
+    const lo = best.localOff;
+    if (_u32(b, lo) !== 0x04034b50) return null;
+    const dataStart = lo + 30 + _u16(b, lo + 26) + _u16(b, lo + 28);
+    const comp = b.subarray(dataStart, dataStart + best.compSize);
+    let outBytes;
+    if (best.method === 0) {
+      outBytes = comp;
+    } else if (best.method === 8 && typeof DecompressionStream === "function") {
+      const ds = new DecompressionStream("deflate-raw");
+      const stream = new Response(comp).body.pipeThrough(ds);
+      outBytes = new Uint8Array(await new Response(stream).arrayBuffer());
+    } else {
+      return null;
+    }
+    try { return new TextDecoder("utf-8", { fatal: false }).decode(outBytes); }
+    catch (_) { return new TextDecoder("windows-1252").decode(outBytes); }
+  }
+
+  async function fetchSubtitlesSubDL(imdbId, season, episode) {
+    if (!state.subdlKey || !imdbId) return null;
+    const isSeries = season !== null && episode !== null;
+    const params = new URLSearchParams({
+      api_key: state.subdlKey,
+      imdb_id: imdbId,
+      languages: "EN",
+      subs_per_page: "30",
+      type: isSeries ? "tv" : "movie"
+    });
+    if (isSeries) { params.append("season_number", season); params.append("episode_number", episode); }
+    let list;
+    try {
+      const resp = await fetch(`https://api.subdl.com/api/v1/subtitles?${params}`, { credentials: "omit" });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      if (!data || data.status === false || !Array.isArray(data.subtitles)) return null;
+      const english = data.subtitles.filter(s => {
+        const lang = String((s && (s.language || s.lang)) || "").toLowerCase();
+        return s && s.url && (lang === "en" || lang === "eng" || lang === "english");
+      });
+      list = (english.length > 0 ? english : data.subtitles).slice(0, 8);
+    } catch (_) {
+      return null;
+    }
+    const results = [];
+    for (const sub of list) {
+      try {
+        const zipResp = await fetch(`https://dl.subdl.com${sub.url}`, { credentials: "omit" });
+        if (!zipResp.ok) continue;
+        const srtText = await extractSrtFromZip(await zipResp.arrayBuffer());
+        if (!srtText || !/-->/.test(srtText)) continue;
+        const vttText = srtText.trimStart().startsWith("WEBVTT") ? srtText : srtToVtt(srtText);
+        const blob = new Blob([vttText], { type: "text/vtt" });
+        results.push({ url: URL.createObjectURL(blob), lang: "en" });
+      } catch (_) {}
+    }
+    return results.length > 0 ? results : null;
   }
 
   function addSubtitlesToPlayer(subtitles) {
@@ -741,10 +857,15 @@ BTFW.define("feature:auto-subs", [], async () => {
     });
   }
 
-  function activate(tmdbKey, wyzieKey) {
-    const keyChanged = Boolean((state.tmdbKey && state.tmdbKey !== tmdbKey) || (state.wyzieKey && state.wyzieKey !== wyzieKey));
+  function activate(tmdbKey, wyzieKey, subdlKey) {
+    const keyChanged = Boolean(
+      (state.tmdbKey && state.tmdbKey !== tmdbKey) ||
+      (state.wyzieKey && state.wyzieKey !== wyzieKey) ||
+      (state.subdlKey && state.subdlKey !== subdlKey)
+    );
     state.tmdbKey = tmdbKey;
     state.wyzieKey = wyzieKey;
+    state.subdlKey = subdlKey;
     clearWarning();
     if (state.active) {
       updateRuntimeFlags(true);
@@ -781,6 +902,7 @@ BTFW.define("feature:auto-subs", [], async () => {
     state.isFetching = false;
     state.tmdbKey = null;
     state.wyzieKey = null;
+    state.subdlKey = null;
     state.active = false;
     updateRuntimeFlags(false);
   }
@@ -802,10 +924,11 @@ BTFW.define("feature:auto-subs", [], async () => {
         return;
       }
       const wyzieKey = getWyzieKey();
-      if (!wyzieKey) {
+      const subdlKey = getSubDLKey();
+      if (!wyzieKey && !subdlKey) {
         warnMissingWyzieKey();
       }
-      activate(key, wyzieKey || null);
+      activate(key, wyzieKey || null, subdlKey || null);
       processCurrentTitle();
     } finally {
       state.isEvaluating = false;
