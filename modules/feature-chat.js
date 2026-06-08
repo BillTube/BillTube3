@@ -441,6 +441,8 @@ if (!hasIcon) {
   }
 
   groupLeftChatButtons(actions);
+  ensureActionsBurger();
+  scheduleUpdateActionsCollapse();
 }
 
 // The left action buttons (emotes / gif / tools / commands…) live inside a
@@ -481,6 +483,115 @@ function groupLeftChatButtons(actions){
     }
     prev = el;
   });
+}
+
+/* ---- Collapse the left pill into a burger when the chat is too narrow ----
+   The actions row is nowrap (CSS), so without this the pill + users-count/cog
+   would overflow. Instead we measure the natural widths and, when they no
+   longer fit on one line, swap the pill for a burger whose flyout holds it. */
+function naturalRowWidth(el){
+  if (!el) return 0;
+  const cs = getComputedStyle(el);
+  let w = (parseFloat(cs.paddingLeft)||0) + (parseFloat(cs.paddingRight)||0)
+        + (parseFloat(cs.borderLeftWidth)||0) + (parseFloat(cs.borderRightWidth)||0);
+  const gap = parseFloat(cs.columnGap) || parseFloat(cs.gap) || 0;
+  let n = 0;
+  Array.prototype.forEach.call(el.children, (c) => {
+    if (getComputedStyle(c).display === "none") return;
+    w += c.offsetWidth;          // fixed-size icons; stays correct even when wrapped
+    n++;
+  });
+  if (n > 1) w += gap * (n - 1);
+  return w;
+}
+
+function actionsRowGap(actions){
+  const g = parseFloat(getComputedStyle(actions).columnGap || getComputedStyle(actions).gap);
+  return isNaN(g) ? 6 : g;
+}
+
+function rightClusterWidth(actions, gap){
+  let w = 0, n = 0;
+  ["#usercount", "#btfw-theme-cog-chat"].forEach((sel) => {
+    const el = actions.querySelector(sel);
+    if (el && getComputedStyle(el).display !== "none"){ w += el.offsetWidth; n++; }
+  });
+  if (n > 1) w += gap * (n - 1);
+  return w;
+}
+
+// The burger is a genuine last resort: collapse ONLY when the pill + the
+// users-count/cog cluster can't share one line. Measured exactly (children +
+// real gaps), so anything that fits stays inline.
+function updateActionsCollapse(){
+  const actions = actionsNode(); if (!actions) return;
+  const pill = document.getElementById("btfw-chatactions-pill"); if (!pill) return;
+  const avail = actions.clientWidth; if (!avail) return;
+  const gap = actionsRowGap(actions);
+  const need = naturalRowWidth(pill) + gap + rightClusterWidth(actions, gap);
+  const collapsed = actions.classList.contains("btfw-actions-collapsed");
+  if (!collapsed){
+    if (need > avail) actions.classList.add("btfw-actions-collapsed");
+  } else if (need + 8 <= avail){      // small hysteresis so it doesn't flip-flop at the edge
+    actions.classList.remove("btfw-actions-collapsed");
+    actions.classList.remove("btfw-actions-open");
+  }
+}
+
+const scheduleUpdateActionsCollapse = (() => {
+  let pending = false;
+  const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
+  return () => {
+    if (pending) return;
+    pending = true;
+    raf(() => { pending = false; updateActionsCollapse(); });
+  };
+})();
+
+function ensureActionsBurger(){
+  const actions = actionsNode(); if (!actions) return;
+
+  if (!document.getElementById("btfw-chatactions-burger")){
+    const burger = document.createElement("button");
+    burger.id = "btfw-chatactions-burger";
+    burger.type = "button";
+    burger.className = "button is-dark is-small btfw-chatbtn btfw-actions-burger";
+    burger.title = "More chat tools";
+    burger.setAttribute("aria-label", "More chat tools");
+    burger.innerHTML = '<i class="fa fa-bars" aria-hidden="true"></i>';
+    burger.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const a = actionsNode(); if (a) a.classList.toggle("btfw-actions-open");
+    });
+    actions.appendChild(burger);   // order:-1 in CSS keeps it visually leftmost
+  }
+
+  if (!document._btfwActionsFlyoutWired){
+    document._btfwActionsFlyoutWired = true;
+    document.addEventListener("click", (e) => {
+      const a = actionsNode();
+      if (!a || !a.classList.contains("btfw-actions-open")) return;
+      if (e.target.closest("#btfw-chatactions-burger")) return;
+      if (e.target.closest("#btfw-chatactions-pill")) return;
+      a.classList.remove("btfw-actions-open");
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      const a = actionsNode(); if (a) a.classList.remove("btfw-actions-open");
+    });
+  }
+
+  if (!actions._btfwCollapseRO && typeof ResizeObserver === "function"){
+    const ro = new ResizeObserver(() => scheduleUpdateActionsCollapse());
+    try {
+      const cw = document.getElementById("chatwrap");
+      if (cw) ro.observe(cw);
+      ro.observe(actions);
+      actions._btfwCollapseRO = ro;
+    } catch (_) {}
+  }
+
+  scheduleUpdateActionsCollapse();
 }
 
 const CHAT_ACTION_ORDER = [
