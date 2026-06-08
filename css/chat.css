@@ -1049,7 +1049,7 @@
 #btfw-chat-actions #btfw-chatactions-pill{
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   padding: 4px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--btfw-color-panel) 72%, transparent 28%);
@@ -1060,7 +1060,9 @@
   width: 34px; height: 34px; min-width: 34px;
   padding: 0 !important;
   border-radius: 999px !important;
-  background: transparent !important;
+  /* Each icon sits in its own darker circle by default (a bg-tint of the theme,
+     so it darkens/lightens with the active theme). Hover lifts it to accent. */
+  background: color-mix(in srgb, var(--btfw-color-bg) 62%, transparent 38%) !important;
   border: 0 !important;
   box-shadow: none !important;
   color: color-mix(in srgb, var(--btfw-color-chat-text) 78%, transparent 22%) !important;
