@@ -1060,9 +1060,10 @@
   width: 34px; height: 34px; min-width: 34px;
   padding: 0 !important;
   border-radius: 999px !important;
-  /* Each icon sits in its own darker circle by default (a bg-tint of the theme,
-     so it darkens/lightens with the active theme). Hover lifts it to accent. */
-  background: color-mix(in srgb, var(--btfw-color-bg) 62%, transparent 38%) !important;
+  /* Each icon sits in its own subtle darker circle by default — a neutral black
+     overlay at low opacity, so it stays gentle and works on any theme/tint.
+     Hover lifts it to the accent tint. */
+  background: rgba(0, 0, 0, 0.2) !important;
   border: 0 !important;
   box-shadow: none !important;
   color: color-mix(in srgb, var(--btfw-color-chat-text) 78%, transparent 22%) !important;
