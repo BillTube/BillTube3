@@ -80,8 +80,12 @@ BTFW.define("feature:emote-marketplace", [], async () => {
   function getPackConfig() {
     try {
       const cfg = window.BTFW_CONFIG;
-      const arr = cfg && Array.isArray(cfg.emotePacks) ? cfg.emotePacks : null;
-      if (arr) return arr;
+      if (cfg && Array.isArray(cfg.emotePacks)) return cfg.emotePacks;
+    } catch (_) {}
+    try {
+      // Theme Settings persists the whole config here (Channel JS block).
+      const t = window.BTFW_THEME_ADMIN;
+      if (t && Array.isArray(t.emotePacks)) return t.emotePacks;
     } catch (_) {}
     try {
       const raw = localStorage.getItem(LS_CONFIG);
