@@ -2587,6 +2587,117 @@ body:not(.is-scrolling) #queue li {
   transform: translateY(-1px);
   outline: none;
 }
+
+/* =========================================================================
+   Chat Filters pane — CyTube ships this as a raw Bootstrap form + striped
+   table, which reads as out-of-place on the dark theme. Theme the heading,
+   create-filter form, the filter table, and the per-row edit/delete controls
+   so the pane matches the rest of the settings modal. (Admin-only theme UI.)
+   ========================================================================= */
+#cs-chatfilters > h4 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin: 2px 0 14px;
+  color: var(--btfw-color-text);
+}
+
+/* Create-filter form */
+#cs-chatfilters .form-horizontal .control-label,
+#cs-chatfilters .form-horizontal label {
+  color: var(--btfw-color-text-soft);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Filter list table — soften the harsh Bootstrap striping into a calm,
+   bordered, rounded card with a subtle hover. */
+#cs-chatfilters table.table {
+  width: 100%;
+  margin: 16px 0;
+  background: color-mix(in srgb, var(--btfw-color-panel) 55%, transparent 45%);
+  border: 1px solid var(--btfw-border);
+  border-radius: 10px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  color: var(--btfw-color-text);
+}
+#cs-chatfilters table.table > thead > tr > th {
+  border: 0 !important;
+  border-bottom: 1px solid var(--btfw-border) !important;
+  background: color-mix(in srgb, var(--btfw-color-surface) 80%, transparent 20%);
+  color: var(--btfw-color-text-soft);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 9px 12px;
+  text-align: left;
+}
+#cs-chatfilters table.table > tbody > tr > td {
+  border: 0 !important;
+  border-top: 1px solid color-mix(in srgb, var(--btfw-border) 55%, transparent 45%) !important;
+  padding: 7px 12px;
+  vertical-align: middle;
+  background: transparent !important;
+}
+#cs-chatfilters table.table-striped > tbody > tr:nth-of-type(odd) > td {
+  background: color-mix(in srgb, var(--btfw-color-panel) 28%, transparent 72%) !important;
+}
+#cs-chatfilters table.table > tbody > tr:hover > td {
+  background: color-mix(in srgb, var(--btfw-color-accent) 12%, transparent 88%) !important;
+}
+
+/* Per-row edit / delete controls (Bootstrap btn-default / btn-danger icons).
+   The default/edit control is accent-tinted so it harmonizes with the accent
+   "Active" checkboxes; delete stays red as a semantic destructive contrast. */
+#cs-chatfilters table .btn {
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 12px;
+  line-height: 1.4;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 32%, var(--btfw-border) 68%);
+  background: color-mix(in srgb, var(--btfw-color-accent) 14%, var(--btfw-color-panel) 86%) !important;
+  color: color-mix(in srgb, var(--btfw-color-accent) 55%, var(--btfw-color-text) 45%);
+  box-shadow: none;
+  margin: 0 3px 0 0;
+  background-image: none !important;
+  transition: filter 0.15s ease, border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+#cs-chatfilters table .btn:hover {
+  background: color-mix(in srgb, var(--btfw-color-accent) 26%, var(--btfw-color-panel) 74%) !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 70%, var(--btfw-border) 30%);
+  color: var(--btfw-color-text);
+}
+#cs-chatfilters table .btn.btn-danger {
+  border-color: color-mix(in srgb, #ff6f96 45%, transparent 55%);
+  background: color-mix(in srgb, #ff6f96 14%, transparent 86%) !important;
+  color: #ff8aa6;
+}
+#cs-chatfilters table .btn.btn-danger:hover {
+  background: color-mix(in srgb, #ff6f96 26%, transparent 74%) !important;
+  border-color: #ff6f96;
+  color: #fff;
+}
+#cs-chatfilters table input[type="checkbox"] {
+  accent-color: var(--btfw-color-accent);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Export / import filter list controls */
+#cs-chatfilters #cs-chatfilters-exporttext {
+  margin-top: 10px;
+  min-height: 90px;
+  font-family: var(--btfw-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+#cs-chatfilters #btfw-add-custom-filter-button {
+  margin-top: 10px;
+}
+
 /* =========================================================================
    BillTube3 Theme-Aware Modernization Override
    Copy all of this and paste it into your browser's DevTools or Stylus!
