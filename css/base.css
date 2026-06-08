@@ -2657,18 +2657,19 @@ body:not(.is-scrolling) #queue li {
   padding: 3px 9px;
   font-size: 12px;
   line-height: 1.4;
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 32%, var(--btfw-border) 68%);
-  background: color-mix(in srgb, var(--btfw-color-accent) 14%, var(--btfw-color-panel) 86%) !important;
-  color: color-mix(in srgb, var(--btfw-color-accent) 55%, var(--btfw-color-text) 45%);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 50%, var(--btfw-border) 50%);
+  background: color-mix(in srgb, var(--btfw-color-accent) 18%, var(--btfw-color-panel) 82%) !important;
+  color: var(--btfw-color-accent) !important;
   box-shadow: none;
   margin: 0 3px 0 0;
   background-image: none !important;
   transition: filter 0.15s ease, border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
+#cs-chatfilters table .btn .glyphicon { color: inherit; }
 #cs-chatfilters table .btn:hover {
-  background: color-mix(in srgb, var(--btfw-color-accent) 26%, var(--btfw-color-panel) 74%) !important;
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 70%, var(--btfw-border) 30%);
-  color: var(--btfw-color-text);
+  background: color-mix(in srgb, var(--btfw-color-accent) 32%, var(--btfw-color-panel) 68%) !important;
+  border-color: var(--btfw-color-accent);
+  color: var(--btfw-color-accent) !important;
 }
 #cs-chatfilters table .btn.btn-danger {
   border-color: color-mix(in srgb, #ff6f96 45%, transparent 55%);
