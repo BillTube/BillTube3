@@ -1012,11 +1012,63 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         border: 1px solid var(--btfw-admin-border-soft);
         display: flex; flex-direction: column; gap: 10px;
       }
-      .btfw-theme-admin .btfw-emote-mkt__form select {
-        width: 100%; padding: 8px 10px; border-radius: 8px;
+      .btfw-theme-admin .btfw-emote-mkt__form .field { min-width: 0; }
+      .btfw-theme-admin .btfw-emote-mkt__form select,
+      .btfw-theme-admin .btfw-emote-mkt__form input[type="text"] {
+        box-sizing: border-box; width: 100%; max-width: 100%; display: block;
+        padding: 8px 10px; border-radius: 8px;
         background: var(--btfw-admin-surface); color: var(--btfw-admin-text);
         border: 1px solid var(--btfw-admin-border-soft); font-size: 0.85rem;
       }
+      .btfw-theme-admin .btfw-emote-mkt__form select:focus,
+      .btfw-theme-admin .btfw-emote-mkt__form input[type="text"]:focus {
+        outline: none; border-color: var(--btfw-admin-border);
+      }
+
+      /* Themed form buttons (also fixes the Wyzie/SubDL test buttons, which
+         live in .key-test-row and otherwise fall back to Bootstrap styling). */
+      .btfw-theme-admin .key-test-row .btn-primary,
+      .btfw-theme-admin .key-test-row .btn-secondary {
+        box-sizing: border-box; padding: 8px 16px; border-radius: 8px;
+        border: 1px solid transparent; font-weight: 600; font-size: 0.82rem;
+        letter-spacing: 0.01em; line-height: 1.2; cursor: pointer;
+        transition: filter 0.16s ease, border-color 0.18s ease, background 0.16s ease;
+      }
+      .btfw-theme-admin .key-test-row .btn-secondary {
+        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 90%, transparent 10%);
+        color: var(--btfw-admin-text); border-color: var(--btfw-admin-border-soft);
+      }
+      .btfw-theme-admin .key-test-row .btn-primary {
+        background: var(--btfw-theme-accent, #6d4df6);
+        color: var(--btfw-color-on-accent, #fff); border-color: transparent;
+      }
+      .btfw-theme-admin .key-test-row .btn-secondary:hover { border-color: var(--btfw-admin-border); filter: brightness(1.1); }
+      .btfw-theme-admin .key-test-row .btn-primary:hover { filter: brightness(1.08); }
+      .btfw-theme-admin .key-test-row .btn-primary:disabled,
+      .btfw-theme-admin .key-test-row .btn-secondary:disabled { opacity: 0.55; cursor: default; filter: none; }
+      .btfw-theme-admin .btfw-emote-mkt__actions-row { gap: 8px; }
+
+      /* Emote preview grid (shown after Preview / before Add) */
+      .btfw-theme-admin .btfw-emote-mkt__preview {
+        border-radius: 9px; padding: 10px;
+        background: color-mix(in srgb, var(--btfw-admin-surface) 92%, transparent 8%);
+        border: 1px solid var(--btfw-admin-border-soft);
+      }
+      .btfw-theme-admin .btfw-emote-mkt__preview-head { font-size: 0.78rem; font-weight: 600; margin-bottom: 8px; color: var(--btfw-admin-text); }
+      .btfw-theme-admin .btfw-emote-mkt__preview-grid { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+      .btfw-theme-admin .btfw-emote-mkt__preview-grid img {
+        width: 30px; height: 30px; object-fit: contain; border-radius: 5px;
+        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 70%, transparent 30%); padding: 2px;
+      }
+      .btfw-theme-admin .btfw-emote-mkt__preview-more { font-size: 0.74rem; color: var(--btfw-admin-text-soft); padding: 0 4px; }
+
+      /* Inline rename input inside a saved pack row */
+      .btfw-theme-admin .btfw-emote-pack__rename-input {
+        box-sizing: border-box; width: 100%; max-width: 220px; font-size: 0.85rem; font-weight: 600;
+        padding: 3px 7px; border-radius: 6px; color: var(--btfw-admin-text);
+        background: var(--btfw-admin-surface); border: 1px solid var(--btfw-admin-border);
+      }
+      .btfw-theme-admin .btfw-emote-pack__rename-input:focus { outline: none; border-color: var(--btfw-theme-accent, #6d4df6); }
       .btfw-theme-admin .btfw-emote-mkt__list { display: flex; flex-direction: column; gap: 8px; }
       .btfw-theme-admin .btfw-emote-mkt__empty { margin: 0; font-style: italic; }
       .btfw-theme-admin .btfw-emote-pack {
@@ -1901,11 +1953,56 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
             <span class="btfw-emote-pack__meta">${escAttr(meta.name)} · <code>${escAttr(p.id)}</code> · ${escAttr(countTxt)}</span>
           </span>
           <span class="btfw-emote-pack__actions">
+            <button type="button" class="btfw-emote-pack__btn" data-act="rename" title="Rename tab">Rename</button>
             <button type="button" class="btfw-emote-pack__btn" data-act="toggle" title="${enabled ? 'Hide this pack' : 'Show this pack'}">${enabled ? 'On' : 'Off'}</button>
             <button type="button" class="btfw-emote-pack__btn is-danger" data-act="remove" title="Remove this pack">Remove</button>
           </span>
         </div>`;
     }).join("");
+  }
+
+  // Render a thumbnail grid preview of a fetched pack into `host`.
+  function renderEmotePreview(host, data){
+    if (!host) return;
+    const emotes = (data && data.emotes) || [];
+    const MAX = 48;
+    const shown = emotes.slice(0, MAX);
+    const more = emotes.length - shown.length;
+    host.hidden = false;
+    host.innerHTML =
+      `<div class="btfw-emote-mkt__preview-head">${escAttr(data && data.name || 'Pack')} · ${emotes.length} emote${emotes.length === 1 ? '' : 's'}</div>` +
+      `<div class="btfw-emote-mkt__preview-grid">` +
+      shown.map(e => `<img src="${escAttr(e.image)}" alt="" title="${escAttr(e.name || '')}" loading="lazy">`).join("") +
+      (more > 0 ? `<span class="btfw-emote-mkt__preview-more">+${more}</span>` : "") +
+      `</div>`;
+  }
+
+  // Swap a pack row's label for an inline text input so the owner can rename
+  // the tab after adding it. Commits on Enter/blur, cancels on Escape.
+  function startRenamePack(row, idx, cfg, commit){
+    const labelEl = row.querySelector('.btfw-emote-pack__label');
+    if (!labelEl || row.querySelector('.btfw-emote-pack__rename-input')) return;
+    const current = (cfg.emotePacks[idx] && cfg.emotePacks[idx].label) || "";
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'btfw-emote-pack__rename-input';
+    input.value = current;
+    input.placeholder = 'Tab name (blank = default)';
+    labelEl.replaceWith(input);
+    input.focus();
+    input.select();
+    let done = false;
+    const finish = (save) => {
+      if (done) return;
+      done = true;
+      if (save && cfg.emotePacks[idx]) cfg.emotePacks[idx].label = input.value.trim();
+      commit();
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+    input.addEventListener('blur', () => finish(true));
   }
 
   function sanitizeConfigForOutput(cfg){
@@ -2399,7 +2496,7 @@ function replaceBlock(original, startMarker, endMarker, block){
             <span class="section__chevron" aria-hidden="true">›</span>
           </summary>
           <div class="section__body">
-            <p class="help">Packs load live from each provider's CDN — nothing is uploaded. In chat they're inserted as short tokens (e.g. <code>[7tv]ID[/7tv]</code>) that render as images for everyone. <strong>Requires the BillTube chat filters</strong> — open Chat Filters and click <em>Import Required BillTube Chat Filters</em> once.</p>
+            <p class="help"><strong>Requires the BillTube chat filters</strong> — open Chat Filters and click <em>Import Required BillTube Chat Filters</em> once, or pack emotes won't render in chat.</p>
             <div class="btfw-emote-mkt">
               <div class="btfw-emote-mkt__form">
                 <div class="field">
@@ -2419,8 +2516,10 @@ function replaceBlock(original, startMarker, endMarker, block){
                   <label for="btfw-emote-mkt-label">Tab name (optional)</label>
                   <input type="text" id="btfw-emote-mkt-label" placeholder="Defaults to the pack's own name">
                 </div>
-                <div class="key-test-row">
-                  <button type="button" class="btn-secondary" id="btfw-emote-mkt-add">Validate &amp; add pack</button>
+                <div class="btfw-emote-mkt__preview" data-role="emote-mkt-preview" hidden></div>
+                <div class="key-test-row btfw-emote-mkt__actions-row">
+                  <button type="button" class="btn-secondary" id="btfw-emote-mkt-preview-btn">Preview</button>
+                  <button type="button" class="btn-primary" id="btfw-emote-mkt-add">Add pack</button>
                 </div>
                 <p class="help" data-role="emote-mkt-result" hidden></p>
               </div>
@@ -2838,12 +2937,22 @@ function replaceBlock(original, startMarker, endMarker, block){
     }
 
     /* ---- Emote Marketplace: add-pack form + saved-pack list ---- */
-    const mktProvider = panel.querySelector('#btfw-emote-mkt-provider');
-    const mktId       = panel.querySelector('#btfw-emote-mkt-id');
-    const mktLabel    = panel.querySelector('#btfw-emote-mkt-label');
-    const mktAddBtn   = panel.querySelector('#btfw-emote-mkt-add');
-    const mktResult   = panel.querySelector('[data-role="emote-mkt-result"]');
-    const mktList     = panel.querySelector('[data-role="emote-pack-list"]');
+    const mktProvider   = panel.querySelector('#btfw-emote-mkt-provider');
+    const mktId         = panel.querySelector('#btfw-emote-mkt-id');
+    const mktLabel      = panel.querySelector('#btfw-emote-mkt-label');
+    const mktAddBtn     = panel.querySelector('#btfw-emote-mkt-add');
+    const mktPreviewBtn = panel.querySelector('#btfw-emote-mkt-preview-btn');
+    const mktPreview    = panel.querySelector('[data-role="emote-mkt-preview"]');
+    const mktResult     = panel.querySelector('[data-role="emote-mkt-result"]');
+    const mktList       = panel.querySelector('[data-role="emote-pack-list"]');
+
+    const setMktResult = (text, tone) => {
+      if (!mktResult) return;
+      mktResult.hidden = !text;
+      mktResult.textContent = text || '';
+      mktResult.classList.remove('is-success', 'is-error', 'is-pending');
+      if (text && tone) mktResult.classList.add(`is-${tone}`);
+    };
 
     // Keep the working config's emote-pack list and the runtime loader in sync,
     // then mark the panel dirty so Apply persists it into Channel JS.
@@ -2853,6 +2962,14 @@ function replaceBlock(original, startMarker, endMarker, block){
       const snapshot = cfg.emotePacks.map(p => ({ provider: p.provider, id: p.id, label: p.label, enabled: p.enabled }));
       getEmoteMktApi().then(api => { if (api && api.setConfig) api.setConfig(snapshot); });
       onChange();
+    };
+
+    // Cache the last good preview so "Add pack" can reuse it; cleared when the
+    // provider or id changes.
+    let lastPreview = null; // { provider, id, data }
+    const clearPreview = () => {
+      lastPreview = null;
+      if (mktPreview) { mktPreview.hidden = true; mktPreview.innerHTML = ''; }
     };
 
     if (mktProvider && mktId) {
@@ -2869,52 +2986,70 @@ function replaceBlock(original, startMarker, endMarker, block){
         if (idHint) idHint.innerHTML = h.hint;
         mktId.placeholder = h.ph;
       };
-      mktProvider.addEventListener('change', syncHints);
+      mktProvider.addEventListener('change', () => { syncHints(); clearPreview(); setMktResult(''); });
+      mktId.addEventListener('input', () => { clearPreview(); });
       syncHints();
     }
 
-    if (mktAddBtn && mktProvider && mktId && mktResult) {
-      const setResult = (text, tone) => {
-        mktResult.hidden = false;
-        mktResult.textContent = text;
-        mktResult.classList.remove('is-success', 'is-error', 'is-pending');
-        if (tone) mktResult.classList.add(`is-${tone}`);
-      };
+    // Fetch a pack and show a thumbnail preview (no add). Returns {provider,id,data} or null.
+    const doPreview = async () => {
+      if (!mktProvider || !mktId) return null;
+      const provider = mktProvider.value;
+      const id = parseEmotePackId(provider, mktId.value);
+      if (!id) { setMktResult('Could not read a pack ID from that. Check the format hint above.', 'error'); return null; }
+      const btn = mktPreviewBtn;
+      const orig = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+      if (mktAddBtn) mktAddBtn.disabled = true;
+      setMktResult('Fetching pack from ' + ((EMOTE_PROVIDER_META[provider] || {}).name || provider) + '…', 'pending');
+      try {
+        const api = await getEmoteMktApi();
+        if (!api || !api.fetchPackPreview) throw new Error('marketplace module unavailable');
+        const data = await api.fetchPackPreview(provider, String(id));
+        const count = (data && data.emotes && data.emotes.length) || 0;
+        if (!count) { setMktResult('Loaded, but found 0 emotes — double-check the ID.', 'error'); clearPreview(); return null; }
+        lastPreview = { provider, id: String(id), data };
+        renderEmotePreview(mktPreview, data);
+        setMktResult(`✓ “${data.name || id}” — ${count} emote${count === 1 ? '' : 's'} found. Click Add pack to use it.`, 'success');
+        return lastPreview;
+      } catch (err) {
+        setMktResult(`✗ Couldn't load that pack: ${err && err.message ? err.message : err}`, 'error');
+        clearPreview();
+        return null;
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = orig; }
+        if (mktAddBtn) mktAddBtn.disabled = false;
+      }
+    };
+
+    if (mktPreviewBtn) mktPreviewBtn.addEventListener('click', doPreview);
+
+    if (mktAddBtn && mktProvider && mktId) {
       mktAddBtn.addEventListener('click', async () => {
         const provider = mktProvider.value;
         const id = parseEmotePackId(provider, mktId.value);
-        if (!id) { setResult('Could not read a pack ID from that. Check the format hint above.', 'error'); return; }
+        if (!id) { setMktResult('Could not read a pack ID from that. Check the format hint above.', 'error'); return; }
         if (!Array.isArray(cfg.emotePacks)) cfg.emotePacks = [];
         if (cfg.emotePacks.some(p => p.provider === provider && String(p.id) === String(id))) {
-          setResult('That pack is already added.', 'error');
+          setMktResult('That pack is already added.', 'error');
           return;
         }
-        mktAddBtn.disabled = true;
-        const original = mktAddBtn.textContent;
-        mktAddBtn.textContent = 'Checking…';
-        setResult('Fetching pack from ' + (EMOTE_PROVIDER_META[provider] || {}).name + '…', 'pending');
-        try {
-          const api = await getEmoteMktApi();
-          if (!api || !api.fetchPackPreview) throw new Error('marketplace module unavailable');
-          const data = await api.fetchPackPreview(provider, String(id));
-          const count = (data && data.emotes && data.emotes.length) || 0;
-          if (!count) { setResult('Loaded, but found 0 emotes — double-check the ID.', 'error'); return; }
-          cfg.emotePacks.push({
-            provider,
-            id: String(id),
-            label: (mktLabel && mktLabel.value.trim()) || "",
-            enabled: true
-          });
-          commitEmotePacks();
-          setResult(`✓ Added “${data.name || id}” — ${count} emote${count === 1 ? '' : 's'}. It's now a tab in the emote picker. Click Apply to save.`, 'success');
-          if (mktLabel) mktLabel.value = "";
-          mktId.value = "";
-        } catch (err) {
-          setResult(`✗ Couldn't load that pack: ${err && err.message ? err.message : err}`, 'error');
-        } finally {
-          mktAddBtn.disabled = false;
-          mktAddBtn.textContent = original;
-        }
+        // Reuse the matching preview, else fetch+validate now.
+        let preview = (lastPreview && lastPreview.provider === provider && lastPreview.id === String(id)) ? lastPreview : null;
+        if (!preview) { preview = await doPreview(); if (!preview) return; }
+        const data = preview.data;
+        const count = (data.emotes && data.emotes.length) || 0;
+        cfg.emotePacks.push({
+          provider,
+          id: String(id),
+          label: (mktLabel && mktLabel.value.trim()) || "",
+          enabled: true
+        });
+        commitEmotePacks();
+        setMktResult(`✓ Added “${data.name || id}” — ${count} emote${count === 1 ? '' : 's'}. It's now a tab in the emote picker. Click Apply to save.`, 'success');
+        if (mktLabel) mktLabel.value = "";
+        mktId.value = "";
+        clearPreview();
       });
     }
 
@@ -2931,18 +3066,21 @@ function replaceBlock(original, startMarker, endMarker, block){
         const act = btn.getAttribute('data-act');
         if (act === 'remove') {
           cfg.emotePacks.splice(idx, 1);
+          commitEmotePacks();
         } else if (act === 'toggle') {
           cfg.emotePacks[idx].enabled = cfg.emotePacks[idx].enabled === false;
+          commitEmotePacks();
+        } else if (act === 'rename') {
+          startRenamePack(row, idx, cfg, commitEmotePacks);
         }
-        commitEmotePacks();
       });
     }
 
     // Once the loader resolves emote counts (async), repaint the rows so each
-    // shows its real "N emotes" instead of "loading…".
+    // shows its real "N emotes" — but not while an inline rename is in progress.
     if (mktList) {
       document.addEventListener('btfw:emotePacks:changed', () => {
-        if (panel.isConnected) renderEmotePackList(panel, cfg);
+        if (panel.isConnected && !mktList.querySelector('.btfw-emote-pack__rename-input')) renderEmotePackList(panel, cfg);
       });
     }
   }
