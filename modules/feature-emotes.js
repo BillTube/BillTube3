@@ -69,7 +69,7 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
   // tokens that the BillTube chat filters render as images for everyone.
   const NOTO_META = "https://googlefonts.github.io/noto-emoji-animation/data/api.json";
   const NOTO_CDN  = "https://fonts.gstatic.com/s/e/notoemoji/latest";
-  const NOTO_CACHE = "btfw:emoji:noto:v1";
+  const NOTO_CACHE = "btfw:emoji:noto:v2";
 
   async function loadEmoji(){
     try {
@@ -82,7 +82,9 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
       }
     } catch(_){}
 
-    const mk = (cp, name) => ({ name, keywords: name, image: `${NOTO_CDN}/${cp}/512.webp`, token: `[ae]${cp}[/ae]` });
+    // image = static PNG (shown in the picker by default), imageAnim = animated
+    // WebP (swapped in on hover). Chat always renders the animated WebP.
+    const mk = (cp, name) => ({ name, keywords: name, image: `${NOTO_CDN}/${cp}/512.png`, imageAnim: `${NOTO_CDN}/${cp}/512.webp`, token: `[ae]${cp}[/ae]` });
     try {
       const res = await fetch(NOTO_META, { cache: "force-cache" });
       const data = await res.json();
@@ -92,7 +94,7 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
         const cp = String(e.codepoint);
         const tag0 = (e.tags && e.tags[0]) ? e.tags[0].replace(/:/g, "").replace(/[-_]+/g, " ").trim() : cp;
         const kw = ((e.tags || []).join(" ") + " " + (e.categories || []).join(" ")).replace(/:/g, " ").toLowerCase();
-        return { name: tag0.toLowerCase(), keywords: kw, image: `${NOTO_CDN}/${cp}/512.webp`, token: `[ae]${cp}[/ae]` };
+        return { name: tag0.toLowerCase(), keywords: kw, image: `${NOTO_CDN}/${cp}/512.png`, imageAnim: `${NOTO_CDN}/${cp}/512.webp`, token: `[ae]${cp}[/ae]` };
       }).filter(x => x.token);
       try { localStorage.setItem(NOTO_CACHE, JSON.stringify(state.list.emoji)); } catch(_){}
     } catch(_) {
@@ -397,6 +399,14 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
         img.onerror = ()=>{ img.style.display="none"; tile.textContent = item.name; };
         tile.title = item.name;
         tile.setAttribute("aria-label", item.name || "Emote");
+        // Animated emoji (and anything with a separate animated source) show a
+        // static frame in the grid and only animate on hover — keeps 800+ tiles
+        // calm, like the Noto example page.
+        if (item.imageAnim) {
+          tile.classList.add("btfw-emote-tile--hover-anim");
+          tile.addEventListener("mouseenter", ()=>{ img.src = item.imageAnim; });
+          tile.addEventListener("mouseleave", ()=>{ img.src = item.image; });
+        }
         tile.appendChild(img);
       }
 
@@ -409,7 +419,7 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
           // Pack emote / animated emoji — insert the short token; the chat
           // filters render it as an image for everyone.
           insertAtCursor(input, " " + item.token + " ");
-          pushRecent({kind:"pack", name:item.name, image:item.image, token:item.token});
+          pushRecent({kind:"pack", name:item.name, image:item.image, imageAnim:item.imageAnim, token:item.token});
         } else {
           insertAtCursor(input, " " + item.name + " ");
           pushRecent({kind:"emote", name:item.name, image:item.image});
