@@ -866,28 +866,41 @@
   }
 }
 
+/* Active/playing entry: a dark, theme-based gradient where the accent is used
+   AS an accent — a crisp left stripe + a tint that's strongest on the left and
+   fades to near-bg on the right — instead of a flat solid-blue fill. */
 #queue li.queue_entry.queue_active,
 #queue li.queue_entry.playing,
 #queue li.queue_active,
 .queue_entry.queue_active,
 .queue_entry.playing {
-  background: var(--btfw-color-accent) !important;
-  border-color: var(--btfw-color-accent) !important;
-  color: var(--btfw-color-on-accent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--btfw-color-accent) 30%, var(--btfw-color-surface)) 0%,
+    color-mix(in srgb, var(--btfw-color-accent) 13%, var(--btfw-color-surface)) 50%,
+    color-mix(in srgb, var(--btfw-color-accent) 5%, var(--btfw-color-bg)) 100%
+  ) !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 38%, var(--btfw-border)) !important;
+  box-shadow:
+    inset 4px 0 0 0 var(--btfw-color-accent),                                   /* accent stripe, no layout shift */
+    inset 0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 16%, transparent),
+    0 6px 16px color-mix(in srgb, var(--btfw-color-bg) 46%, transparent) !important;
+  color: var(--btfw-color-text) !important;
 }
 
 #queue li.queue_entry.queue_active .qe_title,
 #queue li.queue_entry.playing .qe_title,
 .queue_entry.queue_active .qe_title,
 .queue_entry.playing .qe_title {
-  color: var(--btfw-color-on-accent);
+  color: var(--btfw-color-text);
+  font-weight: 600;
 }
 
 #queue li.queue_entry.queue_active .qe_time,
 #queue li.queue_entry.playing .qe_time,
 .queue_entry.queue_active .qe_time,
 .queue_entry.playing .qe_time {
-  color: var(--btfw-color-on-accent) !important;
+  color: color-mix(in srgb, var(--btfw-color-text) 72%, transparent 28%) !important;
 }
 
 #queue li.queue_entry.is-temp,
