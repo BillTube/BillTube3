@@ -412,9 +412,11 @@
 
 .btfw-chat-topbar {
   background: color-mix(in srgb, var(--btfw-color-panel) 60%, transparent 40%) !important;
-  border: 0px solid var(--btfw-border);
+  /* Flat theme shape — subtle border, no glossy top highlight or drop shadow
+     (the inset white line + heavy shadow made it look unlike the rest). */
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 42%, transparent 58%);
   border-radius: 14px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: none;
 }
 
 .btfw-chat-bottombar {
