@@ -545,8 +545,8 @@
 
 #btfw-emotes-pop .btfw-emotes-head {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: "tabs search close";
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "tabs close";
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
@@ -579,12 +579,13 @@
   color: var(--btfw-color-on-accent);
 }
 
+/* Search lives on its own full-width row under the tab bar, so the tab row
+   has the whole width for channel/emoji/recent + emote-pack tabs. */
 #btfw-emotes-pop .btfw-emotes-search {
-  grid-area: search;
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  width: 100%;
+  margin: 8px 10px 2px;
 }
 #btfw-emotes-pop #btfw-emotes-search {
   background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);

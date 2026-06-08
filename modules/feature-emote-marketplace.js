@@ -58,21 +58,29 @@ BTFW.define("feature:emote-marketplace", [], async () => {
       return { name: setName, emotes: out };
     },
 
-    // emoji.gg: id is a category number (see emoji.gg/api/?request=categories).
-    // We fetch the full list once (cached) and filter to the category.
+    // emoji.gg: id is a pack slug ("598443-frieren") or its number prefix
+    // ("598443"), taken from an emoji.gg/pack/<slug> URL. emoji.gg has no
+    // per-pack endpoint — /api/packs lists ~100 packs, each with an inline
+    // comma-separated "emojis" field of CDN filenames, so we resolve from there.
     "egg": async (id) => {
-      const r = await fetch("https://emoji.gg/api/");
+      const r = await fetch("https://emoji.gg/api/packs");
       if (!r.ok) throw new Error("egg " + r.status);
-      const all = await r.json();
-      const cat = parseInt(id, 10);
+      const packs = await r.json();
+      const wanted = String(id).trim().toLowerCase();
+      const num = wanted.split("-")[0];
+      const pack = (Array.isArray(packs) ? packs : []).find(p => {
+        const slug = String((p && p.slug) || "").toLowerCase();
+        return slug === wanted || (num && slug.split("-")[0] === num) || String(p && p.id) === wanted;
+      });
+      if (!pack) throw new Error("pack not found in emoji.gg's pack list");
+      const files = String(pack.emojis || "").split(",").map(s => s.trim()).filter(Boolean);
       const out = [];
-      for (const e of (Array.isArray(all) ? all : [])) {
-        if (!e || !e.image || !e.title) continue;
-        if (Number.isInteger(cat) && Number(e.category) !== cat) continue;
-        const file = String(e.image).split("/").pop(); // e.g. 4384_falco_stare.png
-        out.push({ name: e.title, image: e.image, token: `[egg]${file}[/egg]` });
+      for (const file of files) {
+        // file looks like "526842-frierendance.gif" -> name "frierendance"
+        const name = file.replace(/^\d+-/, "").replace(/\.[a-z0-9]+$/i, "");
+        out.push({ name, image: `https://cdn3.emoji.gg/emojis/${file}`, token: `[egg]${file}[/egg]` });
       }
-      return { name: "emoji.gg #" + id, emotes: out };
+      return { name: (pack.name || "emoji.gg pack").trim(), emotes: out };
     }
   };
 
