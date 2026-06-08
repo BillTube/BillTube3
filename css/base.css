@@ -1135,10 +1135,11 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   border: 1px solid color-mix(in srgb, var(--btfw-border) 42%, transparent 58%) !important;
   border-radius: 999px !important;
   color: var(--btfw-color-text) !important;
-  height: 32px !important;
-  min-height: 32px !important;
-  min-width: 32px !important;
-  padding: 0 14px !important;
+  /* Roomier buttons (taller + more side padding) while text/icons stay 12px. */
+  height: 38px !important;
+  min-height: 38px !important;
+  min-width: 38px !important;
+  padding: 0 18px !important;
   font-size: 12px !important;
   font-weight: 500 !important;
   line-height: 1 !important;
@@ -1151,7 +1152,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   gap: 6px !important;
 }
 
-/* Icon-only buttons collapse to a 32x32 pill so they read as round. */
+/* Icon-only buttons collapse to a round pill matching the new button height. */
 .btfw-plbar #showsearch,
 .btfw-plbar #showplaylistmanager,
 .btfw-plbar #qlockbtn,
@@ -1160,7 +1161,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 .btfw-plbar #shuffleplaylist,
 .btfw-plbar #showcustomembed,
 .btfw-plbar #showmediaurl {
-  width: 32px !important;
+  width: 38px !important;
   padding: 0 !important;
 }
 
