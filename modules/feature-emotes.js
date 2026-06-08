@@ -38,8 +38,9 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
   const RECENT_KEY   = `btfw:recent:emotes:${CHANNEL_NAME}`;
 
   let state = {
-    tab: "emotes",                // "emotes" | "emoji" | "recent"
+    tab: "emotes",                // "emotes" | "emoji" | "recent" | "pack:<key>"
     list: { emotes: [], emoji: [], recent: [] },
+    packs: [],                    // [{key,label,emotes:[{name,image,token}]}] from feature:emote-marketplace
     filtered: [],
     highlight: 0,
     emojiReady: false,
@@ -153,6 +154,7 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
         pop?._btfwSyncSearchClear?.();
         pop?.querySelectorAll(".btfw-tab").forEach(b =>
           b.classList.toggle("is-active", b.getAttribute("data-tab") === "emotes"));
+        syncPackTabs(pop);
         render(true);
         // focusGrid runs from open() once the popover is actually visible —
         // onOpen fires before util:motion flips the card visible.
@@ -248,6 +250,42 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
     syncSearchClear();
   }
 
+  // Build/refresh a tab per loaded emote pack (from feature:emote-marketplace).
+  // Called on open and whenever packs change — so packs appear/disappear live.
+  function syncPackTabs(pop){
+    pop = pop || (_emotesPop && _emotesPop.getCard && _emotesPop.getCard());
+    if (!pop) return;
+    const tabsEl = pop.querySelector(".btfw-emotes-tabs");
+    if (!tabsEl) return;
+
+    const packs = Array.isArray(window.BTFW_EMOTE_PACKS) ? window.BTFW_EMOTE_PACKS : [];
+    state.packs = packs;
+
+    // Reconcile tab buttons with the current packs (keep, add, remove).
+    const wanted = new Set(packs.map(p => p.key));
+    tabsEl.querySelectorAll(".btfw-tab[data-pack]").forEach(b => {
+      if (!wanted.has(b.getAttribute("data-pack"))) b.remove();
+    });
+    packs.forEach(p => {
+      let b = tabsEl.querySelector(`.btfw-tab[data-pack="${CSS.escape(p.key)}"]`);
+      if (!b) {
+        b = document.createElement("button");
+        b.className = "btfw-tab";
+        b.setAttribute("data-tab", "pack:" + p.key);
+        b.setAttribute("data-pack", p.key);
+        tabsEl.appendChild(b);
+      }
+      b.textContent = p.label;
+    });
+
+    // If the active tab was a pack that's now gone, fall back to Channel.
+    if (state.tab.indexOf("pack:") === 0 && !wanted.has(state.tab.slice(5))) {
+      state.tab = "emotes";
+    }
+    tabsEl.querySelectorAll(".btfw-tab").forEach(x =>
+      x.classList.toggle("is-active", x.getAttribute("data-tab") === state.tab));
+  }
+
   function focusGrid(preventScroll = true){
     const grid = document.getElementById("btfw-emotes-grid");
     if (!grid || typeof grid.focus !== "function") return;
@@ -293,6 +331,10 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
       state.filtered = q ? state.list.emotes.filter(x => x.name.toLowerCase().includes(q)) : state.list.emotes;
     } else if (state.tab === "emoji") {
       state.filtered = q ? state.list.emoji.filter(x => x.name.includes(q) || x.keywords.includes(q)) : state.list.emoji;
+    } else if (state.tab.indexOf("pack:") === 0) {
+      const pack = state.packs.find(p => ("pack:" + p.key) === state.tab);
+      const items = pack ? pack.emotes : [];
+      state.filtered = q ? items.filter(x => (x.name || "").toLowerCase().includes(q)) : items;
     } else {
       state.filtered = q
         ? state.list.recent.filter(x => x.kind==="emoji"
@@ -352,6 +394,10 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
         if (state.tab==="emoji" || item.kind==="emoji") {
           insertAtCursor(input, normalizeEmojiForInsert(item.char) + " ");
           pushRecent({kind:"emoji", char:item.char, name:item.name, keywords:item.keywords});
+        } else if (item.token) {
+          // Pack emote — insert the short token; the chat filters render it for everyone.
+          insertAtCursor(input, " " + item.token + " ");
+          pushRecent({kind:"pack", name:item.name, image:item.image, token:item.token});
         } else {
           insertAtCursor(input, " " + item.name + " ");
           pushRecent({kind:"emote", name:item.name, image:item.image});
@@ -486,6 +532,15 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
     bindAnyExistingOpeners();
     ensurePopover();   // build + wire up front
     // NO warm-up emoji fetch; loads on first Emoji tab open
+
+    // Live updates: when the marketplace loads/changes packs, rebuild the pack
+    // tabs in place (and re-render if the popover is open) — no refresh needed.
+    document.addEventListener("btfw:emotePacks:changed", () => {
+      const pop = _emotesPop && _emotesPop.getCard && _emotesPop.getCard();
+      if (!pop) return;
+      syncPackTabs(pop);
+      try { if (_emotesPop.isOpen && _emotesPop.isOpen()) render(true); } catch (_) {}
+    });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

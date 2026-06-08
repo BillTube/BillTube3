@@ -17,6 +17,12 @@ const customFilters = [
   { name: "chat colors (premium)", source: "col:(.*?):", flags: "g", replace: "<span style=\"color:\\1\" class=\"chatcolor\">", active: true, filterlinks: false },
   { name: "giphy", source: "https?://(?|media\\d\\.giphy\\.com/media/(?:[^/]+/)?([^ /\\n]+)/giphy\\.gif|i\\.giphy\\.com/([^ /\\n]+)\\.gif|giphy\\.com/gifs/(?:.*-)?([^ /\\n]+))", flags: "gi", replace: "<img class=\"giphy chat-picture\" src=\"https://media.giphy.com/media/\\1/200_s.gif\" />", active: true, filterlinks: true },
   { name: "tenor", source: "(https?://media\\.tenor\\.com/[^\\s]+\\.gif)", flags: "gi", replace: "<img class=\"tenor chat-picture\" src=\"\\0\" />", active: true, filterlinks: true },
+  // --- Emote marketplace: short tokens -> emote-pack CDN images, rendered for
+  // everyone. The emote modal inserts [provider]ID[/provider]; the URL is derived
+  // from the ID, so one filter per provider covers every pack from that source. ---
+  { name: "sticker 7tv", source: "\\[7tv\\]([A-Za-z0-9]+)\\[\\/7tv\\]", flags: "gi", replace: "<img class=\"btfw-sticker channel-emote\" src=\"https://cdn.7tv.app/emote/\\1/2x.webp\" style=\"height:2em;vertical-align:middle\" />", active: true, filterlinks: false },
+  { name: "sticker bttv", source: "\\[bttv\\]([A-Za-z0-9]+)\\[\\/bttv\\]", flags: "gi", replace: "<img class=\"btfw-sticker channel-emote\" src=\"https://cdn.betterttv.net/emote/\\1/2x.webp\" style=\"height:2em;vertical-align:middle\" />", active: true, filterlinks: false },
+  { name: "sticker egg", source: "\\[egg\\]([A-Za-z0-9_.-]+)\\[\\/egg\\]", flags: "gi", replace: "<img class=\"btfw-sticker channel-emote\" src=\"https://cdn3.emoji.gg/emojis/\\1\" style=\"height:2em;vertical-align:middle\" />", active: true, filterlinks: false },
   { name: "TMDB", source: "\\[tmdbcard\\]([^|]+)\\|([^|]+)\\|([^|]+)\\|([^|]+)\\|([^\\[]+)\\[\\/tmdbcard\\]", flags: "g", replace: "<div class=\"tmdb-card\"><img class=\"tmdb-card__poster\" src=\"https://image.tmdb.org/t/p/w342\\5\" alt=\"\\1 poster\" onerror=\"this.style.display='none'\"><div class=\"tmdb-card__content\"><div class=\"tmdb-card__title\">\\1 <span class=\"tmdb-card__year\">(\\2)</span></div><div class=\"tmdb-card__rating\">★ \\3</div><div class=\"tmdb-card__overview\">\\4</div></div></div>", active: true, filterlinks: true }
 ];
 
