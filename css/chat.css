@@ -505,7 +505,7 @@
   background: color-mix(in srgb, var(--btfw-overlay-bg) 96%, transparent 4%) !important;
   border: 1px solid var(--btfw-overlay-border) !important;
   /* cytube.css forces border-radius:0 !important on the panel + heading */
-  border-radius: 16px !important;
+  border-radius: var(--btfw-radius) !important;
   box-shadow: var(--btfw-overlay-shadow);
   color: var(--btfw-color-text);
   overflow: hidden;
@@ -861,7 +861,7 @@
     color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%),
     color-mix(in srgb, var(--btfw-color-surface) 88%, transparent 12%));
   border: 1px solid var(--btfw-border);
-  border-radius: 14px;
+  border-radius: var(--btfw-radius);
   box-shadow: 0 18px 44px color-mix(in srgb, var(--btfw-color-bg) 34%, transparent 66%);
   color: var(--btfw-color-text);
   overflow: hidden;

@@ -229,7 +229,7 @@ footer {
   background: linear-gradient(145deg,
     color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%),
     color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%));
-  border-radius: 18px;
+  border-radius: var(--btfw-radius);
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 36%, transparent 64%);
   box-shadow: 0 18px 48px color-mix(in srgb, var(--btfw-color-bg) 32%, transparent 68%);
 }
@@ -323,7 +323,7 @@ footer {
   background: linear-gradient(150deg,
       color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%),
       color-mix(in srgb, var(--btfw-color-surface) 92%, transparent 8%));
-  border-radius: 20px;
+  border-radius: var(--btfw-radius);
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
   color: var(--btfw-color-text);
 }
@@ -504,7 +504,7 @@ footer {
 #pollwrap .poll-controls {
   justify-content: center;
   background: color-mix(in srgb, var(--btfw-color-surface) 88%, transparent 12%);
-  border-radius: 14px;
+  border-radius: var(--btfw-radius);
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
   padding: 10px 12px;
 }
@@ -780,12 +780,12 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack .btfw-stack-list.btfw-stack-lis
   padding-inline: clamp(16px, 5vw, 130px);
 }
 body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack-item{
-  border-radius: calc(var(--btfw-radius) + 6px);
+  border-radius: var(--btfw-radius);
   border-color:  color-mix(in srgb, var(--btfw-border) 28%, transparent 92%);
 }
 .btfw-stack-item{
   border: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 40%);
-  border-radius: 14px;
+  border-radius: var(--btfw-radius);
   background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--btfw-color-bg) 22%, transparent 78%);
   overflow: hidden;
@@ -1366,7 +1366,7 @@ nav.pagination.is-centered.btfw-gif-pager {
   flex-direction: column;
   gap: 12px;
   padding: 18px 20px;
-  border-radius: 18px;
+  border-radius: var(--btfw-radius);
   background: linear-gradient(135deg,
     color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%),
     color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%));
@@ -1408,7 +1408,7 @@ nav.pagination.is-centered.btfw-gif-pager {
 
 #useroptions .btfw-useroptions-panel {
   padding: 16px 18px;
-  border-radius: 14px;
+  border-radius: var(--btfw-radius);
   background: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
   box-shadow: 0 12px 26px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
@@ -1592,7 +1592,7 @@ nav.pagination.is-centered.btfw-gif-pager {
   max-height: 94vh;
   background: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
   border: 1px solid color-mix(in srgb, var(--btfw-border) 85%, transparent 15%);
-  border-radius: 26px;
+  border-radius: var(--btfw-radius);
   box-shadow:
     0 32px 64px color-mix(in srgb, var(--btfw-color-bg) 60%, transparent 40%),
     0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%);
@@ -1730,7 +1730,7 @@ nav.pagination.is-centered.btfw-gif-pager {
 #btfw-theme-modal .btfw-ts-card{
   background: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
   border: 1px solid color-mix(in srgb, var(--btfw-border) 78%, transparent 22%);
-  border-radius: 20px;
+  border-radius: var(--btfw-radius);
   padding: 20px 22px;
   box-shadow:
     0 24px 48px color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%),
@@ -1800,7 +1800,7 @@ nav.pagination.is-centered.btfw-gif-pager {
   flex-direction: column;
   gap: 12px;
   padding: 16px 18px;
-  border-radius: 16px;
+  border-radius: var(--btfw-radius);
   border: 1px solid color-mix(in srgb, var(--btfw-border) 74%, transparent 26%);
   background: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-color-text) 7%, transparent 93%);

@@ -41,7 +41,7 @@
   max-height: min(62vh, 540px) !important;
   background: color-mix(in srgb, var(--btfw-overlay-bg) 95%, transparent 5%);
   color: var(--btfw-color-text);
-  border-radius: 16px;
+  border-radius: var(--btfw-radius);
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
   box-shadow: 0 20px 50px color-mix(in srgb, var(--btfw-color-bg) 58%, transparent 42%);
   display: flex;
@@ -826,7 +826,7 @@
   background: var(--btfw-overlay-elevated);
   color: var(--btfw-color-text);
   border: 1px solid var(--btfw-overlay-border);
-  border-radius: calc(var(--btfw-radius) + 4px);
+  border-radius: var(--btfw-radius);
   overflow: hidden;
   box-shadow: var(--btfw-overlay-shadow);
 }
@@ -938,7 +938,7 @@
   background: linear-gradient(180deg,
     color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%),
     color-mix(in srgb, var(--btfw-color-surface) 90%, transparent 10%));
-  border:1px solid var(--btfw-border); border-radius:14px;
+  border:1px solid var(--btfw-border); border-radius: var(--btfw-radius);
   box-shadow:0 18px 44px color-mix(in srgb, var(--btfw-color-bg) 36%, transparent 64%);
   color:var(--btfw-color-text); overflow:hidden;
 }
@@ -1214,7 +1214,7 @@
   z-index: 100000;
   min-width: 172px;
   padding: 6px;
-  border-radius: 14px;
+  border-radius: var(--btfw-radius);
   background: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
   border: 1px solid color-mix(in srgb, var(--btfw-border) 85%, transparent 15%);
   box-shadow:
@@ -1367,7 +1367,7 @@
   /* Match the Theme Settings modal-card chrome (radius, surface, border, shadow). */
   background: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
   color: var(--btfw-color-text);
-  border-radius: 26px;
+  border-radius: var(--btfw-radius);
   border: 1px solid color-mix(in srgb, var(--btfw-border) 85%, transparent 15%);
   box-shadow:
     0 32px 64px color-mix(in srgb, var(--btfw-color-bg) 60%, transparent 40%),
@@ -1775,7 +1775,7 @@ html[data-btfw-theme="dark"] .panel {
   background: var(--btfw-notice-bg, color-mix(in srgb, var(--btfw-overlay-bg) 96%, transparent 4%));
   color: var(--btfw-notice-text, var(--btfw-color-text));
   border: 1px solid var(--btfw-notice-border, var(--btfw-border));
-  border-radius: 16px;
+  border-radius: var(--btfw-radius);
   box-shadow: 0 18px 32px color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%);
   backdrop-filter: blur(14px);
   overflow: hidden;
@@ -1979,7 +1979,7 @@ html[data-btfw-theme="dark"] .panel {
   background: var(--btfw-overlay-bg);
   border: 1px solid var(--btfw-border);
   box-shadow: var(--btfw-overlay-shadow);
-  border-radius: calc(var(--btfw-radius) + 4px);
+  border-radius: var(--btfw-radius);
   overflow: hidden;
 }
 .btfw-pop.btfw-pop--open{ display: block; }
