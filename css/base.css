@@ -2724,14 +2724,21 @@ body:not(.is-scrolling) #queue li {
 #useroptions .tab-pane.active {
   animation: btfw-tab-in 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
-/* Theme Settings collapsible sections: animate the body in when a section is
-   expanded (the body only renders while [open], so it restarts each open). */
+/* Standalone Theme Settings modal: each tab panel (General/Chat/Notifications/
+   Video/Ignore) animates in when switched to (panels toggle display:none->block,
+   restarting the animation). */
+#btfw-theme-modal .btfw-ts-panel {
+  animation: btfw-tab-in 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+/* Channel Settings -> Theme tab: collapsible section bodies animate on expand
+   (the body only renders while [open], so it restarts each open). */
 #btfw-theme-admin-panel details.section[open] > .section__body {
   animation: btfw-tab-in 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 @media (prefers-reduced-motion: reduce) {
   #channeloptions .tab-pane.active,
   #useroptions .tab-pane.active,
+  #btfw-theme-modal .btfw-ts-panel,
   #btfw-theme-admin-panel details.section[open] > .section__body { animation: none; }
 }
 
