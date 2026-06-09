@@ -3493,6 +3493,55 @@ function replaceBlock(original, startMarker, endMarker, block){
     return panel;
   }
 
+  // --- CodeMirror bridge -------------------------------------------------
+  // CyTube wraps the Channel JS/CSS textareas in CodeMirror. While CM is live it
+  // OWNS the content: writing textarea.value is silently reverted, because the
+  // Save buttons call cm.save() (CM doc -> textarea) right before reading. So any
+  // time we read or write a managed field we must go through the CM instance when
+  // one is attached, falling back to the raw textarea otherwise.
+  function codeMirrorFor(field){
+    if (!field) return null;
+    try {
+      // CodeMirror.fromTextArea inserts its wrapper element right after the textarea.
+      const sib = field.nextElementSibling;
+      if (sib && sib.CodeMirror && typeof sib.CodeMirror.getValue === "function") {
+        return sib.CodeMirror;
+      }
+      // Fallback: match by the textarea CM was created from.
+      const wrappers = document.querySelectorAll(".CodeMirror");
+      for (let i = 0; i < wrappers.length; i++) {
+        const cm = wrappers[i].CodeMirror;
+        if (cm && typeof cm.getTextArea === "function" && cm.getTextArea() === field) {
+          return cm;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function readFieldValue(field){
+    if (!field) return "";
+    const cm = codeMirrorFor(field);
+    if (cm) { try { return cm.getValue(); } catch (_) {} }
+    return field.value || "";
+  }
+
+  function writeFieldValue(field, value){
+    if (!field) return;
+    field.value = value;
+    const cm = codeMirrorFor(field);
+    if (cm) {
+      try {
+        cm.setValue(value);
+        // Push the CM doc back into the textarea so a plain form read is correct too.
+        if (typeof cm.save === "function") cm.save();
+      } catch (_) {}
+    }
+    ["input", "change"].forEach(type => {
+      try { field.dispatchEvent(new Event(type, { bubbles: true })); } catch (_) {}
+    });
+  }
+
   function applyConfigToFields(panel, cfg, modal, options = {}){
     const mode = options.mode || 'manual';
     const status = panel.querySelector('#btfw-theme-status');
@@ -3506,26 +3555,16 @@ function replaceBlock(original, startMarker, endMarker, block){
       return;
     }
 
-    const existingJs = jsField.value || "";
-    const existingCss = cssField.value || "";
+    const existingJs = readFieldValue(jsField);
+    const existingCss = readFieldValue(cssField);
 
     const mergedConfig = collectConfig(panel, cfg);
     const jsBlock = buildConfigBlock(mergedConfig);
     const cssBlock = buildCssBlock(mergedConfig);
 
     const cleanedJs = stripLegacySliderGlobals(existingJs);
-    jsField.value = replaceBlock(cleanedJs, JS_BLOCK_START, JS_BLOCK_END, jsBlock);
-
-    cssField.value = replaceBlock(existingCss, CSS_BLOCK_START, CSS_BLOCK_END, cssBlock);
-
-    ['input', 'change'].forEach(type => {
-      try {
-        jsField.dispatchEvent(new Event(type, { bubbles: true }));
-      } catch (_) {}
-      try {
-        cssField.dispatchEvent(new Event(type, { bubbles: true }));
-      } catch (_) {}
-    });
+    writeFieldValue(jsField, replaceBlock(cleanedJs, JS_BLOCK_START, JS_BLOCK_END, jsBlock));
+    writeFieldValue(cssField, replaceBlock(existingCss, CSS_BLOCK_START, CSS_BLOCK_END, cssBlock));
 
     const runtimeConfig = syncRuntimeThemeConfig(mergedConfig) || mergedConfig;
 
@@ -3551,7 +3590,7 @@ function replaceBlock(original, startMarker, endMarker, block){
 
     const jsField = ensureField(modal, JS_FIELD_SELECTORS, "chanjs");
     const cssField = ensureField(modal, CSS_FIELD_SELECTORS, "chancss");
-    const storedConfig = parseConfig(jsField?.value || "");
+    const storedConfig = parseConfig(readFieldValue(jsField));
     const cfg = deepMerge(cloneDefaults(), storedConfig || {});
     const storedVersion = Number(cfg.version) || 0;
     cfg.version = DEFAULT_CONFIG.version;
@@ -3630,7 +3669,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     delete cfg.externalModules;
     delete cfg.modules;
 
-    const sliderState = extractSliderSettings(jsField?.value || "");
+    const sliderState = extractSliderSettings(readFieldValue(jsField));
     if (typeof sliderState.enabled === "boolean") {
       cfg.slider.enabled = sliderState.enabled;
       cfg.sliderEnabled = sliderState.enabled;
@@ -3709,8 +3748,8 @@ setTimeout(() => {
     });
     observer.observe(panel, { attributes: true, attributeFilter: ['class', 'style'] });
 
-    const existingJs = jsField?.value || "";
-    const existingCss = cssField?.value || "";
+    const existingJs = readFieldValue(jsField);
+    const existingCss = readFieldValue(cssField);
     const hasJsBlock = existingJs.includes(JS_BLOCK_START) && existingJs.includes(JS_BLOCK_END);
     const hasCssBlock = existingCss.includes(CSS_BLOCK_START) && existingCss.includes(CSS_BLOCK_END);
     const currentVersion = storedVersion;

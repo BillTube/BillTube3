@@ -106,6 +106,14 @@
 
           .btfw-poll-option-row:hover {
             transform: scale(1.02) !important;
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 55%, transparent 45%),
+                        0 10px 24px rgba(0,0,0,.55) !important;
+          }
+
+          /* Voted card — a strong accent ring makes the current choice obvious at a glance. */
+          .btfw-poll-option-row:has(.btfw-poll-option-btn.active) {
+            box-shadow: 0 0 0 3px var(--btfw-color-accent, #4ade80),
+                        0 10px 26px rgba(0,0,0,.6) !important;
           }
 
           .movie-poster-container {
@@ -308,26 +316,66 @@
             position: absolute !important;
             bottom: 15px !important;
             right: 15px !important;
-            background: linear-gradient(145deg, #ffd700, #ffb300) !important;
-            color: #000 !important;
-            border: none !important;
-            border-radius: 20px !important;
-            padding: 8px 16px !important;
-            font-size: 11px !important;
-            font-weight: bold !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            background: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 86%, #000 14%) !important;
+            color: var(--btfw-color-on-accent, #08131f) !important;
+            border: 1px solid color-mix(in srgb, var(--btfw-color-accent, #4ade80) 55%, #fff 45%) !important;
+            border-radius: 999px !important;
+            padding: 7px 13px 7px 11px !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
             cursor: pointer !important;
-            transition: all 0.3s ease !important;
+            transition: transform .16s ease, background .2s ease, box-shadow .2s ease !important;
             z-index: 20 !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,.4) !important;
+          }
+
+          /* Vote affordance: a chevron drawn from borders (no icon font) turns the count
+             pill into an obvious upvote control; it morphs into a checkmark once voted. */
+          .btfw-poll-option-btn::before {
+            content: "" !important;
+            width: 6px !important;
+            height: 6px !important;
+            border-top: 2.5px solid currentColor !important;
+            border-left: 2.5px solid currentColor !important;
+            border-right: 0 !important;
+            border-bottom: 0 !important;
+            transform: rotate(45deg) !important;
+            margin-top: 2px !important;
+            flex: 0 0 auto !important;
+            transition: transform .16s ease !important;
           }
 
           .btfw-poll-option-btn:hover {
-            background: linear-gradient(145deg, #ffed4e, #ffd700) !important;
-            transform: scale(1.05) !important;
+            background: var(--btfw-color-accent, #4ade80) !important;
+            transform: translateY(-2px) scale(1.04) !important;
+            box-shadow: 0 7px 18px rgba(0,0,0,.5) !important;
+          }
+
+          .btfw-poll-option-btn:hover::before {
+            transform: rotate(45deg) translate(1px, 1px) !important;
           }
 
           .btfw-poll-option-btn.active {
-            background: linear-gradient(145deg, #ff6b35, #f7931e) !important;
-            color: white !important;
+            background: var(--btfw-color-accent, #4ade80) !important;
+            color: var(--btfw-color-on-accent, #08131f) !important;
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 45%, #fff 55%),
+                        0 4px 14px rgba(0,0,0,.45) !important;
+          }
+
+          /* Voted → the chevron becomes a checkmark. */
+          .btfw-poll-option-btn.active::before {
+            width: 5px !important;
+            height: 9px !important;
+            border-top: 0 !important;
+            border-left: 0 !important;
+            border-right: 2.5px solid currentColor !important;
+            border-bottom: 2.5px solid currentColor !important;
+            transform: rotate(45deg) !important;
+            margin-top: -2px !important;
           }
 
           .loading-spinner {
@@ -338,7 +386,7 @@
             width: 40px;
             height: 40px;
             border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid #ffd700;
+            border-top: 3px solid var(--btfw-color-accent, #4ade80);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             z-index: 10;
@@ -770,6 +818,28 @@
             const movieTitle = textSpan.textContent.trim();
             if (!movieTitle) continue;
 
+            // Claim this row synchronously. The poster render below runs in a deferred
+            // setTimeout, and isFetching is cleared in finally() *before* those land — so a
+            // second trigger (the observer fires for both the class change AND the child
+            // insert, plus the socket newPoll and the checkExistingPolls re-runs) would pass
+            // the now-stale isFetching/existingPosters guards and enhance the same row again.
+            // A DOM claim outlives the async work, so re-entry is a no-op. Rows are rebuilt
+            // per poll, so the marker is naturally fresh for each new poll.
+            if (optionRow.dataset.btfwMpEnhanced === "1") continue;
+            optionRow.dataset.btfwMpEnhanced = "1";
+
+            // Whole poster acts as the vote button — click anywhere on the card to vote.
+            // The pill keeps its own handler, so we ignore clicks that land on it.
+            if (!optionRow.dataset.btfwVoteBound) {
+              optionRow.dataset.btfwVoteBound = "1";
+              optionRow.setAttribute("title", "Click to vote");
+              optionRow.addEventListener("click", function (ev) {
+                if (ev.target.closest(".btfw-poll-option-btn")) return;
+                const vb = optionRow.querySelector(".btfw-poll-option-btn");
+                if (vb) vb.click();
+              });
+            }
+
             log(`Processing: "${movieTitle}"`);
 
             // Add loading spinner
@@ -946,6 +1016,10 @@
       async function initialize() {
         if (moduleState.initialized) return;
         if (!isEnabled()) { log('Movie poll disabled — not activating'); return; }
+        // Claim before the async socket-wait below. initialize() is async and only set
+        // initialized=true at the very end, so a second call during the wait could slip
+        // through and stack a second MutationObserver. Set it up front.
+        moduleState.initialized = true;
 
         log('Initializing Movie poll module...');
 
@@ -983,8 +1057,7 @@
         setTimeout(checkExistingPolls, 500);
         setTimeout(checkExistingPolls, 1500);
         setTimeout(checkExistingPolls, 3000);
-        
-        moduleState.initialized = true;
+
         log('Module initialized successfully');
       }
 
