@@ -78,7 +78,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     },
     // Emote Marketplace: channel-owner-selected emote packs loaded from CDNs
     // (7TV / BetterTTV / emoji.gg). Each entry: { provider, id, label, enabled }.
-    emotePacks: []
+    emotePacks: [],
+    // Movie poll: enhance CyTube polls with TMDB movie poster cards
+    // (feature:movie-poll). Uses the TMDB key from Integrations.
+    moviePoll: { enabled: false }
   };
 
   const TINT_PRESETS = {
@@ -1861,6 +1864,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
     normalized.emotePacks = normalizeEmotePacks(normalized.emotePacks);
 
+    if (!normalized.moviePoll || typeof normalized.moviePoll !== "object") {
+      normalized.moviePoll = { enabled: false };
+    } else {
+      normalized.moviePoll.enabled = Boolean(normalized.moviePoll.enabled);
+    }
+
     return normalized;
   }
 
@@ -2298,6 +2307,27 @@ function replaceBlock(original, startMarker, endMarker, block){
     }
   }
 
+  function syncMoviePollToggle(panel, cfg){
+    if (!panel || !cfg || typeof cfg !== "object") return;
+    if (!cfg.moviePoll || typeof cfg.moviePoll !== "object") cfg.moviePoll = { enabled: false };
+    const button = panel.querySelector('#btfw-theme-movie-poll-toggle');
+    const input = panel.querySelector('#btfw-theme-movie-poll-enabled');
+    if (!button || !input) return;
+    const tmdbField = panel.querySelector('#btfw-theme-integrations-tmdb');
+    const enabled = Boolean(cfg.moviePoll.enabled);
+    input.checked = enabled;
+    button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    const state = button.querySelector('[data-role="state-label"]');
+    if (state) state.textContent = enabled ? 'On' : 'Off';
+    const notice = panel.querySelector('[data-role="movie-poll-requirements"]');
+    if (notice) {
+      const keyFromCfg = typeof cfg.integrations?.tmdb?.apiKey === 'string' ? cfg.integrations.tmdb.apiKey.trim() : '';
+      const keyFromField = typeof tmdbField?.value === 'string' ? tmdbField.value.trim() : '';
+      const hasKey = Boolean(keyFromCfg || keyFromField);
+      notice.hidden = !enabled || hasKey;
+    }
+  }
+
   function syncAutoSubsToggle(panel, cfg){
     if (!panel || !cfg || typeof cfg !== "object") return;
     const integrations = cfg.integrations = cfg.integrations && typeof cfg.integrations === "object"
@@ -2448,6 +2478,18 @@ function replaceBlock(original, startMarker, endMarker, block){
               </button>
               <input type="checkbox" id="btfw-theme-movie-info-enabled" data-btfw-bind="integrations.movieInfo.enabled" hidden>
               <p class="help is-warning" data-role="movie-info-requirements" hidden>Requires a TMDB API key. Add the key above before enabling to avoid empty results.</p>
+            </div>
+            <div class="field btfw-switch-field">
+              <button type="button" class="btfw-switch" id="btfw-theme-movie-poll-toggle" role="switch" aria-pressed="false">
+                <span class="btfw-switch__track" aria-hidden="true"><span class="btfw-switch__knob"></span></span>
+                <span class="btfw-switch__meta">
+                  <span class="btfw-switch__title">Movie poll posters</span>
+                  <span class="btfw-switch__state" data-role="state-label">Off</span>
+                </span>
+              </button>
+              <input type="checkbox" id="btfw-theme-movie-poll-enabled" data-btfw-bind="moviePoll.enabled" hidden>
+              <p class="help is-warning" data-role="movie-poll-requirements" hidden>Requires a TMDB API key (used to fetch posters &amp; ratings).</p>
+              <p class="help">Turns CyTube polls whose options are movie titles into poster cards with TMDB ratings &amp; genres. Loads on channel join only when enabled.</p>
             </div>
             <div class="field btfw-switch-field">
               <button type="button" class="btfw-switch" id="btfw-theme-auto-subs-toggle" role="switch" aria-pressed="false">
@@ -2782,6 +2824,19 @@ function replaceBlock(original, startMarker, endMarker, block){
       });
     }
 
+    const moviePollButton = panel.querySelector('#btfw-theme-movie-poll-toggle');
+    const moviePollInput = panel.querySelector('#btfw-theme-movie-poll-enabled');
+    if (moviePollButton && moviePollInput) {
+      moviePollButton.addEventListener('click', () => {
+        const next = !moviePollInput.checked;
+        moviePollInput.checked = next;
+        if (!cfg.moviePoll || typeof cfg.moviePoll !== 'object') cfg.moviePoll = { enabled: false };
+        cfg.moviePoll.enabled = next;
+        syncMoviePollToggle(panel, cfg);
+        onChange();
+      });
+    }
+
     const autoSubsButton = panel.querySelector('#btfw-theme-auto-subs-toggle');
     const autoSubsInput = panel.querySelector('#btfw-theme-auto-subs-enabled');
     if (autoSubsButton && autoSubsInput) {
@@ -2851,6 +2906,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (tmdbField) {
       const syncNotice = () => {
         syncMovieInfoToggle(panel, cfg);
+        syncMoviePollToggle(panel, cfg);
         syncAutoSubsToggle(panel, cfg);
         syncAudioEnhancerToggle(panel, cfg);
       };
@@ -3145,6 +3201,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     updateTypographyFieldState(panel);
     updateSliderFieldState(panel);
     syncMovieInfoToggle(panel, cfg);
+    syncMoviePollToggle(panel, cfg);
     syncAutoSubsToggle(panel, cfg);
     syncAudioEnhancerToggle(panel, cfg);
     renderEmotePackList(panel, cfg);
