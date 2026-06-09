@@ -13,6 +13,7 @@
   --btfw-border: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
   --btfw-card-bg: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
   --btfw-radius: 14px;
+  --btfw-radius-sm: 10px; /* inner cards nested inside a --btfw-radius container */
   --btfw-chat-min: 320px;
   --btfw-chat-max: 30vw;
   --btfw-split-width: 8px;

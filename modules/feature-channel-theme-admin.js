@@ -841,6 +841,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin h3 { font-size: 1rem; margin: 0 0 8px; letter-spacing: 0.02em; font-weight: 600; }
       .btfw-theme-admin p.lead { margin: 0 0 12px; color: var(--btfw-admin-text-soft); max-width: 720px; font-size: 0.85rem; }
       .btfw-theme-admin details.section {
+        /* Zero out Bulma's generic .section padding (3rem) which leaks in at
+           >=1024px and inflated every collapsed row to ~150px of dead space. The
+           summary and body carry their own padding. */
+        padding: 0;
         border-radius: 10px;
         border: 1px solid var(--btfw-admin-border-soft);
         margin-bottom: 8px;
@@ -857,7 +861,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .section__title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
       .btfw-theme-admin .section__title h4 { margin: 0; font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--btfw-admin-text); }
       .btfw-theme-admin .section__title span { font-size: 0.76rem; color: var(--btfw-admin-text-soft); letter-spacing: 0.01em; }
-      .btfw-theme-admin .section__chevron { width: 20px; height: 20px; border-radius: 6px; border: 0; background: transparent; display: inline-flex; align-items: center; justify-content: center; color: var(--btfw-admin-text-soft); font-size: 0.78rem; transition: transform 0.2s ease, color 0.18s ease; flex: 0 0 auto; }
+      .btfw-theme-admin .section__chevron { width: 24px; height: 24px; border-radius: 7px; border: 0; background: color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%); display: inline-flex; align-items: center; justify-content: center; color: var(--btfw-admin-text-soft); font-size: 1.05rem; line-height: 1; transition: transform 0.2s ease, color 0.18s ease, background 0.18s ease; flex: 0 0 auto; }
+      .btfw-theme-admin summary.section__summary:hover .section__chevron { color: var(--btfw-admin-text); background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 16%, transparent 84%); }
       .btfw-theme-admin details.section[open] .section__chevron { transform: rotate(90deg); color: var(--btfw-admin-text); }
       .btfw-theme-admin .section__body { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
       .btfw-theme-admin .field { display: flex; flex-direction: column; gap: 6px; }
