@@ -5,6 +5,7 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
   const PER_PAGE = 12;
   const motion = await BTFW.init("util:motion");
   const chatPopover = await BTFW.init("util:chat-popover");
+  const anime = await BTFW.init("util:anime");
 
   /* ---- Keys (BillTube2 defaults; can override via localStorage) ---- */
   const K = { giphy: "btfw:giphy:key", tenor: "btfw:tenor:key" };
@@ -349,8 +350,13 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
     } else {
       // Full render needed
       fullRender(grid, pageItems, { showRemove });
-      // Smooth fade/slide when results change (provider switch, search, trending).
-      if (grid) { grid.classList.remove("btfw-tab-in"); void grid.offsetWidth; grid.classList.add("btfw-tab-in"); }
+      // Staggered reveal of the result cells (provider switch, search, trending).
+      // Stagger once anime.js is warm; otherwise the instant CSS container fade.
+      if (grid && window.anime && window.anime.animate && anime && !anime.reducedMotion()) {
+        anime.staggerIn(grid.querySelectorAll(".btfw-gif-cell"), { max: 24, stagger: 16, dy: 10, duration: 380 });
+      } else if (grid) {
+        grid.classList.remove("btfw-tab-in"); void grid.offsetWidth; grid.classList.add("btfw-tab-in");
+      }
     }
 
     // Update rendered state
@@ -574,7 +580,7 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
   /* ---- open / close ---- */
   // All the initial render/search/focus work happens in the popover's onOpen
   // hook (see getPopover) so it runs once the card is positioned & visible.
-  function open(){ ensureModal(); getPopover().open(); }
+  function open(){ ensureModal(); if (anime && anime.load) anime.load(); getPopover().open(); }
   function close(){ if (gifPop) gifPop.close(); }
   function toggle(){ ensureModal(); getPopover().isOpen() ? close() : open(); }
 

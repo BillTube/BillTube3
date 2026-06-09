@@ -4,6 +4,7 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const motion = await BTFW.init("util:motion");
   const chatPopover = await BTFW.init("util:chat-popover");
+  const anime = await BTFW.init("util:anime");
 
   /* ------------------------ helpers ------------------------ */
   function insertAtCursor(input, text){
@@ -156,6 +157,7 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
         </div>`,
       onOpen: () => {
         const pop = _emotesPop.getCard();
+        if (anime && anime.load) anime.load(); // warm anime.js for tab-switch staggers
         loadChannelEmotes();
         loadRecent();
         state.tab = "emotes"; state.search = ""; state.highlight = 0;
@@ -296,9 +298,14 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
       x.classList.toggle("is-active", x.getAttribute("data-tab") === state.tab));
   }
 
-  // Replay the shared tab-in animation on an element (fade + slide + sharpen).
+  // Reveal the grid on a tab switch: a staggered tile cascade once anime.js is
+  // warm, otherwise the instant CSS container fade (also the reduced-motion path).
   function playTabIn(el){
     if (!el) return;
+    if (window.anime && window.anime.animate && anime && !anime.reducedMotion()) {
+      anime.staggerIn(el.querySelectorAll(".btfw-emote-tile"), { max: 48, stagger: 12, dy: 8, duration: 340 });
+      return;
+    }
     el.classList.remove("btfw-tab-in");
     void el.offsetWidth; // force reflow so the animation restarts every switch
     el.classList.add("btfw-tab-in");
