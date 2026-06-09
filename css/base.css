@@ -509,6 +509,18 @@ footer {
   padding: 10px 12px;
 }
 
+/* Empty state — a grounding line so the lone "New Poll" button doesn't float in
+   an empty shell when no poll is running. */
+#pollwrap:not(:has(.well)) .poll-controls::before {
+  content: "No active poll";
+  flex: 1 1 100%;
+  text-align: center;
+  color: var(--btfw-color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
 /* New Poll — centered, themed accent CTA. */
 #pollwrap .poll-controls .button,
 #pollwrap .poll-controls #newpollbtn {
@@ -857,6 +869,18 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 }
 .btfw-arrow:active{ transform: scale(0.92); }
 .btfw-stack-item__body{ padding: 8px; }
+
+/* Inner content cards inside a stack panel share one smaller radius, so MOTD,
+   the poll, and the featured-channels slider stop each picking a different value
+   (was 8px / 8px / 16px). */
+.btfw-stack-item__body > #motdwrap,
+.btfw-stack-item__body > #pollwrap,
+.btfw-stack-item__body > #btfw-channels {
+  border-radius: var(--btfw-radius-sm) !important;
+}
+.btfw-stack-item__body #btfw-channels .btfw-channels__link {
+  border-radius: var(--btfw-radius-sm) !important;
+}
 
 /* Grouped items use the same minimal treatment as the default headers above —
    no special tinted band or rounded inner corners. */
@@ -1896,22 +1920,25 @@ nav.pagination.is-centered.btfw-gif-pager {
   min-width: 90px;
 }
 
+/* Compact-stack toggle — a track+knob switch matching the toolkit's .btfw-switch,
+   instead of the old pill-with-ON-chip button (a fourth, one-off toggle pattern). */
 #btfw-theme-modal .btfw-compact-stack-btn{
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 18px;
-  border-radius: 999px;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--btfw-border) 70%, transparent 30%);
   background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
   color: color-mix(in srgb, var(--btfw-color-text) 90%, transparent 10%);
   font-weight: 600;
-  font-size: 0.82rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+#btfw-theme-modal .btfw-compact-stack-btn:hover{
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 35%, transparent 65%);
 }
 
 #btfw-theme-modal .btfw-compact-stack-btn .btfw-compact-stack-label{
@@ -1920,29 +1947,43 @@ nav.pagination.is-centered.btfw-gif-pager {
   letter-spacing: 0.02em;
 }
 
+/* The ON/OFF chip becomes the switch track; its text is hidden (state is conveyed
+   by aria-pressed) and a sliding knob is drawn with ::after. */
 #btfw-theme-modal .btfw-compact-stack-btn .btfw-compact-stack-status{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 12px;
+  position: relative;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 22px;
+  padding: 0;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--btfw-color-panel) 76%, transparent 24%);
-  color: color-mix(in srgb, var(--btfw-color-text) 72%, transparent 28%);
-  font-size: 0.7rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  background: color-mix(in srgb, var(--btfw-color-text) 20%, transparent 80%);
+  color: transparent;
+  font-size: 0;
+  transition: background 0.2s ease;
+}
+#btfw-theme-modal .btfw-compact-stack-btn .btfw-compact-stack-status::after{
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.35);
+  transition: left 0.2s cubic-bezier(.2,.8,.3,1.2);
 }
 
 #btfw-theme-modal .btfw-compact-stack-btn[aria-pressed="true"]{
-  background: var(--btfw-navbar-pill-bg);
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 40%, transparent 60%);
-  color: var(--btfw-navbar-pill-text);
-  box-shadow: 0 18px 42px color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 45%, transparent 55%);
+  background: color-mix(in srgb, var(--btfw-color-accent) 12%, var(--btfw-color-panel) 88%);
 }
-
 #btfw-theme-modal .btfw-compact-stack-btn[aria-pressed="true"] .btfw-compact-stack-status{
   background: var(--btfw-color-accent);
-  color: var(--btfw-color-on-accent);
+}
+#btfw-theme-modal .btfw-compact-stack-btn[aria-pressed="true"] .btfw-compact-stack-status::after{
+  left: 21px;
 }
 
 #btfw-theme-modal .btfw-compact-stack-btn:focus-visible{
@@ -2829,8 +2870,9 @@ body, #wrap { padding-top: 0 !important; }
     border-left: 4px solid var(--btfw-color-accent) !important;
 }
 
-/* Button Decluttering: Hide ALL buttons unless hovered */
-#queue .queue_entry .btn-group button { opacity: 0.1; transition: opacity 0.2s ease; }
+/* Declutter: actions stay fully hidden until the row is hovered (no faint ghost
+   text in resting rows), then appear as crisp pill buttons. */
+#queue .queue_entry .btn-group button { opacity: 0; transition: opacity 0.15s ease; }
 #queue .queue_entry:hover .btn-group button { opacity: 1; }
 
 /* Soften timestamps and user names in the playlist */
