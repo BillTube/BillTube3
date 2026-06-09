@@ -596,26 +596,33 @@ BTFW.define("feature:movie-info", [], async () => {
         width: 100%;
         max-width: 90vw;
         background: rgba(20, 20, 20, 0.95);
-        border-radius: 0 0 12px 12px;
+        border-radius: var(--btfw-radius, 12px);
         border: 1px solid rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(10px);
         z-index: 1000;
         overflow: hidden;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         opacity: 0;
-        transform: translateY(-20px) scale(0.95);
+        transform: translateY(-14px) scale(0.96);
+        transform-origin: top right;
         pointer-events: none;
+        /* quick ease-out when hiding */
         transition:
-          opacity 0.28s cubic-bezier(0.55, 0.055, 0.675, 0.19),
-          transform 0.35s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+          opacity 0.2s ease,
+          transform 0.26s cubic-bezier(0.4, 0, 0.6, 1);
       }
       .btfw-movie-header.show {
         opacity: 1;
         transform: translateY(0) scale(1);
         pointer-events: auto;
+        /* springy bounce on pop-in (overshoot curve) */
         transition:
-          opacity 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-          transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          opacity 0.26s ease,
+          transform 0.46s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .btfw-movie-header,
+        .btfw-movie-header.show { transition: opacity 0.15s ease; transform: none; }
       }
       .btfw-movie-overlay {
         position: absolute;
