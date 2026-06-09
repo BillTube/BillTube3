@@ -318,12 +318,14 @@
             right: 15px !important;
             display: inline-flex !important;
             align-items: center !important;
+            justify-content: center !important;
             gap: 6px !important;
+            min-width: 46px !important;
             background: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 86%, #000 14%) !important;
             color: var(--btfw-color-on-accent, #08131f) !important;
             border: 1px solid color-mix(in srgb, var(--btfw-color-accent, #4ade80) 55%, #fff 45%) !important;
             border-radius: 999px !important;
-            padding: 7px 13px 7px 11px !important;
+            padding: 7px 12px !important;
             font-size: 12px !important;
             font-weight: 700 !important;
             line-height: 1 !important;
