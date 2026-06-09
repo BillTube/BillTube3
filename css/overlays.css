@@ -179,6 +179,10 @@
   border-radius: 8px;
   object-fit: cover;
   flex: 0 0 auto;
+  /* The avatar is appended last in the DOM (so it never displaces the username
+     from children[1], which CyTube's findUserlistItem depends on) — order:-1
+     keeps it visually first in the flex row. */
+  order: -1;
   background: color-mix(in srgb, var(--btfw-color-accent) 16%, transparent);
 }
 #userlist.btfw-userlist-overlay img:not(.btfw-ul-avatar) {
