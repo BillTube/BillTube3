@@ -2700,6 +2700,42 @@ body:not(.is-scrolling) #queue li {
 }
 
 /* =========================================================================
+   Tab / panel switch animation — a subtle fade + slide-up + sharpen so
+   switching tabs and panels inside modals feels smooth instead of an instant
+   jump. Adapted (subtler/faster) from a reference profile page's "contentIn".
+   ========================================================================= */
+@keyframes btfw-tab-in {
+  from { opacity: 0; transform: translateY(8px); filter: blur(3px); }
+  to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+}
+/* Reusable utility — JS adds this to re-render-in-place grids (emotes / gifs)
+   and re-triggers it with a reflow on each switch. */
+.btfw-tab-in {
+  animation: btfw-tab-in 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btfw-tab-in { animation: none; }
+}
+
+/* Channel Settings + User options: every Bootstrap tab-pane (incl. the BillTube
+   Theme panel, which is itself a tab-pane) animates in when it becomes active.
+   The display:none -> block toggle restarts the animation each switch. */
+#channeloptions .tab-pane.active,
+#useroptions .tab-pane.active {
+  animation: btfw-tab-in 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+/* Theme Settings collapsible sections: animate the body in when a section is
+   expanded (the body only renders while [open], so it restarts each open). */
+#btfw-theme-admin-panel details.section[open] > .section__body {
+  animation: btfw-tab-in 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  #channeloptions .tab-pane.active,
+  #useroptions .tab-pane.active,
+  #btfw-theme-admin-panel details.section[open] > .section__body { animation: none; }
+}
+
+/* =========================================================================
    BillTube3 Theme-Aware Modernization Override
    Copy all of this and paste it into your browser's DevTools or Stylus!
    ========================================================================= */

@@ -211,6 +211,7 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
       syncSearchClear();
       if (state.tab === "emoji" && !state.emojiReady) loadEmoji();
       render(true);
+      playTabIn($("#btfw-emotes-grid", pop)); // smooth fade/slide on tab switch
       focusGrid();
     });
 
@@ -293,6 +294,14 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
     }
     tabsEl.querySelectorAll(".btfw-tab").forEach(x =>
       x.classList.toggle("is-active", x.getAttribute("data-tab") === state.tab));
+  }
+
+  // Replay the shared tab-in animation on an element (fade + slide + sharpen).
+  function playTabIn(el){
+    if (!el) return;
+    el.classList.remove("btfw-tab-in");
+    void el.offsetWidth; // force reflow so the animation restarts every switch
+    el.classList.add("btfw-tab-in");
   }
 
   function focusGrid(preventScroll = true){
