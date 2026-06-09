@@ -1,5 +1,6 @@
 /* BTFW – feature:movie-info */
 BTFW.define("feature:movie-info", [], async () => {
+  const anime = await BTFW.init("util:anime");
   const MODULE_ID = "movie-info";
   const CONFIG = {
     CONTAINER_ID: "btfw-movie-header",
@@ -314,7 +315,27 @@ BTFW.define("feature:movie-info", [], async () => {
     cancelHideTimer();
     if (state.header) {
       state.header.classList.add("show");
+      animateRatingOnce();
     }
+  }
+
+  // Fill the rating ring + count the % up the first time a movie's card is
+  // shown (tracked per rating element, so it plays once per movie, not per
+  // hover). No-op under reduced motion or if anime.js can't load (ring stays
+  // at its full value).
+  async function animateRatingOnce() {
+    if (!anime || anime.reducedMotion()) return;
+    const ring = state.header && state.header.querySelector(".btfw-movie-ring");
+    if (!ring || ring.dataset.btfwAnimated) return;
+    ring.dataset.btfwAnimated = "1";
+    const circ = Number(ring.getAttribute("data-circ")) || 0;
+    const off = Number(ring.getAttribute("data-off")) || 0;
+    const txt = state.header.querySelector(".btfw-movie-ring-text");
+    ring.style.strokeDashoffset = circ + "px"; // start empty so there's no full->empty snap
+    const a = await anime.load();
+    if (!a || !a.animate) { ring.style.strokeDashoffset = ""; return; }
+    try { a.animate(ring, { strokeDashoffset: [circ, off], duration: 900, ease: "out(3)" }); } catch (_) {}
+    if (txt) anime.countUp(txt, Number(txt.getAttribute("data-pct")) || 0, { from: 0, duration: 900, suffix: "%" });
   }
 
   function hideMovieHeaderDelayed() {
@@ -544,6 +565,9 @@ BTFW.define("feature:movie-info", [], async () => {
     circle.setAttribute("stroke-dashoffset", offset.toString());
     circle.setAttribute("transform", "rotate(-90 30 30)");
     circle.setAttribute("stroke-linecap", "round");
+    circle.setAttribute("class", "btfw-movie-ring");
+    circle.setAttribute("data-circ", circumference.toString());
+    circle.setAttribute("data-off", offset.toString());
     svg.appendChild(circle);
     const text = document.createElementNS(svgNS, "text");
     text.setAttribute("x", "50%");
@@ -553,6 +577,8 @@ BTFW.define("feature:movie-info", [], async () => {
     text.setAttribute("fill", "#fff");
     text.setAttribute("font-size", "10");
     text.setAttribute("font-weight", "bold");
+    text.setAttribute("class", "btfw-movie-ring-text");
+    text.setAttribute("data-pct", String(percentage));
     text.textContent = `${percentage}%`;
     svg.appendChild(text);
     container.appendChild(svg);
