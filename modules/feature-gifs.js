@@ -349,6 +349,8 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
     } else {
       // Full render needed
       fullRender(grid, pageItems, { showRemove });
+      // Smooth fade/slide when results change (provider switch, search, trending).
+      if (grid) { grid.classList.remove("btfw-tab-in"); void grid.offsetWidth; grid.classList.add("btfw-tab-in"); }
     }
 
     // Update rendered state
