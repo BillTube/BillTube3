@@ -192,7 +192,7 @@
 #btfw-navhost .dropdown-menu {
   background: color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%);
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
-  border-radius: 14px;
+  border-radius: var(--btfw-radius);
   min-width: 210px;
 }
 

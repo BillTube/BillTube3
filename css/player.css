@@ -950,7 +950,7 @@
 
 .btfw-addmedia-panel {
     margin-top: 16px;
-    border-radius: 18px;
+    border-radius: var(--btfw-radius);
     border: 1px solid
  color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
     background: var(--btfw-color-bg);
