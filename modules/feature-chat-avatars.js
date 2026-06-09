@@ -535,12 +535,16 @@ BTFW.define("feature:chat-avatars", [], async () => {
 
   /* ---------------- Profile-box hover popup: keep it on-screen ----------------
      CyTube shows .profile-box.linewrap on userlist hover and positions it with
-     inline left/top off the hovered row. With the userlist docked at the screen
-     edge that box can run half off-screen. After CyTube positions it, clamp it
-     back inside the viewport. (CSS styles the box; this only fixes placement.) */
-  function clampProfileBox(){
-    const box = document.querySelector(".profile-box.linewrap");
+     inline left/top off the hovered row. With the userlist docked (or in the
+     popover) it can run off-screen, and an overflow/transform ancestor can clip
+     it. Re-parent it to <body> so its position:fixed is always viewport-relative
+     and nothing can clip it, then clamp it inside the viewport. (CSS styles the
+     box; this only fixes placement.) CyTube removes the box by reference, so the
+     re-parent is safe — it still disappears on mouse-out. */
+  function clampProfileBoxNow(box){
+    box = box || document.querySelector(".profile-box.linewrap");
     if (!box) return;
+    if (box.parentElement !== document.body) document.body.appendChild(box);
     const r = box.getBoundingClientRect();
     if (!r.width || !r.height) return;
     const m = 8;
@@ -549,22 +553,34 @@ BTFW.define("feature:chat-avatars", [], async () => {
     if (top + r.height > window.innerHeight - m) top = window.innerHeight - r.height - m;
     if (left < m) left = m;
     if (top < m) top = m;
+    // Idempotent: only writes when the position actually needs to move, so my own
+    // style write can't retrigger the observer into a loop.
     if (Math.round(left) !== Math.round(r.left)) box.style.left = Math.round(left) + "px";
     if (Math.round(top)  !== Math.round(r.top))  box.style.top  = Math.round(top) + "px";
+  }
+  function placeProfileBox(){
+    const box = document.querySelector(".profile-box.linewrap");
+    if (!box) return;
+    // CyTube can position the box AFTER our one-shot clamp, leaving it off-screen.
+    // Watch the box's style so every (re)position is re-clamped; combined with the
+    // idempotent clamp above this can't loop and never lags CyTube.
+    if (!box.__btfwClampObs && window.MutationObserver) {
+      box.__btfwClampObs = true;
+      new MutationObserver(() => clampProfileBoxNow(box))
+        .observe(box, { attributes: true, attributeFilter: ["style"] });
+    }
+    clampProfileBoxNow(box);
   }
   function wireProfileBoxClamp(){
     if (window.__btfwProfileBoxClamp) return;
     window.__btfwProfileBoxClamp = true;
     const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
-    // Capture phase fires before CyTube's bubble-phase positioner; the double rAF
-    // then runs after it has set the inline left/top, so we clamp the final spot.
+    const place = () => { raf(() => raf(placeProfileBox)); setTimeout(placeProfileBox, 50); };
     document.addEventListener("mouseover", (e) => {
       const t = e.target;
-      if (t && t.closest && t.closest("#userlist .userlist_item")) {
-        raf(() => raf(clampProfileBox));
-      }
+      if (t && t.closest && t.closest("#userlist .userlist_item")) place();
     }, true);
-    window.addEventListener("resize", clampProfileBox);
+    window.addEventListener("resize", () => clampProfileBoxNow());
   }
 
   function boot(){
