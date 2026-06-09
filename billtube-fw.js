@@ -329,6 +329,7 @@ function resolveBranchToSHA(){
       "modules/feature-gifs.js",
       "modules/feature-video-overlay.js",
       "modules/feature-poll-overlay.js",
+      "modules/feature-movie-poll.js",
       "modules/feature-pip.js",
       "modules/feature-notify.js",
       "modules/feature-notification-sounds.js",
