@@ -505,7 +505,13 @@ BTFW.define("feature:chat-avatars", [], async () => {
       img.addEventListener("error", handleAvatarError);
       img._btfwAvatarErrorBound = true;
     }
-    item.insertBefore(img, item.firstChild);
+    // Append (not prepend) so the avatar never becomes children[0]/[1]. CyTube's
+    // findUserlistItem() matches the username via the hard-coded second child
+    // (child.children[1]); prepending the avatar shifted the name to children[2],
+    // so the finder returned null for everyone and userLeave could never remove a
+    // user (stale names on leave, duplicates on rejoin). CSS order:-1 keeps the
+    // avatar visually first in the (flex) userlist row.
+    item.appendChild(img);
   }
 
   function reflowUserlist(){
