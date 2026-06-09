@@ -533,10 +533,45 @@ BTFW.define("feature:chat-avatars", [], async () => {
     reflowUserlist();
   }
 
+  /* ---------------- Profile-box hover popup: keep it on-screen ----------------
+     CyTube shows .profile-box.linewrap on userlist hover and positions it with
+     inline left/top off the hovered row. With the userlist docked at the screen
+     edge that box can run half off-screen. After CyTube positions it, clamp it
+     back inside the viewport. (CSS styles the box; this only fixes placement.) */
+  function clampProfileBox(){
+    const box = document.querySelector(".profile-box.linewrap");
+    if (!box) return;
+    const r = box.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const m = 8;
+    let left = r.left, top = r.top;
+    if (left + r.width > window.innerWidth - m) left = window.innerWidth - r.width - m;
+    if (top + r.height > window.innerHeight - m) top = window.innerHeight - r.height - m;
+    if (left < m) left = m;
+    if (top < m) top = m;
+    if (Math.round(left) !== Math.round(r.left)) box.style.left = Math.round(left) + "px";
+    if (Math.round(top)  !== Math.round(r.top))  box.style.top  = Math.round(top) + "px";
+  }
+  function wireProfileBoxClamp(){
+    if (window.__btfwProfileBoxClamp) return;
+    window.__btfwProfileBoxClamp = true;
+    const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
+    // Capture phase fires before CyTube's bubble-phase positioner; the double rAF
+    // then runs after it has set the inline left/top, so we clamp the final spot.
+    document.addEventListener("mouseover", (e) => {
+      const t = e.target;
+      if (t && t.closest && t.closest("#userlist .userlist_item")) {
+        raf(() => raf(clampProfileBox));
+      }
+    }, true);
+    window.addEventListener("resize", clampProfileBox);
+  }
+
   function boot(){
     applyMode(currentMode);
     reflowAll();
     watchUserlist();
+    wireProfileBoxClamp();
     // The userlist may mount after us; retry briefly + on key lifecycle events.
     let tries = 0;
     const ulTimer = setInterval(() => {

@@ -100,6 +100,67 @@
     max-width: 220px;
     padding: 10px;
 }
+
+/* User profile hover popup — CyTube's .profile-box (mods/admins additionally see
+   the IP hash + aliases; regular ranks just see avatar/name/bio). Themed card; kept
+   on-screen by a JS clamp in feature:chat-avatars. Scoped to .linewrap so the small
+   rank-flair .profile-box <span>s are left untouched. */
+.profile-box.linewrap {
+  position: fixed;
+  z-index: 100000;
+  box-sizing: border-box;
+  width: 210px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  padding: 12px;
+  text-align: center;
+  background: var(--btfw-overlay-bg);
+  border: 1px solid var(--btfw-overlay-border);
+  border-radius: var(--btfw-radius);
+  box-shadow: var(--btfw-overlay-shadow);
+  color: var(--btfw-color-text);
+  font-size: 12.5px;
+  line-height: 1.45;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.profile-box.linewrap .profile-image {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+  margin: 0 auto 10px;
+  border: 1px solid var(--btfw-border);
+  background: color-mix(in srgb, var(--btfw-color-panel) 80%, transparent 20%);
+}
+.profile-box.linewrap strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--btfw-color-text);
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+.profile-box.linewrap em {
+  font-style: normal;
+  display: block;
+  color: var(--btfw-color-text-muted);
+  font-size: 11px;
+  word-break: break-word;
+}
+.profile-box.linewrap br { display: none; }
+.profile-box.linewrap hr {
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--btfw-border) 70%, transparent 30%);
+  margin: 10px 0 8px;
+}
+.profile-box.linewrap p {
+  margin: 0;
+  color: var(--btfw-color-text-soft);
+  word-break: break-word;
+}
 #userlist > div > div > strong {
     color: #e3e3e3;
     padding: 5px;
