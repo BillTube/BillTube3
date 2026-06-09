@@ -143,33 +143,79 @@ BTFW.define("feature:chat-avatars", [], async () => {
     return "";
   }
 
-  // ⚡ PERFORMANCE: Cache-enabled SVG generation
+  // Base palette for the generative avatar (the flat colour underneath the pattern).
+  const AVATAR_COLORS = ["#1abc9c","#16a085","#f1c40f","#f39c12","#2ecc71","#27ae60","#e67e22","#d35400","#3498db","#2980b9","#e74c3c","#c0392b","#9b59b6","#8e44ad","#0080a5","#34495e","#2c3e50","#87724b","#7300a7","#ec87bf","#d870ad","#f69785","#9ba37e","#b49255","#a94136"];
+
+  // Deterministic 8-digit (1–9, no zeros) hash of a name. Same input → same output
+  // on every client, so a user's generated avatar is always in sync for everyone.
+  function avatarHash8(name){
+    let h = 0;
+    const s = (name || "?");
+    for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; }
+    return ("11111111" + Math.abs(h)).slice(-8).replace(/0/g, "1");
+  }
+
+  // First letters of the first two words, else first two letters of the name
+  // (skipping leading punctuation so e.g. "z-z-z" → "ZZ" rather than "Z-").
+  function avatarInitials(name){
+    const c = (name || "?").trim();
+    if (!c) return "?";
+    const words = c.split(/\s+/).filter(Boolean);
+    const pick = s => { const m = s.match(/[A-Za-z0-9]/); return m ? m[0] : s.charAt(0); };
+    if (words.length >= 2) return (pick(words[0]) + pick(words[1])).toUpperCase();
+    const clean = c.replace(/[^A-Za-z0-9]/g, "");
+    return (clean.slice(0, 2) || c.slice(0, 2)).toUpperCase();
+  }
+
+  function escXml(s){ return String(s).replace(/[&<>]/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;" }[m])); }
+
+  // ⚡ PERFORMANCE: Cache-enabled generative SVG avatar.
+  // Draws a symmetric "kaleidoscope" of translucent rectangles (derived from the
+  // name hash) over a base colour, then centred initials. Pure SVG so it's crisp
+  // at any DPI and cheap to rasterise; the result is cached, so each user's avatar
+  // is generated at most once per size. Deterministic on the name → always in sync.
   function initialsDataURL(name, sizePx){
-    const cacheKey = `${name}-${sizePx}`;
-    
-    // Check cache first
-    if (avatarCache.has(cacheKey)) {
-      return avatarCache.get(cacheKey);
+    const sz = sizePx || 24;
+    const ck = `${name}-${sz}`;
+    if (avatarCache.has(ck)) return avatarCache.get(ck);
+
+    const h = avatarHash8(name);
+    const base = AVATAR_COLORS[((name || "?").trim().codePointAt(0) || 63) % AVATAR_COLORS.length];
+    const sym = (parseInt(h[7], 10) % 2) + 2; // 2- or 3-fold rotational symmetry
+
+    let shapes = "";
+    for (let j = 0; j < 8; j++) {
+      const dj = parseInt(h[j], 10) || 1;
+      const r = (parseInt(h[j], 10) * 100) % 255;
+      const g = (parseInt(h[(j + 3) % 8], 10) * 100) % 255;
+      const b = (parseInt(h[(j + 6) % 8], 10) * 100) % 255;
+      const a = (0.12 + (dj / 9) * 0.26).toFixed(2);
+      let c1 = (dj * dj) % 16;
+      let c2 = (dj * parseInt(h[7], 10)) % 16;
+      let c3 = (dj * parseInt(h[0], 10)) % 32;
+      let c4 = (dj * parseInt(h[0], 10)) % 32;
+      if (c1 + c2 < 32) { c1 = -2 * c1; c2 = -2 * c2; c3 = 2 * c3; c4 = 2 * c4; }
+      if (c3 < 3 || c4 < 3) continue;
+      for (let k = 0; k < 2 * sym; k++) {
+        const ang = (45 + (180 / sym) * k).toFixed(1);
+        shapes += `<rect x="${c1}" y="${c2}" width="${c3}" height="${c4}" fill="rgba(${r},${g},${b},${a})" transform="translate(32 32) rotate(${ang})"/>`;
+      }
     }
 
-    // Generate SVG
-    const colors = ["#1abc9c","#16a085","#f1c40f","#f39c12","#2ecc71","#27ae60","#e67e22","#d35400","#3498db","#2980b9","#e74c3c","#c0392b","#9b59b6","#8e44ad","#0080a5","#34495e","#2c3e50","#87724b","#7300a7","#ec87bf","#d870ad","#f69785","#9ba37e","#b49255","#a94136"];
-    const c = (name||"?").trim();
-    const first = (c.codePointAt(0)||63) % colors.length;
-    const bg = colors[first];
-    const letters = c.slice(0,2).toUpperCase();
-    const sz = sizePx || 24;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}"><rect width="100%" height="100%" fill="${bg}"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#fff" font-family="Inter,Arial,sans-serif" font-size="${Math.round(sz*0.5)}" font-weight="600">${letters}</text></svg>`;
+    const fs = 26;
+    const ty = (32 + fs * 0.34).toFixed(1); // baseline offset → visually centred caps
+    const letters = escXml(avatarInitials(name));
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 64 64">`
+      + `<rect width="64" height="64" fill="${base}"/>`
+      + `<g>${shapes}</g>`
+      + `<text x="32" y="${ty}" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="${fs}" font-weight="700" fill="#fff" style="paint-order:stroke" stroke="rgba(0,0,0,.30)" stroke-width="2.4">${letters}</text>`
+      + `</svg>`;
     const dataUrl = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
-    
-    // Cache the result (with size limit)
+
     if (avatarCache.size >= MAX_CACHE_SIZE) {
-      // Remove oldest entry (first key)
-      const firstKey = avatarCache.keys().next().value;
-      avatarCache.delete(firstKey);
+      avatarCache.delete(avatarCache.keys().next().value);
     }
-    avatarCache.set(cacheKey, dataUrl);
-    
+    avatarCache.set(ck, dataUrl);
     return dataUrl;
   }
 
