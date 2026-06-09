@@ -176,6 +176,9 @@
 #userlist.btfw-userlist-overlay .userlist_item > .userlist_guest,
 #userlist.btfw-userlist-overlay .userlist_item > .userlist_user {
   position: relative;
+  /* Fill the row so the name's hit area (and its ::before) spans the whole width —
+     the empty space to the right of the text counts as a hover target too. */
+  flex: 1 1 auto;
 }
 #userlist.btfw-userlist-overlay .userlist_item > .userlist_owner::before,
 #userlist.btfw-userlist-overlay .userlist_item > .userlist_op::before,
@@ -185,9 +188,9 @@
 #userlist.btfw-userlist-overlay .userlist_item > .userlist_user::before {
   content: "";
   position: absolute;
-  top: -8px;
-  bottom: -8px;
-  left: -46px;   /* reach back over the avatar (≈ avatar width + gap + row padding) */
+  top: -6px;     /* small overhang to cover the row's vertical padding */
+  bottom: -6px;
+  left: -60px;   /* reach back over the avatar + the row's left padding edge */
   right: -10px;  /* out to the row's right padding edge */
   z-index: 0;
 }
