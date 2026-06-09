@@ -161,6 +161,36 @@
   color: var(--btfw-color-text-soft);
   word-break: break-word;
 }
+
+/* Whole-row hover: CyTube binds the profile-box hover to the username span only, so
+   hovering the avatar/empty space did nothing. Extend the name's hit area across the
+   entire row with a transparent ::before that reaches back over the avatar, and make
+   the avatar ignore pointer events so hits fall through to that layer. Result: the
+   popup triggers from anywhere on the row, and clicks still open the action menu. */
+#userlist.btfw-userlist-overlay .userlist_item { position: relative; }
+#userlist.btfw-userlist-overlay .userlist_item .btfw-ul-avatar { pointer-events: none; }
+#userlist.btfw-userlist-overlay .userlist_item > .userlist_owner,
+#userlist.btfw-userlist-overlay .userlist_item > .userlist_op,
+#userlist.btfw-userlist-overlay .userlist_item > .userlist_admin,
+#userlist.btfw-userlist-overlay .userlist_item > .userlist_siteadmin,
+#userlist.btfw-userlist-overlay .userlist_item > .userlist_guest,
+#userlist.btfw-userlist-overlay .userlist_item > .userlist_user {
+  position: relative;
+}
+#userlist.btfw-userlist-overlay .userlist_item > .userlist_owner::before,
+#userlist.btfw-userlist-overlay .userlist_item > .userlist_op::before,
+#userlist.btfw-userlist-overlay .userlist_item > .userlist_admin::before,
+#userlist.btfw-userlist-overlay .userlist_item > .userlist_siteadmin::before,
+#userlist.btfw-userlist-overlay .userlist_item > .userlist_guest::before,
+#userlist.btfw-userlist-overlay .userlist_item > .userlist_user::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  left: -46px;   /* reach back over the avatar (≈ avatar width + gap + row padding) */
+  right: -10px;  /* out to the row's right padding edge */
+  z-index: 0;
+}
 #userlist > div > div > strong {
     color: #e3e3e3;
     padding: 5px;
