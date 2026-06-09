@@ -73,5 +73,25 @@ BTFW.define("util:anime", [], async () => {
     } catch (_) { el.style.opacity = ""; }
   }
 
-  return { name: "util:anime", load, reducedMotion, staggerIn, popIn };
+  // Count a number up into an element's text. opts: { from, duration, decimals, prefix, suffix, ease }
+  async function countUp(el, to, opts = {}) {
+    if (!el) return;
+    to = Number(to) || 0;
+    const dec = opts.decimals || 0;
+    const fmt = (v) => (opts.prefix || "") + (dec ? Number(v).toFixed(dec) : Math.round(v)) + (opts.suffix || "");
+    if (reducedMotion()) { el.textContent = fmt(to); return; }
+    const a = await load();
+    if (!a || !a.animate) { el.textContent = fmt(to); return; }
+    const st = { v: opts.from != null ? opts.from : 0 };
+    try {
+      a.animate(st, {
+        v: to,
+        duration: opts.duration || 800,
+        ease: opts.ease || "out(3)",
+        onUpdate: () => { el.textContent = fmt(st.v); }
+      });
+    } catch (_) { el.textContent = fmt(to); }
+  }
+
+  return { name: "util:anime", load, reducedMotion, staggerIn, popIn, countUp };
 });

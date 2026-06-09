@@ -2,6 +2,7 @@
 BTFW.define("feature:poll-overlay", [], async () => {
   "use strict";
 
+  const anime = await BTFW.init("util:anime");
   const CSS_ID = "btfw-poll-overlay-styles";
   const POLL_OVERLAY_CSS = `
     /* Poll Display Overlay on Video */
@@ -498,6 +499,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
     updateVoteDisplay(currentPoll);
 
     overlay.classList.add("btfw-poll-active");
+
+    // Stagger the option rows in as the poll appears.
+    if (anime && anime.staggerIn) {
+      anime.staggerIn(overlay.querySelectorAll(".btfw-poll-option-row"), { stagger: 55, dy: 12, duration: 440, max: 16 });
+    }
 
     // Ensure overlay stays in sync with the native poll controls once they mount
     setTimeout(() => {
