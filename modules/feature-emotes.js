@@ -70,7 +70,19 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
   // tokens that the BillTube chat filters render as images for everyone.
   const NOTO_META = "https://googlefonts.github.io/noto-emoji-animation/data/api.json";
   const NOTO_CDN  = "https://fonts.gstatic.com/s/e/notoemoji/latest";
-  const NOTO_CACHE = "btfw:emoji:noto:v2";
+  // `%5F` is an encoded underscore. It reaches the Noto CDN as `_`, but does
+  // not collide with CyTube's `_text_` italic chat filter while the token is
+  // processed server-side.
+  const NOTO_CACHE = "btfw:emoji:noto:v3";
+
+  function animatedEmojiToken(cp){
+    return `[ae]${String(cp).replace(/_/g, "%5F")}[/ae]`;
+  }
+
+  function normalizeAnimatedEmojiToken(token){
+    return String(token || "").replace(/\[ae\]([0-9a-f_]+)\[\/ae\]/gi,
+      (_, cp) => animatedEmojiToken(cp));
+  }
 
   async function loadEmoji(){
     try {
@@ -85,7 +97,7 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
 
     // image = static PNG (shown in the picker by default), imageAnim = animated
     // WebP (swapped in on hover). Chat always renders the animated WebP.
-    const mk = (cp, name) => ({ name, keywords: name, image: `${NOTO_CDN}/${cp}/512.png`, imageAnim: `${NOTO_CDN}/${cp}/512.webp`, token: `[ae]${cp}[/ae]` });
+    const mk = (cp, name) => ({ name, keywords: name, image: `${NOTO_CDN}/${cp}/512.png`, imageAnim: `${NOTO_CDN}/${cp}/512.webp`, token: animatedEmojiToken(cp) });
     try {
       const res = await fetch(NOTO_META, { cache: "force-cache" });
       const data = await res.json();
@@ -95,7 +107,7 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
         const cp = String(e.codepoint);
         const tag0 = (e.tags && e.tags[0]) ? e.tags[0].replace(/:/g, "").replace(/[-_]+/g, " ").trim() : cp;
         const kw = ((e.tags || []).join(" ") + " " + (e.categories || []).join(" ")).replace(/:/g, " ").toLowerCase();
-        return { name: tag0.toLowerCase(), keywords: kw, image: `${NOTO_CDN}/${cp}/512.png`, imageAnim: `${NOTO_CDN}/${cp}/512.webp`, token: `[ae]${cp}[/ae]` };
+        return { name: tag0.toLowerCase(), keywords: kw, image: `${NOTO_CDN}/${cp}/512.png`, imageAnim: `${NOTO_CDN}/${cp}/512.webp`, token: animatedEmojiToken(cp) };
       }).filter(x => x.token);
       try { localStorage.setItem(NOTO_CACHE, JSON.stringify(state.list.emoji)); } catch(_){}
     } catch(_) {
@@ -434,8 +446,9 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
         } else if (item.token) {
           // Pack emote / animated emoji — insert the short token; the chat
           // filters render it as an image for everyone.
-          insertAtCursor(input, " " + item.token + " ");
-          pushRecent({kind:"pack", name:item.name, image:item.image, imageAnim:item.imageAnim, token:item.token});
+          const token = normalizeAnimatedEmojiToken(item.token);
+          insertAtCursor(input, " " + token + " ");
+          pushRecent({kind:"pack", name:item.name, image:item.image, imageAnim:item.imageAnim, token});
         } else {
           insertAtCursor(input, " " + item.name + " ");
           pushRecent({kind:"emote", name:item.name, image:item.image});
