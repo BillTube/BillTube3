@@ -24,7 +24,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   ];
 
   const DEFAULT_CONFIG = {
-    version: 8,
+    version: 9,
     tint: "midnight",
     colors: {
       background: "#0d0d0d",
@@ -81,7 +81,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     emotePacks: [],
     // Movie poll: enhance CyTube polls with TMDB movie poster cards
     // (feature:movie-poll). Uses the TMDB key from Integrations.
-    moviePoll: { enabled: false }
+    moviePoll: { enabled: false },
+    // Public TMDB list used by the playlist catalogue. The list-write token is
+    // intentionally local-only and never stored in this channel config.
+    playlistCatalog: { enabled: false, tmdbListUrl: "" }
   };
 
   const TINT_PRESETS = {
@@ -769,6 +772,19 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     typography.resolvedFamily = resolved.family;
   }
 
+  function applyRuntimePlaylistCatalog(theme){
+    if (!theme || typeof theme !== "object" || typeof window === "undefined") return;
+    const catalog = theme.playlistCatalog && typeof theme.playlistCatalog === "object"
+      ? theme.playlistCatalog
+      : { enabled: false, tmdbListUrl: "" };
+    catalog.enabled = Boolean(catalog.enabled);
+    catalog.tmdbListUrl = typeof catalog.tmdbListUrl === "string" ? catalog.tmdbListUrl.trim() : "";
+    theme.playlistCatalog = catalog;
+    window.BTFW_CONFIG = window.BTFW_CONFIG || {};
+    window.BTFW_CONFIG.playlistCatalog = { enabled: catalog.enabled, tmdbListUrl: catalog.tmdbListUrl };
+    try { document.dispatchEvent(new CustomEvent("btfw:playlistCatalogChanged", { detail: window.BTFW_CONFIG.playlistCatalog })); } catch (_) {}
+  }
+
   function syncRuntimeThemeConfig(source){
     if (!source || typeof source !== "object" || typeof window === "undefined") return null;
     const normalized = normalizeConfig(source);
@@ -781,6 +797,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     applyRuntimeColors(normalized);
     applyRuntimeIntegrations(normalized);
     applyRuntimeTypography(normalized);
+    applyRuntimePlaylistCatalog(normalized);
     applyRuntimeEmotePacks(normalized);
     return normalized;
   }
@@ -1875,6 +1892,15 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       normalized.moviePoll.enabled = Boolean(normalized.moviePoll.enabled);
     }
 
+    if (!normalized.playlistCatalog || typeof normalized.playlistCatalog !== "object") {
+      normalized.playlistCatalog = { enabled: false, tmdbListUrl: "" };
+    } else {
+      normalized.playlistCatalog.enabled = Boolean(normalized.playlistCatalog.enabled);
+      normalized.playlistCatalog.tmdbListUrl = typeof normalized.playlistCatalog.tmdbListUrl === "string"
+        ? normalized.playlistCatalog.tmdbListUrl.trim()
+        : "";
+    }
+
     return normalized;
   }
 
@@ -2549,6 +2575,46 @@ function replaceBlock(original, startMarker, endMarker, block){
           </div>
         </details>
 
+        <details class="section" data-section="playlistCatalogue">
+          <summary class="section__summary">
+            <div class="section__title">
+              <h4>Playlist Catalogue</h4>
+              <span>Publish the current playlist as a searchable public TMDB movie list.</span>
+            </div>
+            <span class="section__chevron" aria-hidden="true">â€º</span>
+          </summary>
+          <div class="section__body">
+            <div class="field">
+              <label class="btfw-checkbox" for="btfw-playlist-catalog-enabled">
+                <input type="checkbox" id="btfw-playlist-catalog-enabled" data-btfw-bind="playlistCatalog.enabled">
+                <span>Enable public Movies catalogue</span>
+              </label>
+              <p class="help">Guests can browse the synced TMDB list even when the CyTube playlist itself is hidden.</p>
+            </div>
+            <div class="field">
+              <label for="btfw-playlist-catalog-url">Public TMDB list URL</label>
+              <input type="url" id="btfw-playlist-catalog-url" data-btfw-bind="playlistCatalog.tmdbListUrl" placeholder="https://www.themoviedb.org/list/123456">
+              <p class="help">This public URL is the only catalogue identifier stored in Channel JS.</p>
+            </div>
+            <div class="field" data-role="playlist-catalog-token-field">
+              <label for="btfw-playlist-catalog-token">Local TMDB list-write token</label>
+              <div class="key-test-row">
+                <input type="password" id="btfw-playlist-catalog-token" autocomplete="off" placeholder="Stored only in this browser">
+                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-connect">Connect</button>
+                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-disconnect">Forget</button>
+              </div>
+              <p class="help">Never saved to the channel theme. Only Channel JS editors with playlist access can use it to sync.</p>
+            </div>
+            <div class="field">
+              <div class="buttons" style="margin:0;">
+                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-create">Create a new TMDB list</button>
+                <button type="button" class="btn-primary" id="btfw-playlist-catalog-sync">Sync current playlist</button>
+              </div>
+              <p class="help" id="btfw-playlist-catalog-status" data-variant="idle">Connect a local TMDB list-write token before syncing.</p>
+            </div>
+          </div>
+        </details>
+
         <details class="section" data-section="emoteMarketplace">
           <summary class="section__summary">
             <div class="section__title">
@@ -2751,6 +2817,83 @@ function replaceBlock(original, startMarker, endMarker, block){
     return panel;
   }
 
+  function canManagePlaylistCatalog(){
+    const rank = Number(window.CLIENT?.rank);
+    return Number.isFinite(rank) && rank >= 3;
+  }
+
+  function wirePlaylistCatalogControls(panel, cfg, onChange){
+    const tokenInput = panel.querySelector('#btfw-playlist-catalog-token');
+    const connect = panel.querySelector('#btfw-playlist-catalog-connect');
+    const forget = panel.querySelector('#btfw-playlist-catalog-disconnect');
+    const create = panel.querySelector('#btfw-playlist-catalog-create');
+    const sync = panel.querySelector('#btfw-playlist-catalog-sync');
+    const urlInput = panel.querySelector('#btfw-playlist-catalog-url');
+    const enabledInput = panel.querySelector('#btfw-playlist-catalog-enabled');
+    const status = panel.querySelector('#btfw-playlist-catalog-status');
+    const controls = [tokenInput, connect, forget, create, sync, urlInput, enabledInput].filter(Boolean);
+    const setStatus = (text, variant = 'idle') => { if (status) { status.textContent = text; status.dataset.variant = variant; } };
+    const api = () => window.BTFW_PlaylistCatalog;
+    const allowed = canManagePlaylistCatalog();
+    controls.forEach(control => { control.disabled = !allowed; });
+    if (!allowed) {
+      setStatus('Locked: requires native Channel JS edit permission (admin/owner rank) and playlist access.', 'error');
+      return;
+    }
+    if (tokenInput && api()?.getWriteToken) tokenInput.value = api().getWriteToken();
+    if (connect) connect.addEventListener('click', () => {
+      const token = tokenInput?.value?.trim() || '';
+      if (!token) return setStatus('Paste a TMDB list-write token first.', 'error');
+      if (!api()?.setWriteToken?.(token)) return setStatus('This browser could not save the local token.', 'error');
+      tokenInput.value = '';
+      setStatus('Local TMDB list-write token connected. It is not stored in Channel JS.', 'saved');
+    });
+    if (forget) forget.addEventListener('click', () => {
+      api()?.clearWriteToken?.();
+      if (tokenInput) tokenInput.value = '';
+      setStatus('Local TMDB list-write token removed from this browser.', 'idle');
+    });
+    if (create) create.addEventListener('click', async () => {
+      try {
+        if (tokenInput?.value?.trim()) api()?.setWriteToken?.(tokenInput.value.trim());
+        if (!api()?.createList) throw new Error('Playlist catalogue module is still loading. Try again shortly.');
+        create.disabled = true; setStatus('Creating public TMDB list…', 'pending');
+        const listUrl = await api().createList();
+        if (urlInput) urlInput.value = listUrl;
+        cfg.playlistCatalog = cfg.playlistCatalog || {};
+        cfg.playlistCatalog.tmdbListUrl = listUrl;
+        cfg.playlistCatalog.enabled = true;
+        if (enabledInput) enabledInput.checked = true;
+        onChange();
+        setStatus('TMDB list created. Click Apply to publish its URL, then sync the playlist.', 'saved');
+      } catch (error) { setStatus(error?.message || 'Unable to create the TMDB list.', 'error'); }
+      finally { create.disabled = false; }
+    });
+    if (sync) sync.addEventListener('click', async () => {
+      try {
+        if (tokenInput?.value?.trim()) api()?.setWriteToken?.(tokenInput.value.trim());
+        if (!api()?.sync) throw new Error('Playlist catalogue module is still loading. Try again shortly.');
+        const existingUrl = urlInput?.value?.trim() || '';
+        const confirmKey = `btfw:tmdb:list-confirmed:${String(window.CHANNEL?.name || '').toLowerCase()}:${existingUrl}`;
+        if (existingUrl && !sessionStorage.getItem(confirmKey)) {
+          const ok = window.confirm('Syncing reconciles this TMDB list with the current playlist and can remove stale movies. Continue?');
+          if (!ok) return;
+          sessionStorage.setItem(confirmKey, '1');
+        }
+        sync.disabled = true; setStatus('Requesting playlist and matching TMDB titles…', 'pending');
+        const report = await api().sync({ listUrl: existingUrl, createIfMissing: true });
+        if (urlInput && report.listUrl) urlInput.value = report.listUrl;
+        cfg.playlistCatalog = cfg.playlistCatalog || {};
+        cfg.playlistCatalog.tmdbListUrl = report.listUrl || existingUrl;
+        cfg.playlistCatalog.enabled = true;
+        if (enabledInput) enabledInput.checked = true;
+        onChange();
+        setStatus(`Synced: ${report.added} added, ${report.removed} removed, ${report.duplicateSources.length + report.duplicateTmdb.length} duplicates skipped, ${report.skipped.length} unmatched. Click Apply to publish.`, 'saved');
+      } catch (error) { setStatus(error?.message || 'Playlist sync failed.', 'error'); }
+      finally { sync.disabled = false; }
+    });
+  }
+
   function watchInputs(panel, cfg, onChange){
     $$('[data-btfw-bind]', panel).forEach(input => {
       const handler = () => {
@@ -2883,6 +3026,8 @@ function replaceBlock(original, startMarker, endMarker, block){
     // channel admin can flip it while iterating without forcing all viewers
     // to take the cache-miss penalty. The framework reads the flag at boot,
     // so a reload is required to apply.
+    wirePlaylistCatalogControls(panel, cfg, onChange);
+
     const devNoCacheButton = panel.querySelector('#btfw-theme-dev-nocache-toggle');
     if (devNoCacheButton) {
       const readDevState = () => {
@@ -3286,6 +3431,11 @@ function replaceBlock(original, startMarker, endMarker, block){
       updated.integrations.autoSubs = { enabled: false };
     }
     updated.integrations.autoSubs.enabled = Boolean(updated.integrations.autoSubs.enabled);
+    if (!updated.playlistCatalog || typeof updated.playlistCatalog !== "object") {
+      updated.playlistCatalog = { enabled: false, tmdbListUrl: "" };
+    }
+    updated.playlistCatalog.enabled = Boolean(updated.playlistCatalog.enabled);
+    updated.playlistCatalog.tmdbListUrl = String(updated.playlistCatalog.tmdbListUrl || "").trim();
     if (updated.features && typeof updated.features === "object") {
       delete updated.features.videoOverlayPoll;
       if (Object.keys(updated.features).length === 0) {
