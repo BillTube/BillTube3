@@ -1029,6 +1029,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .key-test-row button.is-loading { display: inline-flex; align-items: center; gap: 7px; }
       .btfw-theme-admin .btfw-inline-spinner { display: none; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: btfw-inline-spin .7s linear infinite; }
       .btfw-theme-admin .key-test-row button.is-loading .btfw-inline-spinner { display: inline-block; }
+      .btfw-theme-admin #btfw-playlist-catalog-status { align-items: center; gap: 7px; }
+      .btfw-theme-admin #btfw-playlist-catalog-status[data-variant="pending"] { display: flex; }
+      .btfw-theme-admin #btfw-playlist-catalog-status[data-variant="pending"] .btfw-status-spinner { display: inline-block; flex: 0 0 auto; }
       @keyframes btfw-inline-spin { to { transform: rotate(360deg); } }
       .btfw-theme-admin .help.is-success { color: color-mix(in srgb, #4ade80 78%, var(--btfw-admin-text) 22%); }
       .btfw-theme-admin .help.is-error   { color: color-mix(in srgb, #ff6f96 78%, var(--btfw-admin-text) 22%); }
@@ -2621,7 +2624,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                 <button type="button" class="btn-secondary" id="btfw-playlist-catalog-create">Create a new TMDB list</button>
                 <button type="button" class="btn-primary" id="btfw-playlist-catalog-sync">Sync current playlist</button>
               </div>
-              <p class="help" id="btfw-playlist-catalog-status" data-variant="idle">Sign in with TMDB before creating or syncing a list.</p>
+              <p class="help" id="btfw-playlist-catalog-status" data-variant="idle" aria-live="polite"><span data-role="playlist-catalog-status-text">Sign in with TMDB before creating or syncing a list.</span><span class="btfw-inline-spinner btfw-status-spinner" aria-hidden="true"></span></p>
             </div>
           </div>
         </details>
@@ -2844,10 +2847,42 @@ function replaceBlock(original, startMarker, endMarker, block){
     const urlInput = panel.querySelector('#btfw-playlist-catalog-url');
     const enabledInput = panel.querySelector('#btfw-playlist-catalog-enabled');
     const status = panel.querySelector('#btfw-playlist-catalog-status');
+    const statusText = status?.querySelector('[data-role="playlist-catalog-status-text"]');
     const connectionStatus = panel.querySelector('#btfw-playlist-catalog-connection-status');
     const connectLabel = connect?.querySelector('[data-role="playlist-catalog-connect-label"]');
     const controls = [connect, forget, create, sync, listPicker, refreshLists, urlInput, enabledInput].filter(Boolean);
-    const setStatus = (text, variant = 'idle') => { if (status) { status.textContent = text; status.dataset.variant = variant; } };
+    const setStatus = (text, variant = 'idle') => {
+      if (!status) return;
+      if (statusText) statusText.textContent = text;
+      else status.textContent = text;
+      status.dataset.variant = variant;
+    };
+    const formatRemaining = milliseconds => {
+      const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
+      if (seconds < 60) return `${seconds}s`;
+      const minutes = Math.floor(seconds / 60);
+      return `${minutes}m ${seconds % 60}s`;
+    };
+    const renderSyncProgress = (progress, startedAt, progressState) => {
+      if (progressState.phase !== progress.phase) {
+        progressState.phase = progress.phase;
+        progressState.startedAt = Date.now();
+      }
+      const elapsed = Date.now() - (progressState.startedAt || startedAt);
+      const sourceTotal = Number(progress.sourceTotal || 0);
+      if (progress.phase === 'matching') {
+        const completed = Math.min(sourceTotal, Number(progress.current || 0) + Number(progress.duplicateSources || 0));
+        const eta = completed > 0 && completed < sourceTotal ? ` · about ${formatRemaining(elapsed / completed * (sourceTotal - completed))} left` : '';
+        setStatus(`Matching movies: ${completed}/${sourceTotal}${eta}`, 'pending');
+      } else if (progress.phase === 'updating') {
+        const totalUpdates = Number(progress.total || 0);
+        const eta = totalUpdates && progress.current > 0 && progress.current < totalUpdates ? ` · about ${formatRemaining(elapsed / progress.current * (totalUpdates - progress.current))} left` : '';
+        const updateText = totalUpdates ? `${progress.current}/${totalUpdates} TMDB changes${eta}` : 'no TMDB changes needed';
+        setStatus(`Matched ${progress.matched || 0}/${sourceTotal} movies · ${updateText}`, 'pending');
+      } else if (progress.phase === 'preparing') {
+        setStatus(`Preparing full playlist: 0/${sourceTotal}`, 'pending');
+      }
+    };
     const setConnectionStatus = (text, variant = 'idle') => {
       if (!connectionStatus) return;
       connectionStatus.textContent = text;
@@ -2991,8 +3026,11 @@ function replaceBlock(original, startMarker, endMarker, block){
           if (!ok) return;
           sessionStorage.setItem(confirmKey, '1');
         }
-        sync.disabled = true; setStatus('Reading the current playlist from this browser and matching TMDB titles…', 'pending');
-        const report = await api().sync({ listUrl: existingUrl, createIfMissing: true });
+        sync.disabled = true;
+        const syncStartedAt = Date.now();
+        const progressState = { phase:'', startedAt:syncStartedAt };
+        setStatus('Preparing full playlist…', 'pending');
+        const report = await api().sync({ listUrl: existingUrl, createIfMissing: true, onProgress: progress => renderSyncProgress(progress, syncStartedAt, progressState) });
         if (urlInput && report.listUrl) urlInput.value = report.listUrl;
         cfg.playlistCatalog = cfg.playlistCatalog || {};
         cfg.playlistCatalog.tmdbListUrl = report.listUrl || existingUrl;

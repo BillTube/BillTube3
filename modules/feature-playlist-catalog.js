@@ -96,10 +96,10 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     if (!item) {
       item = document.createElement("li");
       item.id = "btfw-movie-catalogue-nav";
-      item.innerHTML = '<a href="#" class="btfw-nav-pill" aria-label="Open movie catalogue"><span class="btfw-nav-pill__icon" aria-hidden="true"><i class="fa fa-film"></i></span><span class="btfw-nav-pill__label">Movies</span></a>';
-      list.appendChild(item);
+      item.innerHTML = '<a href="#" class="btfw-nav-pill" aria-label="Open movie catalog"><span class="btfw-nav-pill__icon" aria-hidden="true"><i class="fa fa-film"></i></span><span class="btfw-nav-pill__label">Movie Catalog</span></a>';
       item.querySelector("a").addEventListener("click", event => { event.preventDefault(); openModal(); });
     }
+    if (list.firstElementChild !== item) list.insertBefore(item, list.firstElementChild);
     return true;
   }
 
@@ -523,13 +523,14 @@ BTFW.define("feature:playlistCatalog", [], async () => {
 
   function batches(items, size = 20){ const out = []; for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size)); return out; }
 
-  async function mapWithConcurrency(items, limit, mapper){
+  async function mapWithConcurrency(items, limit, mapper, onComplete){
     const results = new Array(items.length);
     let cursor = 0;
     const worker = async () => {
       while (cursor < items.length) {
         const index = cursor++;
         results[index] = await mapper(items[index], index);
+        onComplete?.(results[index], index);
       }
     };
     await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
@@ -596,6 +597,10 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     }
     const playlist = await waitForPlaylist();
     const report = { listUrl:list.url, total:playlist.length, added:0, removed:0, duplicateSources:[], duplicateTmdb:[], skipped:[], matched:0 };
+    const notifyProgress = (phase, current, total, extra = {}) => {
+      try { options.onProgress?.({ phase, current, total, sourceTotal:report.total, ...extra }); } catch (_) {}
+    };
+    notifyProgress("preparing", 0, report.total);
     const sourceSeen = new Set();
     const sourceItems = [];
     playlist.forEach((entry, index) => {
@@ -604,7 +609,12 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       if (sourceSeen.has(sourceKey)) { report.duplicateSources.push(media?.title || sourceKey); return; }
       sourceSeen.add(sourceKey); sourceItems.push({ media, index });
     });
-    const resolved = await mapWithConcurrency(sourceItems, 3, async ({ media, index }) => ({ index, media, result: await resolveMedia(media) }));
+    let resolvedCount = 0;
+    notifyProgress("matching", resolvedCount, sourceItems.length, { duplicateSources:report.duplicateSources.length });
+    const resolved = await mapWithConcurrency(sourceItems, 3, async ({ media, index }) => ({ index, media, result: await resolveMedia(media) }), () => {
+      resolvedCount += 1;
+      notifyProgress("matching", resolvedCount, sourceItems.length, { duplicateSources:report.duplicateSources.length });
+    });
     const targetSeen = new Set(); const desired = [];
     resolved.sort((a,b) => a.index - b.index).forEach(({ media, result }) => {
       if (!result.ok) { report.skipped.push({ title:media?.title || "Untitled", reason:result.reason }); return; }
@@ -617,8 +627,20 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     const desiredMap = new Map(desired.map(item => [`${item.media_type}:${item.media_id}`, item]));
     const remove = [...existingMap.entries()].filter(([key]) => !desiredMap.has(key)).map(([, item]) => item);
     const add = [...desiredMap.entries()].filter(([key]) => !existingMap.has(key)).map(([, item]) => item);
-    for (const group of batches(remove, 1)) { await tmdbWrite(`list/${list.id}/remove_item`, "POST", { media_id:group[0].media_id }); report.removed += group.length; }
-    for (const group of batches(add, 1)) { await tmdbWrite(`list/${list.id}/add_item`, "POST", { media_id:group[0].media_id }); report.added += group.length; }
+    const updates = remove.length + add.length;
+    let updated = 0;
+    notifyProgress("updating", updated, updates, { matched:report.matched, skipped:report.skipped.length });
+    for (const group of batches(remove, 1)) {
+      await tmdbWrite(`list/${list.id}/remove_item`, "POST", { media_id:group[0].media_id });
+      report.removed += group.length; updated += group.length;
+      notifyProgress("updating", updated, updates, { matched:report.matched, skipped:report.skipped.length });
+    }
+    for (const group of batches(add, 1)) {
+      await tmdbWrite(`list/${list.id}/add_item`, "POST", { media_id:group[0].media_id });
+      report.added += group.length; updated += group.length;
+      notifyProgress("updating", updated, updates, { matched:report.matched, skipped:report.skipped.length });
+    }
+    notifyProgress("complete", report.total, report.total, { matched:report.matched, skipped:report.skipped.length });
     return report;
   }
 
