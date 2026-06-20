@@ -2604,7 +2604,7 @@ function replaceBlock(original, startMarker, endMarker, block){
               </div>
               <p class="help">Opens TMDB in a small window. After you sign in and approve access, a local browser session is saved automatically. It is never saved to the channel theme.</p>
             </div>
-            <div class="field">
+            <div class="field" data-role="playlist-catalog-sync-actions" hidden>
               <div class="buttons" style="margin:0;">
                 <button type="button" class="btn-secondary" id="btfw-playlist-catalog-create">Create a new TMDB list</button>
                 <button type="button" class="btn-primary" id="btfw-playlist-catalog-sync">Sync current playlist</button>
@@ -2826,6 +2826,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     const forget = panel.querySelector('#btfw-playlist-catalog-disconnect');
     const create = panel.querySelector('#btfw-playlist-catalog-create');
     const sync = panel.querySelector('#btfw-playlist-catalog-sync');
+    const syncActions = panel.querySelector('[data-role="playlist-catalog-sync-actions"]');
     const urlInput = panel.querySelector('#btfw-playlist-catalog-url');
     const enabledInput = panel.querySelector('#btfw-playlist-catalog-enabled');
     const status = panel.querySelector('#btfw-playlist-catalog-status');
@@ -2833,12 +2834,17 @@ function replaceBlock(original, startMarker, endMarker, block){
     const setStatus = (text, variant = 'idle') => { if (status) { status.textContent = text; status.dataset.variant = variant; } };
     const api = () => window.BTFW_PlaylistCatalog;
     const allowed = canManagePlaylistCatalog();
+    const updateSyncActions = () => {
+      const connected = Boolean(api()?.getWriteSession?.());
+      if (syncActions) syncActions.hidden = !connected;
+      return connected;
+    };
     controls.forEach(control => { control.disabled = !allowed; });
     if (!allowed) {
       setStatus('Locked: requires native Channel JS edit permission (admin/owner rank) and playlist access.', 'error');
       return;
     }
-    if (api()?.getWriteSession?.()) setStatus('TMDB is connected locally in this browser.', 'saved');
+    if (updateSyncActions()) setStatus('TMDB is connected locally in this browser.', 'saved');
     if (connect) connect.addEventListener('click', async () => {
       try {
         if (!api()?.beginTmdbSignIn) throw new Error('Playlist catalogue module is still loading. Try again shortly.');
@@ -2848,10 +2854,14 @@ function replaceBlock(original, startMarker, endMarker, block){
     });
     if (forget) forget.addEventListener('click', () => {
       api()?.clearWriteToken?.();
+      updateSyncActions();
       setStatus('Local TMDB session removed from this browser.', 'idle');
     });
     document.addEventListener('btfw:playlistCatalogAuth', () => {
-      if (panel.isConnected) setStatus('TMDB connected locally. You can now create or sync a list.', 'saved');
+      if (panel.isConnected) {
+        updateSyncActions();
+        setStatus('TMDB connected locally. You can now create or sync a list.', 'saved');
+      }
     });
     if (create) create.addEventListener('click', async () => {
       try {
