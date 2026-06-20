@@ -19,6 +19,8 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     abort: null,
     scrollBound: false,
     authTimer: null,
+    playlistCache: null,
+    playlistCacheSocket: null,
   };
 
   function channelName(){
@@ -434,21 +436,53 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     return { ok:true, media_type:best.type, media_id:best.item.id, title:candidateName(best.item), score:best.score };
   }
 
-  function waitForPlaylist(timeout = 9000){
+  function validPlaylist(items){ return Array.isArray(items) && items.every(item => item && typeof item === "object" && item.media && typeof item.media === "object"); }
+
+  function cachePlaylist(items){
+    if (!validPlaylist(items)) return false;
+    state.playlistCache = { items, receivedAt:Date.now() };
+    return true;
+  }
+
+  function readPlaylistFromQueue(){
+    const queue = document.querySelector("#queue");
+    const jq = window.jQuery || window.$;
+    if (!queue || typeof jq !== "function") return null;
+    const rows = [...queue.querySelectorAll("li.queue_entry")];
+    const items = [];
+    for (const row of rows) {
+      let media;
+      let uid;
+      let temp;
+      try {
+        const data = jq(row);
+        media = data.data("media");
+        uid = data.data("uid");
+        temp = data.data("temp");
+      } catch (_) { return null; }
+      if (!media || typeof media !== "object") return null;
+      items.push({ uid, temp:Boolean(temp), media });
+    }
+    return items;
+  }
+
+  function bindPlaylistCache(){
     const socket = window.socket;
-    if (!socket?.on || !socket?.emit) return Promise.reject(new Error("CyTube playlist socket is unavailable."));
-    return new Promise((resolve, reject) => {
-      let timer = null;
-      const done = (error, items) => {
-        clearTimeout(timer);
-        try { socket.off?.("playlist", handler); } catch (_) {}
-        error ? reject(error) : resolve(items);
-      };
-      const handler = items => { if (Array.isArray(items)) done(null, items); };
-      socket.on("playlist", handler);
-      timer = setTimeout(() => done(new Error("Playlist access was not confirmed. Only channel admins/owners can sync.")), timeout);
-      try { socket.emit("requestPlaylist"); } catch (error) { done(error); }
-    });
+    if (!socket?.on || state.playlistCacheSocket === socket) return;
+    socket.on("playlist", cachePlaylist);
+    state.playlistCacheSocket = socket;
+  }
+
+  async function waitForPlaylist(timeout = 3500){
+    bindPlaylistCache();
+    const deadline = Date.now() + timeout;
+    while (Date.now() <= deadline) {
+      const local = readPlaylistFromQueue();
+      if (local !== null) { cachePlaylist(local); return local; }
+      if (state.playlistCache?.items) return state.playlistCache.items;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    throw new Error("CyTube has not populated the local playlist yet. Wait for the playlist to load or reload as an admin, then try again. This sync never calls the rate-limited Get Playlist URLs endpoint.");
   }
 
   async function tmdbWrite(path, method, body, options = {}){
@@ -578,6 +612,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   window.BTFW_PlaylistCatalog = { activeList, canSync, getWriteSession, validateWriteSession, beginTmdbSignIn, clearWriteToken, getAccountLists, createList, sync, open:openModal };
   document.addEventListener("btfw:playlistCatalogChanged", () => { ensureLauncher(); if (!enabled()) closeModal(); });
   document.addEventListener("btfw:channelIntegrationsChanged", ensureLauncher);
+  bindPlaylistCache();
   ensureLauncher();
   const navObserver = new MutationObserver(() => ensureLauncher());
   navObserver.observe(document.documentElement, { childList:true, subtree:true });

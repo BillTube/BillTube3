@@ -2991,7 +2991,7 @@ function replaceBlock(original, startMarker, endMarker, block){
           if (!ok) return;
           sessionStorage.setItem(confirmKey, '1');
         }
-        sync.disabled = true; setStatus('Requesting playlist and matching TMDB titles…', 'pending');
+        sync.disabled = true; setStatus('Reading the current playlist from this browser and matching TMDB titles…', 'pending');
         const report = await api().sync({ listUrl: existingUrl, createIfMissing: true });
         if (urlInput && report.listUrl) urlInput.value = report.listUrl;
         cfg.playlistCatalog = cfg.playlistCatalog || {};
