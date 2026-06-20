@@ -14,6 +14,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     items: [],
     page: 0,
     totalPages: 1,
+    totalResults: 0,
     loading: false,
     loadedAll: false,
     abort: null,
@@ -115,9 +116,15 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       #btfw-playlist-catalogue h2 { margin:0; font-size:1.2rem; flex:1; }
       #btfw-playlist-catalogue button { border:0; border-radius:9px; cursor:pointer; color:inherit; background:rgba(255,255,255,.09); padding:8px 11px; }
       #btfw-playlist-catalogue button:hover { background:rgba(255,255,255,.16); }
-      #btfw-playlist-catalogue .btfw-catalogue__filters { display:grid; grid-template-columns:minmax(160px,1fr) 145px 160px; gap:9px; padding:13px 20px; border-bottom:1px solid rgba(255,255,255,.08); }
-      #btfw-playlist-catalogue input, #btfw-playlist-catalogue select { min-width:0; border:1px solid rgba(255,255,255,.15); border-radius:9px; padding:9px 10px; color:inherit; background:rgba(0,0,0,.22); }
-      #btfw-playlist-catalogue .btfw-catalogue__status { min-height:20px; padding:0 20px 10px; color:rgba(238,242,255,.7); font-size:.85rem; }
+      #btfw-playlist-catalogue .btfw-catalogue__filters { display:grid; grid-template-columns:minmax(210px,1fr) minmax(130px,.46fr) minmax(150px,.56fr); gap:10px; padding:14px 20px 16px; border-bottom:1px solid color-mix(in srgb,var(--btfw-border,#2a2f3a) 72%,transparent); background:color-mix(in srgb,var(--btfw-color-panel,#171d2b) 82%,transparent); }
+      #btfw-playlist-catalogue .btfw-catalogue__filter { min-width:0; display:flex; flex-direction:column; gap:5px; color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 66%,transparent); font-size:.68rem; font-weight:700; letter-spacing:.075em; text-transform:uppercase; }
+      #btfw-playlist-catalogue input, #btfw-playlist-catalogue select { box-sizing:border-box; width:100%; min-width:0; min-height:40px; border:1px solid color-mix(in srgb,var(--btfw-border,#2a2f3a) 70%,transparent); border-radius:12px; padding:9px 13px; color:var(--btfw-color-text,#eef2ff); background:color-mix(in srgb,var(--btfw-color-panel,#171d2b) 84%,transparent); box-shadow:inset 0 1px 0 rgba(255,255,255,.035); transition:border-color .14s ease,box-shadow .14s ease,background .14s ease; }
+      #btfw-playlist-catalogue input::placeholder { color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 42%,transparent); }
+      #btfw-playlist-catalogue select { appearance:none; cursor:pointer; padding-right:38px; color-scheme:dark; color:#eef2ff; background-color:#11151e; background-image:linear-gradient(45deg,transparent 50%,var(--btfw-color-accent,#6d4df6) 50%),linear-gradient(135deg,var(--btfw-color-accent,#6d4df6) 50%,transparent 50%); background-position:calc(100% - 17px) 16px,calc(100% - 12px) 16px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
+      #btfw-playlist-catalogue select option, #btfw-playlist-catalogue select optgroup { color:#eef2ff !important; background-color:#11151e !important; }
+      #btfw-playlist-catalogue input:focus, #btfw-playlist-catalogue select:focus { outline:0; border-color:color-mix(in srgb,var(--btfw-color-accent,#6d4df6) 60%,transparent); background:color-mix(in srgb,var(--btfw-color-panel,#171d2b) 92%,transparent); box-shadow:0 0 0 3px color-mix(in srgb,var(--btfw-color-accent,#6d4df6) 22%,transparent); }
+      #btfw-playlist-catalogue .btfw-catalogue__status { min-height:20px; padding:12px 20px 10px; color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 70%,transparent); font-size:.82rem; font-variant-numeric:tabular-nums; }
+      @supports (appearance: base-select){ #btfw-playlist-catalogue select, #btfw-playlist-catalogue select::picker(select){ appearance:base-select; } #btfw-playlist-catalogue select::picker-icon{ display:none; } #btfw-playlist-catalogue select::picker(select){ background:var(--btfw-color-surface,#11151e); border:1px solid color-mix(in srgb,var(--btfw-color-accent,#6d4df6) 32%,transparent); border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,.55); padding:6px; margin-top:6px; } #btfw-playlist-catalogue select option{ border-radius:9px; padding:9px 12px; color:var(--btfw-color-text,#eef2ff); background:transparent !important; } #btfw-playlist-catalogue select option:hover{ background:color-mix(in srgb,var(--btfw-color-accent,#6d4df6) 18%,transparent) !important; } #btfw-playlist-catalogue select option:checked{ background:color-mix(in srgb,var(--btfw-color-accent,#6d4df6) 26%,transparent) !important; } #btfw-playlist-catalogue select option::checkmark{ color:var(--btfw-color-accent,#6d4df6); } }
       #btfw-playlist-catalogue .btfw-catalogue__body { overflow:auto; padding:0 20px 20px; }
       #btfw-playlist-catalogue .btfw-catalogue__grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:14px; }
       #btfw-playlist-catalogue .btfw-catalogue__card { min-width:0; overflow:hidden; border:1px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(255,255,255,.045); }
@@ -141,7 +148,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     modal.innerHTML = `
       <section class="btfw-catalogue__dialog" role="dialog" aria-modal="true" aria-labelledby="btfw-catalogue-title">
         <header class="btfw-catalogue__head"><h2 id="btfw-catalogue-title">Movie Catalogue</h2><button type="button" data-action="close" aria-label="Close catalogue">×</button></header>
-        <div class="btfw-catalogue__filters"><input type="search" data-role="query" placeholder="Search movies…"><select data-role="type"><option value="">All media</option><option value="movie">Movies</option><option value="tv">TV shows</option></select><select data-role="sort"><option value="order">Playlist order</option><option value="title">Title</option><option value="date">Release date</option><option value="rating">TMDB rating</option></select></div>
+        <div class="btfw-catalogue__filters"><label class="btfw-catalogue__filter"><span>Search catalog</span><input type="search" data-role="query" placeholder="Find a movie…"></label><label class="btfw-catalogue__filter"><span>Format</span><select data-role="type"><option value="">All media</option><option value="movie">Movies</option><option value="tv">TV shows</option></select></label><label class="btfw-catalogue__filter"><span>Sort by</span><select data-role="sort"><option value="order">Playlist order</option><option value="title">Title</option><option value="date">Release date</option><option value="rating">TMDB rating</option></select></label></div>
         <div class="btfw-catalogue__status" data-role="status"></div><main class="btfw-catalogue__body"><div class="btfw-catalogue__grid" data-role="list"></div></main>
         <footer class="btfw-catalogue__foot">This product uses the TMDB API but is not endorsed or certified by TMDB.</footer>
       </section>`;
@@ -189,6 +196,11 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   function render(){
     if (!state.listEl) return;
     const items = filteredItems();
+    const total = Math.max(state.items.length, Number(state.totalResults || 0));
+    const loadedText = total ? `${state.items.length}/${total} loaded` : `${state.items.length} loaded`;
+    const visibleText = items.length === state.items.length ? "" : ` · ${items.length} matching`;
+    const completeText = state.loadedAll && total ? ` · ${total} total` : "";
+    showStatus(`${loadedText}${visibleText}${completeText}`);
     if (!items.length) {
       state.listEl.innerHTML = `<div class="btfw-catalogue__empty">${state.loading ? "Loading catalogue…" : "No matching titles found."}</div>`;
       return;
@@ -204,8 +216,6 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       return `<article class="btfw-catalogue__card"><img class="btfw-catalogue__poster" ${poster ? `data-src="${escapeAttr(poster)}"` : ""} alt="" loading="lazy"><div class="btfw-catalogue__copy"><a class="btfw-catalogue__title" href="${url}" target="_blank" rel="noopener">${title}</a><div class="btfw-catalogue__meta">${type}${year ? ` · ${escapeHtml(year)}` : ""}${rating ? ` · ★ ${rating.toFixed(1)}` : ""}</div>${item.overview ? `<p class="btfw-catalogue__overview">${escapeHtml(item.overview)}</p>` : ""}</div></article>`;
     }).join("");
     state.listEl.querySelectorAll("img[data-src]").forEach(img => { img.src = img.dataset.src; });
-    const suffix = state.loadedAll ? "" : ` · ${state.items.length} loaded`;
-    showStatus(`${items.length} title${items.length === 1 ? "" : "s"}${suffix}`);
   }
 
   function escapeHtml(value){ const d = document.createElement("div"); d.textContent = String(value || ""); return d.innerHTML; }
@@ -235,6 +245,8 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       state.items.push(...items);
       state.page = Number(payload.page || next);
       state.totalPages = Math.max(1, Number(payload.total_pages || 1));
+      const totalResults = Number(payload.total_results ?? payload.total_items ?? 0);
+      if (Number.isFinite(totalResults) && totalResults >= 0) state.totalResults = Math.max(state.totalResults, totalResults);
       state.loadedAll = state.page >= state.totalPages || !items.length;
     } catch (error) {
       showStatus(error?.message || "Unable to load catalogue.");
@@ -260,7 +272,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     if (!state.items.length) {
       state.abort?.abort();
       state.abort = new AbortController();
-      state.page = 0; state.totalPages = 1; state.loadedAll = false; state.items = [];
+      state.page = 0; state.totalPages = 1; state.totalResults = 0; state.loadedAll = false; state.items = [];
       await loadNextPage();
     } else render();
     setTimeout(() => state.queryEl?.focus(), 0);
