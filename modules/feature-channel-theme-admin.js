@@ -1024,6 +1024,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .key-test-row { display: flex; gap: 8px; align-items: stretch; }
       .btfw-theme-admin .key-test-row input { flex: 1 1 auto; }
       .btfw-theme-admin .key-test-row button { flex: 0 0 auto; }
+      .btfw-theme-admin .key-test-row button.is-loading { display: inline-flex; align-items: center; gap: 7px; }
+      .btfw-theme-admin .btfw-inline-spinner { display: none; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: btfw-inline-spin .7s linear infinite; }
+      .btfw-theme-admin .key-test-row button.is-loading .btfw-inline-spinner { display: inline-block; }
+      @keyframes btfw-inline-spin { to { transform: rotate(360deg); } }
       .btfw-theme-admin .help.is-success { color: color-mix(in srgb, #4ade80 78%, var(--btfw-admin-text) 22%); }
       .btfw-theme-admin .help.is-error   { color: color-mix(in srgb, #ff6f96 78%, var(--btfw-admin-text) 22%); }
       .btfw-theme-admin .help.is-pending { color: var(--btfw-admin-text-soft); font-style: italic; }
@@ -2599,10 +2603,10 @@ function replaceBlock(original, startMarker, endMarker, block){
             <div class="field" data-role="playlist-catalog-token-field">
               <label>Connect TMDB for syncing</label>
               <div class="key-test-row">
-                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-connect">Sign in with TMDB</button>
-                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-disconnect">Disconnect</button>
+                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-connect" aria-busy="false"><span class="btfw-inline-spinner" aria-hidden="true"></span><span data-role="playlist-catalog-connect-label">Sign in with TMDB</span></button>
+                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-disconnect" hidden>Disconnect TMDB</button>
               </div>
-              <p class="help">Opens TMDB in a small window. After you sign in and approve access, a local browser session is saved automatically. It is never saved to the channel theme.</p>
+              <p class="help" id="btfw-playlist-catalog-connection-status" data-variant="idle" aria-live="polite">Sign in to connect a TMDB account. The local session is verified before syncing is enabled.</p>
             </div>
             <div class="field" data-role="playlist-catalog-sync-actions" hidden>
               <div class="buttons" style="margin:0;">
@@ -2830,38 +2834,80 @@ function replaceBlock(original, startMarker, endMarker, block){
     const urlInput = panel.querySelector('#btfw-playlist-catalog-url');
     const enabledInput = panel.querySelector('#btfw-playlist-catalog-enabled');
     const status = panel.querySelector('#btfw-playlist-catalog-status');
+    const connectionStatus = panel.querySelector('#btfw-playlist-catalog-connection-status');
+    const connectLabel = connect?.querySelector('[data-role="playlist-catalog-connect-label"]');
     const controls = [connect, forget, create, sync, urlInput, enabledInput].filter(Boolean);
     const setStatus = (text, variant = 'idle') => { if (status) { status.textContent = text; status.dataset.variant = variant; } };
+    const setConnectionStatus = (text, variant = 'idle') => {
+      if (!connectionStatus) return;
+      connectionStatus.textContent = text;
+      connectionStatus.dataset.variant = variant;
+      connectionStatus.classList.toggle('is-success', variant === 'saved');
+      connectionStatus.classList.toggle('is-error', variant === 'error');
+      connectionStatus.classList.toggle('is-pending', variant === 'pending');
+    };
     const api = () => window.BTFW_PlaylistCatalog;
     const allowed = canManagePlaylistCatalog();
-    const updateSyncActions = () => {
-      const connected = Boolean(api()?.getWriteSession?.());
+    const setConnectionState = (state, message) => {
+      const connected = state === 'connected';
+      const waiting = state === 'checking' || state === 'pending';
+      if (connect) {
+        connect.hidden = connected;
+        connect.disabled = !allowed || waiting;
+        connect.classList.toggle('is-loading', waiting);
+        connect.setAttribute('aria-busy', waiting ? 'true' : 'false');
+      }
+      if (connectLabel) connectLabel.textContent = waiting ? (state === 'checking' ? 'Checking TMDB…' : 'Waiting for TMDB…') : 'Sign in with TMDB';
+      if (forget) { forget.hidden = !connected; forget.disabled = !allowed; }
       if (syncActions) syncActions.hidden = !connected;
-      return connected;
+      if (connected) {
+        setConnectionStatus('TMDB is connected and verified in this browser.', 'saved');
+        setStatus('TMDB is connected. You can now create or sync a list.', 'saved');
+      } else if (state === 'checking') {
+        setConnectionStatus('Checking the saved TMDB session…', 'pending');
+      } else if (state === 'pending') {
+        setConnectionStatus('Finish signing in and approve access in the TMDB window. This screen will update automatically.', 'pending');
+      } else if (state === 'error') {
+        setConnectionStatus(message || 'TMDB could not verify this connection. Please sign in again.', 'error');
+      } else if (state === 'locked') {
+        setConnectionStatus(message || 'Locked: requires native Channel JS edit permission (admin/owner rank) and playlist access.', 'error');
+      } else {
+        setConnectionStatus(message || 'Sign in to connect a TMDB account. The local session is verified before syncing is enabled.', 'idle');
+      }
     };
     controls.forEach(control => { control.disabled = !allowed; });
     if (!allowed) {
-      setStatus('Locked: requires native Channel JS edit permission (admin/owner rank) and playlist access.', 'error');
+      setConnectionState('locked');
       return;
     }
-    if (updateSyncActions()) setStatus('TMDB is connected locally in this browser.', 'saved');
+    document.addEventListener('btfw:playlistCatalogAuth', event => {
+      if (!panel.isConnected) return;
+      const detail = event?.detail || {};
+      if (detail.connected) setConnectionState('connected');
+      else setConnectionState(detail.reason ? 'error' : 'signedOut', detail.reason);
+    });
+    const verifySavedSession = async () => {
+      if (!api()?.getWriteSession?.()) { setConnectionState('signedOut'); return; }
+      if (!api()?.validateWriteSession) { setConnectionState('error', 'TMDB connection checks are still loading. Please reopen the toolkit.'); return; }
+      setConnectionState('checking');
+      try {
+        const connected = await api().validateWriteSession();
+        setConnectionState(connected ? 'connected' : 'signedOut');
+      } catch (error) {
+        if (panel.isConnected) setConnectionState('error', error?.message || 'TMDB could not verify the saved session. Sign in again.');
+      }
+    };
+    void verifySavedSession();
     if (connect) connect.addEventListener('click', async () => {
+      setConnectionState('pending');
       try {
         if (!api()?.beginTmdbSignIn) throw new Error('Playlist catalogue module is still loading. Try again shortly.');
         await api().beginTmdbSignIn();
-        setStatus('TMDB sign-in opened. Sign in and approve access there; this page will connect automatically.', 'pending');
-      } catch (error) { setStatus(error?.message || 'Unable to start TMDB sign-in.', 'error'); }
+      } catch (error) { setConnectionState('error', error?.message || 'Unable to start TMDB sign-in.'); }
     });
     if (forget) forget.addEventListener('click', () => {
       api()?.clearWriteToken?.();
-      updateSyncActions();
-      setStatus('Local TMDB session removed from this browser.', 'idle');
-    });
-    document.addEventListener('btfw:playlistCatalogAuth', () => {
-      if (panel.isConnected) {
-        updateSyncActions();
-        setStatus('TMDB connected locally. You can now create or sync a list.', 'saved');
-      }
+      setConnectionState('signedOut', 'TMDB was disconnected from this browser.');
     });
     if (create) create.addEventListener('click', async () => {
       try {

@@ -69,6 +69,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   }
   function setWriteSession(sessionId){ try { localStorage.setItem(tokenKey(), JSON.stringify({ version:3, sessionId:String(sessionId || "").trim() })); return true; } catch (_) { return false; } }
   function clearWriteToken(){ try { localStorage.removeItem(tokenKey()); } catch (_) {} }
+  function notifyAuthState(detail){ try { document.dispatchEvent(new CustomEvent("btfw:playlistCatalogAuth", { detail })); } catch (_) {} }
 
   function canSync(){
     const rank = Number(window.CLIENT?.rank);
@@ -305,14 +306,37 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     return response.json();
   }
 
-  async function tmdbSessionRequest(path, method, body){
+  async function tmdbSessionRequest(path, method, body, params = {}){
     const key = readKey();
     if (!key) throw new Error("Add a TMDB API key in Theme Toolkit → Integrations first.");
     const url = new URL(`${TMDB_API}/3/${path}`);
     url.searchParams.set("api_key", key);
+    Object.entries(params).forEach(([name, value]) => { if (value !== undefined && value !== null && value !== "") url.searchParams.set(name, String(value)); });
     const response = await fetch(url.href, { method, headers:{ "Content-Type":"application/json", Accept:"application/json" }, body: body ? JSON.stringify(body) : undefined, credentials:"omit" });
-    if (!response.ok) throw new Error(`TMDB authorization failed (HTTP ${response.status}).`);
+    if (!response.ok) throw await tmdbFailure(response, "TMDB authorization failed");
     return response.json();
+  }
+
+  async function tmdbFailure(response, fallback){
+    const payload = await response.json().catch(() => ({}));
+    const detail = String(payload?.status_message || payload?.status || "").trim();
+    const code = payload?.status_code ? ` (TMDB ${payload.status_code})` : "";
+    return new Error(`${detail || fallback}${code} — HTTP ${response.status}.`);
+  }
+
+  async function validateWriteSession(){
+    const sessionId = getWriteSession();
+    if (!sessionId) return false;
+    try {
+      await tmdbSessionRequest("account", "GET", null, { session_id:sessionId });
+      return true;
+    } catch (error) {
+      if (/HTTP (401|403)\./.test(String(error?.message || ""))) {
+        clearWriteToken();
+        notifyAuthState({ connected:false, reason:"TMDB no longer accepts the saved browser session." });
+      }
+      throw error;
+    }
   }
 
   async function completeTmdbSignIn(requestToken){
@@ -320,7 +344,13 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     const sessionId = String(data?.session_id || "").trim();
     if (!sessionId) throw new Error("TMDB did not return a local session.");
     if (!setWriteSession(sessionId)) throw new Error("This browser could not save the local TMDB session.");
-    try { document.dispatchEvent(new CustomEvent("btfw:playlistCatalogAuth", { detail:{ connected:true } })); } catch (_) {}
+    try { await validateWriteSession(); }
+    catch (error) {
+      const verificationError = new Error(`TMDB could not verify the new session. ${error?.message || "Sign in again."}`);
+      verificationError.btfwAuthTerminal = true;
+      throw verificationError;
+    }
+    notifyAuthState({ connected:true });
     return sessionId;
   }
 
@@ -336,12 +366,26 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     if (state.authTimer) clearInterval(state.authTimer);
     const started = Date.now();
     state.authTimer = setInterval(async () => {
-      if (Date.now() - started > 10 * 60 * 1000) { clearInterval(state.authTimer); state.authTimer = null; return; }
+      if (Date.now() - started > 10 * 60 * 1000) {
+        clearInterval(state.authTimer); state.authTimer = null;
+        notifyAuthState({ connected:false, reason:"TMDB sign-in timed out. Please try again." });
+        return;
+      }
+      if (popup.closed) {
+        clearInterval(state.authTimer); state.authTimer = null;
+        notifyAuthState({ connected:false, reason:"TMDB sign-in was closed before approval." });
+        return;
+      }
       try {
         await completeTmdbSignIn(requestToken);
         clearInterval(state.authTimer); state.authTimer = null;
         try { popup.close(); } catch (_) {}
-      } catch (_) {
+      } catch (error) {
+        if (error?.btfwAuthTerminal) {
+          clearInterval(state.authTimer); state.authTimer = null;
+          notifyAuthState({ connected:false, reason:error.message });
+          return;
+        }
         // The request is not approved yet; keep polling while the user signs in.
       }
     }, 2200);
@@ -417,9 +461,14 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     url.searchParams.set("session_id", sessionId);
     const response = await fetch(url.href, { method, headers:{ "Content-Type":"application/json", Accept:"application/json" }, body: body ? JSON.stringify(body) : undefined, credentials:"omit" });
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) { clearWriteToken(); throw new Error("TMDB rejected the local session. Connect your TMDB account again."); }
+      if (response.status === 401 || response.status === 403) {
+        clearWriteToken();
+        const error = await tmdbFailure(response, "TMDB rejected the local session");
+        notifyAuthState({ connected:false, reason:"TMDB rejected the saved browser session. Sign in again." });
+        throw new Error(`TMDB rejected the local session. Sign in again. ${error.message}`);
+      }
       if (response.status === 429) { const retry = Number(response.headers.get("Retry-After") || 1); await new Promise(resolve => setTimeout(resolve, Math.max(1, retry) * 1000)); return tmdbWrite(path, method, body); }
-      throw new Error(`TMDB list update failed (HTTP ${response.status}).`);
+      throw await tmdbFailure(response, "TMDB list update failed");
     }
     return response.json().catch(() => ({}));
   }
@@ -440,6 +489,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   }
 
   async function createList(){
+    if (!await validateWriteSession()) throw new Error("TMDB could not verify the local session. Sign in again before creating a list.");
     const name = `BillTube — ${window.CHANNEL?.name || "Channel"}`;
     const payload = await tmdbWrite("list", "POST", { name, description:"Managed by BillTube Theme Toolkit playlist sync.", language:"en" });
     const id = payload.id || payload.list_id;
@@ -459,6 +509,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
 
   async function sync(options = {}){
     if (!canSync()) throw new Error("Playlist sync is locked: Channel JS edit permission is required.");
+    if (!await validateWriteSession()) throw new Error("TMDB could not verify the local session. Sign in again before syncing.");
     let list = parseListUrl(options.listUrl || catalogueConfig().tmdbListUrl);
     if (!list) {
       if (options.createIfMissing === false) throw new Error("Choose a public TMDB list URL or create a new list first.");
@@ -492,7 +543,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     return report;
   }
 
-  window.BTFW_PlaylistCatalog = { activeList, canSync, getWriteSession, beginTmdbSignIn, clearWriteToken, createList, sync, open:openModal };
+  window.BTFW_PlaylistCatalog = { activeList, canSync, getWriteSession, validateWriteSession, beginTmdbSignIn, clearWriteToken, createList, sync, open:openModal };
   document.addEventListener("btfw:playlistCatalogChanged", () => { ensureLauncher(); if (!enabled()) closeModal(); });
   document.addEventListener("btfw:channelIntegrationsChanged", ensureLauncher);
   ensureLauncher();
