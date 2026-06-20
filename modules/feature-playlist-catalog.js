@@ -438,6 +438,14 @@ BTFW.define("feature:playlistCatalog", [], async () => {
 
   function validPlaylist(items){ return Array.isArray(items) && items.every(item => item && typeof item === "object" && item.media && typeof item.media === "object"); }
 
+  function expectedPlaylistCount(queue){
+    const indicatorCount = Number(queue?.querySelector("#btfw-playlist-performance-indicator")?.dataset?.totalCount);
+    if (Number.isFinite(indicatorCount) && indicatorCount >= 0) return indicatorCount;
+    const countText = String(document.querySelector("#plcount")?.textContent || "");
+    const match = countText.match(/(\d+)\s+items?/i);
+    return match ? Number(match[1]) : null;
+  }
+
   function cachePlaylist(items){
     if (!validPlaylist(items)) return false;
     state.playlistCache = { items, receivedAt:Date.now() };
@@ -463,7 +471,8 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       if (!media || typeof media !== "object") return null;
       items.push({ uid, temp:Boolean(temp), media });
     }
-    return items;
+    const expectedCount = expectedPlaylistCount(queue);
+    return { items, expectedCount, complete:expectedCount === null || items.length >= expectedCount };
   }
 
   function bindPlaylistCache(){
@@ -476,12 +485,16 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   async function waitForPlaylist(timeout = 3500){
     bindPlaylistCache();
     const deadline = Date.now() + timeout;
+    let partial = null;
     while (Date.now() <= deadline) {
       const local = readPlaylistFromQueue();
-      if (local !== null) { cachePlaylist(local); return local; }
-      if (state.playlistCache?.items) return state.playlistCache.items;
+      if (local?.complete) { cachePlaylist(local.items); return local.items; }
+      if (local) partial = local;
+      const expectedCount = expectedPlaylistCount(document.querySelector("#queue"));
+      if (state.playlistCache?.items && (expectedCount === null || state.playlistCache.items.length >= expectedCount)) return state.playlistCache.items;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
+    if (partial) throw new Error(`CyTube has only mounted ${partial.items.length} of ${partial.expectedCount} playlist items. Sync stopped to avoid publishing a partial TMDB list. Wait for the playlist to finish loading, then try again.`);
     throw new Error("CyTube has not populated the local playlist yet. Wait for the playlist to load or reload as an admin, then try again. This sync never calls the rate-limited Get Playlist URLs endpoint.");
   }
 
