@@ -451,7 +451,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     });
   }
 
-  async function tmdbWrite(path, method, body){
+  async function tmdbWrite(path, method, body, options = {}){
     const sessionId = getWriteSession();
     const key = readKey();
     if (!sessionId) throw new Error("Connect your TMDB account before syncing.");
@@ -467,10 +467,11 @@ BTFW.define("feature:playlistCatalog", [], async () => {
         notifyAuthState({ connected:false, reason:"TMDB rejected the saved browser session. Sign in again." });
         throw new Error(`TMDB rejected the local session. Sign in again. ${error.message}`);
       }
-      if (response.status === 429) { const retry = Number(response.headers.get("Retry-After") || 1); await new Promise(resolve => setTimeout(resolve, Math.max(1, retry) * 1000)); return tmdbWrite(path, method, body); }
+      if (response.status === 429) { const retry = Number(response.headers.get("Retry-After") || 1); await new Promise(resolve => setTimeout(resolve, Math.max(1, retry) * 1000)); return tmdbWrite(path, method, body, options); }
       throw await tmdbFailure(response, "TMDB list update failed");
     }
-    return response.json().catch(() => ({}));
+    const data = await response.json().catch(() => ({}));
+    return options.includeResponse ? { data, location:response.headers?.get?.("Location") || response.headers?.get?.("location") || "" } : data;
   }
 
   function batches(items, size = 20){ const out = []; for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size)); return out; }
@@ -491,10 +492,41 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   async function createList(){
     if (!await validateWriteSession()) throw new Error("TMDB could not verify the local session. Sign in again before creating a list.");
     const name = `BillTube — ${window.CHANNEL?.name || "Channel"}`;
-    const payload = await tmdbWrite("list", "POST", { name, description:"Managed by BillTube Theme Toolkit playlist sync.", language:"en" });
-    const id = payload.id || payload.list_id;
-    if (!id) throw new Error("TMDB did not return a new list ID.");
-    return `https://www.themoviedb.org/list/${id}`;
+    const result = await tmdbWrite("list", "POST", { name, description:"Managed by BillTube Theme Toolkit playlist sync.", language:"en" }, { includeResponse:true });
+    const payload = result.data || {};
+    const id = extractListId(payload) || extractListIdFromLocation(result.location);
+    if (id) return `https://www.themoviedb.org/list/${id}`;
+    const created = (await getAccountLists()).filter(list => list.name === name);
+    if (created.length === 1) return created[0].url;
+    const fields = Object.keys(payload).filter(key => !/token|session/i.test(key)).join(", ");
+    throw new Error(`TMDB accepted the list request but did not identify the new list${fields ? ` (returned: ${fields})` : ""}. Refresh Your TMDB lists and choose it manually.`);
+  }
+
+  function extractListId(payload){
+    const id = payload?.id || payload?.list_id || payload?.list?.id || payload?.data?.id || payload?.data?.list_id || payload?.result?.id;
+    return /^\d+$/.test(String(id || "")) ? String(id) : "";
+  }
+
+  function extractListIdFromLocation(value){
+    try { return String(new URL(String(value || ""), TMDB_API).pathname.match(/\/list\/(\d+)/)?.[1] || ""); }
+    catch (_) { return ""; }
+  }
+
+  async function getAccountLists(){
+    const account = await tmdbSessionRequest("account", "GET", null, { session_id:getWriteSession() });
+    const accountId = String(account?.id || account?.account_id || "").trim();
+    if (!accountId) throw new Error("TMDB did not return the connected account ID.");
+    const lists = [];
+    let page = 1; let total = 1;
+    while (page <= total) {
+      const payload = await tmdbSessionRequest(`account/${encodeURIComponent(accountId)}/lists`, "GET", null, { session_id:getWriteSession(), page });
+      (payload?.results || []).forEach(list => {
+        const id = extractListId(list);
+        if (id) lists.push({ id, name:String(list.name || `TMDB list ${id}`), description:String(list.description || ""), itemCount:Number(list.item_count || 0), url:`https://www.themoviedb.org/list/${id}` });
+      });
+      total = Math.max(1, Number(payload?.total_pages || 1)); page += 1;
+    }
+    return lists.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async function fetchEditableItems(id){
@@ -543,7 +575,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     return report;
   }
 
-  window.BTFW_PlaylistCatalog = { activeList, canSync, getWriteSession, validateWriteSession, beginTmdbSignIn, clearWriteToken, createList, sync, open:openModal };
+  window.BTFW_PlaylistCatalog = { activeList, canSync, getWriteSession, validateWriteSession, beginTmdbSignIn, clearWriteToken, getAccountLists, createList, sync, open:openModal };
   document.addEventListener("btfw:playlistCatalogChanged", () => { ensureLauncher(); if (!enabled()) closeModal(); });
   document.addEventListener("btfw:channelIntegrationsChanged", ensureLauncher);
   ensureLauncher();

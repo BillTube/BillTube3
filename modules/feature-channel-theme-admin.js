@@ -1023,6 +1023,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
          line below picks up success/error tone. */
       .btfw-theme-admin .key-test-row { display: flex; gap: 8px; align-items: stretch; }
       .btfw-theme-admin .key-test-row input { flex: 1 1 auto; }
+      .btfw-theme-admin .key-test-row select { flex: 1 1 auto; min-width: 0; }
       .btfw-theme-admin .key-test-row button { flex: 0 0 auto; }
       .btfw-theme-admin .btfw-control-hidden { display: none !important; }
       .btfw-theme-admin .key-test-row button.is-loading { display: inline-flex; align-items: center; gap: 7px; }
@@ -2610,6 +2611,12 @@ function replaceBlock(original, startMarker, endMarker, block){
               <p class="help" id="btfw-playlist-catalog-connection-status" data-variant="idle" aria-live="polite">Sign in to connect a TMDB account. The local session is verified before syncing is enabled.</p>
             </div>
             <div class="field btfw-control-hidden" data-role="playlist-catalog-sync-actions" hidden>
+              <label for="btfw-playlist-catalog-list-picker">Your TMDB lists</label>
+              <div class="key-test-row">
+                <select id="btfw-playlist-catalog-list-picker" aria-label="Choose a TMDB list"><option value="">Loading your TMDB lists…</option></select>
+                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-refresh-lists">Refresh</button>
+              </div>
+              <p class="help">Choose an existing list to sync, or create a new public list below. Choosing a list updates the draft URL; click Apply to publish it for viewers.</p>
               <div class="buttons" style="margin:0;">
                 <button type="button" class="btn-secondary" id="btfw-playlist-catalog-create">Create a new TMDB list</button>
                 <button type="button" class="btn-primary" id="btfw-playlist-catalog-sync">Sync current playlist</button>
@@ -2831,13 +2838,15 @@ function replaceBlock(original, startMarker, endMarker, block){
     const forget = panel.querySelector('#btfw-playlist-catalog-disconnect');
     const create = panel.querySelector('#btfw-playlist-catalog-create');
     const sync = panel.querySelector('#btfw-playlist-catalog-sync');
+    const listPicker = panel.querySelector('#btfw-playlist-catalog-list-picker');
+    const refreshLists = panel.querySelector('#btfw-playlist-catalog-refresh-lists');
     const syncActions = panel.querySelector('[data-role="playlist-catalog-sync-actions"]');
     const urlInput = panel.querySelector('#btfw-playlist-catalog-url');
     const enabledInput = panel.querySelector('#btfw-playlist-catalog-enabled');
     const status = panel.querySelector('#btfw-playlist-catalog-status');
     const connectionStatus = panel.querySelector('#btfw-playlist-catalog-connection-status');
     const connectLabel = connect?.querySelector('[data-role="playlist-catalog-connect-label"]');
-    const controls = [connect, forget, create, sync, urlInput, enabledInput].filter(Boolean);
+    const controls = [connect, forget, create, sync, listPicker, refreshLists, urlInput, enabledInput].filter(Boolean);
     const setStatus = (text, variant = 'idle') => { if (status) { status.textContent = text; status.dataset.variant = variant; } };
     const setConnectionStatus = (text, variant = 'idle') => {
       if (!connectionStatus) return;
@@ -2849,6 +2858,41 @@ function replaceBlock(original, startMarker, endMarker, block){
     };
     const api = () => window.BTFW_PlaylistCatalog;
     const allowed = canManagePlaylistCatalog();
+    let listsLoading = false;
+    const loadAccountLists = async ({ selectedUrl = '', announce = true } = {}) => {
+      if (listsLoading) return;
+      try {
+        if (!api()?.getAccountLists) throw new Error('TMDB list retrieval is still loading. Try again shortly.');
+        listsLoading = true;
+        if (refreshLists) { refreshLists.disabled = true; refreshLists.textContent = 'Loading…'; }
+        if (listPicker) { listPicker.disabled = true; listPicker.innerHTML = '<option value="">Loading your TMDB lists…</option>'; }
+        if (announce) setStatus('Retrieving your TMDB lists…', 'pending');
+        const lists = await api().getAccountLists();
+        if (listPicker) {
+          listPicker.innerHTML = '';
+          const placeholder = document.createElement('option');
+          placeholder.value = ''; placeholder.textContent = lists.length ? 'Choose a TMDB list…' : 'No TMDB lists found yet';
+          listPicker.appendChild(placeholder);
+          lists.forEach(list => {
+            const option = document.createElement('option');
+            option.value = list.url;
+            option.textContent = `${list.name} (${list.itemCount} ${list.itemCount === 1 ? 'movie' : 'movies'})`;
+            option.title = list.description || list.url;
+            listPicker.appendChild(option);
+          });
+          const currentUrl = selectedUrl || urlInput?.value?.trim() || '';
+          if ([...listPicker.options].some(option => option.value === currentUrl)) listPicker.value = currentUrl;
+          listPicker.disabled = false;
+        }
+        if (announce) setStatus(lists.length ? `Found ${lists.length} TMDB list${lists.length === 1 ? '' : 's'}. Choose one to sync, or create a new list.` : 'No TMDB lists found. Create a new list to get started.', 'saved');
+      } catch (error) {
+        if (listPicker) { listPicker.innerHTML = '<option value="">Unable to load TMDB lists</option>'; listPicker.disabled = true; }
+        if (announce) setStatus(error?.message || 'Unable to retrieve TMDB lists.', 'error');
+      } finally {
+        listsLoading = false;
+        if (refreshLists) { refreshLists.disabled = false; refreshLists.textContent = 'Refresh'; }
+      }
+    };
     const setConnectionState = (state, message) => {
       const connected = state === 'connected';
       const waiting = state === 'checking' || state === 'pending';
@@ -2864,6 +2908,7 @@ function replaceBlock(original, startMarker, endMarker, block){
       if (connected) {
         setConnectionStatus('TMDB is connected and verified in this browser.', 'saved');
         setStatus('TMDB is connected. You can now create or sync a list.', 'saved');
+        void loadAccountLists({ announce:false });
       } else if (state === 'checking') {
         setConnectionStatus('Checking the saved TMDB session…', 'pending');
       } else if (state === 'pending') {
@@ -2910,6 +2955,16 @@ function replaceBlock(original, startMarker, endMarker, block){
       api()?.clearWriteToken?.();
       setConnectionState('signedOut', 'TMDB was disconnected from this browser.');
     });
+    if (refreshLists) refreshLists.addEventListener('click', () => { void loadAccountLists(); });
+    if (listPicker) listPicker.addEventListener('change', () => {
+      const listUrl = listPicker.value;
+      if (!listUrl) return;
+      if (urlInput) urlInput.value = listUrl;
+      cfg.playlistCatalog = cfg.playlistCatalog || {};
+      cfg.playlistCatalog.tmdbListUrl = listUrl;
+      onChange();
+      setStatus('Selected TMDB list. Click Apply to publish its URL, then sync the playlist.', 'saved');
+    });
     if (create) create.addEventListener('click', async () => {
       try {
         if (!api()?.createList) throw new Error('Playlist catalogue module is still loading. Try again shortly.');
@@ -2921,6 +2976,7 @@ function replaceBlock(original, startMarker, endMarker, block){
         cfg.playlistCatalog.enabled = true;
         if (enabledInput) enabledInput.checked = true;
         onChange();
+        void loadAccountLists({ selectedUrl:listUrl, announce:false });
         setStatus('TMDB list created. Click Apply to publish its URL, then sync the playlist.', 'saved');
       } catch (error) { setStatus(error?.message || 'Unable to create the TMDB list.', 'error'); }
       finally { create.disabled = false; }
