@@ -1024,6 +1024,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .key-test-row { display: flex; gap: 8px; align-items: stretch; }
       .btfw-theme-admin .key-test-row input { flex: 1 1 auto; }
       .btfw-theme-admin .key-test-row button { flex: 0 0 auto; }
+      .btfw-theme-admin .btfw-control-hidden { display: none !important; }
       .btfw-theme-admin .key-test-row button.is-loading { display: inline-flex; align-items: center; gap: 7px; }
       .btfw-theme-admin .btfw-inline-spinner { display: none; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: btfw-inline-spin .7s linear infinite; }
       .btfw-theme-admin .key-test-row button.is-loading .btfw-inline-spinner { display: inline-block; }
@@ -2604,11 +2605,11 @@ function replaceBlock(original, startMarker, endMarker, block){
               <label>Connect TMDB for syncing</label>
               <div class="key-test-row">
                 <button type="button" class="btn-secondary" id="btfw-playlist-catalog-connect" aria-busy="false"><span class="btfw-inline-spinner" aria-hidden="true"></span><span data-role="playlist-catalog-connect-label">Sign in with TMDB</span></button>
-                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-disconnect" hidden>Disconnect TMDB</button>
+                <button type="button" class="btn-secondary btfw-control-hidden" id="btfw-playlist-catalog-disconnect" hidden>Disconnect TMDB</button>
               </div>
               <p class="help" id="btfw-playlist-catalog-connection-status" data-variant="idle" aria-live="polite">Sign in to connect a TMDB account. The local session is verified before syncing is enabled.</p>
             </div>
-            <div class="field" data-role="playlist-catalog-sync-actions" hidden>
+            <div class="field btfw-control-hidden" data-role="playlist-catalog-sync-actions" hidden>
               <div class="buttons" style="margin:0;">
                 <button type="button" class="btn-secondary" id="btfw-playlist-catalog-create">Create a new TMDB list</button>
                 <button type="button" class="btn-primary" id="btfw-playlist-catalog-sync">Sync current playlist</button>
@@ -2858,8 +2859,8 @@ function replaceBlock(original, startMarker, endMarker, block){
         connect.setAttribute('aria-busy', waiting ? 'true' : 'false');
       }
       if (connectLabel) connectLabel.textContent = waiting ? (state === 'checking' ? 'Checking TMDB…' : 'Waiting for TMDB…') : 'Sign in with TMDB';
-      if (forget) { forget.hidden = !connected; forget.disabled = !allowed; }
-      if (syncActions) syncActions.hidden = !connected;
+      if (forget) { forget.hidden = !connected; forget.classList.toggle('btfw-control-hidden', !connected); forget.disabled = !allowed; }
+      if (syncActions) { syncActions.hidden = !connected; syncActions.classList.toggle('btfw-control-hidden', !connected); }
       if (connected) {
         setConnectionStatus('TMDB is connected and verified in this browser.', 'saved');
         setStatus('TMDB is connected. You can now create or sync a list.', 'saved');
