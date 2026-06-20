@@ -82,8 +82,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     // Movie poll: enhance CyTube polls with TMDB movie poster cards
     // (feature:movie-poll). Uses the TMDB key from Integrations.
     moviePoll: { enabled: false },
-    // Public TMDB list used by the playlist catalogue. The list-write token is
-    // intentionally local-only and never stored in this channel config.
+    // Public TMDB list used by the playlist catalogue. The TMDB account session
+    // is intentionally local-only and never stored in this channel config.
     playlistCatalog: { enabled: false, tmdbListUrl: "" }
   };
 
@@ -2597,20 +2597,19 @@ function replaceBlock(original, startMarker, endMarker, block){
               <p class="help">This public URL is the only catalogue identifier stored in Channel JS.</p>
             </div>
             <div class="field" data-role="playlist-catalog-token-field">
-              <label for="btfw-playlist-catalog-token">Local TMDB list-write token</label>
+              <label>Connect TMDB for syncing</label>
               <div class="key-test-row">
-                <input type="password" id="btfw-playlist-catalog-token" autocomplete="off" placeholder="Stored only in this browser">
-                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-connect">Connect</button>
-                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-disconnect">Forget</button>
+                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-connect">Sign in with TMDB</button>
+                <button type="button" class="btn-secondary" id="btfw-playlist-catalog-disconnect">Disconnect</button>
               </div>
-              <p class="help">Never saved to the channel theme. Only Channel JS editors with playlist access can use it to sync.</p>
+              <p class="help">Opens TMDB in a small window. After you sign in and approve access, a local browser session is saved automatically. It is never saved to the channel theme.</p>
             </div>
             <div class="field">
               <div class="buttons" style="margin:0;">
                 <button type="button" class="btn-secondary" id="btfw-playlist-catalog-create">Create a new TMDB list</button>
                 <button type="button" class="btn-primary" id="btfw-playlist-catalog-sync">Sync current playlist</button>
               </div>
-              <p class="help" id="btfw-playlist-catalog-status" data-variant="idle">Connect a local TMDB list-write token before syncing.</p>
+              <p class="help" id="btfw-playlist-catalog-status" data-variant="idle">Sign in with TMDB before creating or syncing a list.</p>
             </div>
           </div>
         </details>
@@ -2823,7 +2822,6 @@ function replaceBlock(original, startMarker, endMarker, block){
   }
 
   function wirePlaylistCatalogControls(panel, cfg, onChange){
-    const tokenInput = panel.querySelector('#btfw-playlist-catalog-token');
     const connect = panel.querySelector('#btfw-playlist-catalog-connect');
     const forget = panel.querySelector('#btfw-playlist-catalog-disconnect');
     const create = panel.querySelector('#btfw-playlist-catalog-create');
@@ -2831,7 +2829,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     const urlInput = panel.querySelector('#btfw-playlist-catalog-url');
     const enabledInput = panel.querySelector('#btfw-playlist-catalog-enabled');
     const status = panel.querySelector('#btfw-playlist-catalog-status');
-    const controls = [tokenInput, connect, forget, create, sync, urlInput, enabledInput].filter(Boolean);
+    const controls = [connect, forget, create, sync, urlInput, enabledInput].filter(Boolean);
     const setStatus = (text, variant = 'idle') => { if (status) { status.textContent = text; status.dataset.variant = variant; } };
     const api = () => window.BTFW_PlaylistCatalog;
     const allowed = canManagePlaylistCatalog();
@@ -2840,22 +2838,23 @@ function replaceBlock(original, startMarker, endMarker, block){
       setStatus('Locked: requires native Channel JS edit permission (admin/owner rank) and playlist access.', 'error');
       return;
     }
-    if (tokenInput && api()?.getWriteToken) tokenInput.value = api().getWriteToken();
-    if (connect) connect.addEventListener('click', () => {
-      const token = tokenInput?.value?.trim() || '';
-      if (!token) return setStatus('Paste a TMDB list-write token first.', 'error');
-      if (!api()?.setWriteToken?.(token)) return setStatus('This browser could not save the local token.', 'error');
-      tokenInput.value = '';
-      setStatus('Local TMDB list-write token connected. It is not stored in Channel JS.', 'saved');
+    if (api()?.getWriteSession?.()) setStatus('TMDB is connected locally in this browser.', 'saved');
+    if (connect) connect.addEventListener('click', async () => {
+      try {
+        if (!api()?.beginTmdbSignIn) throw new Error('Playlist catalogue module is still loading. Try again shortly.');
+        await api().beginTmdbSignIn();
+        setStatus('TMDB sign-in opened. Sign in and approve access there; this page will connect automatically.', 'pending');
+      } catch (error) { setStatus(error?.message || 'Unable to start TMDB sign-in.', 'error'); }
     });
     if (forget) forget.addEventListener('click', () => {
       api()?.clearWriteToken?.();
-      if (tokenInput) tokenInput.value = '';
-      setStatus('Local TMDB list-write token removed from this browser.', 'idle');
+      setStatus('Local TMDB session removed from this browser.', 'idle');
+    });
+    document.addEventListener('btfw:playlistCatalogAuth', () => {
+      if (panel.isConnected) setStatus('TMDB connected locally. You can now create or sync a list.', 'saved');
     });
     if (create) create.addEventListener('click', async () => {
       try {
-        if (tokenInput?.value?.trim()) api()?.setWriteToken?.(tokenInput.value.trim());
         if (!api()?.createList) throw new Error('Playlist catalogue module is still loading. Try again shortly.');
         create.disabled = true; setStatus('Creating public TMDB list…', 'pending');
         const listUrl = await api().createList();
@@ -2871,7 +2870,6 @@ function replaceBlock(original, startMarker, endMarker, block){
     });
     if (sync) sync.addEventListener('click', async () => {
       try {
-        if (tokenInput?.value?.trim()) api()?.setWriteToken?.(tokenInput.value.trim());
         if (!api()?.sync) throw new Error('Playlist catalogue module is still loading. Try again shortly.');
         const existingUrl = urlInput?.value?.trim() || '';
         const confirmKey = `btfw:tmdb:list-confirmed:${String(window.CHANNEL?.name || '').toLowerCase()}:${existingUrl}`;

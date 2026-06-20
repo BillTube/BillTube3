@@ -18,6 +18,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     loadedAll: false,
     abort: null,
     scrollBound: false,
+    authTimer: null,
   };
 
   function channelName(){
@@ -60,8 +61,13 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   }
 
   function tokenKey(){ return `btfw:tmdb:list-sync:${channelName()}`; }
-  function getWriteToken(){ try { return String(localStorage.getItem(tokenKey()) || "").trim(); } catch (_) { return ""; } }
-  function setWriteToken(token){ try { localStorage.setItem(tokenKey(), String(token || "").trim()); return true; } catch (_) { return false; } }
+  function getWriteSession(){
+    try {
+      const value = JSON.parse(localStorage.getItem(tokenKey()) || "{}");
+      return String(value?.sessionId || "").trim();
+    } catch (_) { return ""; }
+  }
+  function setWriteSession(sessionId){ try { localStorage.setItem(tokenKey(), JSON.stringify({ version:3, sessionId:String(sessionId || "").trim() })); return true; } catch (_) { return false; } }
   function clearWriteToken(){ try { localStorage.removeItem(tokenKey()); } catch (_) {} }
 
   function canSync(){
@@ -299,6 +305,49 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     return response.json();
   }
 
+  async function tmdbSessionRequest(path, method, body){
+    const key = readKey();
+    if (!key) throw new Error("Add a TMDB API key in Theme Toolkit → Integrations first.");
+    const url = new URL(`${TMDB_API}/3/${path}`);
+    url.searchParams.set("api_key", key);
+    const response = await fetch(url.href, { method, headers:{ "Content-Type":"application/json", Accept:"application/json" }, body: body ? JSON.stringify(body) : undefined, credentials:"omit" });
+    if (!response.ok) throw new Error(`TMDB authorization failed (HTTP ${response.status}).`);
+    return response.json();
+  }
+
+  async function completeTmdbSignIn(requestToken){
+    const data = await tmdbSessionRequest("authentication/session/new", "POST", { request_token:requestToken });
+    const sessionId = String(data?.session_id || "").trim();
+    if (!sessionId) throw new Error("TMDB did not return a local session.");
+    if (!setWriteSession(sessionId)) throw new Error("This browser could not save the local TMDB session.");
+    try { document.dispatchEvent(new CustomEvent("btfw:playlistCatalogAuth", { detail:{ connected:true } })); } catch (_) {}
+    return sessionId;
+  }
+
+  async function beginTmdbSignIn(){
+    const key = readKey();
+    if (!key) throw new Error("Add a TMDB API key in Theme Toolkit → Integrations first.");
+    const token = await tmdbSessionRequest("authentication/token/new", "GET");
+    const requestToken = String(token?.request_token || "").trim();
+    if (!requestToken) throw new Error("TMDB did not return an authorization request.");
+    const redirect = `${location.origin}${location.pathname}${location.search}`;
+    const popup = window.open(`https://www.themoviedb.org/authenticate/${encodeURIComponent(requestToken)}?redirect_to=${encodeURIComponent(redirect)}`, "btfw-tmdb-auth", "popup,width=620,height=760");
+    if (!popup) throw new Error("Your browser blocked the TMDB sign-in window. Allow popups and try again.");
+    if (state.authTimer) clearInterval(state.authTimer);
+    const started = Date.now();
+    state.authTimer = setInterval(async () => {
+      if (Date.now() - started > 10 * 60 * 1000) { clearInterval(state.authTimer); state.authTimer = null; return; }
+      try {
+        await completeTmdbSignIn(requestToken);
+        clearInterval(state.authTimer); state.authTimer = null;
+        try { popup.close(); } catch (_) {}
+      } catch (_) {
+        // The request is not approved yet; keep polling while the user signs in.
+      }
+    }, 2200);
+    return true;
+  }
+
   function candidateName(candidate){ return candidate.title || candidate.name || candidate.original_title || candidate.original_name || ""; }
   function candidateYear(candidate){ const value = candidate.release_date || candidate.first_air_date || ""; return /^\d{4}/.test(value) ? Number(value.slice(0, 4)) : 0; }
 
@@ -311,8 +360,8 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     if (!cleanNorm) return { ok:false, reason:"missing title" };
     const searches = [];
     for (const query of [...new Set([raw, cleaned].filter(Boolean))]) {
-      for (const type of ["movie", "tv"]) {
-        try { searches.push({ type, payload: await tmdbRead(`search/${type}`, { query, year: type === "movie" && year ? year : undefined, first_air_date_year: type === "tv" && year ? year : undefined, include_adult: "false" }) }); }
+      for (const type of ["movie"]) {
+        try { searches.push({ type, payload: await tmdbRead(`search/${type}`, { query, year: year || undefined, include_adult: "false" }) }); }
         catch (_) {}
       }
     }
@@ -359,11 +408,16 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   }
 
   async function tmdbWrite(path, method, body){
-    const token = getWriteToken();
-    if (!token) throw new Error("Connect a local TMDB list-write token before syncing.");
-    const response = await fetch(`${TMDB_API}/4/${path}`, { method, headers:{ Authorization:`Bearer ${token}`, "Content-Type":"application/json", Accept:"application/json" }, body: body ? JSON.stringify(body) : undefined, credentials:"omit" });
+    const sessionId = getWriteSession();
+    const key = readKey();
+    if (!sessionId) throw new Error("Connect your TMDB account before syncing.");
+    if (!key) throw new Error("Add a TMDB API key in Theme Toolkit → Integrations first.");
+    const url = new URL(`${TMDB_API}/3/${path}`);
+    url.searchParams.set("api_key", key);
+    url.searchParams.set("session_id", sessionId);
+    const response = await fetch(url.href, { method, headers:{ "Content-Type":"application/json", Accept:"application/json" }, body: body ? JSON.stringify(body) : undefined, credentials:"omit" });
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) throw new Error("TMDB rejected the local list-write token. Reconnect it in the Toolkit.");
+      if (response.status === 401 || response.status === 403) { clearWriteToken(); throw new Error("TMDB rejected the local session. Connect your TMDB account again."); }
       if (response.status === 429) { const retry = Number(response.headers.get("Retry-After") || 1); await new Promise(resolve => setTimeout(resolve, Math.max(1, retry) * 1000)); return tmdbWrite(path, method, body); }
       throw new Error(`TMDB list update failed (HTTP ${response.status}).`);
     }
@@ -387,7 +441,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
 
   async function createList(){
     const name = `BillTube — ${window.CHANNEL?.name || "Channel"}`;
-    const payload = await tmdbWrite("list", "POST", { name, description:"Managed by BillTube Theme Toolkit playlist sync.", iso_639_1:"en", public:true, sort_by:"original_order.asc" });
+    const payload = await tmdbWrite("list", "POST", { name, description:"Managed by BillTube Theme Toolkit playlist sync.", language:"en" });
     const id = payload.id || payload.list_id;
     if (!id) throw new Error("TMDB did not return a new list ID.");
     return `https://www.themoviedb.org/list/${id}`;
@@ -396,7 +450,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   async function fetchEditableItems(id){
     const items = []; let page = 1; let total = 1;
     while (page <= total) {
-      const payload = await tmdbWrite(`list/${id}?page=${page}`, "GET");
+      const payload = await tmdbRead(`list/${id}`, { page });
       items.push(...(payload.results || payload.items || []));
       total = Math.max(1, Number(payload.total_pages || 1)); page += 1;
     }
@@ -433,12 +487,12 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     const desiredMap = new Map(desired.map(item => [`${item.media_type}:${item.media_id}`, item]));
     const remove = [...existingMap.entries()].filter(([key]) => !desiredMap.has(key)).map(([, item]) => item);
     const add = [...desiredMap.entries()].filter(([key]) => !existingMap.has(key)).map(([, item]) => item);
-    for (const group of batches(remove)) { await tmdbWrite(`list/${list.id}/items`, "DELETE", { items:group }); report.removed += group.length; }
-    for (const group of batches(add)) { await tmdbWrite(`list/${list.id}/items`, "POST", { items:group }); report.added += group.length; }
+    for (const group of batches(remove, 1)) { await tmdbWrite(`list/${list.id}/remove_item`, "POST", { media_id:group[0].media_id }); report.removed += group.length; }
+    for (const group of batches(add, 1)) { await tmdbWrite(`list/${list.id}/add_item`, "POST", { media_id:group[0].media_id }); report.added += group.length; }
     return report;
   }
 
-  window.BTFW_PlaylistCatalog = { activeList, canSync, getWriteToken, setWriteToken, clearWriteToken, createList, sync, open:openModal };
+  window.BTFW_PlaylistCatalog = { activeList, canSync, getWriteSession, beginTmdbSignIn, clearWriteToken, createList, sync, open:openModal };
   document.addEventListener("btfw:playlistCatalogChanged", () => { ensureLauncher(); if (!enabled()) closeModal(); });
   document.addEventListener("btfw:channelIntegrationsChanged", ensureLauncher);
   ensureLauncher();
