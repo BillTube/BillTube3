@@ -48,6 +48,9 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
     const v = getKey(which) || configKey(which);
     return v || fallback;
   }
+  function hasKlipyKey() {
+    return !!effKey("klipy", DEFAULT_KLIPY);
+  }
 
   /* ---- State ---- */
   const state = {
@@ -131,7 +134,7 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
             <div class="btfw-gif-tabs">
               <ul>
                 <li class="is-active" data-p="giphy"><a>Giphy</a></li>
-                <li data-p="klipy"><a>Klipy</a></li>
+                <li data-p="klipy"${hasKlipyKey() ? "" : " hidden"}><a>Klipy</a></li>
                 <li data-p="favorites"><a>Favorites</a></li>
               </ul>
             </div>
@@ -168,6 +171,7 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
         modalOpen = true;
         showNotice("");
         state.page = 1;
+        syncProviderTabs(modal);
         state.provider = modal?.querySelector(".btfw-gif-tabs li.is-active")?.getAttribute("data-p") || "giphy";
         if (state.provider !== "favorites") renderSkeleton();
         setTimeout(search, 0);
@@ -211,9 +215,10 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
 
   function wireModal(card){
     modalWired = true;
+    syncProviderTabs(card);
 
     card.querySelector(".btfw-gif-tabs ul").addEventListener("click", e=>{
-      const li = e.target.closest("li[data-p]"); if (!li) return;
+      const li = e.target.closest("li[data-p]"); if (!li || li.hidden) return;
       card.querySelectorAll(".btfw-gif-tabs li").forEach(x=>x.classList.toggle("is-active", x===li));
       state.provider = li.getAttribute("data-p");
       state.page = 1;
@@ -240,6 +245,20 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
     const n = $("#btfw-gif-notice", modal);
     n.textContent = msg || "";
     n.classList.toggle("is-hidden", !msg);
+  }
+
+  function syncProviderTabs(card = modal){
+    if (!card) return;
+    const klipyTab = card.querySelector('.btfw-gif-tabs li[data-p="klipy"]');
+    if (klipyTab) klipyTab.hidden = !hasKlipyKey();
+    const active = card.querySelector(".btfw-gif-tabs li.is-active");
+    if (active && active.hidden) {
+      active.classList.remove("is-active");
+      const fallback = card.querySelector('.btfw-gif-tabs li[data-p="giphy"]')
+                    || card.querySelector('.btfw-gif-tabs li[data-p="favorites"]');
+      if (fallback) fallback.classList.add("is-active");
+    }
+    if (state.provider === "klipy" && !hasKlipyKey()) state.provider = "giphy";
   }
 
   /* ---- Fetching ---- */
@@ -348,6 +367,11 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
       return;
     }
 
+    if (state.provider === "klipy" && !hasKlipyKey()) {
+      state.provider = "giphy";
+      syncProviderTabs(modal);
+    }
+
     state.loading = true;
     renderSkeleton();
 
@@ -362,10 +386,7 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
       state.items = [];
       state.total = 0;
       state.loading = false;
-      const missingKlipy = e && e.message === "KLIPY_KEY_MISSING";
-      showNotice(missingKlipy
-        ? 'Klipy API key missing. Add it in Channel Theme Toolkit > Integrations, or set localStorage "btfw:klipy:key".'
-        : "Failed to load GIFs (key limit or network). Try again, or set your own keys in localStorage.");
+      showNotice("Failed to load GIFs (key limit or network). Try again, or set your own keys in localStorage.");
       render();
     }
   }
