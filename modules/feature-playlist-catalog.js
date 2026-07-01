@@ -8,6 +8,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     modal: null,
     listEl: null,
     statusEl: null,
+    loadStatusEl: null,
     queryEl: null,
     typeEl: null,
     sortEl: null,
@@ -123,7 +124,8 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       #btfw-playlist-catalogue select { appearance:none; cursor:pointer; padding-right:38px; color-scheme:dark; color:#eef2ff; background-color:#11151e; background-image:linear-gradient(45deg,transparent 50%,var(--btfw-color-accent,#6d4df6) 50%),linear-gradient(135deg,var(--btfw-color-accent,#6d4df6) 50%,transparent 50%); background-position:calc(100% - 17px) 16px,calc(100% - 12px) 16px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
       #btfw-playlist-catalogue select option, #btfw-playlist-catalogue select optgroup { color:#eef2ff !important; background-color:#11151e !important; }
       #btfw-playlist-catalogue input:focus, #btfw-playlist-catalogue select:focus { outline:0; border-color:color-mix(in srgb,var(--btfw-color-accent,#6d4df6) 60%,transparent); background:color-mix(in srgb,var(--btfw-color-panel,#171d2b) 92%,transparent); box-shadow:0 0 0 3px color-mix(in srgb,var(--btfw-color-accent,#6d4df6) 22%,transparent); }
-      #btfw-playlist-catalogue .btfw-catalogue__status { min-height:20px; padding:12px 20px 10px; color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 70%,transparent); font-size:.82rem; font-variant-numeric:tabular-nums; }
+      #btfw-playlist-catalogue .btfw-catalogue__status { padding:12px 20px 10px; color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 70%,transparent); font-size:.82rem; }
+      #btfw-playlist-catalogue .btfw-catalogue__status:empty { display:none; }
       @supports (appearance: base-select){ #btfw-playlist-catalogue select, #btfw-playlist-catalogue select::picker(select){ appearance:base-select; } #btfw-playlist-catalogue select::picker-icon{ display:none; } #btfw-playlist-catalogue select::picker(select){ background:var(--btfw-color-surface,#11151e); border:1px solid color-mix(in srgb,var(--btfw-color-accent,#6d4df6) 32%,transparent); border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,.55); padding:6px; margin-top:6px; } #btfw-playlist-catalogue select option{ border-radius:9px; padding:9px 12px; color:var(--btfw-color-text,#eef2ff); background:transparent !important; } #btfw-playlist-catalogue select option:hover{ background:color-mix(in srgb,var(--btfw-color-accent,#6d4df6) 18%,transparent) !important; } #btfw-playlist-catalogue select option:checked{ background:color-mix(in srgb,var(--btfw-color-accent,#6d4df6) 26%,transparent) !important; } #btfw-playlist-catalogue select option::checkmark{ color:var(--btfw-color-accent,#6d4df6); } }
       #btfw-playlist-catalogue .btfw-catalogue__body { overflow:auto; padding:0 20px 20px; }
       #btfw-playlist-catalogue .btfw-catalogue__grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:14px; }
@@ -134,7 +136,9 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       #btfw-playlist-catalogue .btfw-catalogue__meta { margin-top:5px; color:rgba(238,242,255,.67); font-size:.8rem; }
       #btfw-playlist-catalogue .btfw-catalogue__overview { margin:7px 0 0; color:rgba(238,242,255,.78); font-size:.78rem; line-height:1.36; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
       #btfw-playlist-catalogue .btfw-catalogue__empty { padding:34px 0; text-align:center; color:rgba(238,242,255,.68); }
-      #btfw-playlist-catalogue .btfw-catalogue__foot { padding:10px 20px 14px; color:rgba(238,242,255,.48); font-size:.72rem; border-top:1px solid rgba(255,255,255,.08); }
+      #btfw-playlist-catalogue .btfw-catalogue__foot { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 20px 14px; color:rgba(238,242,255,.48); font-size:.72rem; border-top:1px solid rgba(255,255,255,.08); }
+      #btfw-playlist-catalogue .btfw-catalogue__foot span:first-child { min-width:0; }
+      #btfw-playlist-catalogue .btfw-catalogue__load-status { margin-left:auto; color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 68%,transparent); font-variant-numeric:tabular-nums; white-space:nowrap; text-align:right; }
       @media(max-width:640px){ #btfw-playlist-catalogue .btfw-catalogue__filters { grid-template-columns:1fr; } #btfw-playlist-catalogue { padding:0; } #btfw-playlist-catalogue .btfw-catalogue__dialog { max-height:100vh; min-height:100vh; border-radius:0; } }
     `;
     document.head.appendChild(style);
@@ -150,12 +154,13 @@ BTFW.define("feature:playlistCatalog", [], async () => {
         <header class="btfw-catalogue__head"><h2 id="btfw-catalogue-title">Movie Catalogue</h2><button type="button" data-action="close" aria-label="Close catalogue">×</button></header>
         <div class="btfw-catalogue__filters"><label class="btfw-catalogue__filter"><span>Search catalog</span><input type="search" data-role="query" placeholder="Find a movie…"></label><label class="btfw-catalogue__filter"><span>Format</span><select data-role="type"><option value="">All media</option><option value="movie">Movies</option><option value="tv">TV shows</option></select></label><label class="btfw-catalogue__filter"><span>Sort by</span><select data-role="sort"><option value="order">Playlist order</option><option value="title">Title</option><option value="date">Release date</option><option value="rating">TMDB rating</option></select></label></div>
         <div class="btfw-catalogue__status" data-role="status"></div><main class="btfw-catalogue__body"><div class="btfw-catalogue__grid" data-role="list"></div></main>
-        <footer class="btfw-catalogue__foot">This product uses the TMDB API but is not endorsed or certified by TMDB.</footer>
+        <footer class="btfw-catalogue__foot"><span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span><span class="btfw-catalogue__load-status" data-role="load-status"></span></footer>
       </section>`;
     document.body.appendChild(modal);
     state.modal = modal;
     state.listEl = $("[data-role=list]", modal);
     state.statusEl = $("[data-role=status]", modal);
+    state.loadStatusEl = $("[data-role=load-status]", modal);
     state.queryEl = $("[data-role=query]", modal);
     state.typeEl = $("[data-role=type]", modal);
     state.sortEl = $("[data-role=sort]", modal);
@@ -170,6 +175,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   }
 
   function showStatus(message){ if (state.statusEl) state.statusEl.textContent = message || ""; }
+  function showLoadStatus(message){ if (state.loadStatusEl) state.loadStatusEl.textContent = message || ""; }
 
   function itemTitle(item){ return item.title || item.name || item.original_title || item.original_name || "Untitled"; }
   function itemDate(item){ return item.release_date || item.first_air_date || ""; }
@@ -200,7 +206,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     const loadedText = total ? `${state.items.length}/${total} loaded` : `${state.items.length} loaded`;
     const visibleText = items.length === state.items.length ? "" : ` · ${items.length} matching`;
     const completeText = state.loadedAll && total ? ` · ${total} total` : "";
-    showStatus(`${loadedText}${visibleText}${completeText}`);
+    showLoadStatus(`${loadedText}${visibleText}${completeText}`);
     if (!items.length) {
       state.listEl.innerHTML = `<div class="btfw-catalogue__empty">${state.loading ? "Loading catalogue…" : "No matching titles found."}</div>`;
       return;
@@ -241,6 +247,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     try {
       const next = state.page + 1;
       const payload = await readListPage(next, state.abort?.signal);
+      showStatus("");
       const items = Array.isArray(payload.items) ? payload.items : Array.isArray(payload.results) ? payload.results : [];
       state.items.push(...items);
       state.page = Number(payload.page || next);
@@ -269,6 +276,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     modal.classList.add("is-open");
     modal.setAttribute("aria-hidden", "false");
     if (!enabled()) { showStatus("The movie catalogue has not been configured for this channel."); return; }
+    showStatus("");
     if (!state.items.length) {
       state.abort?.abort();
       state.abort = new AbortController();
