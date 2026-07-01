@@ -2620,7 +2620,7 @@ function replaceBlock(original, startMarker, endMarker, block){
               <h4>Playlist Catalogue</h4>
               <span>Publish the current playlist as a searchable public TMDB movie list.</span>
             </div>
-            <span class="section__chevron" aria-hidden="true">â€º</span>
+            <span class="section__chevron" aria-hidden="true">›</span>
           </summary>
           <div class="section__body">
             <div class="field">
