@@ -47,6 +47,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       tmdb: {
         apiKey: ""
       },
+      klipy: {
+        apiKey: ""
+      },
       wyzie: {
         apiKey: ""
       },
@@ -588,6 +591,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
     const key = typeof integrations.tmdb.apiKey === "string" ? integrations.tmdb.apiKey.trim() : "";
     integrations.tmdb.apiKey = key;
+    if (!integrations.klipy || typeof integrations.klipy !== "object") {
+      integrations.klipy = { apiKey: "" };
+    }
+    const klipyKey = typeof integrations.klipy.apiKey === "string" ? integrations.klipy.apiKey.trim() : "";
+    integrations.klipy.apiKey = klipyKey;
     if (!integrations.wyzie || typeof integrations.wyzie !== "object") {
       integrations.wyzie = { apiKey: "" };
     }
@@ -628,6 +636,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
       window.BTFW_CONFIG.tmdb.apiKey = key;
       window.BTFW_CONFIG.tmdbKey = key;
+      window.BTFW_CONFIG.klipy = window.BTFW_CONFIG.klipy || {};
+      window.BTFW_CONFIG.klipy.apiKey = klipyKey;
+      window.BTFW_CONFIG.klipyKey = klipyKey;
       window.BTFW_CONFIG.wyzie = window.BTFW_CONFIG.wyzie || {};
       window.BTFW_CONFIG.wyzie.apiKey = wyzieKey;
       window.BTFW_CONFIG.wyzieKey = wyzieKey;
@@ -648,6 +659,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       window.BTFW_CONFIG.integrations.movieInfo.enabled = movieInfoEnabled;
       window.BTFW_CONFIG.integrations.autoSubs = window.BTFW_CONFIG.integrations.autoSubs || {};
       window.BTFW_CONFIG.integrations.autoSubs.enabled = autoSubsEnabled;
+      window.BTFW_CONFIG.integrations.klipy = window.BTFW_CONFIG.integrations.klipy || {};
+      window.BTFW_CONFIG.integrations.klipy.apiKey = klipyKey;
       window.BTFW_CONFIG.integrations.wyzie = window.BTFW_CONFIG.integrations.wyzie || {};
       window.BTFW_CONFIG.integrations.wyzie.apiKey = wyzieKey;
       window.BTFW_CONFIG.integrations.subdl = window.BTFW_CONFIG.integrations.subdl || {};
@@ -674,6 +687,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       try {
         if (document?.body && document.body.dataset.tmdbKey !== key) {
           document.body.dataset.tmdbKey = key;
+        }
+        if (document?.body) {
+          if (klipyKey) document.body.dataset.klipyKey = klipyKey;
+          else if (document.body.dataset?.klipyKey) delete document.body.dataset.klipyKey;
         }
         if (document?.body) {
           if (wyzieKey) document.body.dataset.wyzieKey = wyzieKey;
@@ -712,6 +729,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         detail: {
           enabled: integrations.enabled,
           tmdbKey: key,
+          klipyKey,
           wyzieKey,
           subdlKey,
           ratingsEndpoint,
@@ -1805,6 +1823,13 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     } else {
       normalized.integrations.tmdb.apiKey = normalized.integrations.tmdb.apiKey.trim();
     }
+    if (!normalized.integrations.klipy || typeof normalized.integrations.klipy !== "object") {
+      normalized.integrations.klipy = { apiKey: "" };
+    } else if (typeof normalized.integrations.klipy.apiKey !== "string") {
+      normalized.integrations.klipy.apiKey = "";
+    } else {
+      normalized.integrations.klipy.apiKey = normalized.integrations.klipy.apiKey.trim();
+    }
     if (!normalized.integrations.wyzie || typeof normalized.integrations.wyzie !== "object") {
       normalized.integrations.wyzie = { apiKey: "" };
     } else if (typeof normalized.integrations.wyzie.apiKey !== "string") {
@@ -2507,6 +2532,11 @@ function replaceBlock(original, startMarker, endMarker, block){
             <div class="field">
               <label for="btfw-theme-integrations-tmdb">TMDB API key</label>
               <input type="text" id="btfw-theme-integrations-tmdb" data-btfw-bind="integrations.tmdb.apiKey" placeholder="YOUR_TMDB_KEY">
+            </div>
+            <div class="field">
+              <label for="btfw-theme-integrations-klipy">Klipy API key (GIFs)</label>
+              <input type="text" id="btfw-theme-integrations-klipy" data-btfw-bind="integrations.klipy.apiKey" placeholder="YOUR_KLIPY_KEY">
+              <p class="help">Used by the GIF picker after the Tenor API shutdown. Request a key at <a href="https://klipy.com/developers" target="_blank" rel="noopener">klipy.com/developers</a>.</p>
             </div>
             <div class="field btfw-switch-field">
               <button type="button" class="btfw-switch" id="btfw-theme-movie-info-toggle" role="switch" aria-pressed="false">

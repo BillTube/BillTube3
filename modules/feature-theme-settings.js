@@ -744,7 +744,7 @@ BTFW.define("feature:themeSettings", [], async () => {
       <div class="btfw-useroptions-panels">
         <article class="btfw-useroptions-panel">
           <h5>New features!</h5>
-          <p>Native mobile theme, dynamic chromecast support, Tenor and Giphy for more emote variety.</p>
+          <p>Native mobile theme, dynamic chromecast support, Klipy and Giphy for more emote variety.</p>
         </article>
         <article class="btfw-useroptions-panel">
           <h5>Need a tweak?</h5>

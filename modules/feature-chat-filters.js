@@ -15,8 +15,11 @@ const customFilters = [
   { name: "short spoiler", source: "\\[sp\\]", flags: "g", replace: "<span class=\"spoiler\">", active: true, filterlinks: false },
   { name: "closing font style", source: "\\[\\/\\]", flags: "g", replace: "<span>", active: true, filterlinks: false },
   { name: "chat colors (premium)", source: "col:(.*?):", flags: "g", replace: "<span style=\"color:\\1\" class=\"chatcolor\">", active: true, filterlinks: false },
-  { name: "giphy", source: "https?://(?|media\\d\\.giphy\\.com/media/(?:[^/]+/)?([^ /\\n]+)/giphy\\.gif|i\\.giphy\\.com/([^ /\\n]+)\\.gif|giphy\\.com/gifs/(?:.*-)?([^ /\\n]+))", flags: "gi", replace: "<img class=\"giphy chat-picture\" src=\"https://media.giphy.com/media/\\1/200_s.gif\" />", active: true, filterlinks: true },
-  { name: "tenor", source: "(https?://media\\.tenor\\.com/[^\\s]+\\.gif)", flags: "gi", replace: "<img class=\"tenor chat-picture\" src=\"\\0\" />", active: true, filterlinks: true },
+  { name: "giphy media", source: "https?://media(?:\\d+)?\\.giphy\\.com/media/([A-Za-z0-9_-]+)/(?:giphy|200(?:_s)?)\\.gif", flags: "gi", replace: "<img class=\"giphy chat-picture\" src=\"https://media.giphy.com/media/\\1/200_s.gif\" />", active: true, filterlinks: true },
+  { name: "giphy image", source: "https?://i\\.giphy\\.com/([A-Za-z0-9_-]+)\\.gif", flags: "gi", replace: "<img class=\"giphy chat-picture\" src=\"https://media.giphy.com/media/\\1/200_s.gif\" />", active: true, filterlinks: true },
+  { name: "giphy page", source: "https?://giphy\\.com/gifs/(?:.*-)?([A-Za-z0-9_-]+)(?:[?#][^\\s]*)?", flags: "gi", replace: "<img class=\"giphy chat-picture\" src=\"https://media.giphy.com/media/\\1/200_s.gif\" />", active: true, filterlinks: true },
+  { name: "klipy", source: "(https?://static\\.klipy\\.com/[^\\s<]+\\.gif(?:\\?[^\\s<]+)?)", flags: "gi", replace: "<img class=\"klipy chat-picture\" src=\"\\1\" />", active: true, filterlinks: true },
+  { name: "tenor legacy", source: "(https?://media\\.tenor\\.com/[^\\s<]+\\.gif(?:\\?[^\\s<]+)?)", flags: "gi", replace: "<img class=\"tenor chat-picture\" src=\"\\1\" />", active: true, filterlinks: true },
   // --- Emote marketplace: short tokens -> emote-pack CDN images, rendered for
   // everyone. The emote modal inserts [provider]ID[/provider]; the URL is derived
   // from the ID, so one filter per provider covers every pack from that source. ---

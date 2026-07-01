@@ -1,5 +1,5 @@
 /* BTFW — feature:chatMedia (runtime-resize + dropdown support, stable)
-   - Tags Giphy/Tenor chat images as .channel-emote
+   - Tags Giphy/Klipy/Tenor chat images as .channel-emote
    - Emote/GIF size: small(100) / medium(130) / big(170)  [persisted]
    - GIF autoplay: ON (default) or hover-to-play          [persisted]
    - ChildList-only observer (no attribute loops)
@@ -12,7 +12,7 @@ BTFW.define("feature:chatMedia", [], async () => {
   const LS_SIZE = "btfw:chat:emoteSize";   // "sm" | "md" | "lg"
   const LS_AUTO = "btfw:chat:gifAutoplay"; // "1" | "0"
   const SIZE_PX = { sm: 100, md: 130, lg: 170 };
-  const SEL = "#messagebuffer img.giphy.chat-picture, #messagebuffer img.tenor.chat-picture";
+  const SEL = "#messagebuffer img.giphy.chat-picture, #messagebuffer img.klipy.chat-picture, #messagebuffer img.tenor.chat-picture";
 
   function getSize(){ try { return localStorage.getItem(LS_SIZE) || "md"; } catch(_) { return "md"; } }
   function setSize(v){
@@ -34,7 +34,8 @@ BTFW.define("feature:chatMedia", [], async () => {
     $$(SEL).forEach(forceSizeOn);
   }
 
-  const isGiphy = (img)=> img.classList.contains("giphy") || /media\d\.giphy\.com\/media\/.+\/.+\.gif/i.test(img.src);
+  const isGiphy = (img)=> img.classList.contains("giphy") || /media(?:\d+)?\.giphy\.com\/media\/.+\/.+\.gif/i.test(img.src);
+  const isKlipy = (img)=> img.classList.contains("klipy") || /static\.klipy\.com\/.+\.gif/i.test(img.src);
   const isTenor = (img)=> img.classList.contains("tenor") || /media\.tenor\.com\/.+\.gif/i.test(img.src);
   const toAnimated = (src)=> src.replace(/\/200_s\.gif$/i, "/200.gif");
   const toStatic   = (src)=> src.replace(/\/200\.gif$/i,   "/200_s.gif");
@@ -85,8 +86,8 @@ BTFW.define("feature:chatMedia", [], async () => {
         img.onmouseenter = () => { setSrcIfDifferent(img, toAnimated(img.src)); };
         img.onmouseleave = () => { setSrcIfDifferent(img, toStatic(img.src));   };
       }
-    } else if (isTenor(img)) {
-      // Tenor stays animated; no static variant from filter
+    } else if (isKlipy(img) || isTenor(img)) {
+      // Klipy/Tenor stay animated; no static variant from filter
       img.onmouseenter = null;
       img.onmouseleave = null;
     }

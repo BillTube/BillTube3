@@ -7,22 +7,51 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
   const chatPopover = await BTFW.init("util:chat-popover");
   const anime = await BTFW.init("util:anime");
 
-  /* ---- Keys (BillTube2 defaults; can override via localStorage) ---- */
-  const K = { giphy: "btfw:giphy:key", tenor: "btfw:tenor:key" };
+  /* ---- Keys (BillTube2 defaults; can override via localStorage/channel config) ---- */
+  const K = { giphy: "btfw:giphy:key", klipy: "btfw:klipy:key", tenor: "btfw:tenor:key" };
   const DEFAULT_GIPHY = "bb2006d9d3454578be1a99cfad65913d";
-  const DEFAULT_TENOR = "5WPAZ4EXST2V"; // Tenor v1 used by BillTube2
+  const DEFAULT_KLIPY = "";
+  const KLIPY_BASE = "https://api.klipy.com/api/v1";
+  const KLIPY_CUSTOMER_KEY = "btfw:klipy:customerId";
 
   function getKey(which) {
     try { return (localStorage.getItem(K[which]) || "").trim(); } catch (_) { return ""; }
   }
+  function asString(v) {
+    return (typeof v === "string" ? v.trim() : "");
+  }
+  function configKey(which) {
+    try {
+      const cfg = (window.BTFW_CONFIG && typeof window.BTFW_CONFIG === "object") ? window.BTFW_CONFIG : {};
+      const admin = (window.BTFW_THEME_ADMIN && typeof window.BTFW_THEME_ADMIN === "object") ? window.BTFW_THEME_ADMIN : {};
+      if (which === "klipy") {
+        return asString(cfg.klipy?.apiKey)
+            || asString(cfg.klipyKey)
+            || asString(cfg.integrations?.klipy?.apiKey)
+            || asString(admin.integrations?.klipy?.apiKey)
+            || asString(window.BTFW_KLIPY_KEY)
+            || asString(window.KLIPY_API_KEY)
+            || asString(window.klipy_key)
+            || asString(document.body?.dataset?.klipyKey);
+      }
+      if (which === "giphy") {
+        return asString(cfg.giphy?.apiKey)
+            || asString(cfg.giphyKey)
+            || asString(window.BTFW_GIPHY_KEY)
+            || asString(window.GIPHY_API_KEY)
+            || asString(window.giphy_key);
+      }
+    } catch (_) {}
+    return "";
+  }
   function effKey(which, fallback) {
-    const v = getKey(which);
+    const v = getKey(which) || configKey(which);
     return v || fallback;
   }
 
   /* ---- State ---- */
   const state = {
-    provider: "giphy",  // "giphy" | "tenor" | "favorites"
+    provider: "giphy",  // "giphy" | "klipy" | "favorites"
     query: "",
     page: 1,
     total: 0,
@@ -102,7 +131,7 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
             <div class="btfw-gif-tabs">
               <ul>
                 <li class="is-active" data-p="giphy"><a>Giphy</a></li>
-                <li data-p="tenor"><a>Tenor</a></li>
+                <li data-p="klipy"><a>Klipy</a></li>
                 <li data-p="favorites"><a>Favorites</a></li>
               </ul>
             </div>
@@ -239,28 +268,74 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
     return { items: list, total: list.length };
   }
 
-  async function fetchTenor(q){
-    const key = effKey("tenor", DEFAULT_TENOR);
-    // Tenor v1 to match BillTube2
-    const endpoint = q ? "https://api.tenor.com/v1/search"
-                       : "https://api.tenor.com/v1/trending";
-    const url = new URL(endpoint);
-    url.searchParams.set("key", key);
-    if (q) url.searchParams.set("q", q);
-    url.searchParams.set("limit", "50");
-
-    const res = await fetch(url.toString());
-    if (!res.ok) throw new Error(`TENOR_${res.status}`);
-
-    const json = await res.json();
-    const list = (json.results || []).map(t => {
-      const gif  = t.media?.[0]?.gif?.url || t.media?.[0]?.mediumgif?.url || t.media?.[0]?.tinygif?.url || "";
-      const tiny = t.media?.[0]?.nanogif?.url || t.media?.[0]?.tinygif?.url || gif;
-      return { id: t.id, provider: "tenor", thumb: tiny, urlClassic: normTenor(gif) };
-    });
-    return { items: list, total: list.length };
+  function getKlipyCustomerId(){
+    try {
+      const existing = localStorage.getItem(KLIPY_CUSTOMER_KEY);
+      if (existing) return existing;
+      const c = window.crypto;
+      const generated = (c && typeof c.randomUUID === "function")
+        ? c.randomUUID()
+        : `btfw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem(KLIPY_CUSTOMER_KEY, generated);
+      return generated;
+    } catch (_) {
+      return "btfw-guest";
+    }
   }
 
+  function getKlipyLocale(){
+    try {
+      const lang = (navigator.language || navigator.userLanguage || "en").split("-")[0];
+      return lang || "en";
+    } catch (_) {
+      return "en";
+    }
+  }
+
+  function pickKlipyMedia(file, sizes, formats) {
+    if (!file || typeof file !== "object") return "";
+    for (const size of sizes) {
+      const bucket = file[size];
+      if (!bucket) continue;
+      for (const format of formats) {
+        const url = bucket[format]?.url;
+        if (url) return url;
+      }
+    }
+    return "";
+  }
+
+  function normalizeKlipyItem(item){
+    if (!item || item.type === "ad") return null;
+    const id = String(item.slug || item.id || "");
+    const thumb = pickKlipyMedia(item.file, ["sm", "xs", "md", "hd"], ["webp", "gif"]);
+    const gif = pickKlipyMedia(item.file, ["hd", "md", "sm", "xs"], ["gif"]);
+    if (!gif) return null;
+    return { id, provider: "klipy", thumb: thumb || gif, urlClassic: stripQuery(gif) };
+  }
+
+  async function fetchKlipy(q){
+    const key = effKey("klipy", DEFAULT_KLIPY);
+    if (!key) throw new Error("KLIPY_KEY_MISSING");
+
+    const endpoint = `${KLIPY_BASE}/${encodeURIComponent(key)}/gifs/${q ? "search" : "trending"}`;
+    const url = new URL(endpoint);
+    if (q) url.searchParams.set("q", q);
+    url.searchParams.set("page", "1");
+    url.searchParams.set("per_page", "50");
+    url.searchParams.set("customer_id", getKlipyCustomerId());
+    url.searchParams.set("locale", getKlipyLocale());
+
+    const res = await fetch(url.toString());
+    if (!res.ok) throw new Error(`KLIPY_${res.status}`);
+
+    const json = await res.json();
+    const raw = Array.isArray(json?.data?.data)
+      ? json.data.data
+      : (Array.isArray(json?.data) ? json.data : []);
+    const list = raw.map(normalizeKlipyItem).filter(Boolean);
+    return { items: list, total: list.length };
+  }
   async function search(){
     const q = ($("#btfw-gif-q", ensureModal()).value || "").trim();
     state.query = q;
@@ -277,7 +352,7 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
     renderSkeleton();
 
     try {
-      const { items, total } = (state.provider === "giphy") ? await fetchGiphy(q) : await fetchTenor(q);
+      const { items, total } = (state.provider === "giphy") ? await fetchGiphy(q) : await fetchKlipy(q);
       state.items = items;
       state.total = total;
       state.loading = false;
@@ -287,7 +362,10 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
       state.items = [];
       state.total = 0;
       state.loading = false;
-      showNotice("Failed to load GIFs (key limit or network). Try again, or set your own keys in localStorage.");
+      const missingKlipy = e && e.message === "KLIPY_KEY_MISSING";
+      showNotice(missingKlipy
+        ? 'Klipy API key missing. Add it in Channel Theme Toolkit > Integrations, or set localStorage "btfw:klipy:key".'
+        : "Failed to load GIFs (key limit or network). Try again, or set your own keys in localStorage.");
       render();
     }
   }
@@ -728,21 +806,22 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
   }
 
   /* ============================================================
-     In-chat right-click menu for Giphy/Tenor GIFs
+     In-chat right-click menu for Giphy/Klipy/Tenor GIFs
        • Favorite / Unfavorite  → same favorites list as the modal
        • Hide / Show            → graceful blur toggle (per element)
      One delegated contextmenu listener covers EXISTING and FUTURE
      GIFs with zero per-image wiring and no observers. Channel emotes
-     (img.channel-emote without .giphy/.tenor) are intentionally
-     excluded — this only targets user-posted Giphy/Tenor GIFs.
+     (img.channel-emote without .giphy/.klipy/.tenor) are intentionally
+     excluded — this only targets user-posted Giphy/Klipy/Tenor GIFs.
      ============================================================ */
-  const CHAT_GIF_SEL = "#messagebuffer img.giphy.chat-picture, #messagebuffer img.tenor.chat-picture";
+  const CHAT_GIF_SEL = "#messagebuffer img.giphy.chat-picture, #messagebuffer img.klipy.chat-picture, #messagebuffer img.tenor.chat-picture";
 
   function parseChatGif(img){
     if (!img) return null;
     const isG = img.classList.contains("giphy");
+    const isK = img.classList.contains("klipy");
     const isT = img.classList.contains("tenor");
-    if (!isG && !isT) return null;
+    if (!isG && !isK && !isT) return null;
     const src = img.getAttribute("src") || img.src || "";
     let item;
     if (isG) {
@@ -752,7 +831,7 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
       item = { provider: "giphy", id, thumb: src || urlClassic, urlClassic };
     } else {
       const urlClassic = normTenor(src);
-      item = { provider: "tenor", id: "", thumb: src || urlClassic, urlClassic };
+      item = { provider: isK ? "klipy" : "tenor", id: "", thumb: src || urlClassic, urlClassic };
     }
     item.favKey = makeFavoriteKey(item);
     return item;

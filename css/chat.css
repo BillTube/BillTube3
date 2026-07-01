@@ -1341,6 +1341,7 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 
 #messagebuffer img.channel-emote,
 #messagebuffer img.giphy.chat-picture,
+#messagebuffer img.klipy.chat-picture,
 #messagebuffer img.tenor.chat-picture {
   width: auto !important;
   height: auto !important;

@@ -1411,6 +1411,7 @@
 /* Hidden GIF — graceful dark blur, contained to the tile so the blur halo
    doesn't bleed into neighbouring chat content. Right-click → Show restores. */
 #messagebuffer img.giphy.btfw-gif-hidden,
+#messagebuffer img.klipy.btfw-gif-hidden,
 #messagebuffer img.tenor.btfw-gif-hidden{
   filter: blur(15px) brightness(.25) saturate(.7);
   clip-path: inset(0 round 8px);
