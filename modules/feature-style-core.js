@@ -1,8 +1,12 @@
 BTFW.define("feature:styleCore", [], async () => {
 
   function ensureSlate() {
+    // CyTube serves its viewer-selected bootswatch build from /css/themes/
+    // (e.g. /css/themes/slate.css) — an href the old regex could not match,
+    // which made this fallback double-load 129KB of Slate on cytu.be. The
+    // inject remains as a fallback for host pages with no Bootstrap CSS.
     const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
-    const hasBootSlate = links.some(l => /(bootstrap.*\.css|bootswatch.*slate)/i.test(l.href || ""));
+    const hasBootSlate = links.some(l => /(bootstrap.*\.css|bootswatch.*slate|\/css\/themes\/)/i.test(l.href || ""));
     if (!hasBootSlate && !document.querySelector('link[data-btfw-slate]')) {
       const s = document.createElement("link");
       s.rel = "stylesheet";
@@ -43,18 +47,18 @@ BTFW.define("feature:styleCore", [], async () => {
       const z = document.createElement('style');
       z.id = 'btfw-modal-zfix-core';
       z.textContent = `
-        /* Keep navbar on top */
+        /* Keep navbar on top (z scale lives in css/tokens.css) */
         #nav-collapsible, .navbar, #navbar, .navbar-fixed-top {
           position: sticky !important;
           top: 0;
           left: 0;
           right: 0;
-          z-index: 5000 !important;
+          z-index: var(--btfw-z-navbar, 5000) !important;
         }
-        /* Bulma modal layered correctly above content */
-        .modal { z-index: 6000 !important; }
-        .modal .modal-background { z-index: 6001 !important; }
-        .modal .modal-card, .modal .modal-content { z-index: 6002 !important; }
+        /* Modals layered correctly above content */
+        .modal { z-index: var(--btfw-z-modal, 6000) !important; }
+        .modal .modal-background { z-index: var(--btfw-z-modal-bg, 6001) !important; }
+        .modal .modal-card, .modal .modal-content { z-index: var(--btfw-z-modal-card, 6002) !important; }
 
         /* Userlist overlay default CLOSED (chat module toggles classes) */
         #userlist.btfw-userlist-overlay:not(.btfw-userlist-overlay--open) {
