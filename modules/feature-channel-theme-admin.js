@@ -2214,15 +2214,19 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const accent = colors.accent || "#6d4df6";
     const fontFamily = typography.family || FONT_FALLBACK_FAMILY;
 
-    // Optional Hero Pattern backdrop. !important on background-image because
-    // the theme's dark-mode bridge repaints body with a `background:`
-    // shorthand from a later style element, which would otherwise reset it.
+    // Optional Hero Pattern backdrop. The image goes on <html>, not <body>:
+    // in this layout body is only viewport-tall while the document scrolls
+    // well past it, so a body background stops at the first screen. The root
+    // element's background paints the whole scroll canvas, so it tiles the
+    // full page. body is made transparent (over the same bg color) so the
+    // pattern also shows through the top screen. !important beats the
+    // dark-mode bridge's `background:` shorthand that repaints these later.
     let patternCss = "";
     const bgCfg = cfg.background || {};
     if (bgCfg.pattern && bgCfg.pattern !== "none" && BG_PATTERNS[bgCfg.pattern]) {
       const image = patternImageValue(bgCfg.pattern, accent, bgCfg.intensity);
       if (image) {
-        patternCss = `\nhtml {\n  background-color: ${bg};\n}\nbody {\n  background-color: ${bg};\n  background-image: ${image} !important;\n  background-repeat: repeat !important;\n  background-attachment: scroll !important;\n  background-position: top center !important;\n}`;
+        patternCss = `\nhtml {\n  background-color: ${bg} !important;\n  background-image: ${image} !important;\n  background-repeat: repeat !important;\n  background-attachment: scroll !important;\n  background-position: top center !important;\n}\nbody {\n  background-color: transparent !important;\n  background-image: none !important;\n}`;
       }
     }
 
