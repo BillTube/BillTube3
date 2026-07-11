@@ -14,7 +14,13 @@ BTFW.define("feature:styleCore", [], async () => {
 
   // --- UI deps + z-index layering (once) ---
   function ensureUiDepsAndZ() {
-    if (!document.querySelector('link[href*="bulma.min.css"]') &&
+    // Bulma is no longer loaded: the load-bearing slice the theme used is
+    // reimplemented natively in css/ui.css (same class names, token colors).
+    // Escape hatch for channels whose third-party modules emit Bulma markup
+    // beyond that slice — set `window.BTFW_LOAD_BULMA = true` in Channel JS
+    // before the theme boots to restore the CDN stylesheet.
+    if (window.BTFW_LOAD_BULMA === true &&
+        !document.querySelector('link[href*="bulma.min.css"]') &&
         !document.querySelector('link[data-btfw-bulma]')) {
       const l = document.createElement('link');
       l.rel = 'stylesheet';
