@@ -210,6 +210,16 @@ BTFW.define("feature:movie-info", [], async () => {
     const onResize = debounce(handleResize, 250);
     window.addEventListener("resize", onResize);
     registerCleanup(() => window.removeEventListener("resize", onResize));
+    // Tap-away dismiss for the touch flow (mouseleave never fires on touch).
+    const onDocTap = (e) => {
+      if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+      if (!state.header || !state.header.classList.contains("show")) return;
+      if (e.target.closest("#" + CONFIG.CONTAINER_ID)) return;
+      if (e.target.closest(CONFIG.TITLE_SELECTOR)) return;
+      state.header.classList.remove("show");
+    };
+    document.addEventListener("pointerup", onDocTap);
+    registerCleanup(() => document.removeEventListener("pointerup", onDocTap));
   }
 
   function setupHoverEffects() {
@@ -224,9 +234,23 @@ BTFW.define("feature:movie-info", [], async () => {
       const onLeave = () => hideMovieHeaderDelayed();
       titleElement.addEventListener("mouseenter", onEnter);
       titleElement.addEventListener("mouseleave", onLeave);
+      // Touch has no hover: a tap on the title toggles the card. Gated
+      // per-event (not a boot-time media query) so rotations and narrow
+      // desktop windows behave; mouse users keep the hover flow.
+      const onTap = (e) => {
+        if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+        if (state.header && state.header.classList.contains("show")) {
+          cancelHideTimer();
+          state.header.classList.remove("show");
+        } else {
+          showMovieHeader();
+        }
+      };
+      titleElement.addEventListener("pointerup", onTap);
       registerCleanup(() => {
         titleElement.removeEventListener("mouseenter", onEnter);
         titleElement.removeEventListener("mouseleave", onLeave);
+        titleElement.removeEventListener("pointerup", onTap);
       });
     } else if (typeof MutationObserver === "function") {
       const observer = new MutationObserver(() => {
@@ -739,14 +763,47 @@ BTFW.define("feature:movie-info", [], async () => {
         color: var(--btfw-color-text-muted);
       }
       @media (max-width: 768px) {
+        /* On phones the card presents as a bottom sheet (same language as the
+           stack tabs sheet); the title tap toggles it, tap-away dismisses. */
         .btfw-movie-header {
-          width: 100%;
-          right: 0;
+          position: fixed;
+          top: auto;
           left: 0;
-          border-radius: 0;
+          right: 0;
+          bottom: 0;
+          width: 100%;
+          max-width: none;
+          max-height: 72svh;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          border-radius: 16px 16px 0 0;
+          border-bottom: none;
+          transform: translateY(100%);
+          transform-origin: bottom center;
+          z-index: 6901;
+          padding-bottom: env(safe-area-inset-bottom, 0);
+          transition: transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-out, ease-out),
+                      opacity var(--btfw-motion-fast, 150ms) ease;
+        }
+        .btfw-movie-header.show {
+          transform: none;
+          transition: transform var(--btfw-motion-base, 220ms) var(--btfw-ease-out, ease-out),
+                      opacity var(--btfw-motion-base, 220ms) ease;
+        }
+        .btfw-movie-header::before {
+          content: "";
+          position: absolute;
+          top: 6px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 36px;
+          height: 4px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.25);
+          z-index: 3;
         }
         .btfw-movie-content {
-          padding: 16px;
+          padding: 20px 16px 16px;
           flex-direction: column;
           min-height: auto;
         }
@@ -760,7 +817,7 @@ BTFW.define("feature:movie-info", [], async () => {
           margin-top: 12px;
         }
         .btfw-movie-summary {
-          -webkit-line-clamp: 3;
+          -webkit-line-clamp: 4;
         }
       }
       ${CONFIG.TITLE_SELECTOR}:hover {
