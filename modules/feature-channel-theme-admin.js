@@ -23,6 +23,39 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     "textarea[name='css']", ".channel-css-field"
   ];
 
+  /* Hero Patterns (heropatterns.com, CC BY 4.0 by Steve Schoger) — compact
+     tiling SVGs, stored with marker values that patternImageValue() swaps for
+     the channel's real colors: a1b2c3 = fill hex, 0.987 = fill-opacity. The
+     chosen pattern is baked into the generated Channel CSS, so viewers need
+     no extra code. Placeholder is filled by the build step below. */
+  const BG_PATTERNS = {
+    hexagons: { label: "Hexagons", uri: "url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2228%22%20height%3D%2249%22%20viewBox%3D%220%200%2028%2049%22%3E%3Cpath%20d%3D%22M13.99%209.25l13%207.5v15l-13%207.5L1%2031.75v-15l12.99-7.5zM3%2017.9v12.7l10.99%206.34%2011-6.35V17.9l-11-6.34L3%2017.9zM0%2015l12.98-7.5V0h-2v6.35L0%2012.69v2.3zm0%2018.5L12.98%2041v8h-2v-6.85L0%2035.81v-2.3zM15%200v7.5L27.99%2015H28v-2.31h-.01L17%206.35V0h-2zm0%2049v-8l12.99-7.5H28v2.31h-.01L17%2042.15V49h-2z%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22nonzero%22%2F%3E%3C%2Fsvg%3E')" },
+    plus: { label: "Plus", uri: "url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')" },
+    polkaDots: { label: "Polka Dots", uri: "url('data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ctitle%3Edots%3C%2Ftitle%3E%3Cg%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%3E%3Ccircle%20cx%3D%223%22%20cy%3D%223%22%20r%3D%223%22%2F%3E%3Ccircle%20cx%3D%2213%22%20cy%3D%2213%22%20r%3D%223%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E')" },
+    diagonalLines: { label: "Diagonal Lines", uri: "url('data:image/svg+xml,%3Csvg%20width%3D%226%22%20height%3D%226%22%20viewBox%3D%220%200%206%206%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ctitle%3EArtboard%203%20Copy%202%3C%2Ftitle%3E%3Cg%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%3E%3Cpath%20d%3D%22M5%200h1L0%206V5zM6%205v1H5z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E')" },
+    fallingTriangles: { label: "Triangles", uri: "url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2236%22%20height%3D%2272%22%20viewBox%3D%220%200%2036%2072%22%3E%3Cpath%20d%3D%22M2%206h12L8%2018%202%206zm18%2036h12l-6%2012-6-12z%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')" },
+    wiggle: { label: "Wiggle", uri: "url('data:image/svg+xml,%3Csvg%20width%3D%2252%22%20height%3D%2226%22%20viewBox%3D%220%200%2052%2026%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M10%2010c0-2.21-1.79-4-4-4-3.314%200-6-2.686-6-6h2c0%202.21%201.79%204%204%204%203.314%200%206%202.686%206%206%200%202.21%201.79%204%204%204%203.314%200%206%202.686%206%206%200%202.21%201.79%204%204%204v2c-3.314%200-6-2.686-6-6%200-2.21-1.79-4-4-4-3.314%200-6-2.686-6-6zm25.464-1.95l8.486%208.486-1.414%201.414-8.486-8.486%201.414-1.414z%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')" },
+    temple: { label: "Temple", uri: "url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22152%22%20height%3D%22152%22%20viewBox%3D%220%200%20152%20152%22%3E%3Cpath%20d%3D%22M152%20150v2H0v-2h28v-8H8v-20H0v-2h8V80h42v20h20v42H30v8h90v-8H80v-42h20V80h42v40h8V30h-8v40h-42V50H80V8h40V0h2v8h20v20h8V0h2v150zm-2%200v-28h-8v20h-20v8h28zM82%2030v18h18V30H82zm20%2018h20v20h18V30h-20V10H82v18h20v20zm0%202v18h18V50h-18zm20-22h18V10h-18v18zm-54%2092v-18H50v18h18zm-20-18H28V82H10v38h20v20h38v-18H48v-20zm0-2V82H30v18h18zm-20%2022H10v18h18v-18zm54%200v18h38v-20h20V82h-18v20h-20v20H82zm18-20H82v18h18v-18zm2-2h18V82h-18v18zm20%2040v-18h18v18h-18zM30%200h-2v8H8v20H0v2h8v40h42V50h20V8H30V0zm20%2048h18V30H50v18zm18-20H48v20H28v20H10V30h20V10h38v18zM30%2050h18v18H30V50zm-2-40H10v18h18V10z%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')" },
+    deathStar: { label: "Death Star", uri: "url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2280%22%20height%3D%22105%22%20viewBox%3D%220%200%2080%20105%22%3E%3Cpath%20d%3D%22M20%2010a5%205%200%200%201%2010%200v50a5%205%200%200%201-10%200V10zm15%2035a5%205%200%200%201%2010%200v50a5%205%200%200%201-10%200V45zM20%2075a5%205%200%200%201%2010%200v20a5%205%200%200%201-10%200V75zm30-65a5%205%200%200%201%2010%200v50a5%205%200%200%201-10%200V10zm0%2065a5%205%200%200%201%2010%200v20a5%205%200%200%201-10%200V75zM35%2010a5%205%200%200%201%2010%200v20a5%205%200%200%201-10%200V10zM5%2045a5%205%200%200%201%2010%200v50a5%205%200%200%201-10%200V45zm0-35a5%205%200%200%201%2010%200v20a5%205%200%200%201-10%200V10zm60%2035a5%205%200%200%201%2010%200v50a5%205%200%200%201-10%200V45zm0-35a5%205%200%200%201%2010%200v20a5%205%200%200%201-10%200V10z%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')" },
+    overlappingCircles: { label: "Circles", uri: "url('data:image/svg+xml,%3Csvg%20width%3D%2280%22%20height%3D%2280%22%20viewBox%3D%220%200%2080%2080%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M50%2050c0-5.523%204.477-10%2010-10s10%204.477%2010%2010-4.477%2010-10%2010c0%205.523-4.477%2010-10%2010s-10-4.477-10-10%204.477-10%2010-10zM10%2010c0-5.523%204.477-10%2010-10s10%204.477%2010%2010-4.477%2010-10%2010c0%205.523-4.477%2010-10%2010S0%2025.523%200%2020s4.477-10%2010-10zm10%208c4.418%200%208-3.582%208-8s-3.582-8-8-8-8%203.582-8%208%203.582%208%208%208zm40%2040c4.418%200%208-3.582%208-8s-3.582-8-8-8-8%203.582-8%208%203.582%208%208%208z%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')" },
+    bubbles: { label: "Bubbles", uri: "url('data:image/svg+xml,%3Csvg%20width%3D%22100%22%20height%3D%22100%22%20viewBox%3D%220%200%20100%20100%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ctitle%3Ebubbles%3C%2Ftitle%3E%3Cpath%20d%3D%22M11%2018c3.866%200%207-3.134%207-7s-3.134-7-7-7-7%203.134-7%207%203.134%207%207%207zm48%2025c3.866%200%207-3.134%207-7s-3.134-7-7-7-7%203.134-7%207%203.134%207%207%207zm-43-7c1.657%200%203-1.343%203-3s-1.343-3-3-3-3%201.343-3%203%201.343%203%203%203zm63%2031c1.657%200%203-1.343%203-3s-1.343-3-3-3-3%201.343-3%203%201.343%203%203%203zM34%2090c1.657%200%203-1.343%203-3s-1.343-3-3-3-3%201.343-3%203%201.343%203%203%203zm56-76c1.657%200%203-1.343%203-3s-1.343-3-3-3-3%201.343-3%203%201.343%203%203%203zM12%2086c2.21%200%204-1.79%204-4s-1.79-4-4-4-4%201.79-4%204%201.79%204%204%204zm28-65c2.21%200%204-1.79%204-4s-1.79-4-4-4-4%201.79-4%204%201.79%204%204%204zm23-11c2.761%200%205-2.239%205-5s-2.239-5-5-5-5%202.239-5%205%202.239%205%205%205zm-6%2060c2.21%200%204-1.79%204-4s-1.79-4-4-4-4%201.79-4%204%201.79%204%204%204zm29%2022c2.761%200%205-2.239%205-5s-2.239-5-5-5-5%202.239-5%205%202.239%205%205%205zM32%2063c2.761%200%205-2.239%205-5s-2.239-5-5-5-5%202.239-5%205%202.239%205%205%205zm57-13c2.761%200%205-2.239%205-5s-2.239-5-5-5-5%202.239-5%205%202.239%205%205%205zm-9-21c1.105%200%202-.895%202-2s-.895-2-2-2-2%20.895-2%202%20.895%202%202%202zM60%2091c1.105%200%202-.895%202-2s-.895-2-2-2-2%20.895-2%202%20.895%202%202%202zM35%2041c1.105%200%202-.895%202-2s-.895-2-2-2-2%20.895-2%202%20.895%202%202%202zM12%2060c1.105%200%202-.895%202-2s-.895-2-2-2-2%20.895-2%202%20.895%202%202%202z%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')" },
+    moroccan: { label: "Moroccan", uri: "url('data:image/svg+xml,%3Csvg%20width%3D%2280%22%20height%3D%2288%22%20viewBox%3D%220%200%2080%2088%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ctitle%3Emoroccan%3C%2Ftitle%3E%3Cpath%20d%3D%22M22%2021.91V26h-2.001C10.06%2026%202%2034.059%202%2044c0%209.943%208.058%2018%2017.999%2018H22v4.09c8.012.722%2014.785%205.738%2018%2012.73%203.212-6.991%209.983-12.008%2018-12.73V62h2.001C69.94%2062%2078%2053.941%2078%2044c0-9.943-8.058-18-17.999-18H58v-4.09c-8.012-.722-14.785-5.738-18-12.73-3.212%206.991-9.983%2012.008-18%2012.73zM54%2058v4.696c-5.574%201.316-10.455%204.428-14%208.69-3.545-4.262-8.426-7.374-14-8.69V58h-5.993C12.271%2058%206%2051.734%206%2044c0-7.732%206.275-14%2014.007-14H26v-4.696c5.574-1.316%2010.455-4.428%2014-8.69%203.545%204.262%208.426%207.374%2014%208.69V30h5.993C67.729%2030%2074%2036.266%2074%2044c0%207.732-6.275%2014-14.007%2014H54zM42%2088c0-9.941%208.061-18%2017.999-18H62v-4.09c8.016-.722%2014.787-5.738%2018-12.73v7.434c-3.545%204.262-8.426%207.374-14%208.69V74h-5.993C52.275%2074%2046%2080.268%2046%2088h-4zm-4%200c0-9.943-8.058-18-17.999-18H18v-4.09c-8.012-.722-14.785-5.738-18-12.73v7.434c3.545%204.262%208.426%207.374%2014%208.69V74h5.993C27.729%2074%2034%2080.266%2034%2088h4zm4-88c0%209.943%208.058%2018%2017.999%2018H62v4.09c8.012.722%2014.785%205.738%2018%2012.73v-7.434c-3.545-4.262-8.426-7.374-14-8.69V14h-5.993C52.271%2014%2046%207.734%2046%200h-4zM0%2034.82c3.213-6.992%209.984-12.008%2018-12.73V18h2.001C29.94%2018%2038%209.941%2038%200h-4c0%207.732-6.275%2014-14.007%2014H14v4.696c-5.574%201.316-10.455%204.428-14%208.69v7.433z%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')" },
+    graphPaper: { label: "Graph Paper", uri: "url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%22%20height%3D%22100%22%20viewBox%3D%220%200%20100%20100%22%3E%3Cg%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%3E%3Cpath%20opacity%3D%22.5%22%20d%3D%22M96%2095h4v1h-4v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9zm-1%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-9-10h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm9-10v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-9-10h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm9-10v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-9-10h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm9-10v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-10%200v-9h-9v9h9zm-9-10h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9zm10%200h9v-9h-9v9z%22%2F%3E%3Cpath%20d%3D%22M6%205V0H5v5H0v1h5v94h1V6h94V5H6z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E')" },
+    fourPointStars: { label: "Stars", uri: "url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2224%22%20width%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20d%3D%22M8%204l4%202-4%202-2%204-2-4-4-2%204-2%202-4%202%204z%22%2F%3E%3C%2Fsvg%3E')" },
+    ticTacToe: { label: "Tic Tac Toe", uri: "url('data:image/svg+xml,%3Csvg%20width%3D%2264%22%20height%3D%2264%22%20viewBox%3D%220%200%2064%2064%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ctitle%3Etic-tac-toe%3C%2Ftitle%3E%3Cpath%20d%3D%22M8%2016c4.418%200%208-3.582%208-8s-3.582-8-8-8-8%203.582-8%208%203.582%208%208%208zm0-2c3.314%200%206-2.686%206-6s-2.686-6-6-6-6%202.686-6%206%202.686%206%206%206zm33.414-6l5.95-5.95L45.95.636%2040%206.586%2034.05.636%2032.636%202.05%2038.586%208l-5.95%205.95%201.414%201.414L40%209.414l5.95%205.95%201.414-1.414L41.414%208zM40%2048c4.418%200%208-3.582%208-8s-3.582-8-8-8-8%203.582-8%208%203.582%208%208%208zm0-2c3.314%200%206-2.686%206-6s-2.686-6-6-6-6%202.686-6%206%202.686%206%206%206zM9.414%2040l5.95-5.95-1.414-1.414L8%2038.586l-5.95-5.95L.636%2034.05%206.586%2040l-5.95%205.95%201.414%201.414L8%2041.414l5.95%205.95%201.414-1.414L9.414%2040z%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')" },
+    hideout: { label: "Hideout", uri: "url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2240%22%20height%3D%2240%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cpath%20d%3D%22M0%2038.59l2.83-2.83%201.41%201.41L1.41%2040H0v-1.41zM0%201.4l2.83%202.83%201.41-1.41L1.41%200H0v1.41zM38.59%2040l-2.83-2.83%201.41-1.41L40%2038.59V40h-1.41zM40%201.41l-2.83%202.83-1.41-1.41L38.59%200H40v1.41zM20%2018.6l2.83-2.83%201.41%201.41L21.41%2020l2.83%202.83-1.41%201.41L20%2021.41l-2.83%202.83-1.41-1.41L18.59%2020l-2.83-2.83%201.41-1.41L20%2018.59z%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')" },
+    bamboo: { label: "Bamboo", uri: "url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2232%22%20width%3D%2216%22%20viewBox%3D%220%200%2016%2032%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20d%3D%22M0%2024h4v2H0v-2zm0%204h6v2H0v-2zm0-8h2v2H0v-2zM0%200h4v2H0V0zm0%204h2v2H0V4zm16%2020h-6v2h6v-2zm0%204H8v2h8v-2zm0-8h-4v2h4v-2zm0-20h-6v2h6V0zm0%204h-4v2h4V4zm-2%2012h2v2h-2v-2zm0-8h2v2h-2V8zM2%208h10v2H2V8zm0%208h10v2H2v-2zm-2-4h14v2H0v-2zm4-8h6v2H4V4zm0%2016h6v2H4v-2zM6%200h2v2H6V0zm0%2024h2v2H6v-2z%22%2F%3E%3C%2Fsvg%3E')" }
+  };
+  const PATTERN_OPACITY = { subtle: 0.1, medium: 0.2, bold: 0.32 };
+
+  function patternImageValue(key, accentHex, intensity){
+    const p = BG_PATTERNS[key];
+    if (!p || !p.uri) return "";
+    const hex = String(accentHex || "#6d4df6").replace("#", "");
+    const opacity = PATTERN_OPACITY[intensity] ?? PATTERN_OPACITY.medium;
+    return p.uri.replace("a1b2c3", hex).replace("0.987", String(opacity));
+  }
+
   const DEFAULT_CONFIG = {
     version: 9,
     tint: "midnight",
@@ -33,6 +66,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       text: "#e8ecfb",
       chatText: "#d4defd",
       accent: "#191434"
+    },
+    // Optional tiled page backdrop (Hero Patterns) drawn with the palette's
+    // background + accent colors. pattern "none" = flat background.
+    background: {
+      pattern: "none",
+      intensity: "medium"
     },
     slider: {
       enabled: false,
@@ -892,6 +931,38 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-filter-status__btn.is-ghost { background: transparent; color: var(--btfw-admin-text-soft); }
       .btfw-theme-admin .btfw-filter-status__btn.is-ghost:hover { color: var(--btfw-admin-text); }
       .btfw-theme-admin .btfw-filter-status__note { margin: 0; font-size: 0.74rem; color: var(--btfw-admin-text-soft); }
+      .btfw-theme-admin .btfw-pattern-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; margin-top: 2px; }
+      .btfw-theme-admin .btfw-pattern-tile {
+        position: relative;
+        height: 44px;
+        border-radius: 8px;
+        border: 1px solid var(--btfw-admin-border-soft);
+        background-color: #0d0d0d;
+        background-position: center;
+        cursor: pointer;
+        padding: 0;
+        overflow: hidden;
+        transition: border-color 150ms ease, box-shadow 150ms ease;
+      }
+      .btfw-theme-admin .btfw-pattern-tile:hover { border-color: color-mix(in srgb, var(--btfw-color-accent) 45%, transparent); }
+      .btfw-theme-admin .btfw-pattern-tile:focus-visible { outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 65%, transparent); outline-offset: 1px; }
+      .btfw-theme-admin .btfw-pattern-tile.is-active {
+        border-color: var(--btfw-color-accent);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-color-accent) 35%, transparent);
+      }
+      .btfw-theme-admin .btfw-pattern-tile--none { display: inline-flex; align-items: center; justify-content: center; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--btfw-admin-text-soft); }
+      .btfw-theme-admin .btfw-pattern-tile__label {
+        position: absolute; left: 0; right: 0; bottom: 0;
+        padding: 1px 4px;
+        font-size: 0.58rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+        color: color-mix(in srgb, var(--btfw-admin-text) 85%, transparent);
+        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 78%, transparent);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        pointer-events: none;
+      }
+      .btfw-theme-admin .btfw-pattern-intensity { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+      .btfw-theme-admin .btfw-pattern-intensity label { font-size: 0.76rem; font-weight: 600; }
+      .btfw-theme-admin .btfw-pattern-intensity select { flex: 0 1 160px; }
       .btfw-theme-admin details.section {
         /* The summary and body carry their own padding; the row itself has none.
            (Also guards against host CSS styling the generic .section name.) */
@@ -2121,7 +2192,19 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const accent = colors.accent || "#6d4df6";
     const fontFamily = typography.family || FONT_FALLBACK_FAMILY;
 
-    return `\n${CSS_BLOCK_START}\n:root {\n  --btfw-theme-bg: ${bg};\n  --btfw-theme-surface: ${surface};\n  --btfw-theme-panel: ${panel};\n  --btfw-theme-text: ${textColor};\n  --btfw-theme-chat-text: ${chatText};\n  --btfw-theme-accent: ${accent};\n  --btfw-theme-font-family: ${fontFamily};\n}\n${CSS_BLOCK_END}`;
+    // Optional Hero Pattern backdrop. !important on background-image because
+    // the theme's dark-mode bridge repaints body with a `background:`
+    // shorthand from a later style element, which would otherwise reset it.
+    let patternCss = "";
+    const bgCfg = cfg.background || {};
+    if (bgCfg.pattern && bgCfg.pattern !== "none" && BG_PATTERNS[bgCfg.pattern]) {
+      const image = patternImageValue(bgCfg.pattern, accent, bgCfg.intensity);
+      if (image) {
+        patternCss = `\nbody {\n  background-color: ${bg};\n  background-image: ${image} !important;\n  background-attachment: fixed !important;\n}`;
+      }
+    }
+
+    return `\n${CSS_BLOCK_START}\n:root {\n  --btfw-theme-bg: ${bg};\n  --btfw-theme-surface: ${surface};\n  --btfw-theme-panel: ${panel};\n  --btfw-theme-text: ${textColor};\n  --btfw-theme-chat-text: ${chatText};\n  --btfw-theme-accent: ${accent};\n  --btfw-theme-font-family: ${fontFamily};\n}${patternCss}\n${CSS_BLOCK_END}`;
   }
 
 // Replace this function in feature-channel-theme-admin.js
@@ -2261,6 +2344,56 @@ function replaceBlock(original, startMarker, endMarker, block){
     return ((0.299 * r + 0.587 * g + 0.114 * b) / 255) > 0.6 ? "#0b0e16" : "#ffffff";
   }
 
+  function paintPatternPreviews(panel, cfg){
+    const colors = cfg.colors || {};
+    const bg = colors.background || "#05060d";
+    const accent = colors.accent || "#6d4df6";
+    const selected = cfg.background?.pattern || "none";
+    panel.querySelectorAll(".btfw-pattern-tile").forEach(tile => {
+      const key = tile.dataset.pattern;
+      tile.classList.toggle("is-active", key === selected);
+      if (key === "none") return;
+      tile.style.backgroundColor = bg;
+      // tiles preview at a fixed readable opacity; intensity applies on Apply
+      tile.style.backgroundImage = patternImageValue(key, accent, "bold");
+    });
+    const intensityRow = panel.querySelector('[data-role="pattern-intensity-row"]');
+    if (intensityRow) intensityRow.hidden = selected === "none";
+  }
+
+  function wirePatternPicker(panel, cfg){
+    const grid = panel.querySelector('[data-role="pattern-grid"]');
+    const input = panel.querySelector('[data-role="pattern-input"]');
+    if (!grid || !input || grid.dataset.wired === "1") return;
+    grid.dataset.wired = "1";
+    const entries = [["none", { label: "None" }]].concat(Object.entries(BG_PATTERNS));
+    entries.forEach(([key, def]) => {
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "btfw-pattern-tile" + (key === "none" ? " btfw-pattern-tile--none" : "");
+      tile.dataset.pattern = key;
+      tile.title = def.label;
+      tile.setAttribute("role", "radio");
+      if (key === "none") {
+        tile.textContent = "None";
+      } else {
+        const label = document.createElement("span");
+        label.className = "btfw-pattern-tile__label";
+        label.textContent = def.label;
+        tile.appendChild(label);
+      }
+      tile.addEventListener("click", () => {
+        input.value = key;
+        // route through the standard bind flow so collectConfig/markDirty see it
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+        if (cfg.background && typeof cfg.background === "object") cfg.background.pattern = key;
+        paintPatternPreviews(panel, cfg);
+      });
+      grid.appendChild(tile);
+    });
+    paintPatternPreviews(panel, cfg);
+  }
+
   function renderPreview(panel, cfg){
     const colors = cfg.colors || {};
     const typography = applyLiveTypographyAssets(cfg.typography || {}, { scope: "preview" });
@@ -2283,7 +2416,16 @@ function replaceBlock(original, startMarker, endMarker, block){
       preview.style.setProperty("--accent", accent);
       preview.style.setProperty("--on-accent", readableTextOn(accent));
       preview.style.background = "";
+      // Show the chosen backdrop pattern behind the mockup body.
+      const previewBody = preview.querySelector(".btfw-tp__body");
+      if (previewBody) {
+        const patternKey = cfg.background?.pattern || "none";
+        previewBody.style.backgroundImage = patternKey !== "none"
+          ? patternImageValue(patternKey, accent, cfg.background?.intensity || "medium")
+          : "";
+      }
     }
+    paintPatternPreviews(panel, cfg);
     // Show each swatch's current hex, readably.
     panel.querySelectorAll(".btfw-swatch__hex[data-hex]").forEach(h => {
       const v = colors[h.dataset.hex];
@@ -2884,6 +3026,20 @@ function replaceBlock(original, startMarker, endMarker, block){
               <label class="btfw-swatch"><input type="color" data-btfw-bind="colors.text"><span class="btfw-swatch__name">Primary text</span><span class="btfw-swatch__hex" data-hex="text"></span></label>
               <label class="btfw-swatch"><input type="color" data-btfw-bind="colors.chatText"><span class="btfw-swatch__name">Chat text</span><span class="btfw-swatch__hex" data-hex="chatText"></span></label>
               <label class="btfw-swatch"><input type="color" data-btfw-bind="colors.accent"><span class="btfw-swatch__name">Accent</span><span class="btfw-swatch__hex" data-hex="accent"></span></label>
+            </div>
+            <div class="field">
+              <label>Background pattern</label>
+              <input type="hidden" data-btfw-bind="background.pattern" data-role="pattern-input">
+              <div class="btfw-pattern-grid" data-role="pattern-grid" role="radiogroup" aria-label="Background pattern"></div>
+              <div class="btfw-pattern-intensity" data-role="pattern-intensity-row" hidden>
+                <label for="btfw-theme-pattern-intensity">Intensity</label>
+                <select id="btfw-theme-pattern-intensity" data-btfw-bind="background.intensity">
+                  <option value="subtle">Subtle</option>
+                  <option value="medium">Medium</option>
+                  <option value="bold">Bold</option>
+                </select>
+              </div>
+              <p class="help">Optional tiled backdrop drawn with your Background and Accent colors (patterns by heropatterns.com). Pick "None" for a flat background.</p>
             </div>
             <div class="preview btfw-tp" data-role="theme-preview" aria-hidden="true">
               <div class="btfw-tp__bar"><span class="btfw-tp__dot"></span><span class="btfw-tp__dot"></span><span class="btfw-tp__dot"></span><span class="btfw-tp__barlabel">Live preview</span></div>
@@ -4152,9 +4308,20 @@ function replaceBlock(original, startMarker, endMarker, block){
       cfg.sliderJson = sliderState.url || "";
     }
 
+    if (!cfg.background || typeof cfg.background !== "object") {
+      cfg.background = { ...DEFAULT_CONFIG.background };
+    }
+    if (!BG_PATTERNS[cfg.background.pattern] && cfg.background.pattern !== "none") {
+      cfg.background.pattern = "none";
+    }
+    if (!PATTERN_OPACITY[cfg.background.intensity]) {
+      cfg.background.intensity = "medium";
+    }
+
 let initializing = true;
 updateInputs(panel, cfg);
 initializing = false;
+wirePatternPicker(panel, cfg);
 
 setTimeout(() => {
   const modules = normalizeModuleUrls(collectModuleCandidates(cfg));
