@@ -1709,8 +1709,9 @@ nav.pagination.is-centered.btfw-gif-pager {
   border: 1px solid color-mix(in srgb, var(--btfw-color-text) 14%, transparent 86%) !important;
   background: color-mix(in srgb, var(--btfw-color-panel) 72%, transparent 28%) !important;
   color: color-mix(in srgb, var(--btfw-color-text) 84%, transparent 16%) !important;
-  padding: 8px 16px;
-  font-size: 0.72rem;
+  /* pill metrics match the skinned CyTube modal tabs (Channel Settings) */
+  padding: 7px 14px;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;

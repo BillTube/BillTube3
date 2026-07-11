@@ -1616,9 +1616,13 @@
   font-size: 1.125rem;
   font-weight: 500;
   letter-spacing: normal;
-  margin: 0;
+  /* head gap (16px) + this margin = the reference's 26px title-to-tabs gap */
+  margin: 0 0 10px;
   padding-right: 44px;
   line-height: 1.2;
+}
+#btfw-theme-modal .modal-card-body {
+  padding: 28px 24px 28px;
 }
 #btfw-theme-modal .modal-card-head .delete {
   position: absolute;
