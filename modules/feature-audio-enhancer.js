@@ -46,7 +46,8 @@ BTFW.define("feature:audioEnhancer", [], async () => {
 
     NORM_PRESETS: {
       gentle:     { threshold: -12, knee: 20, ratio: 6,  attack: 0.01,  release: 0.5,  label: "Gentle" },
-      youtube:    { threshold: -24, knee: 30, ratio: 12, attack: 0.003, release: 0.25, label: "YouTube" },
+      // key stays "youtube" (internal + default) — the label is what users see
+      youtube:    { threshold: -24, knee: 30, ratio: 12, attack: 0.003, release: 0.25, label: "Balanced" },
       aggressive: { threshold: -50, knee: 40, ratio: 12, attack: 0.001, release: 0.25, label: "Aggressive" }
     },
 
