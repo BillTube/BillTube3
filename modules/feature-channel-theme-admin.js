@@ -893,9 +893,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-filter-status__btn.is-ghost:hover { color: var(--btfw-admin-text); }
       .btfw-theme-admin .btfw-filter-status__note { margin: 0; font-size: 0.74rem; color: var(--btfw-admin-text-soft); }
       .btfw-theme-admin details.section {
-        /* Zero out Bulma's generic .section padding (3rem) which leaks in at
-           >=1024px and inflated every collapsed row to ~150px of dead space. The
-           summary and body carry their own padding. */
+        /* The summary and body carry their own padding; the row itself has none.
+           (Also guards against host CSS styling the generic .section name.) */
         padding: 0;
         border-radius: 10px;
         border: 1px solid var(--btfw-admin-border-soft);
@@ -923,7 +922,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--btfw-theme-accent, #6d4df6); }
       .btfw-theme-admin .btfw-switch-field { display: flex; flex-direction: column; gap: 6px; }
       /* The pill switch is the visible control; its bound checkbox is a hidden state-holder.
-         CyTube/Bulma force display:grid on every checkbox, overriding the [hidden] attribute,
+         Host CSS forces a display on every checkbox, overriding the [hidden] attribute,
          so re-assert it here (the visible .btfw-checkbox inputs aren't marked hidden). */
       .btfw-theme-admin input[type="checkbox"][hidden] { display: none !important; }
       .btfw-theme-admin .btfw-switch {

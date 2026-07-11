@@ -335,32 +335,27 @@ html { font-size: 16px; }
 .select.is-small { border-radius: 2px; font-size: 0.75rem; }
 
 /* =============================== TABS ============================== */
-/* Only #btfw-ts-tabs uses real Bulma .tabs; the theme pill-styles it in
-   base.css. Minimal base so it lays out before those overrides apply. */
+/* Only #btfw-ts-tabs uses .tabs, and base.css pill-styles it. Purely
+   structural base — Bulma's underline borders and overflow clipping are
+   deliberately NOT reproduced (the pill styling killed them anyway). */
 .tabs {
-  -webkit-overflow-scrolling: touch;
   align-items: stretch;
   display: flex;
   font-size: 1rem;
   justify-content: space-between;
-  overflow: hidden;
-  overflow-x: auto;
   white-space: nowrap;
 }
 .tabs a {
   align-items: center;
-  border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-text, #dbdbdb) 20%, transparent);
   color: var(--btfw-color-text-soft, #4a4a4a);
   display: flex;
   justify-content: center;
-  margin-bottom: -1px;
   padding: 0.5em 1em;
   vertical-align: top;
 }
 .tabs li { display: block; }
 .tabs ul {
   align-items: center;
-  border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-text, #dbdbdb) 20%, transparent);
   display: flex;
   flex-grow: 1;
   flex-shrink: 0;

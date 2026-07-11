@@ -1678,10 +1678,6 @@ nav.pagination.is-centered.btfw-gif-pager {
   min-height: 44px !important;
   height: auto !important;
   max-height: none !important;
-  /* Bulma's .tabs sets overflow:hidden/auto for horizontal scroll, which clips
-     the active pill's glow. We wrap tabs instead of scrolling, so allow the
-     glow to show. */
-  overflow: visible !important;
 }
 
 #btfw-theme-modal .btfw-ts-tabs ul{
@@ -1703,12 +1699,6 @@ nav.pagination.is-centered.btfw-gif-pager {
   margin: 0;
 }
 
-/* Kill Bulma's default tab underline/border so our pills aren't fighting it. */
-#btfw-theme-modal .btfw-ts-tabs,
-#btfw-theme-modal .btfw-ts-tabs ul{
-  border-bottom: 0 !important;
-}
-
 #btfw-theme-modal .btfw-ts-tabs li a{
   display: inline-flex !important;
   visibility: visible !important;
@@ -1725,7 +1715,7 @@ nav.pagination.is-centered.btfw-gif-pager {
   transition: background .14s ease, color .14s ease, border-color .14s ease, box-shadow .14s ease !important;
 }
 
-/* Themed hover for inactive tabs (replaces Bulma's blue-underline hover). */
+/* Themed hover for inactive tabs. */
 #btfw-theme-modal .btfw-ts-tabs li:not(.is-active) a:hover{
   background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%) !important;
   border-color: color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%) !important;

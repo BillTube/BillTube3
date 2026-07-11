@@ -1,4 +1,6 @@
-/* BTFW — feature:bulma-layer (dark/light/auto + Bulma dark overrides + Bootstrap modal bridge) */
+/* BTFW — feature:bulma-layer (dark/light/auto mode manager + component dark theming + Bootstrap modal bridge).
+   The module keeps its historical name because the loader awaits "feature:bulma-layer" —
+   Bulma itself no longer loads; css/ui.css provides the structural base. */
 BTFW.define("feature:bulma-layer", [], async () => {
   // Persisted preference (kept for Theme Settings compatibility)
   const KEY = "btfw:theme:mode";                     // "auto" | "dark" | "light"
@@ -27,33 +29,19 @@ html[data-btfw-theme="dark"] body {
   background-image: none;
 }
 
-/* Text/surfaces (Bulma) */
+/* Text/surfaces */
 html[data-btfw-theme="dark"] .content,
-html[data-btfw-theme="dark"] .title,
-html[data-btfw-theme="dark"] .subtitle,
 html[data-btfw-theme="dark"] p,
 html[data-btfw-theme="dark"] small {
   color: var(--btfw-color-text);
 }
 
-html[data-btfw-theme="dark"] .box,
-html[data-btfw-theme="dark"] .card,
 html[data-btfw-theme="dark"] .panel,
-html[data-btfw-theme="dark"] .menu,
-html[data-btfw-theme="dark"] .notification,
-html[data-btfw-theme="dark"] .dropdown-content,
 html[data-btfw-theme="dark"] .modal-card {
   background: color-mix(in srgb, var(--btfw-color-surface) 92%, transparent 8%) !important;
   color: var(--btfw-color-text) !important;
   border: 1px solid var(--btfw-border) !important;
   box-shadow: 0 18px 42px color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%);
-}
-
-html[data-btfw-theme="dark"] .tabs.is-boxed li a { background:transparent; border-color:transparent; color:#c8d4e0; }
-html[data-btfw-theme="dark"] .tabs.is-boxed li.is-active a {
-  background: color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%);
-  color: var(--btfw-color-text);
-  border-color: var(--btfw-border);
 }
 
 /* Inputs */
@@ -91,8 +79,7 @@ html[data-btfw-theme="dark"] .button.is-primary {
 html[data-btfw-theme="dark"] #chatwrap,
 html[data-btfw-theme="dark"] #messagebuffer { background:transparent; }
 
-/* --- Bulma modal dark --- */
-html[data-btfw-theme="dark"] .modal { z-index: 6000 !important; }
+/* --- Modal-card dark (z-index comes from the style-core zfix tokens) --- */
 html[data-btfw-theme="dark"] .modal .modal-background { background-color: color-mix(in srgb, var(--btfw-color-bg) 88%, transparent 12%) !important; }
 html[data-btfw-theme="dark"] .modal-card-head,
 html[data-btfw-theme="dark"] .modal-card-foot {
@@ -106,10 +93,7 @@ html[data-btfw-theme="dark"] .modal-card {
 }
 html[data-btfw-theme="dark"] .modal-card-title { color: var(--btfw-color-text) !important; }
 
-/* --- Bootstrap/CyTube modal bridge (skin Bootstrap modals to match Bulma dark) --- */
-html[data-btfw-theme="dark"] .modal.fade,
-html[data-btfw-theme="dark"] .modal.in,
-html[data-btfw-theme="dark"] .modal { z-index: 6000 !important; }
+/* --- Bootstrap/CyTube modal bridge (skin Bootstrap modals to match the theme) --- */
 html[data-btfw-theme="dark"] .modal-backdrop {
   background-color: color-mix(in srgb, var(--btfw-color-bg) 88%, transparent 12%) !important; z-index: 0 !important;
 }
@@ -146,13 +130,10 @@ html[data-btfw-theme="dark"] .modal .btn-default {
 body.modal-open { overflow: hidden; }
 
 /* ===================================================================
-   Bulma neutralizing layer
-   Bulma 0.9.x is Sass-compiled with hard-coded light-theme colours (blue
-   links/arrows/focus rings, grey native controls). Wherever a component
-   isn't explicitly re-themed, those defaults leak through. The rules below
-   redirect Bulma's common surfaces to our theme tokens so new Bulma markup
-   inherits the theme instead of fighting it. Scoped to the dark theme; the
-   per-component modal overrides still win via higher specificity.
+   Component dark theming (formerly the "Bulma neutralizing layer").
+   Bulma no longer loads — css/ui.css owns the structural base — but these
+   rules still provide the theme's colours for selects, focus rings, and
+   native controls everywhere outside the explicitly-themed modals.
    =================================================================== */
 
 /* Select dropdowns — themed arrow + control everywhere (not just the modal). */
@@ -188,40 +169,13 @@ html[data-btfw-theme="dark"] input[type="range"],
 html[data-btfw-theme="dark"] input[type="checkbox"],
 html[data-btfw-theme="dark"] input[type="radio"]{ accent-color: var(--btfw-color-accent); }
 
-/* Tabs (non-boxed) — Bulma colours hover/active blue with a blue underline. */
-html[data-btfw-theme="dark"] .tabs a{
-  border-bottom-color: transparent;
-  color: color-mix(in srgb, var(--btfw-color-text) 78%, transparent 22%);
-}
-html[data-btfw-theme="dark"] .tabs a:hover{
-  border-bottom-color: color-mix(in srgb, var(--btfw-color-accent) 60%, transparent 40%);
-  color: var(--btfw-color-text);
-}
-html[data-btfw-theme="dark"] .tabs li.is-active a{
-  border-bottom-color: var(--btfw-color-accent);
-  color: var(--btfw-color-accent);
-}
-
-/* Tags — neutral grey-blue tags inherit the panel surface. */
-html[data-btfw-theme="dark"] .tag:not(.is-primary):not(.is-link):not(.is-info):not(.is-success):not(.is-warning):not(.is-danger){
-  background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);
-  color: var(--btfw-color-text);
-}
-
-/* Checkbox / radio hover (Bulma turns the label blue). */
-html[data-btfw-theme="dark"] .checkbox:hover,
-html[data-btfw-theme="dark"] .radio:hover{ color: var(--btfw-color-text); }
-
 /* Inline links inside themed surfaces — kept scoped (not a global 'a') so chat
    usernames / message links keep their own colours. */
 html[data-btfw-theme="dark"] .modal a:not(.button):not(.tag),
-html[data-btfw-theme="dark"] .box a:not(.button):not(.tag),
-html[data-btfw-theme="dark"] .panel a:not(.button):not(.tag),
-html[data-btfw-theme="dark"] .notification a:not(.button):not(.tag){
+html[data-btfw-theme="dark"] .panel a:not(.button):not(.tag){
   color: var(--btfw-color-accent);
 }
-html[data-btfw-theme="dark"] .modal a:not(.button):not(.tag):hover,
-html[data-btfw-theme="dark"] .box a:not(.button):not(.tag):hover{
+html[data-btfw-theme="dark"] .modal a:not(.button):not(.tag):hover{
   color: color-mix(in srgb, var(--btfw-color-accent) 80%, white 20%);
 }
 `;
