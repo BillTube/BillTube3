@@ -367,3 +367,217 @@ html { font-size: 16px; }
 .is-hidden { display: none !important; }
 .is-pulled-right { float: right !important; }
 .is-pulled-left { float: left !important; }
+
+/* ====================================================================
+   SECTION B — native BTFW recipes
+   Additive component recipes that codify the theme's existing visual
+   language (the Channel Theme Toolkit panel is the reference style) on
+   the tokens.css scales. Variant mechanism copied from .btfw-notice:
+   the base rule declares and consumes component-scoped custom
+   properties; modifier classes only reassign them.
+   ==================================================================== */
+
+/* ---- Toggle switch (canonical) -------------------------------------
+   One track+knob recipe for all three existing switch markups:
+   1) .btfw-switch            — aria-pressed <button> + __track/__knob spans
+      (theme admin; its pill card, hover and meta text stay in the module)
+   2) .btfw-ct-switch         — <label> + hidden checkbox + switchtrack/knob
+   3) .btfw-compact-stack-btn — aria-pressed <button>; the status chip is
+      the track and the knob is its ::after (the chip's JS-written On/Off
+      text stays CSS-hidden; state is conveyed by aria-pressed).
+   Knob travel is transform-based (no layout work): 3px inset, 18px travel
+   on a 40×22 track, with the springy settle from the motion tokens. */
+
+.btfw-ct-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+.btfw-switch__track,
+.btfw-ct-switchtrack,
+.btfw-compact-stack-btn .btfw-compact-stack-status {
+  position: relative;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 22px;
+  border-radius: var(--btfw-radius-pill, 999px);
+  background: color-mix(in srgb, var(--btfw-color-text, #e8eff4) 22%, transparent);
+  transition: background var(--btfw-motion-fast, 150ms) ease;
+}
+.btfw-compact-stack-btn .btfw-compact-stack-status {
+  color: transparent;
+  font-size: 0;
+  padding: 0;
+}
+
+.btfw-switch__knob,
+.btfw-ct-switchknob,
+.btfw-compact-stack-btn .btfw-compact-stack-status::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transform: translateY(-50%);
+  transition: transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-overshoot, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+
+.btfw-switch[aria-pressed="true"] .btfw-switch__track,
+.btfw-ct-switch input:checked + .btfw-ct-switchtrack,
+.btfw-compact-stack-btn[aria-pressed="true"] .btfw-compact-stack-status {
+  background: var(--btfw-color-accent, #4ade80);
+}
+.btfw-switch[aria-pressed="true"] .btfw-switch__knob,
+.btfw-ct-switch input:checked + .btfw-ct-switchtrack .btfw-ct-switchknob,
+.btfw-compact-stack-btn[aria-pressed="true"] .btfw-compact-stack-status::after {
+  transform: translate(18px, -50%);
+}
+
+.btfw-switch:focus-visible,
+.btfw-compact-stack-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--btfw-color-accent, #4ade80) 65%, transparent);
+  outline-offset: 2px;
+}
+.btfw-ct-switch input:focus-visible + .btfw-ct-switchtrack {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 30%, transparent);
+}
+
+/* ---- Button (.btfw-btn) -------------------------------------------- */
+.btfw-btn {
+  --btfw-btn-bg: color-mix(in srgb, var(--btfw-color-surface, #10141d) 80%, transparent);
+  --btfw-btn-bg-hover: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 22%, transparent);
+  --btfw-btn-border: color-mix(in srgb, var(--btfw-border, #2a3142) 65%, transparent);
+  --btfw-btn-border-hover: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 45%, transparent);
+  --btfw-btn-text: var(--btfw-color-text, #e8eff4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  padding: 8px 16px;
+  border-radius: var(--btfw-radius-xs, 8px);
+  border: 1px solid var(--btfw-btn-border);
+  background: var(--btfw-btn-bg);
+  color: var(--btfw-btn-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--btfw-motion-fast, 150ms) ease,
+              border-color var(--btfw-motion-fast, 150ms) ease,
+              transform 60ms ease;
+}
+.btfw-btn:hover {
+  background: var(--btfw-btn-bg-hover);
+  border-color: var(--btfw-btn-border-hover);
+  color: var(--btfw-btn-text);
+}
+.btfw-btn:active { transform: translateY(1px); }
+.btfw-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 24%, transparent);
+}
+.btfw-btn[disabled] { opacity: 0.55; cursor: default; }
+
+.btfw-btn--primary {
+  --btfw-btn-bg: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 26%, var(--btfw-color-panel, #171d27));
+  --btfw-btn-bg-hover: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 40%, var(--btfw-color-panel, #171d27));
+  --btfw-btn-border: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 60%, transparent);
+}
+.btfw-btn--danger {
+  --btfw-btn-bg: color-mix(in srgb, var(--btfw-color-error, #ff6f96) 36%, var(--btfw-color-panel, #171d27));
+  --btfw-btn-bg-hover: color-mix(in srgb, var(--btfw-color-error, #ff6f96) 50%, var(--btfw-color-panel, #171d27));
+  --btfw-btn-border: color-mix(in srgb, var(--btfw-color-error, #ff6f96) 48%, transparent);
+}
+.btfw-btn--ghost {
+  --btfw-btn-bg: transparent;
+  --btfw-btn-bg-hover: color-mix(in srgb, var(--btfw-color-text, #e8eff4) 8%, transparent);
+  --btfw-btn-border: transparent;
+  --btfw-btn-border-hover: transparent;
+  --btfw-btn-text: color-mix(in srgb, var(--btfw-color-text, #e8eff4) 70%, transparent);
+}
+.btfw-btn--ghost:hover { --btfw-btn-text: var(--btfw-color-text, #e8eff4); }
+.btfw-btn--sm { padding: 4px 10px; font-size: 0.74rem; }
+.btfw-btn--icon { width: 32px; height: 32px; padding: 0; }
+.btfw-btn--pill { border-radius: var(--btfw-radius-pill, 999px); }
+
+/* ---- Text input (.btfw-field-input) --------------------------------- */
+.btfw-field-input {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: var(--btfw-radius-xs, 8px);
+  border: 1px solid color-mix(in srgb, var(--btfw-border, #2a3142) 82%, transparent);
+  background: color-mix(in srgb, var(--btfw-color-surface, #10141d) 88%, transparent);
+  color: var(--btfw-color-text, #e8eff4);
+  font-size: 0.85rem;
+  box-shadow: none;
+  transition: border-color var(--btfw-motion-fast, 150ms) ease,
+              box-shadow var(--btfw-motion-fast, 150ms) ease;
+}
+.btfw-field-input::placeholder { color: color-mix(in srgb, var(--btfw-color-text, #e8eff4) 48%, transparent); }
+.btfw-field-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 60%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 24%, transparent);
+}
+
+/* ---- Checkbox (.btfw-check) -----------------------------------------
+   Global version of the theme modal's custom checkbox (base.css keeps the
+   #btfw-theme-modal-scoped original; existing consumers are not repointed). */
+.btfw-check {
+  appearance: none;
+  -webkit-appearance: none;
+  /* slate.css forces .checkbox input to position:absolute — stay in flow */
+  position: static;
+  margin: 0;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1.5px solid color-mix(in srgb, var(--btfw-color-text, #e8eff4) 28%, transparent);
+  background: color-mix(in srgb, var(--btfw-color-bg, #0a0e15) 55%, transparent);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: background var(--btfw-motion-fast, 150ms) ease,
+              border-color var(--btfw-motion-fast, 150ms) ease,
+              box-shadow var(--btfw-motion-fast, 150ms) ease;
+}
+.btfw-check::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-overshoot, cubic-bezier(0.34, 1.56, 0.64, 1));
+  background: var(--btfw-color-on-accent, #fff);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+.btfw-check:hover { border-color: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 55%, transparent); }
+.btfw-check:checked {
+  background: var(--btfw-color-accent, #4ade80);
+  border-color: var(--btfw-color-accent, #4ade80);
+}
+.btfw-check:checked::before { transform: scale(1); }
+.btfw-check:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 24%, transparent);
+}
+
+/* ---- Reduced motion -------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .btfw-btn,
+  .btfw-field-input,
+  .btfw-check,
+  .btfw-check::before,
+  .btfw-switch__track,
+  .btfw-ct-switchtrack,
+  .btfw-compact-stack-btn .btfw-compact-stack-status,
+  .btfw-switch__knob,
+  .btfw-ct-switchknob,
+  .btfw-compact-stack-btn .btfw-compact-stack-status::after {
+    transition: none !important;
+  }
+}

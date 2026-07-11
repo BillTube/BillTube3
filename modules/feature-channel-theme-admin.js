@@ -864,11 +864,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin {
         --btfw-admin-surface: color-mix(in srgb, var(--btfw-theme-panel, #141f36) 92%, transparent 8%);
         --btfw-admin-surface-alt: color-mix(in srgb, var(--btfw-theme-surface, #0b111d) 88%, transparent 12%);
-        --btfw-admin-border: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 40%, transparent 60%);
-        --btfw-admin-border-soft: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 22%, transparent 78%);
+        --btfw-admin-border: color-mix(in srgb, var(--btfw-color-accent) 40%, transparent 60%);
+        --btfw-admin-border-soft: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
         --btfw-admin-text: var(--btfw-theme-text, #dce4ff);
         --btfw-admin-text-soft: color-mix(in srgb, var(--btfw-theme-text, #dce4ff) 70%, transparent 30%);
-        --btfw-admin-chip: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 28%, transparent 72%);
+        --btfw-admin-chip: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
         padding: 12px 4px 16px;
         color: var(--btfw-admin-text);
         font-family: var(--btfw-font-body, 'Inter', sans-serif);
@@ -887,8 +887,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-filter-status__text span { font-size: 0.78rem; color: var(--btfw-admin-text-soft); }
       .btfw-theme-admin .btfw-filter-status[data-state="outdated"] .btfw-filter-status__text span { color: #e8b53a; }
       .btfw-theme-admin .btfw-filter-status__actions { display: flex; gap: 6px; flex: 0 0 auto; }
-      .btfw-theme-admin .btfw-filter-status__btn { border: 1px solid var(--btfw-admin-border-soft); background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 22%, transparent 78%); color: var(--btfw-admin-text); border-radius: 8px; padding: 4px 10px; font-size: 0.74rem; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
-      .btfw-theme-admin .btfw-filter-status__btn:hover { background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 36%, transparent 64%); }
+      .btfw-theme-admin .btfw-filter-status__btn { border: 1px solid var(--btfw-admin-border-soft); background: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%); color: var(--btfw-admin-text); border-radius: 8px; padding: 4px 10px; font-size: 0.74rem; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
+      .btfw-theme-admin .btfw-filter-status__btn:hover { background: color-mix(in srgb, var(--btfw-color-accent) 36%, transparent 64%); }
       .btfw-theme-admin .btfw-filter-status__btn.is-ghost { background: transparent; color: var(--btfw-admin-text-soft); }
       .btfw-theme-admin .btfw-filter-status__btn.is-ghost:hover { color: var(--btfw-admin-text); }
       .btfw-theme-admin .btfw-filter-status__note { margin: 0; font-size: 0.74rem; color: var(--btfw-admin-text-soft); }
@@ -913,13 +913,13 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .section__title h4 { margin: 0; font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--btfw-admin-text); }
       .btfw-theme-admin .section__title span { font-size: 0.76rem; color: var(--btfw-admin-text-soft); letter-spacing: 0.01em; }
       .btfw-theme-admin .section__chevron { width: 24px; height: 24px; border-radius: 7px; border: 0; background: color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%); display: inline-flex; align-items: center; justify-content: center; color: var(--btfw-admin-text-soft); font-size: 1.05rem; line-height: 1; transition: transform 0.2s ease, color 0.18s ease, background 0.18s ease; flex: 0 0 auto; }
-      .btfw-theme-admin summary.section__summary:hover .section__chevron { color: var(--btfw-admin-text); background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 16%, transparent 84%); }
+      .btfw-theme-admin summary.section__summary:hover .section__chevron { color: var(--btfw-admin-text); background: color-mix(in srgb, var(--btfw-color-accent) 16%, transparent 84%); }
       .btfw-theme-admin details.section[open] .section__chevron { transform: rotate(90deg); color: var(--btfw-admin-text); }
       .btfw-theme-admin .section__body { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
       .btfw-theme-admin .field { display: flex; flex-direction: column; gap: 6px; }
       .btfw-theme-admin label { font-weight: 600; letter-spacing: 0.03em; color: color-mix(in srgb, var(--btfw-admin-text) 92%, transparent 8%); }
       .btfw-theme-admin .btfw-checkbox { display: inline-flex; gap: 10px; align-items: center; font-weight: 600; color: color-mix(in srgb, var(--btfw-admin-text) 92%, transparent 8%); }
-      .btfw-theme-admin .btfw-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--btfw-theme-accent, #6d4df6); }
+      .btfw-theme-admin .btfw-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--btfw-color-accent); }
       .btfw-theme-admin .btfw-switch-field { display: flex; flex-direction: column; gap: 6px; }
       /* The pill switch is the visible control; its bound checkbox is a hidden state-holder.
          Host CSS forces a display on every checkbox, overriding the [hidden] attribute,
@@ -940,38 +940,17 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         text-align: left;
         width: 100%;
       }
-      .btfw-theme-admin .btfw-switch:hover { border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 35%, var(--btfw-admin-border-soft)); }
+      .btfw-theme-admin .btfw-switch:hover { border-color: color-mix(in srgb, var(--btfw-color-accent) 35%, var(--btfw-admin-border-soft)); }
       .btfw-theme-admin .btfw-switch[aria-pressed="true"] {
-        background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 14%, var(--btfw-admin-surface-alt));
-        border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 55%, transparent);
+        background: color-mix(in srgb, var(--btfw-color-accent) 14%, var(--btfw-admin-surface-alt));
+        border-color: color-mix(in srgb, var(--btfw-color-accent) 55%, transparent);
       }
       .btfw-theme-admin .btfw-switch:focus-visible {
-        outline: 2px solid color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 65%, transparent);
+        outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 65%, transparent);
         outline-offset: 2px;
       }
-      .btfw-theme-admin .btfw-switch__track {
-        position: relative;
-        flex: 0 0 auto;
-        width: 40px;
-        height: 22px;
-        border-radius: 999px;
-        background: color-mix(in srgb, var(--btfw-admin-text) 22%, transparent);
-        transition: background 160ms ease;
-      }
-      .btfw-theme-admin .btfw-switch__knob {
-        position: absolute;
-        top: 50%;
-        left: 3px;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: #fff;
-        transform: translateY(-50%);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.35);
-        transition: left 160ms ease;
-      }
-      .btfw-theme-admin .btfw-switch[aria-pressed="true"] .btfw-switch__track { background: var(--btfw-theme-accent, #6d4df6); }
-      .btfw-theme-admin .btfw-switch[aria-pressed="true"] .btfw-switch__knob { left: 21px; }
+      /* Track/knob chrome comes from the canonical switch recipe in css/ui.css;
+         only the pill card and text column are styled here. */
       .btfw-theme-admin .btfw-switch__meta { display: inline-flex; flex-direction: column; gap: 2px; min-width: 0; }
       .btfw-theme-admin .btfw-switch__title { font-weight: 600; font-size: 0.85rem; letter-spacing: 0.02em; color: var(--btfw-admin-text); }
       .btfw-theme-admin .btfw-switch__state {
@@ -982,7 +961,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         color: var(--btfw-admin-text-soft);
       }
       .btfw-theme-admin .btfw-switch[aria-pressed="true"] .btfw-switch__state {
-        color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 65%, var(--btfw-admin-text));
+        color: color-mix(in srgb, var(--btfw-color-accent) 65%, var(--btfw-admin-text));
       }
       .btfw-theme-admin [data-role="movie-info-requirements"] { margin-top: 4px; }
       .btfw-theme-admin .field.is-disabled label,
@@ -1007,7 +986,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin input[type="text"]:focus,
       .btfw-theme-admin input[type="url"]:focus,
       .btfw-theme-admin textarea:focus,
-      .btfw-theme-admin select:focus { border-color: var(--btfw-theme-accent, #6d4df6); box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 22%, transparent 78%); outline: none; }
+      .btfw-theme-admin select:focus { border-color: var(--btfw-color-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%); outline: none; }
       .btfw-theme-admin .field.is-disabled input,
       .btfw-theme-admin .field.is-disabled textarea,
       .btfw-theme-admin .field.is-disabled select { opacity: 0.55; }
@@ -1017,7 +996,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       /* Palette swatches — one responsive row, each shows the readable hex */
       .btfw-theme-admin .btfw-palette__swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
       .btfw-theme-admin .btfw-swatch { display: flex; flex-direction: column; gap: 7px; padding: 9px; border-radius: 11px; background: var(--btfw-admin-surface); border: 1px solid var(--btfw-admin-border-soft); cursor: pointer; transition: border-color 0.15s ease; }
-      .btfw-theme-admin .btfw-swatch:hover { border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 50%, var(--btfw-admin-border-soft)); }
+      .btfw-theme-admin .btfw-swatch:hover { border-color: color-mix(in srgb, var(--btfw-color-accent) 50%, var(--btfw-admin-border-soft)); }
       .btfw-theme-admin .btfw-swatch input[type="color"] { width: 100%; height: 34px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 0; background: none; cursor: pointer; }
       .btfw-theme-admin .btfw-swatch input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
       .btfw-theme-admin .btfw-swatch input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 7px; }
@@ -1044,7 +1023,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
       .btfw-theme-admin .buttons .btn-primary,
       .btfw-theme-admin .buttons .btn-secondary { padding: 6px 14px; border-radius: 8px; border: 0; font-weight: 600; letter-spacing: 0.01em; cursor: pointer; font-size: 0.85rem; transition: filter 0.16s ease, border-color 0.18s ease; }
-      .btfw-theme-admin .buttons .btn-primary { background: var(--btfw-theme-accent, #6d4df6); color: color-mix(in srgb, var(--btfw-admin-text) 98%, white 2%); }
+      .btfw-theme-admin .buttons .btn-primary { background: var(--btfw-color-accent); color: color-mix(in srgb, var(--btfw-admin-text) 98%, white 2%); }
       .btfw-theme-admin .buttons .btn-secondary { background: color-mix(in srgb, var(--btfw-admin-surface-alt) 90%, transparent 10%); color: var(--btfw-admin-text); border: 1px solid var(--btfw-admin-border-soft); }
       .btfw-theme-admin .buttons .btn-primary:hover,
       .btfw-theme-admin .buttons .btn-secondary:hover { filter: brightness(1.08); }
@@ -1109,13 +1088,13 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-mkt-btn:hover { border-color: var(--btfw-admin-border); filter: brightness(1.1); }
       .btfw-theme-admin .btfw-mkt-btn:disabled { opacity: 0.55; cursor: default; filter: none; }
       .btfw-theme-admin .btfw-mkt-btn--primary {
-        background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 26%, var(--btfw-admin-surface) 74%);
-        border-color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 60%, transparent);
+        background: color-mix(in srgb, var(--btfw-color-accent) 26%, var(--btfw-admin-surface) 74%);
+        border-color: color-mix(in srgb, var(--btfw-color-accent) 60%, transparent);
         color: var(--btfw-admin-text);
       }
       .btfw-theme-admin .btfw-mkt-btn--primary:hover {
-        background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 40%, var(--btfw-admin-surface) 60%);
-        border-color: var(--btfw-theme-accent, #6d4df6); filter: none;
+        background: color-mix(in srgb, var(--btfw-color-accent) 40%, var(--btfw-admin-surface) 60%);
+        border-color: var(--btfw-color-accent); filter: none;
       }
 
       /* Emote preview grid (shown after Preview / before Add) */
@@ -1138,7 +1117,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         padding: 3px 7px; border-radius: 6px; color: var(--btfw-admin-text);
         background: var(--btfw-admin-surface); border: 1px solid var(--btfw-admin-border);
       }
-      .btfw-theme-admin .btfw-emote-pack__rename-input:focus { outline: none; border-color: var(--btfw-theme-accent, #6d4df6); }
+      .btfw-theme-admin .btfw-emote-pack__rename-input:focus { outline: none; border-color: var(--btfw-color-accent); }
       .btfw-theme-admin .btfw-emote-mkt__list { display: flex; flex-direction: column; gap: 8px; }
       .btfw-theme-admin .btfw-emote-mkt__empty { margin: 0; font-style: italic; }
       .btfw-theme-admin .btfw-emote-pack {
@@ -1152,7 +1131,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-emote-pack__badge {
         flex: 0 0 auto; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em;
         padding: 4px 7px; border-radius: 6px; color: var(--btfw-color-on-accent, #fff);
-        background: var(--btfw-theme-accent, #6d4df6);
+        background: var(--btfw-color-accent);
       }
       .btfw-theme-admin .btfw-emote-pack__badge[data-provider="bttv"] { background: #d50014; }
       .btfw-theme-admin .btfw-emote-pack__badge[data-provider="ffz"]  { background: #33559b; }

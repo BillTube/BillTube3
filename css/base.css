@@ -1937,48 +1937,11 @@ nav.pagination.is-centered.btfw-gif-pager {
   letter-spacing: 0.02em;
 }
 
-/* The ON/OFF chip becomes the switch track; its text is hidden (state is conveyed
-   by aria-pressed) and a sliding knob is drawn with ::after. */
-#btfw-theme-modal .btfw-compact-stack-btn .btfw-compact-stack-status{
-  position: relative;
-  flex: 0 0 auto;
-  width: 40px;
-  height: 22px;
-  padding: 0;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--btfw-color-text) 20%, transparent 80%);
-  color: transparent;
-  font-size: 0;
-  transition: background 0.2s ease;
-}
-#btfw-theme-modal .btfw-compact-stack-btn .btfw-compact-stack-status::after{
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 3px;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,.35);
-  transition: left 0.2s cubic-bezier(.2,.8,.3,1.2);
-}
-
+/* The ON/OFF chip is the switch track; track/knob chrome, text hiding, and
+   the focus ring come from the canonical switch recipe in css/ui.css. */
 #btfw-theme-modal .btfw-compact-stack-btn[aria-pressed="true"]{
   border-color: color-mix(in srgb, var(--btfw-color-accent) 45%, transparent 55%);
   background: color-mix(in srgb, var(--btfw-color-accent) 12%, var(--btfw-color-panel) 88%);
-}
-#btfw-theme-modal .btfw-compact-stack-btn[aria-pressed="true"] .btfw-compact-stack-status{
-  background: var(--btfw-color-accent);
-}
-#btfw-theme-modal .btfw-compact-stack-btn[aria-pressed="true"] .btfw-compact-stack-status::after{
-  left: 21px;
-}
-
-#btfw-theme-modal .btfw-compact-stack-btn:focus-visible{
-  outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 65%, transparent 35%);
-  outline-offset: 3px;
 }
 
 #btfw-theme-modal .btfw-ts-control{

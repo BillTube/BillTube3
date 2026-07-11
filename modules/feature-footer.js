@@ -164,7 +164,7 @@ BTFW.define("feature:footer", [], async () => {
 
       .btfw-footer-branding__disclaimer a,
       .btfw-footer-branding__credit a {
-        color: var(--btfw-color-accent, #6d4df6);
+        color: var(--btfw-color-accent);
         text-decoration: none;
         font-weight: 600;
       }

@@ -550,15 +550,15 @@ BTFW.define("feature:movie-info", [], async () => {
     circleBg.setAttribute("cx", "30");
     circleBg.setAttribute("cy", "30");
     circleBg.setAttribute("r", radius.toString());
-    circleBg.setAttribute("stroke", "#2a2a2a");
+    circleBg.style.stroke = "var(--btfw-border)";
     circleBg.setAttribute("stroke-width", "4");
-    circleBg.setAttribute("fill", "#1a1a1a");
+    circleBg.style.fill = "color-mix(in srgb, var(--btfw-color-panel) 60%, black 40%)";
     svg.appendChild(circleBg);
     const circle = document.createElementNS(svgNS, "circle");
     circle.setAttribute("cx", "30");
     circle.setAttribute("cy", "30");
     circle.setAttribute("r", radius.toString());
-    circle.setAttribute("stroke", color);
+    circle.style.stroke = color;
     circle.setAttribute("stroke-width", "3");
     circle.setAttribute("fill", "none");
     circle.setAttribute("stroke-dasharray", circumference.toString());
@@ -574,7 +574,7 @@ BTFW.define("feature:movie-info", [], async () => {
     text.setAttribute("y", "50%");
     text.setAttribute("text-anchor", "middle");
     text.setAttribute("dominant-baseline", "central");
-    text.setAttribute("fill", "#fff");
+    text.style.fill = "var(--btfw-color-text)";
     text.setAttribute("font-size", "10");
     text.setAttribute("font-weight", "bold");
     text.setAttribute("class", "btfw-movie-ring-text");
@@ -593,9 +593,9 @@ BTFW.define("feature:movie-info", [], async () => {
 
   function getRatingColor(rating) {
     const clampedRating = Math.max(0, Math.min(rating, 100));
-    if (clampedRating >= 70) return "#4caf50";
-    if (clampedRating >= 50) return "#ff9800";
-    return "#f44336";
+    if (clampedRating >= 70) return "var(--btfw-color-success)";
+    if (clampedRating >= 50) return "var(--btfw-color-warn)";
+    return "var(--btfw-color-error)";
   }
 
   function debounce(func, wait) {
@@ -681,7 +681,7 @@ BTFW.define("feature:movie-info", [], async () => {
         gap: 12px;
       }
       .btfw-movie-title {
-        color: #fff;
+        color: var(--btfw-color-text);
         font-size: 1.2em;
         font-weight: 600;
         margin: 0;
@@ -689,7 +689,7 @@ BTFW.define("feature:movie-info", [], async () => {
         line-height: 1.3;
       }
       .btfw-movie-summary {
-        color: #e0e0e0;
+        color: var(--btfw-color-text-soft);
         font-size: 0.85em;
         line-height: 1.5;
         margin: 0;
@@ -710,7 +710,7 @@ BTFW.define("feature:movie-info", [], async () => {
         justify-content: flex-end;
       }
       .btfw-movie-votes {
-        color: #ccc;
+        color: var(--btfw-color-text-muted);
         font-size: 0.7em;
         text-align: center;
         text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
@@ -722,7 +722,7 @@ BTFW.define("feature:movie-info", [], async () => {
         align-items: center;
         justify-content: center;
         gap: 12px;
-        color: #ccc;
+        color: var(--btfw-color-text-muted);
         text-align: center;
         min-height: 120px;
       }
@@ -732,11 +732,11 @@ BTFW.define("feature:movie-info", [], async () => {
         opacity: 0.7;
       }
       .btfw-movie-error i {
-        color: #ff6b6b;
+        color: var(--btfw-color-error);
       }
       .btfw-movie-error small {
         font-size: 0.8em;
-        color: #aaa;
+        color: var(--btfw-color-text-muted);
       }
       @media (max-width: 768px) {
         .btfw-movie-header {
@@ -764,7 +764,7 @@ BTFW.define("feature:movie-info", [], async () => {
         }
       }
       ${CONFIG.TITLE_SELECTOR}:hover {
-        color: #4fc3f7 !important;
+        color: var(--btfw-color-accent) !important;
         transition: color 0.2s ease;
       }
     `;
