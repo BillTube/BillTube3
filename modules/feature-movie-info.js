@@ -802,22 +802,51 @@ BTFW.define("feature:movie-info", [], async () => {
           background: rgba(255, 255, 255, 0.25);
           z-index: 3;
         }
+        /* Compact row: poster left, text middle, rating right. The cinematic
+           backdrop is a desktop luxury — on a phone sheet it just adds bulk,
+           so it's a solid surface here (inline style, hence !important). */
+        .btfw-movie-header {
+          background-image: none !important;
+          background-color: var(--btfw-color-surface, #10141d);
+        }
+        .btfw-movie-header .btfw-movie-overlay {
+          display: none;
+        }
         .btfw-movie-content {
-          padding: 20px 16px 16px;
-          flex-direction: column;
+          padding: 16px 14px 10px;
+          flex-direction: row;
+          align-items: center;
+          gap: 12px;
           min-height: auto;
         }
         .btfw-movie-poster {
-          width: 80px;
-          align-self: center;
+          width: 64px;
+          align-self: flex-start;
+          border-radius: 8px;
+          box-shadow: none;
+        }
+        .btfw-movie-details {
+          gap: 4px;
+          min-width: 0;
+        }
+        .btfw-movie-title {
+          font-size: 1rem;
+          text-shadow: none;
+        }
+        .btfw-movie-summary {
+          font-size: 0.78em;
+          -webkit-line-clamp: 3;
+          text-shadow: none;
         }
         .btfw-movie-rating {
           position: static;
+          margin: 0;
+          flex: 0 0 auto;
           align-self: center;
-          margin-top: 12px;
         }
-        .btfw-movie-summary {
-          -webkit-line-clamp: 4;
+        .btfw-movie-votes {
+          font-size: 0.62em;
+          text-shadow: none;
         }
       }
       ${CONFIG.TITLE_SELECTOR}:hover {
