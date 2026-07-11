@@ -167,24 +167,24 @@ body.btfw-mobile-nav-open{
      slide-up sheet so the main page stays video + chat. */
   body.btfw-mobile-tabs-active #btfw-stack{ display: none !important; }
 
+  /* Segmented bar: the pills share the row's full width equally, so they
+     are centered and fit at every window size — no horizontal scroll for a
+     tab to fall off of. Long custom labels clip rather than overflow. */
   #btfw-mobile-tabbar{
     display: none;
-    gap: 8px;
-    overflow-x: auto;
+    gap: 6px;
     padding: 10px 2px 4px;
-    /* centered while the pills fit the width; 'safe' falls back to
-       start-aligned scrolling when they overflow so nothing gets clipped */
-    justify-content: safe center;
-    scrollbar-width: none;
   }
-  #btfw-mobile-tabbar::-webkit-scrollbar{ display: none; }
   body.btfw-mobile-tabs-active #btfw-mobile-tabbar{ display: flex; }
   .btfw-mtab{
     position: relative;
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
     min-height: 40px;
-    padding: 8px 15px;
-    font-size: 0.82rem;
+    padding: 8px 6px;
+    font-size: 0.8rem;
   }
   .btfw-mtab.is-active{
     --btfw-btn-bg: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 26%, var(--btfw-color-panel, #171d27));
