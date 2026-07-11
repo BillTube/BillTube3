@@ -45,12 +45,14 @@ body.btfw-mobile-nav-open{
     padding: 12px;
   }
   .btfw-chat-actions{ gap: 6px; }
+  /* Twitch-sized touch targets (~42px) for the emote/GIF/settings row */
   .button.btfw-chatbtn{
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.2;
-    padding: 6px 10px;
-    min-height: 36px;
-    border-radius: 10px;
+    padding: 8px 12px;
+    min-height: 42px;
+    min-width: 42px;
+    border-radius: 12px;
   }
 
   /* Message area scroll with momentum. height:auto!important neutralizes
@@ -93,21 +95,36 @@ body.btfw-mobile-nav-open{
   }
   #videowrap .btfw-video-overlay .btfw-vo-btn,
   #videowrap .btfw-video-overlay .btfw-vo-adopted{
-    min-width: 40px;
-    height: 40px;
-    border-radius: 20px;
+    min-width: 46px;
+    height: 46px;
+    border-radius: 23px;
   }
 
   #videowrap .btfw-video-overlay .btfw-vo-btn i,
   #videowrap .btfw-video-overlay .btfw-vo-adopted i{
-    font-size: 15px;
+    font-size: 17px;
   }
 
-  /* Give the video breathing room. The aspect ratio is set dynamically by
-     feature-layout.js (applyVideoAspect) from the real video dimensions —
-     don't hardcode it here or 16:9 / 4:3 sources get letterboxed. */
+  /* Full-bleed video, Twitch/YouTube style: cancel the grid's horizontal
+     padding and drop the border/radius so the player runs edge to edge.
+     (The aspect ratio is still set dynamically by feature-layout.js —
+     don't hardcode it here or 16:9 / 4:3 sources get letterboxed.) */
   #btfw-grid.btfw-grid--vertical #videowrap{
-    margin-top: clamp(5px, 5vw, 5px);
+    margin-top: 0;
+    margin-left: -8px;
+    margin-right: -8px;
+    width: calc(100% + 16px);
+    margin-left: calc(-1 * max(8px, env(safe-area-inset-left, 0px)));
+    margin-right: calc(-1 * max(8px, env(safe-area-inset-right, 0px)));
+    width: calc(100% + max(8px, env(safe-area-inset-left, 0px)) + max(8px, env(safe-area-inset-right, 0px)));
+    border: 0 !important;
+    border-radius: 0 !important;
+    overflow: hidden;
+  }
+  #btfw-grid.btfw-grid--vertical #videowrap .video-js,
+  #btfw-grid.btfw-grid--vertical #videowrap video,
+  #btfw-grid.btfw-grid--vertical #videowrap iframe{
+    border-radius: 0 !important;
   }
 
   /* Compact the playlist toolbar columns */
@@ -152,14 +169,23 @@ body.btfw-mobile-nav-open{
 
   #btfw-mobile-tabbar{
     display: none;
-    gap: 6px;
+    gap: 8px;
     overflow-x: auto;
-    padding: 8px 2px 2px;
+    padding: 10px 2px 4px;
+    /* centered while the pills fit the width; 'safe' falls back to
+       start-aligned scrolling when they overflow so nothing gets clipped */
+    justify-content: safe center;
     scrollbar-width: none;
   }
   #btfw-mobile-tabbar::-webkit-scrollbar{ display: none; }
   body.btfw-mobile-tabs-active #btfw-mobile-tabbar{ display: flex; }
-  .btfw-mtab{ position: relative; flex: 0 0 auto; }
+  .btfw-mtab{
+    position: relative;
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 8px 15px;
+    font-size: 0.82rem;
+  }
   .btfw-mtab.is-active{
     --btfw-btn-bg: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 26%, var(--btfw-color-panel, #171d27));
     --btfw-btn-border: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 60%, transparent);
@@ -267,7 +293,7 @@ body.btfw-mobile-nav-open{
 /* --------- Small phones (<= 480px): extra tightening ---------------------- */
 @media (max-width: 480px){
   #btfw-grid{ padding: 0 6px; }
-  .button.btfw-chatbtn{ padding: 6px 8px; min-height: 34px; }
+  .button.btfw-chatbtn{ padding: 6px 10px; min-height: 40px; min-width: 40px; }
   #messagebuffer .chat-msg{ padding: 2px 0; }
   #btfw-nowplaying-slot{ font-size: 14px; }
 }
