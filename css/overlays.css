@@ -1591,6 +1591,60 @@
   display: none;
 }
 
+/* CyTube's host CSS carries a #useroptions-specific header rule whose ID
+   specificity beats the class-based skin above, stripping exactly the
+   divider and bottom padding — reassert them so User Preferences matches
+   Channel Settings. */
+#useroptions .modal-header.btfw-card-head {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-border) 80%, transparent 20%);
+}
+
+/* Theme Settings modal — same header anatomy as the skinned CyTube modals:
+   title row and tab pills inside the head, divider under the tabs, ghost
+   close button in the corner. */
+#btfw-theme-modal .modal-card-head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  min-height: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-border) 80%, transparent 20%);
+  position: relative;
+}
+#btfw-theme-modal .modal-card-title {
+  font-size: 1.125rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  margin: 0;
+  padding-right: 44px;
+  line-height: 1.2;
+}
+#btfw-theme-modal .modal-card-head .delete {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  background: transparent;
+  transition: background 0.16s ease;
+}
+#btfw-theme-modal .modal-card-head .delete::before,
+#btfw-theme-modal .modal-card-head .delete::after {
+  background: color-mix(in srgb, var(--btfw-color-text) 60%, transparent 40%);
+}
+#btfw-theme-modal .modal-card-head .delete:hover {
+  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+}
+#btfw-theme-modal .modal-card-head .delete:hover::before,
+#btfw-theme-modal .modal-card-head .delete:hover::after {
+  background: var(--btfw-color-text);
+}
+
 /* Tab nav inside the header — flat outlined pills, no nested panel. */
 .modal.btfw-bulma-skin .btfw-card-head > ul,
 .modal.btfw-bulma-skin .modal-header > ul {

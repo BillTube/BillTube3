@@ -1664,18 +1664,20 @@ nav.pagination.is-centered.btfw-gif-pager {
   overflow: visible;
 }
 
+/* The tab pills live inside the modal-card-head (same anatomy as the skinned
+   CyTube modals); the head's gap and padding provide the spacing. */
 #btfw-theme-modal .btfw-ts-tabs{
   position: relative !important;
   z-index: 999 !important;
-  background: color-mix(in srgb, var(--btfw-color-surface) 94%, transparent 6%) !important;
-  padding-bottom: 8px !important;
-  margin: 0 0 16px 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
   flex-shrink: 0 !important;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;
-  min-height: 44px !important;
+  min-height: 0 !important;
   height: auto !important;
   max-height: none !important;
 }

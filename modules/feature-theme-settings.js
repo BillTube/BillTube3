@@ -217,8 +217,6 @@ BTFW.define("feature:themeSettings", [], async () => {
         <header class="modal-card-head">
           <p class="modal-card-title">Theme Settings</p>
           <button class="delete" aria-label="close"></button>
-        </header>
-        <section class="modal-card-body">
           <div class="tabs btfw-ts-tabs is-small" id="btfw-ts-tabs">
             <ul>
               <li class="is-active" data-tab="general"><a>General</a></li>
@@ -228,7 +226,8 @@ BTFW.define("feature:themeSettings", [], async () => {
               <li data-tab="ignore"><a>Ignore</a></li>
             </ul>
           </div>
-
+        </header>
+        <section class="modal-card-body">
           <div id="btfw-ts-panels">
             <!-- General -->
             <div class="btfw-ts-panel" data-tab="general" style="display:block;">
