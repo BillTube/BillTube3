@@ -7,13 +7,13 @@ const customFilters = [
   { name: "strike", source: "~~(.+?)~~", flags: "g", replace: "<s>\\1</s>", active: true, filterlinks: false },
   { name: "inline spoiler", source: "\\[sp\\](.*?)\\[\\/sp\\]", flags: "gi", replace: "<span class=\"spoiler\">\\1</span>", active: true, filterlinks: false },
   { name: "partial quote", source: "&gt;(.+?)$", flags: "g", replace: "<span class=\"quote\">&gt;\\1 </span>", active: true, filterlinks: false },
-  { name: "italic text", source: "\\[i\\](.+?)\\[\\/i\\]", flags: "g", replace: "<em>\\1</em>", active: true, filterlinks: false },
+  { name: "italic text", source: "\\[i\\](.+?)\\[\\/i\\]", flags: "gi", replace: "<em>\\1</em>", active: true, filterlinks: false },
   { name: "monospace text", source: "\\[code\\](.+?)\\[\\/code\\]", flags: "gi", replace: "<code>\\1</code>", active: true, filterlinks: false },
   { name: "bold text", source: "\\[b\\](.+?)\\[\\/b\\]", flags: "gi", replace: "<strong>\\1</strong>", active: true, filterlinks: false },
   { name: "underline text", source: "\\[u\\](.+?)\\[\\/u\\]", flags: "gi", replace: "<u>\\1</u>", active: true, filterlinks: false },
   { name: "striked text", source: "\\[s\\](.+?)\\[\\/s\\]", flags: "gi", replace: "<s>\\1</s>", active: true, filterlinks: false },
-  { name: "short spoiler", source: "\\[sp\\]", flags: "g", replace: "<span class=\"spoiler\">", active: true, filterlinks: false },
-  { name: "closing font style", source: "\\[\\/\\]", flags: "g", replace: "<span>", active: true, filterlinks: false },
+  { name: "short spoiler", source: "\\[sp\\]", flags: "gi", replace: "<span class=\"spoiler\">", active: true, filterlinks: false },
+  { name: "closing font style", source: "\\[\\/\\]", flags: "g", replace: "</span>", active: true, filterlinks: false },
   { name: "chat colors (premium)", source: "col:(.*?):", flags: "g", replace: "<span style=\"color:\\1\" class=\"chatcolor\">", active: true, filterlinks: false },
   { name: "giphy media", source: "https?://media(?:\\d+)?\\.giphy\\.com/media/([A-Za-z0-9_-]+)/(?:giphy|200(?:_s)?)\\.gif", flags: "gi", replace: "<img class=\"giphy chat-picture\" src=\"https://media.giphy.com/media/\\1/200_s.gif\" />", active: true, filterlinks: true },
   { name: "giphy image", source: "https?://i\\.giphy\\.com/([A-Za-z0-9_-]+)\\.gif", flags: "gi", replace: "<img class=\"giphy chat-picture\" src=\"https://media.giphy.com/media/\\1/200_s.gif\" />", active: true, filterlinks: true },
@@ -31,7 +31,9 @@ const customFilters = [
   // uses %5F for codepoint separators so the earlier `_text_` italic filter
   // cannot consume part of the token; gstatic decodes %5F to `_` in the URL.
   { name: "animated emoji", source: "\\[ae\\]([0-9a-f]+(?:(?:%5f|_)[0-9a-f]+)*)\\[\\/ae\\]", flags: "gi", replace: "<img class=\"btfw-sticker btfw-aemoji\" src=\"https://fonts.gstatic.com/s/e/notoemoji/latest/\\1/512.webp\" style=\"height:1.8em !important;width:auto !important;max-height:1.8em !important;vertical-align:middle;display:inline-block\" />", active: true, filterlinks: false },
-  { name: "TMDB", source: "\\[tmdbcard\\]([^|]+)\\|([^|]+)\\|([^|]+)\\|([^|]+)\\|([^\\[]+)\\[\\/tmdbcard\\]", flags: "g", replace: "<div class=\"tmdb-card\"><img class=\"tmdb-card__poster\" src=\"https://image.tmdb.org/t/p/w342\\5\" alt=\"\\1 poster\" onerror=\"this.style.display='none'\"><div class=\"tmdb-card__content\"><div class=\"tmdb-card__title\">\\1 <span class=\"tmdb-card__year\">(\\2)</span></div><div class=\"tmdb-card__rating\">★ \\3</div><div class=\"tmdb-card__overview\">\\4</div></div></div>", active: true, filterlinks: true }
+  // NOTE: no inline event handlers here — CyTube's sanitizer strips on* attributes
+  // from filter output before broadcast, so they would be dead weight.
+  { name: "TMDB", source: "\\[tmdbcard\\]([^|]+)\\|([^|]+)\\|([^|]+)\\|([^|]+)\\|([^\\[]+)\\[\\/tmdbcard\\]", flags: "g", replace: "<div class=\"tmdb-card\"><img class=\"tmdb-card__poster\" src=\"https://image.tmdb.org/t/p/w342\\5\" alt=\"\\1 poster\"><div class=\"tmdb-card__content\"><div class=\"tmdb-card__title\">\\1 <span class=\"tmdb-card__year\">(\\2)</span></div><div class=\"tmdb-card__rating\">★ \\3</div><div class=\"tmdb-card__overview\">\\4</div></div></div>", active: true, filterlinks: true }
 ];
 
   function getjQuery() {
@@ -97,6 +99,9 @@ const customFilters = [
   init();
 
   return {
-    importCustomChatFiltersToTextarea: ($) => importCustomChatFiltersToTextarea($ || getjQuery())
+    importCustomChatFiltersToTextarea: ($) => importCustomChatFiltersToTextarea($ || getjQuery()),
+    // Canonical filter list, consumed by the theme admin toolkit to compare
+    // against the channel's imported filters.
+    filters: customFilters.map((f) => Object.assign({}, f))
   };
 });

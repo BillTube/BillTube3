@@ -875,6 +875,23 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
       .btfw-theme-admin h3 { font-size: 1rem; margin: 0 0 8px; letter-spacing: 0.02em; font-weight: 600; }
       .btfw-theme-admin p.lead { margin: 0 0 12px; color: var(--btfw-admin-text-soft); max-width: 720px; font-size: 0.85rem; }
+      .btfw-theme-admin .btfw-filter-status { border: 1px solid var(--btfw-admin-border-soft); border-radius: 10px; padding: 10px 14px; margin: 0 0 12px; background: color-mix(in srgb, var(--btfw-admin-surface-alt) 88%, transparent 12%); display: flex; flex-direction: column; gap: 6px; }
+      .btfw-theme-admin .btfw-filter-status__row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .btfw-theme-admin .btfw-filter-status__dot { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, var(--btfw-admin-text) 45%, transparent 55%); flex: 0 0 auto; }
+      .btfw-theme-admin .btfw-filter-status[data-state="checking"] .btfw-filter-status__dot { background: #e8b53a; animation: btfwFilterStatusPulse 1.1s ease-in-out infinite; }
+      .btfw-theme-admin .btfw-filter-status[data-state="ok"] .btfw-filter-status__dot { background: #3ecf8e; }
+      .btfw-theme-admin .btfw-filter-status[data-state="outdated"] .btfw-filter-status__dot { background: #e8b53a; }
+      @keyframes btfwFilterStatusPulse { 50% { opacity: 0.35; } }
+      .btfw-theme-admin .btfw-filter-status__text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+      .btfw-theme-admin .btfw-filter-status__text strong { font-size: 0.76rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--btfw-admin-text); }
+      .btfw-theme-admin .btfw-filter-status__text span { font-size: 0.78rem; color: var(--btfw-admin-text-soft); }
+      .btfw-theme-admin .btfw-filter-status[data-state="outdated"] .btfw-filter-status__text span { color: #e8b53a; }
+      .btfw-theme-admin .btfw-filter-status__actions { display: flex; gap: 6px; flex: 0 0 auto; }
+      .btfw-theme-admin .btfw-filter-status__btn { border: 1px solid var(--btfw-admin-border-soft); background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 22%, transparent 78%); color: var(--btfw-admin-text); border-radius: 8px; padding: 4px 10px; font-size: 0.74rem; cursor: pointer; transition: background 0.18s ease, color 0.18s ease; }
+      .btfw-theme-admin .btfw-filter-status__btn:hover { background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 36%, transparent 64%); }
+      .btfw-theme-admin .btfw-filter-status__btn.is-ghost { background: transparent; color: var(--btfw-admin-text-soft); }
+      .btfw-theme-admin .btfw-filter-status__btn.is-ghost:hover { color: var(--btfw-admin-text); }
+      .btfw-theme-admin .btfw-filter-status__note { margin: 0; font-size: 0.74rem; color: var(--btfw-admin-text-soft); }
       .btfw-theme-admin details.section {
         /* Zero out Bulma's generic .section padding (3rem) which leaks in at
            >=1024px and inflated every collapsed row to ~150px of dead space. The
@@ -2460,12 +2477,155 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (audioEnhancerState) audioEnhancerState.textContent = enabled ? 'On' : 'Off';
   }
 
+  /* --- BillTube chat-filter status (top of toolkit) ------------------------
+     Compares the channel's imported chat filters against the canonical list in
+     feature:chat-filters, matched by name. Channel-authored filters (names we
+     don't own) are ignored, but their presence downgrades the guidance because
+     CyTube's "Import filter list" replaces the whole list. --- */
+  let filterStatusLastCheck = 0;
+
+  function fetchChannelFilters(timeoutMs = 5000){
+    return new Promise((resolve) => {
+      const s = window.socket;
+      if (!s || typeof s.emit !== "function" || typeof s.on !== "function") { resolve(null); return; }
+      let settled = false;
+      const onFilters = (list) => finish(Array.isArray(list) ? list : null);
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        try {
+          if (typeof s.off === "function") s.off("chatFilters", onFilters);
+          else if (typeof s.removeListener === "function") s.removeListener("chatFilters", onFilters);
+        } catch (_) {}
+        resolve(value);
+      };
+      const timer = setTimeout(() => finish(null), timeoutMs);
+      try {
+        s.on("chatFilters", onFilters);
+        s.emit("requestChatFilters");
+      } catch (_) {
+        finish(null);
+      }
+    });
+  }
+
+  async function getRequiredFilters(){
+    try {
+      const mod = await window.BTFW.init("feature:chat-filters");
+      if (mod && Array.isArray(mod.filters) && mod.filters.length) return mod.filters;
+    } catch (_) {}
+    return null;
+  }
+
+  function diffRequiredFilters(channelFilters, requiredFilters){
+    const byName = new Map();
+    channelFilters.forEach((f) => {
+      if (f && typeof f.name === "string") byName.set(f.name, f);
+    });
+    const missing = [];
+    const changed = [];
+    requiredFilters.forEach((req) => {
+      const cur = byName.get(req.name);
+      if (!cur) { missing.push(req.name); return; }
+      if (String(cur.source) !== String(req.source)
+        || String(cur.flags) !== String(req.flags)
+        || String(cur.replace) !== String(req.replace)) {
+        changed.push(req.name);
+      }
+    });
+    const ours = new Set(requiredFilters.map((f) => f.name));
+    const extras = channelFilters.filter((f) => f && typeof f.name === "string" && !ours.has(f.name)).length;
+    return { missing, changed, extras };
+  }
+
+  function setFilterStatus(panel, state, message, note){
+    const box = panel.querySelector('[data-role="filter-status"]');
+    if (!box) return;
+    box.dataset.state = state;
+    const msg = box.querySelector('[data-role="filter-status-message"]');
+    if (msg) msg.textContent = message;
+    const noteEl = box.querySelector('[data-role="filter-status-note"]');
+    if (noteEl) {
+      noteEl.textContent = note || "";
+      noteEl.hidden = !note;
+    }
+    const openBtn = box.querySelector('[data-role="filter-status-open"]');
+    if (openBtn) openBtn.hidden = state !== "outdated";
+  }
+
+  async function runFilterStatusCheck(panel){
+    const box = panel.querySelector('[data-role="filter-status"]');
+    if (!box || box.dataset.checking === "1") return;
+    box.dataset.checking = "1";
+    filterStatusLastCheck = Date.now();
+    setFilterStatus(panel, "checking", "Checking channel filters…");
+    try {
+      const required = await getRequiredFilters();
+      if (!required) {
+        setFilterStatus(panel, "unknown", "BillTube filter list is unavailable in this session.");
+        return;
+      }
+      const channelFilters = await fetchChannelFilters();
+      if (!channelFilters) {
+        setFilterStatus(panel, "unknown", "Couldn't read this channel's filters — check your connection and filter permissions, then re-check.");
+        return;
+      }
+      const diff = diffRequiredFilters(channelFilters, required);
+      if (!diff.missing.length && !diff.changed.length) {
+        setFilterStatus(panel, "ok", `Up to date — all ${required.length} BillTube filters match.`);
+        return;
+      }
+      const parts = [];
+      if (diff.changed.length) parts.push(`${diff.changed.length} outdated`);
+      if (diff.missing.length) parts.push(`${diff.missing.length} missing`);
+      const affected = diff.changed.concat(diff.missing);
+      const shown = affected.slice(0, 6).join(", ");
+      let note = `Affected: ${shown}${affected.length > 6 ? ", …" : ""}. In the Chat Filters tab, click "Import Required BillTube Chat Filters", then CyTube's "Import filter list".`;
+      if (diff.extras > 0) {
+        note += ` Warning: this channel also has ${diff.extras} custom filter${diff.extras === 1 ? "" : "s"} of its own — importing replaces the whole list, so export those first and re-add them after.`;
+      }
+      setFilterStatus(panel, "outdated", `Update needed — ${parts.join(", ")}.`, note);
+    } finally {
+      delete box.dataset.checking;
+    }
+  }
+
+  function wireFilterStatus(panel){
+    const box = panel.querySelector('[data-role="filter-status"]');
+    if (!box || box.dataset.wired === "1") return;
+    box.dataset.wired = "1";
+    const refreshBtn = box.querySelector('[data-role="filter-status-refresh"]');
+    if (refreshBtn) refreshBtn.addEventListener("click", () => runFilterStatusCheck(panel));
+    const openBtn = box.querySelector('[data-role="filter-status-open"]');
+    if (openBtn) openBtn.addEventListener("click", () => {
+      const link = document.querySelector('a[href="#cs-chatfilters"]');
+      if (link) link.click();
+    });
+    runFilterStatusCheck(panel);
+  }
+
   function renderPanel(panel){
     injectLocalStyles();
     panel.innerHTML = `
       <div class="btfw-theme-admin">
         <h3>Channel Theme Toolkit</h3>
         <p class="lead">Configure your BillTube channel's featured media, theme palette, typography, and resources without editing raw Channel JS or CSS.</p>
+
+        <div class="btfw-filter-status" data-role="filter-status" data-state="checking">
+          <div class="btfw-filter-status__row">
+            <span class="btfw-filter-status__dot" aria-hidden="true"></span>
+            <div class="btfw-filter-status__text">
+              <strong>BillTube chat filters</strong>
+              <span data-role="filter-status-message">Checking channel filters&hellip;</span>
+            </div>
+            <div class="btfw-filter-status__actions">
+              <button type="button" class="btfw-filter-status__btn" data-role="filter-status-open" hidden>Open chat filters</button>
+              <button type="button" class="btfw-filter-status__btn is-ghost" data-role="filter-status-refresh">Re-check</button>
+            </div>
+          </div>
+          <p class="btfw-filter-status__note" data-role="filter-status-note" hidden></p>
+        </div>
 
         <details class="section" data-section="resources">
           <summary class="section__summary">
@@ -3921,6 +4081,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (!panel || panel.dataset.initialized === "1") return Boolean(panel);
 
     renderPanel(panel);
+    wireFilterStatus(panel);
 
     const jsField = ensureField(modal, JS_FIELD_SELECTORS, "chanjs");
     const cssField = ensureField(modal, CSS_FIELD_SELECTORS, "chancss");
@@ -4078,6 +4239,9 @@ setTimeout(() => {
       if (active && status && dirty) {
         status.textContent = "Changes pending. Click apply to sync with Channel JS/CSS.";
         status.dataset.variant = "pending";
+      }
+      if (active && Date.now() - filterStatusLastCheck > 60000) {
+        runFilterStatusCheck(panel);
       }
     });
     observer.observe(panel, { attributes: true, attributeFilter: ['class', 'style'] });
