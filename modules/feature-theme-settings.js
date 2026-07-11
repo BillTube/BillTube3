@@ -207,25 +207,25 @@ BTFW.define("feature:themeSettings", [], async () => {
 
     m = document.createElement("div");
     m.id = "btfw-theme-modal";
-    m.className = "modal";
+    // btfw-bulma-skin opts the header into the exact same tab-pill styling as
+    // the skinned CyTube modals (Channel Settings / User Preferences).
+    m.className = "modal btfw-bulma-skin";
     m.dataset.btfwModalState = "closed";
     m.setAttribute("hidden", "");
     m.setAttribute("aria-hidden", "true");
     m.innerHTML = `
       <div class="modal-background"></div>
       <div class="modal-card btfw-theme-modal-card">
-        <header class="modal-card-head">
+        <header class="modal-card-head btfw-card-head">
           <p class="modal-card-title">Theme Settings</p>
           <button class="delete" aria-label="close"></button>
-          <div class="tabs btfw-ts-tabs is-small" id="btfw-ts-tabs">
-            <ul>
-              <li class="is-active" data-tab="general"><a>General</a></li>
-              <li data-tab="chat"><a>Chat</a></li>
-              <li data-tab="notifications"><a>Notifications</a></li>
-              <li data-tab="video"><a>Video</a></li>
-              <li data-tab="ignore"><a>Ignore</a></li>
-            </ul>
-          </div>
+          <ul id="btfw-ts-tabs">
+            <li class="is-active" data-tab="general"><a>General</a></li>
+            <li data-tab="chat"><a>Chat</a></li>
+            <li data-tab="notifications"><a>Notifications</a></li>
+            <li data-tab="video"><a>Video</a></li>
+            <li data-tab="ignore"><a>Ignore</a></li>
+          </ul>
         </header>
         <section class="modal-card-body">
           <div id="btfw-ts-panels">
@@ -411,7 +411,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     $("#btfw-ts-close", m).addEventListener("click", close);
 
     // Tabs
-    $("#btfw-ts-tabs ul", m).addEventListener("click", (e)=>{
+    $("#btfw-ts-tabs", m).addEventListener("click", (e)=>{
       const li = e.target.closest("li[data-tab]"); if (!li) return;
       $$("#btfw-ts-tabs li", m).forEach(x => x.classList.toggle("is-active", x===li));
       const tab = li.getAttribute("data-tab");

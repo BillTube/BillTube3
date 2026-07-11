@@ -1664,75 +1664,10 @@ nav.pagination.is-centered.btfw-gif-pager {
   overflow: visible;
 }
 
-/* The tab pills live inside the modal-card-head (same anatomy as the skinned
-   CyTube modals); the head's gap and padding provide the spacing. */
-#btfw-theme-modal .btfw-ts-tabs{
-  position: relative !important;
-  z-index: 999 !important;
-  background: transparent !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  flex-shrink: 0 !important;
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  min-height: 0 !important;
-  height: auto !important;
-  max-height: none !important;
-}
-
-#btfw-theme-modal .btfw-ts-tabs ul{
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  height: auto !important;
-  min-height: 36px !important;
-  flex-wrap: wrap !important;
-  gap: 8px !important;
-  width: 100% !important;
-}
-
-#btfw-theme-modal .btfw-ts-tabs li{
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  flex: 0 0 auto;
-  margin: 0;
-}
-
-#btfw-theme-modal .btfw-ts-tabs li a{
-  display: inline-flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  border-radius: 999px !important;
-  border: 1px solid color-mix(in srgb, var(--btfw-color-text) 14%, transparent 86%) !important;
-  background: color-mix(in srgb, var(--btfw-color-panel) 72%, transparent 28%) !important;
-  color: color-mix(in srgb, var(--btfw-color-text) 84%, transparent 16%) !important;
-  /* pill metrics match the skinned CyTube modal tabs (Channel Settings) */
-  padding: 7px 14px;
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  transition: background .14s ease, color .14s ease, border-color .14s ease, box-shadow .14s ease !important;
-}
-
-/* Themed hover for inactive tabs. */
-#btfw-theme-modal .btfw-ts-tabs li:not(.is-active) a:hover{
-  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%) !important;
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%) !important;
-  color: var(--btfw-color-text) !important;
-}
-
-#btfw-theme-modal .btfw-ts-tabs li.is-active a,
-#btfw-theme-modal .btfw-ts-tabs li.is-active a:hover{
-  background: var(--btfw-navbar-pill-bg) !important;
-  color: var(--btfw-navbar-pill-text) !important;
-  border-color: transparent !important;
-  /* tight glow that sits behind the pill (not a big drop shadow far below). */
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%) !important;
-}
+/* The theme-settings tab pills carry no styling of their own: the header has
+   the btfw-card-head class and the modal has btfw-bulma-skin, so the tabs
+   share the exact pill rules of the skinned CyTube modals (see the
+   .btfw-card-head > ul rules above and overlays.css). */
 
 #btfw-theme-modal .btfw-ts-grid{
   display: grid;
