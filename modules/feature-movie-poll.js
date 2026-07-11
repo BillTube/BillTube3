@@ -880,11 +880,13 @@
                     const detailsDiv = document.createElement('div');
                     detailsDiv.className = 'movie-details';
                     
-                    // Update title and add director
-                    textSpan.innerHTML = `
-                      ${movieData.title} (${movieData.year})
-                      <span class="movie-director">Directed by ${movieData.director}</span>
-                    `;
+                    // Update title and add director (TMDB fields are untrusted —
+                    // keep them out of innerHTML)
+                    textSpan.textContent = `${movieData.title} (${movieData.year})`;
+                    const directorSpan = document.createElement('span');
+                    directorSpan.className = 'movie-director';
+                    directorSpan.textContent = `Directed by ${movieData.director}`;
+                    textSpan.appendChild(directorSpan);
                     detailsDiv.appendChild(textSpan);
                     
                     // Rating

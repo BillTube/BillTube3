@@ -190,11 +190,17 @@ if (overview.length > 150) {
   overview = overview.substring(0, 147) + '...';
 }
     
-overview = overview.replace(/\|/g, '&#124;');
-    
-    const posterPath = r.poster_path || '';
-    
-    return `[tmdbcard]${name}|${year}|${rating}|${overview}|${posterPath}[/tmdbcard]`;
+    // The tmdbcard chat filter splits the token on "|" and terminates its last
+    // capture at "[" — a title containing either would shift or break the card.
+    // Lookalike characters are used instead of entities because the server
+    // escapes "&" before filters run, so "&#124;" would display literally.
+    const escTok = (s) => String(s ?? '').replace(/\|/g, '¦').replace(/\[/g, '(').replace(/\]/g, ')');
+
+    // Only pass through poster paths in TMDB's known shape; anything else is
+    // dropped, which degrades the same way results without a poster already do.
+    const posterPath = /^\/[A-Za-z0-9._-]+$/.test(r.poster_path || '') ? r.poster_path : '';
+
+    return `[tmdbcard]${escTok(name)}|${year}|${rating}|${escTok(overview)}|${posterPath}[/tmdbcard]`;
   } catch(e){ 
     console.error('[summary] TMDB error', e); 
     return `TMDB error: ${e.message||e}`; 
