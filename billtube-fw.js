@@ -366,64 +366,97 @@ function resolveBranchToSHA(){
         // the browser actually needed.
         return new Promise(function(resolve){ requestAnimationFrame(function(){ resolve(); }); });
       })
-      .then(function(){ return loadAll(featureMods); });
+      .then(function(){
+        // Feature scripts load non-fatally: a file that never arrives surfaces
+        // at init time as "Module not found: feature:X" and gets reported via
+        // btfw:ready detail instead of aborting the whole boot.
+        return Promise.all(featureMods.map(function(f){
+          return load(BASE+"/"+f).catch(function(err){
+            console.warn("[BTFW] feature script failed:", f, err&&err.message||err);
+          });
+        }));
+      });
   }).then(function(){
-    return Promise.all([
-      BTFW.init("feature:channels"),
-      BTFW.init("feature:footer"),
-      BTFW.init("feature:player"),
-      BTFW.init("feature:stack"),
-      BTFW.init("feature:chat"),
-      BTFW.init("feature:chat-tools"),
-      BTFW.init("feature:chat-filters"),
-      BTFW.init("feature:chat-username-colors"),
-      BTFW.init("feature:emotes"),
-      BTFW.init("feature:emote-marketplace"),
-      BTFW.init("feature:chatMedia"),
-      BTFW.init("feature:emoji-compat"),
-      BTFW.init("feature:chat-avatars"),
-      BTFW.init("feature:chat-timestamps"),
-      BTFW.init("feature:chat-ignore"),
-      BTFW.init("feature:user-status"),
-      BTFW.init("feature:connection-status"),
-      BTFW.init("feature:navbar"),
-      BTFW.init("feature:modal-skin"),
-      BTFW.init("feature:nowplaying"),
-      BTFW.init("feature:movie-info"),
-      BTFW.init("feature:auto-subs"),
-      BTFW.init("feature:gifs"),
-      BTFW.init("feature:videoOverlay"),
-      BTFW.init("feature:poll-overlay"),
-      BTFW.init("feature:pip"),
-      BTFW.init("feature:notify"),
-      BTFW.init("feature:notification-sounds"),
-      BTFW.init("feature:audioEnhancer"),
-      BTFW.init("feature:syncGuard"),
-      BTFW.init("feature:chat-commands"),
-      BTFW.init("feature:playlistPerformance"),
-      BTFW.init("feature:playlist-tools"),
-      BTFW.init("feature:playlistCatalog"),
-      BTFW.init("feature:local-subs"),
-      BTFW.init("feature:emoji-loader"),
-      BTFW.init("feature:billcast"),
-      BTFW.init("feature:motd-editor"),
-      BTFW.init("feature:videoEnhancements"),
-      BTFW.init("feature:channelThemeAdmin"),
-      BTFW.init("feature:js-editor"),
-      BTFW.init("feature:emotes-admin"),
-      BTFW.init("feature:themeSettings"),
-      BTFW.init("feature:ratings"),
-      BTFW.init("feature:theater")
-    ]);
-  }).then(function(){
-    console.log("[BTFW v3.4g] Ready.");
-    // Dispatch a final ready event
+    // Optional features settle individually — one broken feature (or a util it
+    // depends on) is reported instead of suppressing btfw:ready for the ~40
+    // unrelated ones. Core (styleCore/bulma/layout) stays fatal above. A util
+    // failure still cascades to its dependents, so the failed list contains
+    // the root plus every dependent, each carrying the root error.
+    var FEATURES = [
+      "feature:channels",
+      "feature:footer",
+      "feature:player",
+      "feature:stack",
+      "feature:chat",
+      "feature:chat-tools",
+      "feature:chat-filters",
+      "feature:chat-username-colors",
+      "feature:emotes",
+      "feature:emote-marketplace",
+      "feature:chatMedia",
+      "feature:emoji-compat",
+      "feature:chat-avatars",
+      "feature:chat-timestamps",
+      "feature:chat-ignore",
+      "feature:user-status",
+      "feature:connection-status",
+      "feature:navbar",
+      "feature:modal-skin",
+      "feature:nowplaying",
+      "feature:movie-info",
+      "feature:auto-subs",
+      "feature:gifs",
+      "feature:videoOverlay",
+      "feature:poll-overlay",
+      "feature:pip",
+      "feature:notify",
+      "feature:notification-sounds",
+      "feature:audioEnhancer",
+      "feature:syncGuard",
+      "feature:chat-commands",
+      "feature:playlistPerformance",
+      "feature:playlist-tools",
+      "feature:playlistCatalog",
+      "feature:local-subs",
+      "feature:emoji-loader",
+      "feature:billcast",
+      "feature:motd-editor",
+      "feature:videoEnhancements",
+      "feature:channelThemeAdmin",
+      "feature:js-editor",
+      "feature:emotes-admin",
+      "feature:themeSettings",
+      "feature:ratings",
+      "feature:theater"
+    ];
+    return Promise.all(FEATURES.map(function(name){
+      return BTFW.init(name).then(function(){ return null; }, function(err){
+        console.error("[BTFW] optional feature failed:", name, err);
+        return { name: name, error: (err && err.message) || String(err) };
+      });
+    })).then(function(results){
+      return results.filter(Boolean);
+    });
+  }).then(function(failed){
+    if (failed.length) {
+      console.warn("[BTFW v3.4g] Ready with "+failed.length+" failed feature(s): "+failed.map(function(f){ return f.name; }).join(", "));
+    } else {
+      console.log("[BTFW v3.4g] Ready.");
+    }
+    // Dispatch a final ready event. `failed`/`failures` are additive detail —
+    // listeners that assume btfw:ready means "all features up" should check.
     document.dispatchEvent(new CustomEvent('btfw:ready', {
-      detail: { version: '3.4g', timestamp: Date.now() }
+      detail: {
+        version: '3.4g',
+        timestamp: Date.now(),
+        failed: failed.map(function(f){ return f.name; }),
+        failures: failed
+      }
     }));
     BootOverlay.hide();
   })
   .catch(function(e){
+    // Only core/layout-stage failures reach here now.
     console.error("[BTFW v3.4g] boot failed:", e&&e.message||e);
     BootOverlay.fail((e&&e.message)||'Unknown error');
   });
