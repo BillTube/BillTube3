@@ -1,0 +1,374 @@
+/* BillTube Framework — ui.css
+   ------------------------------------------------------------------------
+   Native replacement for the load-bearing slice of Bulma 0.9.4 that the
+   theme actually uses: the modal shell, the .button box-model, form
+   controls (.field/.control/.input/.textarea/.select), the .delete glyph,
+   .tabs, and a couple of helpers.
+
+   COMPAT STRATEGY (why this is safe to ship before Bulma is removed):
+   this file is preloaded right after tokens.css and BEFORE base.css, while
+   feature-style-core.js still injects bulma.min.css at the END of <head>.
+   Later stylesheets win same-specificity ties, so:
+     - while Bulma is present, Bulma wins over this file  → this shim is
+       cascade-inert and the page renders exactly as before;
+     - the theme's own sheets (base/chat/overlays…) load after this file, so
+       their component colors/overrides win over the shim too.
+   When Bulma is unplugged (delete the injection in feature-style-core.js),
+   this file quietly takes over the same class names — no markup or JS change.
+
+   RULE FOR EDITS: keep every selector's specificity <= Bulma's own so Bulma
+   reliably wins ties during coexistence. Structure/metrics are copied from
+   Bulma 0.9.4 verbatim; colors that the theme owns are intentionally omitted
+   (or routed through --btfw tokens) rather than hard-coded to Bulma's light
+   palette — that is what fixes today's light-mode blue leak once Bulma is gone.
+   ------------------------------------------------------------------------ */
+
+/* ======================= ROOT RESET (load-bearing) =================
+   CyTube's slate.css sets `html { font-size: 10px }`. Bulma silently
+   overrode that to 16px (its normalize ships `html{font-size:16px}`) by
+   loading last — and the ENTIRE theme was authored on top of a 16px rem
+   base as a result. Without this line, removing Bulma shrinks every rem on
+   the page to 62.5%. This selector matches Bulma's specificity (0,0,1) and,
+   loading after slate, wins the tie exactly as Bulma did. */
+html { font-size: 16px; }
+
+/* ============================ MODAL SHELL ============================ */
+.modal {
+  align-items: center;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+  z-index: var(--btfw-z-modal, 6000);
+}
+.modal.is-active { display: flex; }
+
+.modal-background {
+  position: absolute;
+  inset: 0;
+  /* colour is themed in overlays.css; Bulma's default is rgba(10,10,10,0.86) */
+  background-color: color-mix(in srgb, var(--btfw-color-bg, #0a0a0a) 86%, transparent);
+  z-index: var(--btfw-z-modal, 6000);
+}
+
+.modal-content,
+.modal-card {
+  margin: 0 20px;
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+  position: relative;
+  width: 100%;
+  z-index: var(--btfw-z-modal-card, 6002);
+}
+
+@media screen and (min-width: 769px) {
+  .modal-content,
+  .modal-card {
+    margin: 0 auto;
+    max-height: calc(100vh - 40px);
+    width: 640px;
+  }
+}
+
+.modal-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-card-head,
+.modal-card-foot {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  justify-content: flex-start;
+  padding: 20px;
+  position: relative;
+  /* head/foot backgrounds + borders are themed in overlays.css */
+}
+
+.modal-card-title {
+  flex-grow: 1;
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.modal-card-body {
+  -webkit-overflow-scrolling: touch;
+  flex-grow: 1;
+  flex-shrink: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+.modal-card-foot .button:not(:last-child) { margin-right: 0.5em; }
+
+/* ============================== BUTTON ============================== */
+/* Bulma's shared control box-model, scoped to .button only (the theme's
+   .input/.textarea/.select get their box-model in the form section below). */
+.button {
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--btfw-radius-xs, 4px);
+  box-shadow: none;
+  display: inline-flex;
+  font-size: 1rem;
+  height: 2.5em;
+  justify-content: center;
+  line-height: 1.5;
+  padding: calc(0.5em - 1px) 1em;
+  position: relative;
+  vertical-align: top;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  /* base surface — themed component rules (chat.css, overlays.css…) override */
+  background-color: color-mix(in srgb, var(--btfw-color-panel, #171d27) 90%, transparent);
+  color: var(--btfw-color-text, #e8eff4);
+}
+.button:hover { color: var(--btfw-color-text, #e8eff4); }
+.button[disabled] { cursor: not-allowed; opacity: 0.5; }
+
+.button.is-small { font-size: 0.75rem; border-radius: 2px; }
+.button.is-medium { font-size: 1.25rem; }
+.button.is-large { font-size: 1.5rem; }
+.button.is-fullwidth { display: flex; width: 100%; }
+
+/* Flavor classes — feature-modal-skin.js remaps CyTube's Bootstrap buttons
+   onto these six. Token-driven so they read correctly in BOTH modes (this is
+   the bit that fixes the light-mode leak once Bulma is gone). Colours here are
+   a floor; scoped theme rules (e.g. `.modal .button`) still win. */
+.button.is-dark {
+  background-color: color-mix(in srgb, var(--btfw-color-panel, #171d27) 82%, black);
+  color: var(--btfw-color-text, #e8eff4);
+}
+.button.is-link,
+.button.is-primary {
+  background-color: var(--btfw-color-accent, #4ade80);
+  color: var(--btfw-color-on-accent, #0a0a0a);
+}
+.button.is-info {
+  background-color: var(--btfw-color-info, #3e8ed0);
+  color: #fff;
+}
+.button.is-success {
+  background-color: var(--btfw-color-success, #4ade80);
+  color: #05210f;
+}
+.button.is-warning {
+  background-color: var(--btfw-color-warn, #ffe08a);
+  color: rgba(0, 0, 0, 0.7);
+}
+.button.is-danger {
+  background-color: var(--btfw-color-error, #f14668);
+  color: #fff;
+}
+.button.is-light {
+  background-color: color-mix(in srgb, var(--btfw-color-text, #e8eff4) 12%, transparent);
+  color: var(--btfw-color-text, #e8eff4);
+}
+
+/* ============================== DELETE (×) ========================== */
+/* Reproduced faithfully from Bulma; the theme only tweaks opacity, so keep
+   the neutral circle background it expects. */
+.delete,
+.modal-close {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  background-color: rgba(10, 10, 10, 0.2);
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  pointer-events: auto;
+  display: inline-block;
+  flex-grow: 0;
+  flex-shrink: 0;
+  font-size: 0;
+  height: 20px;
+  max-height: 20px;
+  max-width: 20px;
+  min-height: 20px;
+  min-width: 20px;
+  outline: none;
+  position: relative;
+  vertical-align: top;
+  width: 20px;
+}
+.delete::before,
+.modal-close::before,
+.delete::after,
+.modal-close::after {
+  background-color: white;
+  content: "";
+  display: block;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translateX(-50%) translateY(-50%) rotate(45deg);
+  transform-origin: center center;
+}
+.delete::before,
+.modal-close::before { height: 2px; width: 50%; }
+.delete::after,
+.modal-close::after { height: 50%; width: 2px; }
+.delete:hover,
+.modal-close:hover,
+.delete:focus,
+.modal-close:focus { background-color: rgba(10, 10, 10, 0.3); }
+.delete:active,
+.modal-close:active { background-color: rgba(10, 10, 10, 0.4); }
+
+/* ============================ FORM CONTROLS ======================== */
+.label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--btfw-color-text, #e8eff4);
+}
+.label:not(:last-child) { margin-bottom: 0.5em; }
+.label.is-small { font-size: 0.75rem; }
+
+.help {
+  display: block;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  color: var(--btfw-color-text-soft, #b9c4cc);
+}
+
+.field:not(:last-child) { margin-bottom: 0.75rem; }
+.field.has-addons { display: flex; justify-content: flex-start; }
+.field.has-addons .control:not(:last-child) { margin-right: -1px; }
+.field.has-addons .control:not(:first-child):not(:last-child) .button,
+.field.has-addons .control:not(:first-child):not(:last-child) .input,
+.field.has-addons .control:not(:first-child):not(:last-child) .select select { border-radius: 0; }
+.field.has-addons .control:first-child:not(:only-child) .button,
+.field.has-addons .control:first-child:not(:only-child) .input,
+.field.has-addons .control:first-child:not(:only-child) .select select { border-bottom-right-radius: 0; border-top-right-radius: 0; }
+.field.has-addons .control:last-child:not(:only-child) .button,
+.field.has-addons .control:last-child:not(:only-child) .input,
+.field.has-addons .control:last-child:not(:only-child) .select select { border-bottom-left-radius: 0; border-top-left-radius: 0; }
+.field.has-addons .control.is-expanded { flex-grow: 1; flex-shrink: 1; }
+
+.control { box-sizing: border-box; clear: both; font-size: 1rem; position: relative; text-align: inherit; }
+.control.is-expanded { flex-grow: 1; flex-shrink: 1; }
+
+.input,
+.textarea,
+.select select {
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--btfw-radius-xs, 4px);
+  box-shadow: none;
+  display: inline-flex;
+  font-size: 1rem;
+  height: 2.5em;
+  justify-content: flex-start;
+  line-height: 1.5;
+  padding: calc(0.5em - 1px) calc(0.75em - 1px);
+  position: relative;
+  vertical-align: top;
+  /* colours themed in overlays.css / base.css */
+}
+.input,
+.textarea { max-width: 100%; width: 100%; }
+.textarea {
+  display: block;
+  max-width: 100%;
+  min-width: 100%;
+  padding: calc(0.75em - 1px);
+  resize: vertical;
+}
+.textarea:not([rows]) { max-height: 40em; min-height: 8em; }
+.textarea[rows] { height: initial; }
+
+.select {
+  display: inline-block;
+  max-width: 100%;
+  position: relative;
+  vertical-align: top;
+}
+.select:not(.is-multiple) { height: 2.5em; }
+.select:not(.is-multiple):not(.is-loading)::after {
+  border: 3px solid transparent;
+  border-radius: 2px;
+  border-right: 0;
+  border-top: 0;
+  border-color: var(--btfw-color-accent, #485fc7);
+  content: " ";
+  display: block;
+  height: 0.625em;
+  margin-top: -0.4375em;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  right: 1.125em;
+  transform: rotate(-45deg);
+  transform-origin: center;
+  width: 0.625em;
+  z-index: 4;
+}
+.select select {
+  cursor: pointer;
+  display: block;
+  font-size: 1em;
+  max-width: 100%;
+  outline: none;
+  padding-right: 2.5em;
+}
+.select select:not([multiple]) { padding-right: 2.5em; }
+.select select[multiple] { height: auto; padding: 0; }
+.select.is-small { border-radius: 2px; font-size: 0.75rem; }
+
+/* =============================== TABS ============================== */
+/* Only #btfw-ts-tabs uses real Bulma .tabs; the theme pill-styles it in
+   base.css. Minimal base so it lays out before those overrides apply. */
+.tabs {
+  -webkit-overflow-scrolling: touch;
+  align-items: stretch;
+  display: flex;
+  font-size: 1rem;
+  justify-content: space-between;
+  overflow: hidden;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.tabs a {
+  align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-text, #dbdbdb) 20%, transparent);
+  color: var(--btfw-color-text-soft, #4a4a4a);
+  display: flex;
+  justify-content: center;
+  margin-bottom: -1px;
+  padding: 0.5em 1em;
+  vertical-align: top;
+}
+.tabs li { display: block; }
+.tabs ul {
+  align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-text, #dbdbdb) 20%, transparent);
+  display: flex;
+  flex-grow: 1;
+  flex-shrink: 0;
+  justify-content: flex-start;
+}
+.tabs.is-small { font-size: 0.75rem; }
+
+/* ============================== HELPERS ============================ */
+.is-hidden { display: none !important; }
+.is-pulled-right { float: right !important; }
+.is-pulled-left { float: left !important; }

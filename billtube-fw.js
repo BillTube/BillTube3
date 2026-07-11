@@ -284,6 +284,7 @@ function resolveBranchToSHA(){
   resolveBranchToSHA().then(function(){
     return Promise.all([
     preload(BASE+"/css/tokens.css"),
+    preload(BASE+"/css/ui.css"),
     preload(BASE+"/css/base.css"),
     preload(BASE+"/css/navbar.css"),
     preload(BASE+"/css/chat.css"),

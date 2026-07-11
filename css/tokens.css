@@ -14,6 +14,31 @@
   --btfw-card-bg: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
   --btfw-radius: 14px;
   --btfw-radius-sm: 10px; /* inner cards nested inside a --btfw-radius container */
+  --btfw-radius-xs: 8px;  /* buttons, inputs, small controls */
+  --btfw-radius-md: 12px; /* mid surfaces between -sm and the 14px default */
+  --btfw-radius-pill: 999px;
+  /* Motion scale — promoted from overlays.css so every surface shares one
+     vocabulary. The old modal-motion names are kept as aliases below so the
+     existing consumers need no edits. */
+  --btfw-motion-fast: 150ms;
+  --btfw-motion-base: 220ms;
+  --btfw-motion-slow: 320ms;
+  --btfw-ease-out: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --btfw-ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --btfw-modal-motion-duration: var(--btfw-motion-base); /* alias, legacy name */
+  --btfw-modal-motion-ease: var(--btfw-ease-out);        /* alias, legacy name */
+  /* Z-index scale — single source of truth for the layering that used to live
+     as inline constants in feature-style-core.js's zfix block. */
+  --btfw-z-navbar: 5000;
+  --btfw-z-modal: 6000;
+  --btfw-z-modal-bg: 6001;
+  --btfw-z-modal-card: 6002;
+  --btfw-z-notice: 7000;
+  /* Semantic status colours — hexes already scattered across modules, unified. */
+  --btfw-color-success: #4ade80;
+  --btfw-color-warn: #ffb347;
+  --btfw-color-error: #ff6f96;
+  --btfw-color-info: #3e8ed0;
   --btfw-chat-min: 320px;
   --btfw-chat-max: 30vw;
   --btfw-split-width: 8px;
