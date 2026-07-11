@@ -6,6 +6,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
   const CSS_ID = "btfw-poll-overlay-styles";
   const POLL_OVERLAY_CSS = `
     /* Poll Display Overlay on Video */
+    /* The overlay fades and the card rises on entry (exit is faster). Browsers
+       without allow-discrete display transitions just snap, as before. */
     #btfw-poll-video-overlay {
       position: absolute;
       top: 0;
@@ -15,6 +17,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
       z-index: 1500;
       pointer-events: none;
       display: none;
+      opacity: 0;
+      transition: opacity var(--btfw-motion-fast, 150ms) var(--btfw-ease-out, ease-out),
+                  display var(--btfw-motion-fast, 150ms) allow-discrete;
     }
 
     :root.btfw-poll-overlay-disabled #btfw-poll-video-overlay {
@@ -23,6 +28,12 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
     #btfw-poll-video-overlay.btfw-poll-active {
       display: block;
+      opacity: 1;
+      transition: opacity var(--btfw-motion-base, 220ms) var(--btfw-ease-out, ease-out),
+                  display var(--btfw-motion-base, 220ms) allow-discrete;
+    }
+    @starting-style {
+      #btfw-poll-video-overlay.btfw-poll-active { opacity: 0; }
     }
 
     .btfw-poll-video-content {
@@ -40,6 +51,21 @@ BTFW.define("feature:poll-overlay", [], async () => {
       color: var(--btfw-color-text);
       max-width: 800px;
       margin: 0 auto;
+      transform: translateY(-8px) scale(0.98);
+      transition: transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-out, ease-out);
+    }
+    #btfw-poll-video-overlay.btfw-poll-active .btfw-poll-video-content {
+      transform: none;
+      transition: transform var(--btfw-motion-base, 220ms) var(--btfw-ease-out, ease-out);
+    }
+    @starting-style {
+      #btfw-poll-video-overlay.btfw-poll-active .btfw-poll-video-content {
+        transform: translateY(-8px) scale(0.98);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .btfw-poll-video-content { transform: none !important; transition: none !important; }
+      #btfw-poll-video-overlay { transition: opacity 150ms ease, display 150ms allow-discrete; }
     }
 
     .btfw-poll-video-header {
@@ -97,7 +123,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
       padding: 6px 12px;
       color: var(--btfw-color-text);
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background var(--btfw-motion-fast, 150ms) ease,
+                  border-color var(--btfw-motion-fast, 150ms) ease,
+                  color var(--btfw-motion-fast, 150ms) ease;
       font-weight: 500;
       min-width: 60px;
       text-align: center;

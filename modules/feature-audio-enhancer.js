@@ -642,7 +642,7 @@ BTFW.define("feature:audioEnhancer", [], async () => {
         cursor: pointer;
         border-radius: 4px;
         font-size: 13px;
-        transition: all 0.2s ease;
+        transition: background 150ms ease, color 150ms ease;
       `;
 
       item.addEventListener("mouseenter", () => {
@@ -721,7 +721,7 @@ BTFW.define("feature:audioEnhancer", [], async () => {
         cursor: pointer;
         border-radius: 4px;
         font-size: 13px;
-        transition: all 0.2s ease;
+        transition: background 150ms ease, color 150ms ease;
       `;
 
       item.addEventListener("mouseenter", () => {

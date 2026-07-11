@@ -222,7 +222,7 @@ BTFW.define("feature:videoOverlay", [], async () => {
         font:600 14px/1.05 "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
         letter-spacing: 0.01em;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 150ms var(--btfw-ease-out, ease-out);
         text-decoration:none;
       }
 
@@ -275,7 +275,7 @@ BTFW.define("feature:videoOverlay", [], async () => {
         z-index: 10000;
         transform: translateX(100%);
         opacity: 0;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: transform 220ms var(--btfw-ease-out, cubic-bezier(0.2, 0.9, 0.25, 1)), opacity 220ms ease;
         backdrop-filter: blur(12px) saturate(120%);
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         max-width: 300px;

@@ -2958,12 +2958,15 @@ body, #wrap { padding-top: 0 !important; }
     color: #f7b955;
 }
 
-/* 5. MICRO-ANIMATIONS */
-.btn, a, .dropdown-menu > li > a { transition: all 0.2s ease-in-out !important; }
-.btn:hover { transform: translateY(-2px) !important; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important; }
-
-#messagebuffer div { animation: fadeIn 0.3s ease-out forwards; }
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
+/* 5. MICRO-ANIMATIONS
+   Deliberately minimal. The old rules here were a `transition: all
+   !important` on every button/link (fighting each component's tuned
+   per-property transitions), a global hover lift+shadow on all .btn, and a
+   0.3s fadeIn on every chat message — the highest-traffic surface in the
+   app, which should never animate. Color hovers keep a gentle per-property
+   ease without !important so component rules always win. */
+.btn, a, .dropdown-menu > li > a {
+  transition: color var(--btfw-motion-fast, 150ms) ease,
+              background-color var(--btfw-motion-fast, 150ms) ease,
+              border-color var(--btfw-motion-fast, 150ms) ease;
 }

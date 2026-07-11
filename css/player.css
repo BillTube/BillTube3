@@ -1320,7 +1320,7 @@
   font-weight: 600 !important;
   color: var(--btfw-color-text) !important;
   cursor: pointer !important;
-  transition: all 0.18s ease !important;
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease !important;
 }
 
 #videowrap .video-js .vjs-text-track-settings button:hover {

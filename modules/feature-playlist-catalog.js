@@ -110,9 +110,17 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     const style = document.createElement("style");
     style.id = "btfw-playlist-catalogue-style";
     style.textContent = `
-      #btfw-playlist-catalogue { position:fixed; inset:0; z-index:12000; display:none; padding:clamp(12px,3vw,36px); background:rgba(4,6,12,.78); backdrop-filter:blur(8px); }
-      #btfw-playlist-catalogue.is-open { display:flex; align-items:center; justify-content:center; }
-      #btfw-playlist-catalogue .btfw-catalogue__dialog { width:min(1180px,100%); max-height:min(860px,94vh); overflow:hidden; display:flex; flex-direction:column; border:1px solid color-mix(in srgb,var(--btfw-color-accent) 35%,#fff 8%); border-radius:18px; background:var(--btfw-color-surface); color:var(--btfw-color-text); box-shadow:0 22px 70px rgba(0,0,0,.55); }
+      /* Fade + rise entrance, faster exit; browsers without allow-discrete
+         display transitions snap like before. */
+      #btfw-playlist-catalogue { position:fixed; inset:0; z-index:12000; display:none; opacity:0; padding:clamp(12px,3vw,36px); background:rgba(4,6,12,.78); backdrop-filter:blur(8px); transition:opacity var(--btfw-motion-fast,150ms) var(--btfw-ease-out,ease-out), display var(--btfw-motion-fast,150ms) allow-discrete; }
+      #btfw-playlist-catalogue.is-open { display:flex; align-items:center; justify-content:center; opacity:1; transition:opacity var(--btfw-motion-base,220ms) var(--btfw-ease-out,ease-out), display var(--btfw-motion-base,220ms) allow-discrete; }
+      @starting-style { #btfw-playlist-catalogue.is-open { opacity:0; } }
+      #btfw-playlist-catalogue .btfw-catalogue__dialog { width:min(1180px,100%); max-height:min(860px,94vh); overflow:hidden; display:flex; flex-direction:column; border:1px solid color-mix(in srgb,var(--btfw-color-accent) 35%,#fff 8%); border-radius:18px; background:var(--btfw-color-surface); color:var(--btfw-color-text); box-shadow:0 22px 70px rgba(0,0,0,.55); transform:translateY(10px) scale(.98); transition:transform var(--btfw-motion-fast,150ms) var(--btfw-ease-out,ease-out); }
+      #btfw-playlist-catalogue.is-open .btfw-catalogue__dialog { transform:none; transition:transform var(--btfw-motion-base,220ms) var(--btfw-ease-out,ease-out); }
+      @starting-style { #btfw-playlist-catalogue.is-open .btfw-catalogue__dialog { transform:translateY(10px) scale(.98); } }
+      @media (prefers-reduced-motion: reduce){
+        #btfw-playlist-catalogue .btfw-catalogue__dialog { transform:none !important; transition:none !important; }
+      }
       #btfw-playlist-catalogue .btfw-catalogue__head { display:flex; align-items:center; gap:12px; padding:18px 20px 14px; border-bottom:1px solid rgba(255,255,255,.09); }
       #btfw-playlist-catalogue h2 { margin:0; font-size:1.2rem; flex:1; }
       #btfw-playlist-catalogue button { border:0; border-radius:9px; cursor:pointer; color:inherit; background:rgba(255,255,255,.09); padding:8px 11px; }
@@ -129,7 +137,10 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       @supports (appearance: base-select){ #btfw-playlist-catalogue select, #btfw-playlist-catalogue select::picker(select){ appearance:base-select; } #btfw-playlist-catalogue select::picker-icon{ display:none; } #btfw-playlist-catalogue select::picker(select){ background:var(--btfw-color-surface,#11151e); border:1px solid color-mix(in srgb,var(--btfw-color-accent) 32%,transparent); border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,.55); padding:6px; margin-top:6px; } #btfw-playlist-catalogue select option{ border-radius:9px; padding:9px 12px; color:var(--btfw-color-text,#eef2ff); background:transparent !important; } #btfw-playlist-catalogue select option:hover{ background:color-mix(in srgb,var(--btfw-color-accent) 18%,transparent) !important; } #btfw-playlist-catalogue select option:checked{ background:color-mix(in srgb,var(--btfw-color-accent) 26%,transparent) !important; } #btfw-playlist-catalogue select option::checkmark{ color:var(--btfw-color-accent); } }
       #btfw-playlist-catalogue .btfw-catalogue__body { overflow:auto; padding:0 20px 20px; }
       #btfw-playlist-catalogue .btfw-catalogue__grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:14px; }
-      #btfw-playlist-catalogue .btfw-catalogue__card { min-width:0; overflow:hidden; border:1px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(255,255,255,.045); }
+      #btfw-playlist-catalogue .btfw-catalogue__card { min-width:0; overflow:hidden; border:1px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(255,255,255,.045); transition:border-color var(--btfw-motion-fast,150ms) ease, transform var(--btfw-motion-fast,150ms) var(--btfw-ease-out,ease-out), box-shadow var(--btfw-motion-fast,150ms) ease; }
+      @media (hover:hover) and (pointer:fine){
+        #btfw-playlist-catalogue .btfw-catalogue__card:hover { border-color:color-mix(in srgb,var(--btfw-color-accent) 45%,transparent); transform:translateY(-2px); box-shadow:0 10px 24px rgba(0,0,0,.35); }
+      }
       #btfw-playlist-catalogue .btfw-catalogue__poster { display:block; width:100%; aspect-ratio:2/3; object-fit:cover; background:linear-gradient(135deg,#22283a,#111521); }
       #btfw-playlist-catalogue .btfw-catalogue__copy { padding:10px; }
       #btfw-playlist-catalogue .btfw-catalogue__title { color:inherit; font-weight:700; text-decoration:none; line-height:1.25; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

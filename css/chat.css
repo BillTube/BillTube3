@@ -1829,6 +1829,15 @@ cubic-bezier(0.4, 0, 1, 1) 0s running;
   50% { opacity: .35; transform: scale(.72); }
 }
 
+/* Reduced motion — chat surfaces whose motion isn't covered by the shared
+   modal/popover block: the connection pill pop, its pulse, and the VIP
+   username flair loops in the message buffer. Colors are kept. */
+@media (prefers-reduced-motion: reduce) {
+  .btfw-conn-pill { transition: opacity 150ms ease; transform: none; }
+  .btfw-conn-dot { animation: none !important; }
+  #messagebuffer * { animation: none !important; }
+}
+
 
 
 

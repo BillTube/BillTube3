@@ -125,24 +125,26 @@
           .movie-poster-container:before {
             content: "";
             position: absolute;
-            bottom: -350px;
+            bottom: 0;
             left: 0;
             width: 100%;
             height: 100%;
             background: linear-gradient(0deg, #000 50%, transparent);
-            transition: 0.5s;
+            transform: translateY(100%);
+            transition: transform var(--btfw-motion-slow, 320ms) var(--btfw-ease-out, ease-out);
             z-index: 1;
           }
 
           .btfw-poll-option-row:hover .movie-poster-container:before {
-            bottom: 0;
+            transform: translateY(0);
           }
 
           .movie-poster-container img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: 0.5s;
+            transition: filter var(--btfw-motion-slow, 320ms) ease,
+                        transform var(--btfw-motion-slow, 320ms) var(--btfw-ease-out, ease-out);
           }
 
           .btfw-poll-option-row:hover .movie-poster-container img {
@@ -155,16 +157,17 @@
             padding: 20px;
             width: 100%;
             height: 76%;
-            bottom: -350px;
+            bottom: 0;
             left: 0;
             box-sizing: border-box;
-            transition: 0.5s;
+            transform: translateY(110%);
+            transition: transform var(--btfw-motion-slow, 320ms) var(--btfw-ease-out, ease-out);
             z-index: 2;
             overflow-y: auto;
           }
 
           .btfw-poll-option-row:hover .movie-details {
-            bottom: 0;
+            transform: translateY(0);
           }
 
           .btfw-poll-option-text {
