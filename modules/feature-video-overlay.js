@@ -494,25 +494,23 @@ BTFW.define("feature:videoOverlay", [], async () => {
       hideTimer = setTimeout(hideOverlay, ms || 3000);
     }
 
-    // Touch devices have no hover, so the hover-reveal never fires and the bar
-    // (skip / fullscreen / local subs / etc.) is unreachable. On those, a tap
-    // toggles the overlay and it auto-hides a few seconds after being shown.
-    const isTouch = !!(window.matchMedia &&
-      window.matchMedia("(hover: none), (pointer: coarse)").matches);
-
-    if (isTouch) {
-      videowrap.addEventListener("click", (e) => {
-        // Taps on the bar's own buttons should run the button, not toggle.
-        if (e.target.closest(".btfw-vo-btn, .btfw-vo-adopted")) return;
-        if (overlay.classList.contains("btfw-vo-visible")) {
-          hideOverlay();
-        } else {
-          showOverlay();
-          scheduleHide(4500);
-        }
-      });
-      return;
-    }
+    // Touch has no hover, so a tap toggles the overlay (auto-hiding a few
+    // seconds later). Both paths are ALWAYS bound and gated per-event rather
+    // than forked on a boot-time media query: a phone rotates, a desktop
+    // window gets resized narrow, and touch-laptops have both. The tap
+    // listener runs in the CAPTURE phase on pointerup because video.js's own
+    // touch handling stops propagation before a bubbling listener would fire.
+    videowrap.addEventListener("pointerup", (e) => {
+      if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+      // Taps on the bar's own buttons should run the button, not toggle.
+      if (e.target.closest(".btfw-vo-btn, .btfw-vo-adopted")) return;
+      if (overlay.classList.contains("btfw-vo-visible")) {
+        hideOverlay();
+      } else {
+        showOverlay();
+        scheduleHide(4500);
+      }
+    }, true);
 
     videowrap.addEventListener("mouseenter", showOverlay);
     videowrap.addEventListener("mousemove", () => {

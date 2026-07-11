@@ -10,6 +10,19 @@
   #btfw-grid.btfw-grid--vertical #btfw-chatcol{
     height: auto;
     min-height: clamp(320px, 55vh, 520px);
+    /* svh is stable while the mobile URL bar collapses — plain vh re-evaluates
+       on every scroll and made the chat column grow/shrink mid-scroll. */
+    min-height: clamp(320px, 55svh, 520px);
+  }
+
+  /* The video must never exceed the visible viewport (landscape phones: a
+     full-width 16:9 video is taller than the screen). Cap the wrap and
+     letterbox the media instead of overflowing. */
+  #btfw-grid.btfw-grid--vertical #videowrap{
+    max-height: calc(100svh - 80px);
+  }
+  #videowrap video{
+    object-fit: contain;
   }
 }
 
@@ -40,10 +53,14 @@ body.btfw-mobile-nav-open{
     border-radius: 10px;
   }
 
-  /* Message area scroll with momentum */
+  /* Message area scroll with momentum. height:auto!important neutralizes
+     CyTube's handleWindowResize, which rewrites an inline pixel height on
+     every window resize — phone URL bars fire resize on scroll, which made
+     the chat "constantly try to resize". The flex column owns the height. */
   #messagebuffer{
     -webkit-overflow-scrolling: touch;
     padding: 6px;
+    height: auto !important;
   }
 
   /* Keep controls row visible; allow wrapping */
@@ -109,12 +126,142 @@ body.btfw-mobile-nav-open{
     display: none;
   }
 
+  /* Queue rows: compact, with actions always visible as small pills — touch
+     has no hover, so the desktop hover-reveal left invisible buttons that
+     still occupied layout and wrapped the rows to ~170px tall. */
+  #queue .queue_entry{
+    padding: 8px 10px !important;
+  }
+  #queue .queue_entry .btn-group button{
+    opacity: 1;
+    font-size: 10.5px;
+    padding: 2px 7px;
+  }
+
   /* Content stack spacing tighter on mobile */
   #btfw-stack .btfw-stack-list{ gap: 8px; }
   .btfw-stack-item__body{ padding: 6px; }
 
   /* Footer spacing inside stack */
   #btfw-stack-footer{ margin-top: 8px; }
+
+  /* ---- Mobile stack tabs + bottom sheet (feature:mobileTabs) ------------
+     The below-video stack collapses into a pill bar; each item opens in a
+     slide-up sheet so the main page stays video + chat. */
+  body.btfw-mobile-tabs-active #btfw-stack{ display: none !important; }
+
+  #btfw-mobile-tabbar{
+    display: none;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 8px 2px 2px;
+    scrollbar-width: none;
+  }
+  #btfw-mobile-tabbar::-webkit-scrollbar{ display: none; }
+  body.btfw-mobile-tabs-active #btfw-mobile-tabbar{ display: flex; }
+  .btfw-mtab{ position: relative; flex: 0 0 auto; }
+  .btfw-mtab.is-active{
+    --btfw-btn-bg: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 26%, var(--btfw-color-panel, #171d27));
+    --btfw-btn-border: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 60%, transparent);
+  }
+  .btfw-mtab.has-badge::after{
+    content: "";
+    position: absolute;
+    top: 1px;
+    right: 3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--btfw-color-error, #ff6f96);
+    box-shadow: 0 0 0 2px var(--btfw-color-bg, #0a0e15);
+  }
+
+  #btfw-mobile-sheet-backdrop{
+    position: fixed;
+    inset: 0;
+    z-index: 6900;
+    background: color-mix(in srgb, var(--btfw-color-bg, #0a0e15) 62%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--btfw-motion-fast, 150ms) ease;
+  }
+  #btfw-mobile-sheet{
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 6901;
+    max-height: 78svh;
+    display: flex;
+    flex-direction: column;
+    background: var(--btfw-color-surface, #10141d);
+    border: 1px solid var(--btfw-border, #2a3142);
+    border-bottom: none;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+    transform: translateY(100%);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    visibility: hidden;
+    transition: transform var(--btfw-motion-base, 220ms) var(--btfw-ease-out, ease-out),
+                visibility 0s linear var(--btfw-motion-base, 220ms);
+  }
+  body.btfw-mobile-sheet-open #btfw-mobile-sheet{
+    transform: none;
+    visibility: visible;
+    transition: transform var(--btfw-motion-base, 220ms) var(--btfw-ease-out, ease-out);
+  }
+  body.btfw-mobile-sheet-open #btfw-mobile-sheet-backdrop{
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .btfw-msheet__grab{
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--btfw-color-text, #e8eff4) 22%, transparent);
+  }
+  .btfw-msheet__head{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 14px 8px;
+    flex: 0 0 auto;
+  }
+  .btfw-msheet__title{
+    flex: 1;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+  }
+  .btfw-msheet__close{
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--btfw-border, #2a3142);
+    background: color-mix(in srgb, var(--btfw-color-panel, #171d27) 82%, transparent);
+    color: var(--btfw-color-text-soft, #b9c4cc);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .btfw-msheet__body{
+    overflow: auto;
+    padding: 0 10px 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* The sheet header carries the title; hide the item's own header, and force
+     collapsed items open inside the sheet. */
+  #btfw-mobile-sheet .btfw-stack-item__header{ display: none; }
+  #btfw-mobile-sheet .btfw-stack-item__body{ display: block !important; }
+
+  @media (prefers-reduced-motion: reduce){
+    #btfw-mobile-sheet{ transition: none; }
+    #btfw-mobile-sheet-backdrop{ transition: none; }
+  }
 }
 
 /* --------- Small phones (<= 480px): extra tightening ---------------------- */
@@ -129,6 +276,7 @@ body.btfw-mobile-nav-open{
 @supports (padding: max(0px)){
   @media (max-width: 768px){
     #btfw-grid{
+      padding-top: max(4px, env(safe-area-inset-top));
       padding-left: max(8px, env(safe-area-inset-left));
       padding-right: max(8px, env(safe-area-inset-right));
     }
@@ -138,6 +286,11 @@ body.btfw-mobile-nav-open{
     .modal .modal-card{
       margin-top: max(10px, env(safe-area-inset-top));
       margin-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+    #btfw-mobile-sheet{
+      padding-left: env(safe-area-inset-left, 0);
+      padding-right: env(safe-area-inset-right, 0);
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
     }
   }
 }
