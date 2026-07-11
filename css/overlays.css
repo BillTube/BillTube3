@@ -1678,6 +1678,9 @@
   text-decoration: none;
   color: color-mix(in srgb, var(--btfw-color-text) 84%, transparent 16%);
   box-shadow: none;
+  /* tab anchors have no href, which would otherwise show the text cursor */
+  cursor: pointer;
+  user-select: none;
   transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
 }
 .modal.btfw-bulma-skin .btfw-card-head > ul > li:not(.active):not(.is-active) > a:hover,
