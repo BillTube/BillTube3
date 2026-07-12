@@ -1074,6 +1074,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .module-input__control { width: 100%; }
       .btfw-theme-admin input[type="text"],
       .btfw-theme-admin input[type="url"],
+      .btfw-theme-admin input[type="datetime-local"],
       .btfw-theme-admin textarea,
       .btfw-theme-admin select {
         width: 100%;
@@ -1083,13 +1084,30 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         padding: 6px 10px;
         color: color-mix(in srgb, var(--btfw-admin-text) 98%, white 2%);
         font-size: 0.85rem;
+        font-family: inherit;
         box-shadow: none;
         transition: border 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
       }
       .btfw-theme-admin input[type="text"]:focus,
       .btfw-theme-admin input[type="url"]:focus,
+      .btfw-theme-admin input[type="datetime-local"]:focus,
       .btfw-theme-admin textarea:focus,
       .btfw-theme-admin select:focus { border-color: var(--btfw-color-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%); outline: none; }
+      /* datetime-local ships as a raw UA widget (inset border, grey chrome);
+         color-scheme keeps the popup calendar dark, and the indicator icon
+         picks up hover affordance instead of the flat default. */
+      .btfw-theme-admin input[type="datetime-local"] {
+        appearance: none;
+        -webkit-appearance: none;
+        color-scheme: dark;
+        cursor: text;
+      }
+      .btfw-theme-admin input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        opacity: 0.65;
+        transition: opacity 0.15s ease;
+      }
+      .btfw-theme-admin input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
       .btfw-theme-admin .field.is-disabled input,
       .btfw-theme-admin .field.is-disabled textarea,
       .btfw-theme-admin .field.is-disabled select { opacity: 0.55; }
