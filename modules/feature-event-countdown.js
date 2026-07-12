@@ -22,12 +22,20 @@ BTFW.define("feature:event-countdown", [], async () => {
         align-items: center;
         gap: 10px;
         margin: 8px 0 2px;
-        padding: 9px 14px;
+        padding: 7px 12px;
         border-radius: var(--btfw-radius-sm, 10px);
         border: 1px solid color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 40%, transparent 60%);
         background: color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 12%, var(--btfw-color-panel, #171d27) 88%);
         color: var(--btfw-color-text, #e8eff4);
-        font-size: 0.85rem;
+        font-size: 0.8rem;
+      }
+      /* Inside the chat topbar the banner is a slim full-width grid row (the
+         same pattern as the ratings widget), so it stays in flow above the
+         messages and coexists with the other topbar rows. */
+      #chatwrap .btfw-chat-topbar #btfw-event-countdown {
+        grid-column: 1 / -1;
+        width: 100%;
+        margin: 0;
       }
       #btfw-event-countdown .btfw-event__dot {
         width: 8px; height: 8px; border-radius: 50%;
@@ -101,9 +109,15 @@ BTFW.define("feature:event-countdown", [], async () => {
       <span class="btfw-event__dot" aria-hidden="true"></span>
       <span class="btfw-event__title"></span>
       <span class="btfw-event__time" role="timer"></span>`;
+    // Preferred home: a slim row inside the chat topbar, right under the
+    // now-playing title — always on screen while watching, on desktop and
+    // mobile alike. Falls back to the below-video slot if chat isn't up.
+    const topbar = document.querySelector("#chatwrap .btfw-chat-topbar");
     const video = document.querySelector("#videowrap");
     const tabbar = document.querySelector("#btfw-mobile-tabbar");
-    if (tabbar && tabbar.parentElement) {
+    if (topbar) {
+      topbar.appendChild(el);
+    } else if (tabbar && tabbar.parentElement) {
       tabbar.parentElement.insertBefore(el, tabbar.nextSibling);
     } else if (video && video.parentElement) {
       video.parentElement.insertBefore(el, video.nextSibling);
