@@ -14,21 +14,68 @@ You need a CyTube channel where you are an **admin** (rank 3+).
 2. Paste the loader:
 
 ```js
-/* BillTube3 loader — paste into Channel Settings → Edit → Channel JS */
-(function () {
-  if (window.BTFW) return; // don't double-load
-  var s = document.createElement("script");
-  s.src = "https://cdn.jsdelivr.net/gh/BillTube/BillTube3@main/billtube-fw.js";
-  s.async = true;
-  document.head.appendChild(s);
-})();
+/* BillTube3 one-shot loader for CyTube Channel JS */
+(function (W, D) {
+  // --- configurable bits ---
+  var OWNER = "BillTube";
+  var REPO  = "BillTube3";
+  var REF   = "main";        // branch to run: "main" (stable) or "experiment"
+  var FILE  = "billtube-fw.js";
+  var VERSION  = "main-1";   // any string; bump it to nudge caches after a push
+  var DEV_NOCACHE = false;   // true only while developing the theme itself
+  // --------------------------
+
+  if (W.BTFW && W.BTFW.init) { console.debug("[BTFW] already present; skip"); return; }
+  if (D.querySelector('script[data-btfw-loader]')) { console.debug("[BTFW] loader tag exists; skip"); return; }
+  if (D.getElementById("btfw-grid")) { console.debug("[BTFW] layout present; skip"); return; }
+
+  var stamp = DEV_NOCACHE ? ("&t=" + Date.now()) : "";
+
+  function inject(src, attr) {
+    var s = D.createElement("script");
+    s.src = src;
+    s.async = false;
+    s.defer = false;
+    s.dataset.btfwLoader = "1";
+    if (attr) Object.keys(attr).forEach(function (k) { s.setAttribute(k, attr[k]); });
+    D.head.appendChild(s);
+    return s;
+  }
+
+  function fallback() {
+    inject("https://rawcdn.githack.com/" + OWNER + "/" + REPO + "/" + REF + "/" + FILE + "?" + Date.now(),
+           { "data-btfw-fallback": "1" });
+  }
+
+  // Resolve the branch ref to a commit SHA so the framework loads from an
+  // atomic commit-pinned URL. jsdelivr's @branch alias is occasionally
+  // stuck on an old SHA for hours; commit URLs never have that problem.
+  fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/branches/" + REF, { cache: "no-store" })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) {
+      var sha = j && j.commit && j.commit.sha;
+      var ref = sha || REF;  // fall back to branch if API fails
+      var url = "https://cdn.jsdelivr.net/gh/" + OWNER + "/" + REPO + "@" + ref + "/" + FILE +
+                "?v=" + encodeURIComponent(VERSION) + stamp;
+      var tag = inject(url);
+      tag.onerror = fallback;
+      console.debug("[BTFW] loading @" + ref.slice(0, 7));
+    })
+    .catch(function () {
+      // GitHub unreachable — try the branch alias once, then fallback
+      var url = "https://cdn.jsdelivr.net/gh/" + OWNER + "/" + REPO + "@" + REF + "/" + FILE +
+                "?v=" + encodeURIComponent(VERSION) + stamp;
+      var tag = inject(url);
+      tag.onerror = fallback;
+    });
+})(window, document);
 ```
 
 3. Save, reload the channel. The theme boots for every viewer.
 4. Open **Channel Settings → Theme** (a new tab the theme adds) to configure everything else from the dashboard — no further code editing needed.
 5. In the toolkit, watch the **BillTube chat filters** status strip at the top: if it says an update is needed, open the Chat Filters tab, click **Import Required BillTube Chat Filters**, then CyTube's own **Import filter list**. The filters power rich chat content (spoilers, colors, emote packs, movie cards).
 
-> The loader resolves the branch to a **commit-pinned CDN URL** at boot, so every viewer gets a consistent, atomic version of all files — and updates ship the moment a commit lands, with no CDN staleness.
+> The loader resolves the branch to a **commit SHA** before injecting anything, and the framework does the same for every stylesheet and module it loads — so all ~58 files ship atomically from one commit, updates arrive the moment a push lands (no stale CDN edges), and if jsDelivr itself has a bad day the loader falls back to a second CDN automatically.
 
 ---
 
