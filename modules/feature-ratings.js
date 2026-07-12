@@ -234,12 +234,26 @@ BTFW.define("feature:ratings", [], async () => {
     ]);
 
     if (Number.isFinite(currentTime) && currentTime >= 0) {
-      if (!Number.isFinite(state.playback.currentTime) || Math.abs(state.playback.currentTime - currentTime) > 0.3) {
-        updated = true;
+      // Server events (changeMedia / mediaUpdate, every ~5s) are the sync
+      // truth. Right after a media change the embedded player still reports
+      // the PREVIOUS source's clock until the new one loads — trusting it
+      // snapped currentTime to the old movie's ending, which opened the
+      // rating window (and fired its "rating has started" toast) at the
+      // START of every new movie. Only accept a player reading that doesn't
+      // run further ahead of the server-known position than wall-clock time
+      // allows (+90s tolerance). A legit leader seek forward is confirmed by
+      // the next mediaUpdate within seconds, so this self-heals.
+      const elapsedSinceServer = Math.max(0, (Date.now() - (state.playback.lastUpdate || 0)) / 1000);
+      const serverBaseline = Number.isFinite(state.playback.currentTime) ? state.playback.currentTime : 0;
+      const plausibleMax = serverBaseline + elapsedSinceServer + 90;
+      if (currentTime <= plausibleMax) {
+        if (!Number.isFinite(state.playback.currentTime) || Math.abs(state.playback.currentTime - currentTime) > 0.3) {
+          updated = true;
+        }
+        state.playback.currentTime = currentTime;
+        state.playback.lastUpdate = Date.now();
+        if (media) media.currentTime = currentTime;
       }
-      state.playback.currentTime = currentTime;
-      state.playback.lastUpdate = Date.now();
-      if (media) media.currentTime = currentTime;
     }
 
     return updated;
