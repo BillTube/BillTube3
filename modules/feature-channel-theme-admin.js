@@ -939,9 +939,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         --btfw-admin-text: var(--btfw-theme-text, #dce4ff);
         --btfw-admin-text-soft: color-mix(in srgb, var(--btfw-theme-text, #dce4ff) 70%, transparent 30%);
         --btfw-admin-chip: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
-        /* no bottom padding: the sticky action footer must sit flush with the
-           scrollport edge so scrolling content can't peek out beneath it */
-        padding: 12px 4px 0;
+        padding: 12px 4px 16px;
         color: var(--btfw-admin-text);
         font-family: var(--btfw-font-body, 'Inter', sans-serif);
       }
@@ -1240,23 +1238,22 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         .btfw-theme-admin .btfw-admin-nav__item { width: auto; flex: 0 0 auto; padding: 8px 12px; }
       }
 
-      /* Action footer stays visible while the pane scrolls. */
-      .btfw-theme-admin .buttons {
-        display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-        position: sticky;
-        bottom: -1px;
-        z-index: 5;
-        margin-top: 14px;
-        /* the scrollport (skinned modal body) has 24px bottom padding; pull
-           the footer through it so it sits flush and content can't peek out
-           underneath while scrolling */
-        margin-bottom: -24px;
-        padding: 12px 4px 16px;
-        background: color-mix(in srgb, var(--btfw-admin-surface) 96%, transparent 4%);
-        backdrop-filter: blur(10px);
-        border-top: 1px solid var(--btfw-admin-border-soft);
-      }
-      .btfw-theme-admin .buttons .status { margin-left: auto; }
+      /* The action bar is relocated into the modal's own footer (next to
+         Close) after wiring, so Apply sits at the true bottom of the modal
+         and scrolling content can never leak beneath it. These rules style
+         it in BOTH homes; the fallback inside the panel is a plain row. */
+      .btfw-theme-admin .buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+      .btfw-admin-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 1 1 auto; min-width: 0; }
+      .modal-footer .btfw-admin-actions { display: none; margin: 0; }
+      .modal-footer .btfw-admin-actions.is-visible { display: flex; }
+      .modal-footer .btfw-admin-actions .btn-primary,
+      .modal-footer .btfw-admin-actions .btn-secondary { padding: 6px 14px; border-radius: 8px; border: 0; font-weight: 600; letter-spacing: 0.01em; cursor: pointer; font-size: 0.85rem; transition: filter 0.16s ease, border-color 0.18s ease; }
+      .modal-footer .btfw-admin-actions .btn-primary { background: var(--btfw-color-accent); color: color-mix(in srgb, var(--btfw-theme-text, #dce4ff) 98%, white 2%); }
+      .modal-footer .btfw-admin-actions .btn-secondary { background: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%); color: var(--btfw-theme-text, #dce4ff); border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%); }
+      .modal-footer .btfw-admin-actions .btn-primary:hover,
+      .modal-footer .btfw-admin-actions .btn-secondary:hover { filter: brightness(1.08); }
+      .modal-footer .btfw-admin-actions .status { margin-left: auto; font-size: 0.78rem; color: color-mix(in srgb, var(--btfw-theme-text, #dce4ff) 70%, transparent 30%); text-align: right; }
+      #channeloptions .modal-footer:has(.btfw-admin-actions) { display: flex; align-items: center; gap: 10px; }
       .btfw-theme-admin .buttons .btn-primary,
       .btfw-theme-admin .buttons .btn-secondary { padding: 6px 14px; border-radius: 8px; border: 0; font-weight: 600; letter-spacing: 0.01em; cursor: pointer; font-size: 0.85rem; transition: filter 0.16s ease, border-color 0.18s ease; }
       .btfw-theme-admin .buttons .btn-primary { background: var(--btfw-color-accent); color: color-mix(in srgb, var(--btfw-admin-text) 98%, white 2%); }
@@ -3506,7 +3503,7 @@ function replaceBlock(original, startMarker, endMarker, block){
           </div>
         </div>
 
-        <div class="buttons">
+        <div class="buttons btfw-admin-actions">
           <button type="button" class="btn-primary" id="btfw-theme-apply">Apply to Channel CSS &amp; JS</button>
           <button type="button" class="btn-secondary" id="btfw-theme-reset">Reset to preset</button>
           <span class="status" id="btfw-theme-status" data-variant="idle">No changes applied yet.</span>
@@ -4752,8 +4749,24 @@ setTimeout(() => {
       });
     }
 
+    // Move the Apply/Reset/status bar into the modal's own footer so it sits
+    // at the true bottom next to Close (done AFTER wiring so the click
+    // handlers travel with the elements). Shown only while this tab is active.
+    const actionsBar = panel.querySelector('.btfw-admin-actions');
+    const modalFooter = modal.querySelector('.modal-footer');
+    if (actionsBar && modalFooter && actionsBar.parentElement !== modalFooter) {
+      modalFooter.insertBefore(actionsBar, modalFooter.firstChild);
+    }
+    const syncActionsVisibility = () => {
+      if (!actionsBar || actionsBar.parentElement !== modalFooter) return;
+      const active = panel.classList.contains('active') || panel.style.display === 'block';
+      actionsBar.classList.toggle('is-visible', active);
+    };
+    syncActionsVisibility();
+
     const observer = new MutationObserver(() => {
       const active = panel.classList.contains('active') || panel.style.display === 'block';
+      syncActionsVisibility();
       if (active && status && dirty) {
         status.textContent = "Changes pending. Click apply to sync with Channel JS/CSS.";
         status.dataset.variant = "pending";
