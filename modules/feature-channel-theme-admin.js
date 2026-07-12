@@ -939,7 +939,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         --btfw-admin-text: var(--btfw-theme-text, #dce4ff);
         --btfw-admin-text-soft: color-mix(in srgb, var(--btfw-theme-text, #dce4ff) 70%, transparent 30%);
         --btfw-admin-chip: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
-        padding: 12px 4px 16px;
+        /* no bottom padding: the sticky action footer must sit flush with the
+           scrollport edge so scrolling content can't peek out beneath it */
+        padding: 12px 4px 0;
         color: var(--btfw-admin-text);
         font-family: var(--btfw-font-body, 'Inter', sans-serif);
       }
