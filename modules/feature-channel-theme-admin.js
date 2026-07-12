@@ -95,6 +95,15 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       pattern: "none",
       intensity: "medium"
     },
+    // Channel-wide event countdown banner (feature:event-countdown).
+    // startsAtMs is the UTC epoch; startsAtLocal only repopulates the
+    // owner's datetime-local input.
+    event: {
+      enabled: false,
+      title: "",
+      startsAtLocal: "",
+      startsAtMs: 0
+    },
     slider: {
       enabled: false,
       feedUrl: ""
@@ -982,6 +991,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         pointer-events: none;
       }
+      .btfw-theme-admin .btfw-backup-actions { display: flex; gap: 8px; flex-wrap: wrap; }
       .btfw-theme-admin .btfw-pattern-intensity { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
       .btfw-theme-admin .btfw-pattern-intensity label { font-size: 0.76rem; font-weight: 600; }
       .btfw-theme-admin .btfw-pattern-intensity select { flex: 0 1 160px; }
@@ -2751,6 +2761,86 @@ function replaceBlock(original, startMarker, endMarker, block){
     runFilterStatusCheck(panel);
   }
 
+  /* --- Backup & Restore -----------------------------------------------
+     Export: the current panel state (same normalized shape that gets written
+     to Channel JS) wrapped with format/version metadata. Import: accepts that
+     wrapper OR a raw config object, then upgrades it through the exact same
+     path stored configs take on load — deepMerge over cloneDefaults() — so
+     old backups keep working as new settings (patterns, events, …) are added:
+     missing keys pick up current defaults. Nothing is published until the
+     owner reviews and clicks Apply. */
+  function wireBackup(panel, cfg){
+    const exportBtn = panel.querySelector('[data-role="backup-export"]');
+    const importBtn = panel.querySelector('[data-role="backup-import"]');
+    const fileInput = panel.querySelector('[data-role="backup-file"]');
+    const statusEl = panel.querySelector('[data-role="backup-status"]');
+    if (!exportBtn || !importBtn || !fileInput || exportBtn.dataset.wired === "1") return;
+    exportBtn.dataset.wired = "1";
+
+    const setStatus = (msg, isError) => {
+      if (!statusEl) return;
+      statusEl.textContent = msg;
+      statusEl.style.color = isError ? "var(--btfw-color-error, #ff6f96)" : "";
+    };
+
+    exportBtn.addEventListener("click", () => {
+      try {
+        const current = collectConfig(panel, cfg);
+        const payload = {
+          format: "btfw-theme-backup",
+          version: Number(current.version) || DEFAULT_CONFIG.version,
+          exportedAt: new Date().toISOString(),
+          channel: (window.CHANNEL && window.CHANNEL.name) || "",
+          config: current
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        const day = new Date().toISOString().slice(0, 10);
+        a.href = URL.createObjectURL(blob);
+        a.download = `billtube-theme-${payload.channel || "channel"}-${day}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        setStatus("Backup downloaded. It includes API keys — keep it private.");
+      } catch (err) {
+        setStatus("Export failed: " + (err && err.message || err), true);
+      }
+    });
+
+    importBtn.addEventListener("click", () => fileInput.click());
+
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files && fileInput.files[0];
+      fileInput.value = "";
+      if (!file) return;
+      try {
+        const parsed = JSON.parse(await file.text());
+        const raw = parsed && parsed.format === "btfw-theme-backup" ? parsed.config : parsed;
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+          throw new Error("not a theme backup file");
+        }
+        const backupVersion = Number(parsed && parsed.version) || Number(raw.version) || 0;
+        // Same upgrade path as stored configs: defaults fill anything the
+        // backup predates; newer-than-us backups still load, minus unknowns.
+        const merged = deepMerge(cloneDefaults(), raw);
+        merged.version = DEFAULT_CONFIG.version;
+        overwriteConfig(cfg, merged);
+        updateInputs(panel, cfg);
+        paintPatternPreviews(panel, cfg);
+        // nudge the dirty-tracking so the Apply hint appears
+        const tint = panel.querySelector('#btfw-theme-tint');
+        if (tint) tint.dispatchEvent(new Event("change", { bubbles: true }));
+        const note = backupVersion > DEFAULT_CONFIG.version
+          ? ` (backup is from a newer theme v${backupVersion}; unknown settings were kept as-is)`
+          : "";
+        setStatus(`Backup loaded${note}. Review the sections, then click Apply to publish.`);
+      } catch (err) {
+        setStatus("Import failed: " + (err && err.message || err), true);
+      }
+    });
+  }
+
   function renderPanel(panel){
     injectLocalStyles();
     panel.innerHTML = `
@@ -2818,6 +2908,34 @@ function replaceBlock(original, startMarker, endMarker, block){
                 </div>
               </div>
               <p class="help">Load up to 10 extra BillTube modules by URL. A new field appears once you fill the last one.</p>
+            </div>
+          </div>
+        </details>
+
+        <details class="section" data-section="event">
+          <summary class="section__summary">
+            <div class="section__title">
+              <h4>Event Countdown</h4>
+              <span>Show every viewer a live countdown to your next scheduled event.</span>
+            </div>
+            <span class="section__chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="section__body">
+            <div class="field">
+              <label class="btfw-checkbox" for="btfw-theme-event-enabled">
+                <input type="checkbox" id="btfw-theme-event-enabled" data-btfw-bind="event.enabled">
+                <span>Show countdown banner</span>
+              </label>
+              <p class="help">A banner under the video counts down to the event and switches to LIVE at start time (it hides six hours after).</p>
+            </div>
+            <div class="field">
+              <label for="btfw-theme-event-title">Event title</label>
+              <input type="text" id="btfw-theme-event-title" data-btfw-bind="event.title" maxlength="80" placeholder="Halloween Marathon">
+            </div>
+            <div class="field">
+              <label for="btfw-theme-event-start">Starts at</label>
+              <input type="datetime-local" id="btfw-theme-event-start" data-btfw-bind="event.startsAtLocal">
+              <p class="help">Enter the time in <strong>your</strong> timezone — every viewer sees the countdown and date converted to theirs.</p>
             </div>
           </div>
         </details>
@@ -3168,6 +3286,24 @@ function replaceBlock(original, startMarker, endMarker, block){
               </button>
               <p class="help">When <strong>on</strong>, every CSS / module URL gets a unique <code>?t=&lt;ms&gt;</code> appended so you see code changes immediately on reload. When <strong>off</strong> (recommended for live channels), URLs stay stable so the CDN and browser caches kick in — viewers get faster reloads and only pay for fetches when you actually ship a new commit. Setting is per-browser; reload the page to apply.</p>
             </div>
+          </div>
+        </details>
+
+        <details class="section" data-section="backup">
+          <summary class="section__summary">
+            <div class="section__title">
+              <h4>Backup &amp; Restore</h4>
+              <span>Export the full toolkit configuration to a file, or restore one.</span>
+            </div>
+            <span class="section__chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="section__body">
+            <div class="btfw-backup-actions">
+              <button type="button" class="btfw-btn btfw-btn--primary btfw-btn--sm" data-role="backup-export">Download backup</button>
+              <button type="button" class="btfw-btn btfw-btn--sm" data-role="backup-import">Import backup&hellip;</button>
+              <input type="file" accept=".json,application/json" data-role="backup-file" hidden>
+            </div>
+            <p class="help" data-role="backup-status">The backup contains every toolkit setting, including API keys — keep the file private. Backups from older theme versions are upgraded automatically on import; review the panel and click Apply to publish.</p>
           </div>
         </details>
 
@@ -3910,6 +4046,16 @@ function replaceBlock(original, startMarker, endMarker, block){
       updated.integrations.tmdb = { apiKey: "" };
     }
     updated.integrations.tmdb.apiKey = (updated.integrations.tmdb.apiKey || "").trim();
+    if (!updated.event || typeof updated.event !== "object") {
+      updated.event = { ...DEFAULT_CONFIG.event };
+    }
+    updated.event.enabled = Boolean(updated.event.enabled);
+    updated.event.title = String(updated.event.title || "").trim().slice(0, 80);
+    updated.event.startsAtLocal = String(updated.event.startsAtLocal || "").trim();
+    // The datetime-local string is interpreted in the OWNER's timezone here,
+    // at save time, and stored as a UTC epoch so every viewer localizes it.
+    const eventMs = updated.event.startsAtLocal ? new Date(updated.event.startsAtLocal).getTime() : 0;
+    updated.event.startsAtMs = Number.isFinite(eventMs) && eventMs > 0 ? eventMs : 0;
     if (!updated.integrations.wyzie || typeof updated.integrations.wyzie !== "object") {
       updated.integrations.wyzie = { apiKey: "" };
     }
@@ -4348,6 +4494,7 @@ let initializing = true;
 updateInputs(panel, cfg);
 initializing = false;
 wirePatternPicker(panel, cfg);
+wireBackup(panel, cfg);
 
 setTimeout(() => {
   const modules = normalizeModuleUrls(collectModuleCandidates(cfg));

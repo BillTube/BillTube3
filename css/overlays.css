@@ -2216,6 +2216,57 @@ html[data-btfw-theme="dark"] .panel {
 
 
 
+/* ---- Inline :emote autocomplete (feature:emotes) ---- */
+#btfw-emote-ac {
+  position: absolute;
+  z-index: 3200;
+  max-height: 242px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: var(--btfw-radius-sm, 10px);
+  border: 1px solid var(--btfw-border);
+  background: color-mix(in srgb, var(--btfw-color-panel) 96%, transparent 4%);
+  box-shadow: var(--btfw-overlay-shadow, 0 12px 32px rgba(0, 0, 0, 0.45));
+}
+.btfw-emote-ac__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--btfw-color-text);
+  cursor: pointer;
+}
+.btfw-emote-ac__item img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+.btfw-emote-ac__item .btfw-emote-ac__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btfw-emote-ac__item .btfw-emote-ac__hint {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--btfw-color-text) 45%, transparent 55%);
+}
+.btfw-emote-ac__item:hover,
+.btfw-emote-ac__item.is-active {
+  background: color-mix(in srgb, var(--btfw-color-accent) 16%, transparent 84%);
+}
+.btfw-emote-ac__item.is-active .btfw-emote-ac__hint {
+  color: color-mix(in srgb, var(--btfw-color-text) 70%, transparent 30%);
+}
+
 /* Reduced motion — toast keyframes weren't covered by the shared block; keep
    toasts appearing instantly rather than sliding. */
 @media (prefers-reduced-motion: reduce) {

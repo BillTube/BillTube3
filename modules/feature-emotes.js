@@ -577,16 +577,196 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
     getPopover().isOpen() ? close() : open();
   }
 
+  /* ---------------- inline :emote autocomplete ----------------
+     Type ":xx" (2+ chars after a colon at a word start) in the chat line to
+     get a completion popup: channel emotes first, then marketplace pack
+     emotes, then animated emoji (only if their list is already loaded — the
+     autocomplete never triggers a network fetch). Up/Down navigate,
+     Tab/Enter accept, Escape closes. The keydown handler runs in the CAPTURE
+     phase on document so it beats CyTube's own Enter-to-send handler while
+     the popup is open. */
+  const AC_MAX = 8;
+  const ac = { box: null, items: [], index: 0, start: -1, open: false, dirty: true, lastChannelCount: -1, suppress: false, index_: null };
+
+  function acBuildIndex(){
+    const out = [];
+    const seen = new Set();
+    const push = (name, image, insert, hint) => {
+      if (!name || !insert) return;
+      const key = name.toLowerCase() + "|" + insert;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({ name, lower: name.toLowerCase(), image: image || "", insert, hint });
+    };
+    loadChannelEmotes();
+    state.list.emotes.forEach(e => push(e.name, e.image, e.name, "channel"));
+    (Array.isArray(window.BTFW_EMOTE_PACKS) ? window.BTFW_EMOTE_PACKS : []).forEach(p => {
+      (p.emotes || []).forEach(e => { if (e && e.name && e.token) push(e.name, e.image, e.token, p.label || "pack"); });
+    });
+    if (state.emojiReady) {
+      state.list.emoji.forEach(e => { if (e.token) push(e.name, e.image, normalizeAnimatedEmojiToken(e.token), "emoji"); });
+    }
+    ac.lastChannelCount = Array.isArray(window.CHANNEL?.emotes) ? window.CHANNEL.emotes.length : 0;
+    ac.dirty = false;
+    ac.index_ = out;
+    return out;
+  }
+
+  function acIndex(){
+    const channelCount = Array.isArray(window.CHANNEL?.emotes) ? window.CHANNEL.emotes.length : 0;
+    if (!ac.index_ || ac.dirty || channelCount !== ac.lastChannelCount) return acBuildIndex();
+    return ac.index_;
+  }
+
+  function acEnsureBox(){
+    if (ac.box) return ac.box;
+    ensureChatwrapRelative();
+    const box = document.createElement("div");
+    box.id = "btfw-emote-ac";
+    box.hidden = true;
+    box.setAttribute("role", "listbox");
+    // keep focus in the chat line while clicking rows
+    box.addEventListener("mousedown", (e) => e.preventDefault());
+    box.addEventListener("click", (e) => {
+      const row = e.target.closest(".btfw-emote-ac__item");
+      if (row) acAccept(Number(row.dataset.idx));
+    });
+    ($("#chatwrap") || document.body).appendChild(box);
+    ac.box = box;
+    return box;
+  }
+
+  function acQueryAt(input){
+    const pos = input.selectionStart ?? input.value.length;
+    const before = input.value.slice(0, pos);
+    const m = /(^|\s):([A-Za-z0-9_+\-]{2,30})$/.exec(before);
+    if (!m) return null;
+    return { start: pos - m[2].length - 1, query: m[2].toLowerCase(), pos };
+  }
+
+  function acRender(){
+    const box = acEnsureBox();
+    if (!ac.items.length) { acClose(); return; }
+    box.innerHTML = "";
+    ac.items.forEach((item, i) => {
+      const row = document.createElement("div");
+      row.className = "btfw-emote-ac__item" + (i === ac.index ? " is-active" : "");
+      row.dataset.idx = String(i);
+      row.setAttribute("role", "option");
+      if (item.image) {
+        const img = document.createElement("img");
+        img.src = item.image;
+        img.alt = "";
+        img.loading = "lazy";
+        row.appendChild(img);
+      }
+      const name = document.createElement("span");
+      name.className = "btfw-emote-ac__name";
+      name.textContent = item.name;
+      row.appendChild(name);
+      const hint = document.createElement("span");
+      hint.className = "btfw-emote-ac__hint";
+      hint.textContent = item.hint;
+      row.appendChild(hint);
+      box.appendChild(row);
+    });
+    // sit just above the chat line, aligned to it
+    const input = $("#chatline");
+    const wrap = $("#chatwrap");
+    if (input && wrap) {
+      const ir = input.getBoundingClientRect();
+      const wr = wrap.getBoundingClientRect();
+      box.style.left = Math.max(4, ir.left - wr.left) + "px";
+      box.style.width = Math.min(ir.width, 340) + "px";
+      box.style.bottom = (wr.bottom - ir.top + 6) + "px";
+    }
+    box.hidden = false;
+    ac.open = true;
+  }
+
+  function acSetIndex(i){
+    if (!ac.items.length) return;
+    ac.index = (i + ac.items.length) % ac.items.length;
+    const box = acEnsureBox();
+    Array.from(box.children).forEach((row, idx) => row.classList.toggle("is-active", idx === ac.index));
+    const active = box.children[ac.index];
+    if (active && active.scrollIntoView) active.scrollIntoView({ block: "nearest" });
+  }
+
+  function acClose(){
+    if (ac.box) ac.box.hidden = true;
+    ac.open = false;
+    ac.items = [];
+    ac.index = 0;
+    ac.start = -1;
+  }
+
+  function acAccept(i){
+    const item = ac.items[i];
+    const input = $("#chatline");
+    if (!item || !input || ac.start < 0) { acClose(); return; }
+    const caret = input.selectionStart ?? input.value.length;
+    const before = input.value.slice(0, ac.start);
+    const after = input.value.slice(caret);
+    const insert = item.insert + " ";
+    ac.suppress = true;
+    input.value = before + insert + after;
+    const pos = (before + insert).length;
+    input.selectionStart = input.selectionEnd = pos;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    ac.suppress = false;
+    acClose();
+    input.focus();
+  }
+
+  function acOnInput(){
+    if (ac.suppress) return;
+    const input = $("#chatline");
+    if (!input) return acClose();
+    const q = acQueryAt(input);
+    if (!q) return acClose();
+    const idx = acIndex();
+    const starts = [];
+    const contains = [];
+    for (const item of idx) {
+      if (item.lower.startsWith(q.query)) starts.push(item);
+      else if (item.lower.includes(q.query)) contains.push(item);
+      if (starts.length >= AC_MAX) break;
+    }
+    ac.items = starts.concat(contains).slice(0, AC_MAX);
+    ac.start = q.start;
+    ac.index = 0;
+    acRender();
+  }
+
+  function acBind(){
+    const input = $("#chatline");
+    if (!input || input.dataset.btfwEmoteAc === "1") return;
+    input.dataset.btfwEmoteAc = "1";
+    input.addEventListener("input", acOnInput);
+    input.addEventListener("blur", () => setTimeout(acClose, 120));
+    document.addEventListener("keydown", (e) => {
+      if (!ac.open) return;
+      if (e.target !== input) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); e.stopPropagation(); acSetIndex(ac.index + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); e.stopPropagation(); acSetIndex(ac.index - 1); }
+      else if (e.key === "Tab" || e.key === "Enter") { e.preventDefault(); e.stopPropagation(); acAccept(ac.index); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); acClose(); }
+    }, true);
+  }
+
   function boot(){
     removeLegacyButtons();
     ensureOurButton();
     bindAnyExistingOpeners();
     ensurePopover();   // build + wire up front
+    acBind();          // inline :emote autocomplete on the chat line
     // NO warm-up emoji fetch; loads on first Emoji tab open
 
     // Live updates: when the marketplace loads/changes packs, rebuild the pack
     // tabs in place (and re-render if the popover is open) — no refresh needed.
     document.addEventListener("btfw:emotePacks:changed", () => {
+      ac.dirty = true; // autocomplete re-indexes on next trigger
       const pop = _emotesPop && _emotesPop.getCard && _emotesPop.getCard();
       if (!pop) return;
       syncPackTabs(pop);
