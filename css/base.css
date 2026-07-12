@@ -1664,6 +1664,7 @@ nav.pagination.is-centered.btfw-gif-pager {
   height: clamp(560px, 88vh, 1070px);
   max-height: 94vh;
   background: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
+  background-image: var(--btfw-surface-glow);
   border: 1px solid color-mix(in srgb, var(--btfw-border) 85%, transparent 15%);
   border-radius: var(--btfw-radius);
   box-shadow:
