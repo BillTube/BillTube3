@@ -1149,9 +1149,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         align-items: start;
         margin-top: 4px;
       }
+      /* Static (not sticky): a sticky rail's tail would sit permanently
+         behind the sticky action footer on shorter viewports. */
       .btfw-theme-admin .btfw-admin-nav {
-        position: sticky;
-        top: 8px;
+        align-self: start;
         display: flex;
         flex-direction: column;
         gap: 2px;
@@ -1245,8 +1246,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         z-index: 5;
         margin-top: 14px;
         padding: 12px 4px;
-        background: color-mix(in srgb, var(--btfw-admin-surface) 90%, transparent 10%);
-        backdrop-filter: blur(8px);
+        background: color-mix(in srgb, var(--btfw-admin-surface) 96%, transparent 4%);
+        backdrop-filter: blur(10px);
         border-top: 1px solid var(--btfw-admin-border-soft);
       }
       .btfw-theme-admin .buttons .status { margin-left: auto; }
@@ -3011,6 +3012,7 @@ function replaceBlock(original, startMarker, endMarker, block){
       btn.type = "button";
       btn.className = "btfw-admin-nav__item";
       btn.dataset.section = d.dataset.section;
+      btn.title = title;
       btn.innerHTML = `<i class="fa-solid ${ADMIN_NAV_ICONS[d.dataset.section] || "fa-circle"}" aria-hidden="true"></i><span>${title}</span>`;
       btn.addEventListener("click", () => show(d.dataset.section));
       nav.appendChild(btn);
