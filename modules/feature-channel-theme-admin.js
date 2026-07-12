@@ -1141,7 +1141,115 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .preview--font { padding: 10px 12px; border-radius: 8px; background: color-mix(in srgb, var(--btfw-admin-surface) 94%, transparent 6%); border: 1px solid var(--btfw-admin-border-soft); display: flex; flex-direction: column; gap: 4px; }
       .btfw-theme-admin .preview__font-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--btfw-admin-text-soft); }
       .btfw-theme-admin .preview__font-text { font-size: 0.92rem; color: var(--btfw-admin-text); }
-      .btfw-theme-admin .buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+      /* ---- Dashboard layout: nav rail + one visible pane ---- */
+      .btfw-theme-admin .btfw-admin-layout {
+        display: grid;
+        grid-template-columns: 198px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+        margin-top: 4px;
+      }
+      .btfw-theme-admin .btfw-admin-nav {
+        position: sticky;
+        top: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 6px;
+        border-radius: 12px;
+        border: 1px solid var(--btfw-admin-border-soft);
+        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 62%, transparent 38%);
+      }
+      .btfw-theme-admin .btfw-admin-nav__item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 9px 11px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--btfw-admin-text-soft);
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        text-align: left;
+        cursor: pointer;
+        transition: background 150ms ease, color 150ms ease;
+      }
+      .btfw-theme-admin .btfw-admin-nav__item i {
+        width: 16px;
+        text-align: center;
+        font-size: 13px;
+        opacity: 0.75;
+        flex: 0 0 auto;
+      }
+      .btfw-theme-admin .btfw-admin-nav__item span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .btfw-theme-admin .btfw-admin-nav__item:hover {
+        background: color-mix(in srgb, var(--btfw-admin-text) 7%, transparent 93%);
+        color: var(--btfw-admin-text);
+      }
+      .btfw-theme-admin .btfw-admin-nav__item:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 65%, transparent);
+        outline-offset: 1px;
+      }
+      .btfw-theme-admin .btfw-admin-nav__item.is-active {
+        background: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 20%, transparent 80%);
+        color: var(--btfw-admin-text);
+      }
+      .btfw-theme-admin .btfw-admin-nav__item.is-active i {
+        opacity: 1;
+        color: color-mix(in srgb, var(--btfw-theme-accent, #6d4df6) 80%, var(--btfw-admin-text) 20%);
+      }
+      /* Panes: only the active section shows; its summary is a static header. */
+      .btfw-theme-admin .btfw-admin-panes { min-width: 0; }
+      .btfw-theme-admin .btfw-admin-panes > details.section { display: none; margin-bottom: 0; }
+      .btfw-theme-admin .btfw-admin-panes > details.section.is-active-pane { display: block; }
+      .btfw-theme-admin .btfw-admin-panes summary.section__summary {
+        pointer-events: none;
+        cursor: default;
+        padding: 16px 18px 6px;
+      }
+      .btfw-theme-admin .btfw-admin-panes .section__chevron { display: none; }
+      .btfw-theme-admin .btfw-admin-panes .section__title h4 {
+        font-size: 0.98rem;
+        letter-spacing: 0.01em;
+        text-transform: none;
+      }
+      .btfw-theme-admin .btfw-admin-panes .section__title span { font-size: 0.78rem; }
+      .btfw-theme-admin .btfw-admin-panes .section__body { padding: 10px 18px 18px; }
+      @media (max-width: 768px) {
+        .btfw-theme-admin .btfw-admin-layout { grid-template-columns: 1fr; gap: 10px; }
+        .btfw-theme-admin .btfw-admin-nav {
+          position: static;
+          flex-direction: row;
+          overflow-x: auto;
+          scrollbar-width: none;
+          padding: 4px;
+        }
+        .btfw-theme-admin .btfw-admin-nav::-webkit-scrollbar { display: none; }
+        .btfw-theme-admin .btfw-admin-nav__item { width: auto; flex: 0 0 auto; padding: 8px 12px; }
+      }
+
+      /* Action footer stays visible while the pane scrolls. */
+      .btfw-theme-admin .buttons {
+        display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+        position: sticky;
+        bottom: -1px;
+        z-index: 5;
+        margin-top: 14px;
+        padding: 12px 4px;
+        background: color-mix(in srgb, var(--btfw-admin-surface) 90%, transparent 10%);
+        backdrop-filter: blur(8px);
+        border-top: 1px solid var(--btfw-admin-border-soft);
+      }
+      .btfw-theme-admin .buttons .status { margin-left: auto; }
       .btfw-theme-admin .buttons .btn-primary,
       .btfw-theme-admin .buttons .btn-secondary { padding: 6px 14px; border-radius: 8px; border: 0; font-weight: 600; letter-spacing: 0.01em; cursor: pointer; font-size: 0.85rem; transition: filter 0.16s ease, border-color 0.18s ease; }
       .btfw-theme-admin .buttons .btn-primary { background: var(--btfw-color-accent); color: color-mix(in srgb, var(--btfw-admin-text) 98%, white 2%); }
@@ -2859,6 +2967,64 @@ function replaceBlock(original, startMarker, endMarker, block){
     });
   }
 
+  /* --- Dashboard navigation ---------------------------------------------
+     The sections render as one visible pane at a time, selected from a left
+     nav rail (horizontal chips on phones). The <details> elements stay in the
+     DOM untouched so every existing binding keeps working; programmatic
+     `details.open = true` still activates that pane via the toggle listener. */
+  const ADMIN_NAV_ICONS = {
+    resources: "fa-layer-group",
+    event: "fa-calendar-days",
+    integrations: "fa-plug",
+    playlistCatalogue: "fa-film",
+    emoteMarketplace: "fa-store",
+    palette: "fa-palette",
+    typography: "fa-font",
+    branding: "fa-tag",
+    developer: "fa-code",
+    backup: "fa-floppy-disk"
+  };
+
+  function wireAdminNav(panel){
+    const nav = panel.querySelector('[data-role="admin-nav"]');
+    const panes = $$('.btfw-admin-panes > details.section', panel);
+    if (!nav || nav.dataset.wired === "1" || !panes.length) return;
+    nav.dataset.wired = "1";
+    const KEY = "btfw:toolkit:section";
+    let active = null;
+
+    const show = (key, persist = true) => {
+      active = key;
+      panes.forEach(d => {
+        d.open = true;
+        d.classList.toggle("is-active-pane", d.dataset.section === key);
+      });
+      nav.querySelectorAll(".btfw-admin-nav__item").forEach(b => {
+        b.classList.toggle("is-active", b.dataset.section === key);
+      });
+      if (persist) { try { localStorage.setItem(KEY, key); } catch (_) {} }
+    };
+
+    panes.forEach(d => {
+      const title = d.querySelector(".section__title h4")?.textContent?.trim() || d.dataset.section;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btfw-admin-nav__item";
+      btn.dataset.section = d.dataset.section;
+      btn.innerHTML = `<i class="fa-solid ${ADMIN_NAV_ICONS[d.dataset.section] || "fa-circle"}" aria-hidden="true"></i><span>${title}</span>`;
+      btn.addEventListener("click", () => show(d.dataset.section));
+      nav.appendChild(btn);
+      d.addEventListener("toggle", () => {
+        if (d.open && d.dataset.section !== active) show(d.dataset.section, false);
+      });
+    });
+
+    let initial = "palette";
+    try { initial = localStorage.getItem(KEY) || initial; } catch (_) {}
+    if (!panes.some(d => d.dataset.section === initial)) initial = panes[0].dataset.section;
+    show(initial, false);
+  }
+
   function renderPanel(panel){
     injectLocalStyles();
     panel.innerHTML = `
@@ -2880,6 +3046,10 @@ function replaceBlock(original, startMarker, endMarker, block){
           </div>
           <p class="btfw-filter-status__note" data-role="filter-status-note" hidden></p>
         </div>
+
+        <div class="btfw-admin-layout">
+          <nav class="btfw-admin-nav" data-role="admin-nav" aria-label="Toolkit sections"></nav>
+          <div class="btfw-admin-panes" data-role="admin-panes">
 
         <details class="section" data-section="resources">
           <summary class="section__summary">
@@ -3324,6 +3494,9 @@ function replaceBlock(original, startMarker, endMarker, block){
             <p class="help" data-role="backup-status">The backup contains every toolkit setting, including API keys — keep the file private. Backups from older theme versions are upgraded automatically on import; review the panel and click Apply to publish.</p>
           </div>
         </details>
+
+          </div>
+        </div>
 
         <div class="buttons">
           <button type="button" class="btn-primary" id="btfw-theme-apply">Apply to Channel CSS &amp; JS</button>
@@ -4406,6 +4579,7 @@ function replaceBlock(original, startMarker, endMarker, block){
 
     renderPanel(panel);
     wireFilterStatus(panel);
+    wireAdminNav(panel);
 
     const jsField = ensureField(modal, JS_FIELD_SELECTORS, "chanjs");
     const cssField = ensureField(modal, CSS_FIELD_SELECTORS, "chancss");
