@@ -38,7 +38,9 @@ html[data-btfw-theme="dark"] small {
 
 html[data-btfw-theme="dark"] .panel,
 html[data-btfw-theme="dark"] .modal-card {
-  background: color-mix(in srgb, var(--btfw-color-surface) 92%, transparent 8%) !important;
+  /* background-COLOR only: a background shorthand here would wipe the
+     accent glow image these surfaces layer on top */
+  background-color: color-mix(in srgb, var(--btfw-color-surface) 92%, transparent 8%) !important;
   color: var(--btfw-color-text) !important;
   border: 1px solid var(--btfw-border) !important;
   box-shadow: 0 18px 42px color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%);
