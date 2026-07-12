@@ -513,6 +513,7 @@
 
 .btfw-chat-topbar {
   background: color-mix(in srgb, var(--btfw-color-panel) 60%, transparent 40%) !important;
+  background-image: var(--btfw-surface-glow) !important;
   /* Flat theme shape — subtle border, no glossy top highlight or drop shadow
      (the inset white line + heavy shadow made it look unlike the rest). */
   border: 1px solid color-mix(in srgb, var(--btfw-border) 42%, transparent 58%);
@@ -956,11 +957,22 @@
 /* Card shell */
 .modal-card {
   background: var(--btfw-overlay-elevated);
+  background-image: var(--btfw-surface-glow);
   color: var(--btfw-color-text);
   border: 1px solid var(--btfw-overlay-border);
   border-radius: var(--btfw-radius);
   overflow: hidden;
   box-shadow: var(--btfw-overlay-shadow);
+}
+
+/* The same accent wash on the other card surfaces (skinned CyTube modals
+   and the chat popovers); colors come from their own rules, this only
+   layers the glow image on top. */
+.modal.btfw-bulma-skin .modal-content,
+#btfw-emotes-pop,
+#btfw-gif-modal,
+#btfw-ct-modal {
+  background-image: var(--btfw-surface-glow) !important;
 }
 
 /* Header / footer */

@@ -28,6 +28,18 @@ html, body {
   scrollbar-color: var(--btfw-scrollbar-thumb) transparent;
 }
 
+/* Faint accent wash over the whole page — a fixed oval glow from the top,
+   sitting above the page background (and the optional hero pattern) but
+   below all content. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--btfw-page-glow);
+}
+
 /* Strengthen the thumb only while the pointer is over the scrolling box.
    (The page-level bar on html stays faint — the pointer is always "over"
    the page, so a hover boost there would defeat the whole idea.) */
@@ -834,6 +846,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   border: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 40%);
   border-radius: var(--btfw-radius);
   background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);
+  background-image: var(--btfw-surface-glow);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--btfw-color-bg) 22%, transparent 78%);
   overflow: hidden;
   margin-top: 20px;
@@ -1493,6 +1506,7 @@ nav.pagination.is-centered.btfw-gif-pager {
     padding: clamp(18px, 4vw, 28px) clamp(18px, 4vw, 32px);
     border-top: 1px solid
  color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+    background-image: var(--btfw-surface-glow);
     margin-top: 40px;
 }
 

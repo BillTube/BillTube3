@@ -1003,6 +1003,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         border: 1px solid var(--btfw-admin-border-soft);
         margin-bottom: 8px;
         background: color-mix(in srgb, var(--btfw-admin-surface) 86%, transparent 14%);
+        background-image: var(--btfw-surface-glow);
         overflow: hidden;
         transition: border-color 0.18s ease, background 0.18s ease;
       }

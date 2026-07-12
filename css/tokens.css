@@ -12,6 +12,15 @@
   --btfw-color-text-muted: color-mix(in srgb, var(--btfw-color-text) 62%, transparent 38%);
   --btfw-border: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
   --btfw-card-bg: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  /* Subtle accent washes — an oval glow bleeding in from the top, always
+     derived from the channel accent so every surface stays in palette.
+     Layer via background-image (colors stay on background-color). */
+  --btfw-surface-glow: radial-gradient(120% 75% at 50% -12%,
+      color-mix(in srgb, var(--btfw-color-accent) 9%, transparent 91%) 0%,
+      transparent 60%);
+  --btfw-page-glow: radial-gradient(72% 48% at 50% 0%,
+      color-mix(in srgb, var(--btfw-color-accent) 6%, transparent 94%) 0%,
+      transparent 68%);
   --btfw-radius: 14px;
   --btfw-radius-sm: 10px; /* inner cards nested inside a --btfw-radius container */
   --btfw-radius-xs: 8px;  /* buttons, inputs, small controls */
