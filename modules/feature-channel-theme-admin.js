@@ -1245,7 +1245,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         bottom: -1px;
         z-index: 5;
         margin-top: 14px;
-        padding: 12px 4px;
+        /* the scrollport (skinned modal body) has 24px bottom padding; pull
+           the footer through it so it sits flush and content can't peek out
+           underneath while scrolling */
+        margin-bottom: -24px;
+        padding: 12px 4px 16px;
         background: color-mix(in srgb, var(--btfw-admin-surface) 96%, transparent 4%);
         backdrop-filter: blur(10px);
         border-top: 1px solid var(--btfw-admin-border-soft);
