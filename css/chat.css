@@ -135,11 +135,17 @@
 }
 #messagebuffer > div.btfw-group-hover:not(.nick-highlight) {
   background: color-mix(in srgb, var(--btfw-color-accent) 9%, transparent);
+  background-image: var(--btfw-dither-image);
+  background-size: var(--btfw-dither-size);
+  background-position: 0 0;
 }
 /* Rows where you're mentioned keep their distinct highlight (a touch brighter
    on hover) so an @-mention still stands out within the blob. */
 #messagebuffer > div.btfw-group-hover.nick-highlight {
   background: color-mix(in srgb, var(--btfw-theme-surface, #11141d) 78%, var(--btfw-color-accent) 22%);
+  background-image: var(--btfw-dither-image);
+  background-size: var(--btfw-dither-size);
+  background-position: 0 0;
 }
 /* Shadow only on the blob's outer edges: a faint top glow on the first row,
    the main drop shadow on the last — so the run reads as one lifted card. */
@@ -1148,7 +1154,10 @@
   margin: 6px 0 0;
   padding: 12px 16px;
   border-radius: 16px;
-  background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
   box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
   display: flex;

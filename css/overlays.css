@@ -39,7 +39,10 @@
   width: min(320px, calc(100vw - 20px)) !important;
   height: auto !important;
   max-height: min(62vh, 540px) !important;
-  background: color-mix(in srgb, var(--btfw-overlay-bg) 95%, transparent 5%);
+  background-color: color-mix(in srgb, var(--btfw-overlay-bg) 95%, transparent 5%);
+  background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   color: var(--btfw-color-text);
   border-radius: var(--btfw-radius);
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
@@ -305,7 +308,10 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: color-mix(in srgb, var(--btfw-overlay-bg) 95%, transparent 5%);
+  background-color: color-mix(in srgb, var(--btfw-overlay-bg) 95%, transparent 5%);
+  background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
   border-radius: 14px;
   overflow: hidden;
@@ -513,7 +519,9 @@
 
 .btfw-chat-topbar {
   background: color-mix(in srgb, var(--btfw-color-panel) 60%, transparent 40%) !important;
-  background-image: var(--btfw-surface-glow) !important;
+  background-image: var(--btfw-dither-image), var(--btfw-surface-glow) !important;
+  background-size: var(--btfw-dither-size), auto;
+  background-position: 0 0, center;
   /* Flat theme shape — subtle border, no glossy top highlight or drop shadow
      (the inset white line + heavy shadow made it look unlike the rest). */
   border: 1px solid color-mix(in srgb, var(--btfw-border) 42%, transparent 58%);
@@ -541,13 +549,19 @@
 .btfw-chat-actions .button.btfw-chatbtn {
   border-radius: 999px!important;
   border: 1px solid color-mix(in srgb, var(--btfw-border) 62%, transparent 38%);
-  background: radial-gradient(130% 160% at 24% 28%,
+  background-color: color-mix(in srgb, var(--btfw-overlay-elevated) 80%, transparent 20%);
+  background-image: var(--btfw-dither-image),
+    radial-gradient(130% 160% at 24% 28%,
     color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%),
     color-mix(in srgb, var(--btfw-overlay-elevated) 80%, transparent 20%));
+  background-size: var(--btfw-button-background-size);
+  background-position: var(--btfw-button-background-position);
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent 88%);
 }
 .btfw-chat-actions .button.btfw-chatbtn:hover {
-  background: radial-gradient(130% 160% at 24% 28%,
+  background-color: color-mix(in srgb, var(--btfw-overlay-elevated) 70%, transparent 30%);
+  background-image: var(--btfw-dither-image),
+    radial-gradient(130% 160% at 24% 28%,
     color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%),
     color-mix(in srgb, var(--btfw-overlay-elevated) 70%, transparent 30%));
 }
@@ -560,6 +574,9 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  background-image: var(--btfw-dither-image);
+  background-size: var(--btfw-dither-size);
+  background-position: 0 0;
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent 92%);
   pointer-events: none;
   z-index: -1;
@@ -1987,7 +2004,10 @@ html[data-btfw-theme="dark"] .panel {
 .btfw-notice{
   pointer-events: auto;
   width: 100%;
-  background: var(--btfw-notice-bg, color-mix(in srgb, var(--btfw-overlay-bg) 96%, transparent 4%));
+  background-color: var(--btfw-notice-bg, color-mix(in srgb, var(--btfw-overlay-bg) 96%, transparent 4%));
+  background-image: var(--btfw-dither-image);
+  background-size: var(--btfw-dither-size);
+  background-position: 0 0;
   color: var(--btfw-notice-text, var(--btfw-color-text));
   border: 1px solid var(--btfw-notice-border, var(--btfw-border));
   border-radius: var(--btfw-radius);
@@ -2191,7 +2211,10 @@ html[data-btfw-theme="dark"] .panel {
   display: none;
   z-index: 4000;
   max-width: min(90vw, 420px);
-  background: var(--btfw-overlay-bg);
+  background-color: var(--btfw-overlay-bg);
+  background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border: 1px solid var(--btfw-border);
   box-shadow: var(--btfw-overlay-shadow);
   border-radius: var(--btfw-radius);
@@ -2251,7 +2274,10 @@ html[data-btfw-theme="dark"] .panel {
   padding: 4px;
   border-radius: var(--btfw-radius-sm, 10px);
   border: 1px solid var(--btfw-border);
-  background: color-mix(in srgb, var(--btfw-color-panel) 96%, transparent 4%);
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 96%, transparent 4%);
+  background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   box-shadow: var(--btfw-overlay-shadow, 0 12px 32px rgba(0, 0, 0, 0.45));
 }
 .btfw-emote-ac__item {

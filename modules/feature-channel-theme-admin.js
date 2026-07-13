@@ -3135,9 +3135,9 @@ function replaceBlock(original, startMarker, endMarker, block){
 
   /* --- Dashboard navigation ---------------------------------------------
      The sections render as one visible pane at a time, selected from a left
-     nav rail (horizontal chips on phones). The <details> elements stay in the
-     DOM untouched so every existing binding keeps working; programmatic
-     `details.open = true` still activates that pane via the toggle listener. */
+     nav rail (horizontal chips on phones). The <details> elements stay open
+     in the DOM so every existing binding keeps working; the active class alone
+     controls which pane is visible. */
   const ADMIN_NAV_ICONS = {
     resources: "fa-layer-group",
     event: "fa-calendar-days",
@@ -3156,17 +3156,30 @@ function replaceBlock(original, startMarker, endMarker, block){
     const panes = $$('.btfw-admin-panes > details.section', panel);
     if (!nav || nav.dataset.wired === "1" || !panes.length) return;
     nav.dataset.wired = "1";
-    const KEY = "btfw:toolkit:section";
-    let active = null;
-
+    const channelKey = (() => {
+      try {
+        const configured = String(window.CHANNEL?.name || "").trim();
+        if (configured) return configured;
+        const match = String(location.pathname || "").match(/^\/r\/([^/?#]+)/i);
+        return match ? decodeURIComponent(match[1]) : "default";
+      } catch (_) {
+        return "default";
+      }
+    })();
+    const KEY = `btfw:toolkit:last-section:v2:${channelKey.toLowerCase()}`;
     const show = (key, persist = true) => {
-      active = key;
+      if (!panes.some(d => d.dataset.section === key)) {
+        key = panes[0].dataset.section;
+      }
       panes.forEach(d => {
         d.open = true;
         d.classList.toggle("is-active-pane", d.dataset.section === key);
       });
       nav.querySelectorAll(".btfw-admin-nav__item").forEach(b => {
-        b.classList.toggle("is-active", b.dataset.section === key);
+        const selected = b.dataset.section === key;
+        b.classList.toggle("is-active", selected);
+        if (selected) b.setAttribute("aria-current", "page");
+        else b.removeAttribute("aria-current");
       });
       if (persist) { try { localStorage.setItem(KEY, key); } catch (_) {} }
     };
@@ -3181,14 +3194,10 @@ function replaceBlock(original, startMarker, endMarker, block){
       btn.innerHTML = `<i class="fa-solid ${ADMIN_NAV_ICONS[d.dataset.section] || "fa-circle"}" aria-hidden="true"></i><span>${title}</span>`;
       btn.addEventListener("click", () => show(d.dataset.section));
       nav.appendChild(btn);
-      d.addEventListener("toggle", () => {
-        if (d.open && d.dataset.section !== active) show(d.dataset.section, false);
-      });
     });
 
-    let initial = "palette";
+    let initial = panes[0].dataset.section;
     try { initial = localStorage.getItem(KEY) || initial; } catch (_) {}
-    if (!panes.some(d => d.dataset.section === initial)) initial = panes[0].dataset.section;
     show(initial, false);
   }
 
