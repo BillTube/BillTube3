@@ -1,178 +1,220 @@
-# BillTube3
+<div align="center">
 
-A modern, self-contained theme framework for [CyTube](https://github.com/calzoneman/sync) channels. BillTube3 turns a stock CyTube channel into a polished watch-party experience — dark UI, movie metadata, emote pickers, mobile support, and a full no-code admin dashboard — using **nothing but Channel JS**. No server access, no database, no build step.
+# BillTube 3
 
-Built and maintained by [BillTube](https://github.com/BillTube). Live on [cytu.be](https://cytu.be).
+### Version 1 for CyTube channels
+
+BillTube adds player controls, chat tools, movie information, mobile layouts, and a settings panel. It is installed through Channel JavaScript.
+
+<p>
+  <img alt="Release V1" src="https://img.shields.io/badge/release-V1-5865f2">
+  <img alt="CyTube" src="https://img.shields.io/badge/platform-CyTube-2f855a">
+  <img alt="Channel JavaScript" src="https://img.shields.io/badge/install-Channel_JavaScript-444">
+  <img alt="No build step" src="https://img.shields.io/badge/build_step-none-444">
+</p>
+
+[Install](#installation) · [Features](#features) · [Settings](#channel-theme-toolkit) · [Help](#help-and-feedback)
+
+</div>
 
 ---
 
-## Quick start
+## About
 
-You need a CyTube channel where you are an **admin** (rank 3+).
+BillTube is a theme for [CyTube](https://github.com/calzoneman/sync). It changes the channel layout and adds optional tools for video playback, chat, movie information, and channel administration.
 
-1. Open your channel → **Channel Settings → Edit → Channel JavaScript**.
-2. Paste the loader:
+It runs from Channel JavaScript, so it does not need a separate website or server. Most settings can be changed from the Channel Theme Toolkit after installation.
+
+## How it loads
+
+The loader resolves the `main` branch to a Git commit before loading BillTube. This keeps the framework, its 54 loaded modules, and its 8 stylesheets on the same revision. If jsDelivr fails, the loader tries a second CDN.
+
+```mermaid
+flowchart LR
+    A[Channel JavaScript] --> B[BillTube loader]
+    B --> C[Pinned Git commit]
+    C --> D[8 stylesheets]
+    C --> E[54 modules]
+    D --> F[CyTube channel]
+    E --> F
+```
+
+## Features
+
+### Player
+
+- Theater mode, picture-in-picture, fullscreen controls, and Chromecast support
+- Audio enhancement with a 2.5× volume boost and dynamic-range compression presets for loudness normalization
+- Automatic English subtitle fetching for direct video files through Wyzie or SubDL, with a Stremio addon fallback
+- Local subtitle file loading
+- Full-width video and touch controls on phones and tablets
+- Event countdowns shown in each viewer's local time
+
+### Chat
+
+- Emote picker with channel emotes, animated emoji, recent emotes, and searchable community packs
+- Inline emote autocomplete with image previews
+- GIF search and favorites
+- Avatars, timestamps, mentions, and notification sounds
+- Spoilers, text styling, chat colors, ignore controls, and a user-list overlay
+- Emote packs from 7TV, BetterTTV, FrankerFaceZ, and emoji.gg
+
+### Movie features
+
+- Now-playing cards with posters, summaries, and ratings
+- Movie polls with TMDB information
+- A searchable playlist catalogue
+- End-of-movie audience ratings and a channel leaderboard
+- Movie cards posted by the `!summary` chat command
+
+### Appearance and channel settings
+
+- Color presets and individual color settings
+- Typography presets, custom fonts, branding, favicons, and poster overrides
+- Patterned backgrounds with previews
+- Featured content, custom resources, and optional channel modules
+- Configuration backup and restore
+
+## Installation
+
+You need administrator access (rank 3 or higher) on the CyTube channel.
+
+1. Open **Channel Settings → Edit → Channel JavaScript**.
+2. Paste the loader below into the editor.
+3. Save your changes and reload the channel.
+4. Open the new **Theme** section in Channel Settings to configure BillTube.
 
 ```js
-/* BillTube3 one-shot loader for CyTube Channel JS */
-(function (W, D) {
-  // --- configurable bits ---
-  var OWNER = "BillTube";
-  var REPO  = "BillTube3";
-  var REF   = "main";        // branch to run: "main" (stable) or "experiment"
-  var FILE  = "billtube-fw.js";
-  var VERSION  = "main-1";   // any string; bump it to nudge caches after a push
-  var DEV_NOCACHE = false;   // true only while developing the theme itself
-  // --------------------------
+/* BillTube 3 loader */
+(function (window, document) {
+  var repository = "BillTube/BillTube3";
+  var branch = "main";
+  var entrypoint = "billtube-fw.js";
 
-  if (W.BTFW && W.BTFW.init) { console.debug("[BTFW] already present; skip"); return; }
-  if (D.querySelector('script[data-btfw-loader]')) { console.debug("[BTFW] loader tag exists; skip"); return; }
-  if (D.getElementById("btfw-grid")) { console.debug("[BTFW] layout present; skip"); return; }
+  if (window.BTFW || document.querySelector("script[data-btfw-loader]")) return;
 
-  var stamp = DEV_NOCACHE ? ("&t=" + Date.now()) : "";
-
-  function inject(src, attr) {
-    var s = D.createElement("script");
-    s.src = src;
-    s.async = false;
-    s.defer = false;
-    s.dataset.btfwLoader = "1";
-    if (attr) Object.keys(attr).forEach(function (k) { s.setAttribute(k, attr[k]); });
-    D.head.appendChild(s);
-    return s;
+  function inject(source, onError) {
+    var script = document.createElement("script");
+    script.src = source;
+    script.async = false;
+    script.dataset.btfwLoader = "1";
+    if (onError) script.onerror = onError;
+    document.head.appendChild(script);
   }
 
-  function fallback() {
-    inject("https://rawcdn.githack.com/" + OWNER + "/" + REPO + "/" + REF + "/" + FILE + "?" + Date.now(),
-           { "data-btfw-fallback": "1" });
+  function loadFallback() {
+    inject(
+      "https://rawcdn.githack.com/" + repository + "/" + branch + "/" + entrypoint + "?t=" + Date.now()
+    );
   }
 
-  // Resolve the branch ref to a commit SHA so the framework loads from an
-  // atomic commit-pinned URL. jsdelivr's @branch alias is occasionally
-  // stuck on an old SHA for hours; commit URLs never have that problem.
-  fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/branches/" + REF, { cache: "no-store" })
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (j) {
-      var sha = j && j.commit && j.commit.sha;
-      var ref = sha || REF;  // fall back to branch if API fails
-      var url = "https://cdn.jsdelivr.net/gh/" + OWNER + "/" + REPO + "@" + ref + "/" + FILE +
-                "?v=" + encodeURIComponent(VERSION) + stamp;
-      var tag = inject(url);
-      tag.onerror = fallback;
-      console.debug("[BTFW] loading @" + ref.slice(0, 7));
+  fetch("https://api.github.com/repos/" + repository + "/branches/" + branch, { cache: "no-store" })
+    .then(function (response) {
+      if (!response.ok) throw new Error("Unable to resolve the current release");
+      return response.json();
+    })
+    .then(function (release) {
+      var version = release.commit.sha;
+      inject(
+        "https://cdn.jsdelivr.net/gh/" + repository + "@" + version + "/" + entrypoint,
+        loadFallback
+      );
     })
     .catch(function () {
-      // GitHub unreachable — try the branch alias once, then fallback
-      var url = "https://cdn.jsdelivr.net/gh/" + OWNER + "/" + REPO + "@" + REF + "/" + FILE +
-                "?v=" + encodeURIComponent(VERSION) + stamp;
-      var tag = inject(url);
-      tag.onerror = fallback;
+      inject(
+        "https://cdn.jsdelivr.net/gh/" + repository + "@" + branch + "/" + entrypoint,
+        loadFallback
+      );
     });
 })(window, document);
 ```
 
-3. Save, reload the channel. The theme boots for every viewer.
-4. Open **Channel Settings → Theme** (a new tab the theme adds) to configure everything else from the dashboard — no further code editing needed.
-5. In the toolkit, watch the **BillTube chat filters** status strip at the top: if it says an update is needed, open the Chat Filters tab, click **Import Required BillTube Chat Filters**, then CyTube's own **Import filter list**. The filters power rich chat content (spoilers, colors, emote packs, movie cards).
+BillTube checks for updates when the channel loads. The loader does not need to be replaced for each release.
 
-> The loader resolves the branch to a **commit SHA** before injecting anything, and the framework does the same for every stylesheet and module it loads — so all ~58 files ship atomically from one commit, updates arrive the moment a push lands (no stale CDN edges), and if jsDelivr itself has a bad day the loader falls back to a second CDN automatically.
+### Chat filters
 
----
+The Theme Toolkit shows the status of BillTube's chat filters at the top of the dashboard. If an update is available:
 
-## Features
+1. Open **Theme → Chat Filters**.
+2. Select **Import Required BillTube Chat Filters**.
+3. Confirm with CyTube's **Import filter list** action.
 
-### Player & video
-- **Video overlay controls** — fullscreen, theater mode, subtitles, and more on hover (desktop) or tap (touch).
-- **Theater mode** and **picture-in-picture**.
-- **Audio enhancer** — volume boost plus loudness normalization with Gentle / Balanced / Aggressive compressor presets (HTML5 sources).
-- **Auto-subtitles** — fetches subtitles for the playing movie via Wyzie / SubDL (bring your own key) or a keyless Stremio-addon proxy fallback; **local subtitle file** loading too.
-- **Chromecast** support (billcast).
-- Full-bleed, aspect-correct video on phones with safe-area (notch) handling.
+These filters handle spoilers, text styling, emote-pack tokens, and movie cards in chat.
 
-### Chat
-- **Emote picker** — channel emotes, an animated-emoji tab (Google Noto), recents, and marketplace packs, with search.
-- **Emote marketplace** — channel owners add packs from **7TV, BetterTTV, FrankerFaceZ, and emoji.gg**; they appear as extra picker tabs for everyone.
-- **Inline emote autocomplete** — type `:na` and complete any emote with image previews (Tab/Enter/arrow keys), Discord-style.
-- **GIF picker** — Giphy and Klipy search with favorites.
-- **Rich chat filters** — spoiler tags, chat colors, text styling, emote-pack tokens, TMDB movie cards; the toolkit shows a live status strip telling admins when the channel's imported filter list is out of date.
-- Avatars, timestamps, per-user ignore list, username colors, mention notifications with **notification sounds**.
-- **Userlist overlay** instead of a fixed column.
+## Channel Theme Toolkit
 
-### Movies & metadata (TMDB)
-- **Movie info card** — hover (desktop) or tap (mobile) the now-playing title for poster, overview, and a rating ring. Mobile presents it as a compact bottom sheet.
-- **Movie polls** — CyTube polls upgraded with TMDB poster cards and hover details.
-- **Ratings** — a star-voting window opens in the chat header during the final 15 minutes of a movie; votes are stored via a Cloudflare Worker endpoint and surface in a leaderboard.
-- **Movie Catalogue** — publishes the playlist as a searchable, filterable poster wall (fullscreen browser for viewers).
-- **`!summary`** chat command posts a TMDB movie card into chat.
+The Theme Toolkit is available under **Channel Settings → Theme**. Administrators can change BillTube settings there and preview appearance changes before applying them.
 
-### Mobile
-- The below-video stack (Playlist, MOTD, Polls, custom widgets) collapses into a **tab bar + slide-up bottom sheets**, keeping the main page video + chat.
-- Twitch-sized touch targets, tap-to-toggle video overlay, stable scrolling (no URL-bar resize jitter), event-countdown and rating surfaces adapted to small screens.
-
-### Channel Theme Toolkit (the admin dashboard)
-Everything lives in **Channel Settings → Theme**, a sidebar-navigated dashboard:
-
-| Section | What it does |
+| Section | What you can manage |
 | --- | --- |
-| **Featured Content & Resources** | Featured-channels slider feed, extra CSS/JS resources, and up to 10 additional BillTube modules by URL. |
-| **Event Countdown** | Channel-wide countdown banner in the chat header — set a title and local time; every viewer sees it converted to *their* timezone, flipping to LIVE at start. |
-| **Integrations** | API keys for TMDB, Klipy, Wyzie, SubDL and the ratings endpoint. ⚠️ Keys pasted here are written into public Channel JS and visible to any viewer — use free-tier keys you don't mind exposing. |
-| **Playlist Catalogue** | Publish the playlist as a public TMDB movie list. |
-| **Emote Marketplace** | Add/remove/rename emote packs (7TV / BTTV / FFZ / emoji.gg). |
-| **Palette & Tint** | Curated palette presets (plus themed and editor-inspired ones), per-swatch fine-tuning, and an optional **Hero Patterns backdrop** — 38 tiled SVG patterns drawn in your background + accent colors, with live preview tiles and intensity control. |
-| **Typography** | Font presets or a custom family, applied everywhere. |
-| **Branding** | Navbar title, favicon, and poster overrides. |
-| **Developer** | Cache-busting dev mode for iterating on the theme. |
-| **Backup & Restore** | One-click JSON export of the entire configuration and an import that auto-upgrades older backups to the current config shape. Nothing publishes until you press Apply. |
+| **Appearance** | Color presets, individual colors, patterned backgrounds, typography, and branding |
+| **Featured content** | Featured channels, additional resources, and optional modules |
+| **Event countdown** | A channel-wide event title and start time, localized for every viewer |
+| **Integrations** | Movie data, GIF search, subtitles, audio enhancement, and audience ratings |
+| **Playlist catalogue** | A public movie list built from the channel playlist |
+| **Emote marketplace** | Community emote packs from supported providers |
+| **Backup & restore** | Export or import BillTube settings as JSON |
 
-The toolkit writes two clearly-marked managed blocks into Channel JS and Channel CSS. Your own code outside those blocks is never touched.
+The toolkit updates BillTube's marked configuration blocks. It leaves other Channel JavaScript and Channel CSS in place.
 
-### Chat commands
-`!help` `!now` `!summary [title]` `!skip` `!next` `!bump` `!add <url>` `!time` `!dice` `!roll` `!pick a,b,c` `!ask <question>` `!sm` (random channel emote) `!trivia` (rank ≥ 2) `!leaderboard`
+## Optional integrations
 
-### Under the hood
-- **Zero build step** — plain scripts loaded at runtime from jsDelivr; the loader resolves the branch to a commit SHA so all ~50 modules and 8 stylesheets always ship atomically.
-- **Design-token system** — every color, radius, shadow, motion curve, and z-index comes from CSS custom properties derived from the channel palette, so owner customizations propagate everywhere (including scrollbars, glows, and background patterns).
-- **Fault-tolerant boot** — optional features settle individually; one broken module is reported in the console and in `btfw:ready`'s `detail.failed` instead of taking the theme down.
-- **No frameworks of its own** — the former Bulma/Bootswatch layers were replaced with a native ~200-line UI layer. (Legacy escape hatch: set `window.BTFW_LOAD_BULMA = true` in Channel JS before the loader if a third-party module still needs Bulma.)
-- Respects `prefers-reduced-motion` throughout.
+Most of BillTube works without an external service. These features need additional configuration:
 
----
-
-## Branches & updates
-
-| Branch | Purpose |
+| Feature | Optional service |
 | --- | --- |
-| `main` | Stable. Point production channels here. |
-| `experiment` | Where changes land first and get tested live. Expect motion. |
+| Movie information, polls, catalogue, and summaries | [TMDB API key](https://www.themoviedb.org/settings/api) |
+| GIF search | Klipy API key |
+| Automatic subtitle fetching | A TMDB API key; Wyzie and SubDL keys are optional because a Stremio addon fallback is included |
+| Audience ratings | A compatible ratings endpoint |
 
-Because module URLs are commit-pinned at boot, a page reload after a push is all a channel needs to update. The Developer section's cache-bust mode forces fresh fetches on every load while you iterate.
+> [!IMPORTANT]
+> Integration keys saved through the toolkit are stored in the channel's public JavaScript and can be viewed by visitors. Use restricted or free-tier keys that are safe to expose. Never enter a private or privileged credential.
 
-## Repository layout
+## Chat commands
 
-```
-billtube-fw.js    # the loader: CSS preloads, module registry, staged boot
-css/              # tokens.css (design tokens) · ui.css (native UI layer) ·
-                  # base / navbar / chat / overlays / player / mobile
-modules/          # ~50 feature modules (feature-*.js) + shared utils (util-*.js)
-```
+| Command | Purpose |
+| --- | --- |
+| `!help` | Show the commands available to you |
+| `!now` | Show information about the current video |
+| `!summary [title]` | Post a movie summary card |
+| `!time` | Show the current channel time |
+| `!dice` / `!roll` | Roll the dice |
+| `!pick a,b,c` | Pick one item from a list |
+| `!ask <question>` | Ask a randomized yes-or-no question |
+| `!sm` | Post a random channel emote |
+| `!leaderboard` | Show the trivia leaderboard |
 
-Each module is a `BTFW.define("feature:name", [deps], factory)` bundle; the loader boots core → layout → features and exposes `window.BTFW`.
+Moderators also have access to playlist and playback commands such as `!skip`, `!next`, `!bump`, and `!add <url>` according to their CyTube rank.
 
-## Requirements & notes
+## Requirements
 
-- A modern evergreen browser (the theme relies on `color-mix()`, container queries, and friends).
-- TMDB-powered features (movie info, polls, catalogue, `!summary`) need a free [TMDB API key](https://www.themoviedb.org/settings/api) in Integrations.
-- The theme only reads/writes the channel page it runs on — no external storage beyond the optional ratings Worker endpoint you configure.
+- A CyTube channel with administrator access for installation
+- A current version of Chrome, Edge, Firefox, or Safari
+- JavaScript enabled in the browser
+
+BillTube does not require an account, database, or dedicated server. Optional integrations connect directly to their configured services.
+
+## Help and feedback
+
+To report a problem or suggest a change, [open an issue](https://github.com/BillTube/BillTube3/issues). Include your browser and, when useful, a screenshot or console error.
 
 ## Credits
 
 - Background patterns by [Hero Patterns](https://heropatterns.com/) (Steve Schoger, CC BY 4.0)
 - Animated emoji by [Noto Emoji](https://googlefonts.github.io/noto-emoji-animation/) (Google, Apache-2.0)
-- [Font Awesome](https://fontawesome.com/) icons · [video.js](https://videojs.com/) player · [anime.js](https://animejs.com/) motion
-- Emote packs served by [7TV](https://7tv.app/), [BetterTTV](https://betterttv.com/), [FrankerFaceZ](https://www.frankerfacez.com/), and [emoji.gg](https://emoji.gg/)
-- Movie data from [TMDB](https://www.themoviedb.org/) (this product uses the TMDB API but is not endorsed or certified by TMDB)
+- Icons by [Font Awesome](https://fontawesome.com/)
+- Player components by [video.js](https://videojs.com/)
+- Motion powered by [anime.js](https://animejs.com/)
+- Community emotes from [7TV](https://7tv.app/), [BetterTTV](https://betterttv.com/), [FrankerFaceZ](https://www.frankerfacez.com/), and [emoji.gg](https://emoji.gg/)
+- Movie data from [TMDB](https://www.themoviedb.org/)
+
+BillTube uses the TMDB API but is not endorsed or certified by TMDB.
 
 ---
 
-*BillTube3 is the successor to [BillTube2](https://github.com/BillTube/BillTube2).*
+<div align="center">
+
+BillTube 3 is the successor to [BillTube 2](https://github.com/BillTube/BillTube2).
+
+</div>
