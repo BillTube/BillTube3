@@ -298,6 +298,7 @@ function resolveBranchToSHA(){
       "modules/util-motion.js",
       "modules/util-chat-popover.js",
       "modules/util-anime.js",
+      "modules/util-avatar-dither.js",
       "modules/feature-style-core.js",
       "modules/feature-bulma-layer.js"
     ];
@@ -315,6 +316,7 @@ function resolveBranchToSHA(){
       "modules/feature-navbar.js",
       "modules/feature-modal-skin.js",
       "modules/feature-nowplaying.js",
+      "modules/feature-tab-ticker.js",
       "modules/feature-event-countdown.js",
       "modules/feature-mobile-tabs.js",
       "modules/feature-movie-info.js",
@@ -406,6 +408,7 @@ function resolveBranchToSHA(){
       "feature:navbar",
       "feature:modal-skin",
       "feature:nowplaying",
+      "feature:tab-ticker",
       "feature:event-countdown",
       "feature:mobileTabs",
       "feature:movie-info",

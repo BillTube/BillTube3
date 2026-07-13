@@ -458,7 +458,10 @@ html { font-size: 16px; }
   padding: 8px 16px;
   border-radius: var(--btfw-radius-xs, 8px);
   border: 1px solid var(--btfw-btn-border);
-  background: var(--btfw-btn-bg);
+  background-color: var(--btfw-btn-bg);
+  background-image: var(--btfw-dither-image);
+  background-size: var(--btfw-dither-size);
+  background-position: 0 0;
   color: var(--btfw-btn-text);
   font-size: 0.82rem;
   font-weight: 600;
@@ -470,8 +473,8 @@ html { font-size: 16px; }
               border-color var(--btfw-motion-fast, 150ms) ease,
               transform 60ms ease;
 }
-.btfw-btn:hover {
-  background: var(--btfw-btn-bg-hover);
+.btfw-btn:not([disabled]):not([aria-disabled="true"]):hover {
+  background-color: var(--btfw-btn-bg-hover);
   border-color: var(--btfw-btn-border-hover);
   color: var(--btfw-btn-text);
 }

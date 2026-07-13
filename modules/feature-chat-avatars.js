@@ -1,24 +1,22 @@
 /* BTFW — feature:chat-avatars (PERFORMANCE OPTIMIZED)
    - Injects avatar before .username in each chat message
-   - Source order: profile image from userlist data() → CyTube avatar (if available) → colored initials SVG fallback
+   - Source order: profile image from userlist data() → CyTube avatar (if available) → deterministic dither SVG fallback
    - Compacts consecutive messages from same user (no repeated avatar; reduced top margin)
    - Respects --btfw-avatar-size (set by avatars-bridge or your avatar settings)
    
    PERFORMANCE ENHANCEMENTS:
-   - Caches generated SVG data URLs to avoid redundant base64 encoding
+   - Shares cached generated SVG data URLs with the navbar and userlist
    - Uses loading="lazy" and decoding="async" for better LCP
    - Adds content-visibility for off-screen rendering optimization
 */
-BTFW.define("feature:chat-avatars", [], async () => {
+BTFW.define("feature:chat-avatars", ["util:avatar-dither"], async ({ init }) => {
+  const avatarDither = await init("util:avatar-dither");
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
   const AVATAR_KEY = "btfw:chat:avatars";
   const AVATAR_URL_CACHE_KEY = `${AVATAR_KEY}:urls:v1`;
   const AVATAR_URL_CACHE_LIMIT = 200;
 
-  // ⚡ PERFORMANCE: Cache for generated SVG data URLs
-  const avatarCache = new Map();
-  const MAX_CACHE_SIZE = 200; // Limit cache to prevent memory bloat
   const avatarUrlStore = loadAvatarUrlCache();
   let avatarUrlCachePersistTimer = null;
   let avatarUrlCacheDirty = false;
@@ -143,82 +141,6 @@ BTFW.define("feature:chat-avatars", [], async () => {
     return "";
   }
 
-  // Base palette for the generative avatar (the flat colour underneath the pattern).
-  const AVATAR_COLORS = ["#1abc9c","#16a085","#f1c40f","#f39c12","#2ecc71","#27ae60","#e67e22","#d35400","#3498db","#2980b9","#e74c3c","#c0392b","#9b59b6","#8e44ad","#0080a5","#34495e","#2c3e50","#87724b","#7300a7","#ec87bf","#d870ad","#f69785","#9ba37e","#b49255","#a94136"];
-
-  // Deterministic 8-digit (1–9, no zeros) hash of a name. Same input → same output
-  // on every client, so a user's generated avatar is always in sync for everyone.
-  function avatarHash8(name){
-    let h = 0;
-    const s = (name || "?");
-    for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; }
-    return ("11111111" + Math.abs(h)).slice(-8).replace(/0/g, "1");
-  }
-
-  // First letters of the first two words, else first two letters of the name
-  // (skipping leading punctuation so e.g. "z-z-z" → "ZZ" rather than "Z-").
-  function avatarInitials(name){
-    const c = (name || "?").trim();
-    if (!c) return "?";
-    const words = c.split(/\s+/).filter(Boolean);
-    const pick = s => { const m = s.match(/[A-Za-z0-9]/); return m ? m[0] : s.charAt(0); };
-    if (words.length >= 2) return (pick(words[0]) + pick(words[1])).toUpperCase();
-    const clean = c.replace(/[^A-Za-z0-9]/g, "");
-    return (clean.slice(0, 2) || c.slice(0, 2)).toUpperCase();
-  }
-
-  function escXml(s){ return String(s).replace(/[&<>]/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;" }[m])); }
-
-  // ⚡ PERFORMANCE: Cache-enabled generative SVG avatar.
-  // Draws a symmetric "kaleidoscope" of translucent rectangles (derived from the
-  // name hash) over a base colour, then centred initials. Pure SVG so it's crisp
-  // at any DPI and cheap to rasterise; the result is cached, so each user's avatar
-  // is generated at most once per size. Deterministic on the name → always in sync.
-  function initialsDataURL(name, sizePx){
-    const sz = sizePx || 24;
-    const ck = `${name}-${sz}`;
-    if (avatarCache.has(ck)) return avatarCache.get(ck);
-
-    const h = avatarHash8(name);
-    const base = AVATAR_COLORS[((name || "?").trim().codePointAt(0) || 63) % AVATAR_COLORS.length];
-    const sym = (parseInt(h[7], 10) % 2) + 2; // 2- or 3-fold rotational symmetry
-
-    let shapes = "";
-    for (let j = 0; j < 8; j++) {
-      const dj = parseInt(h[j], 10) || 1;
-      const r = (parseInt(h[j], 10) * 100) % 255;
-      const g = (parseInt(h[(j + 3) % 8], 10) * 100) % 255;
-      const b = (parseInt(h[(j + 6) % 8], 10) * 100) % 255;
-      const a = (0.12 + (dj / 9) * 0.26).toFixed(2);
-      let c1 = (dj * dj) % 16;
-      let c2 = (dj * parseInt(h[7], 10)) % 16;
-      let c3 = (dj * parseInt(h[0], 10)) % 32;
-      let c4 = (dj * parseInt(h[0], 10)) % 32;
-      if (c1 + c2 < 32) { c1 = -2 * c1; c2 = -2 * c2; c3 = 2 * c3; c4 = 2 * c4; }
-      if (c3 < 3 || c4 < 3) continue;
-      for (let k = 0; k < 2 * sym; k++) {
-        const ang = (45 + (180 / sym) * k).toFixed(1);
-        shapes += `<rect x="${c1}" y="${c2}" width="${c3}" height="${c4}" fill="rgba(${r},${g},${b},${a})" transform="translate(32 32) rotate(${ang})"/>`;
-      }
-    }
-
-    const fs = 26;
-    const ty = (32 + fs * 0.34).toFixed(1); // baseline offset → visually centred caps
-    const letters = escXml(avatarInitials(name));
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 64 64">`
-      + `<rect width="64" height="64" fill="${base}"/>`
-      + `<g>${shapes}</g>`
-      + `<text x="32" y="${ty}" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="${fs}" font-weight="700" fill="#fff" style="paint-order:stroke" stroke="rgba(0,0,0,.30)" stroke-width="2.4">${letters}</text>`
-      + `</svg>`;
-    const dataUrl = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
-
-    if (avatarCache.size >= MAX_CACHE_SIZE) {
-      avatarCache.delete(avatarCache.keys().next().value);
-    }
-    avatarCache.set(ck, dataUrl);
-    return dataUrl;
-  }
-
   function handleAvatarError(evt){
     const img = evt && evt.currentTarget;
     if (!img || img.dataset.avatarFallback === "svg") return;
@@ -230,8 +152,9 @@ BTFW.define("feature:chat-avatars", [], async () => {
 
     if (key) removeCachedAvatarUrlByKey(key, failedUrl);
 
-    const fallback = initialsDataURL(label, size);
+    const fallback = avatarDither.dataUrl(label, size);
     img.dataset.avatarFallback = "svg";
+    img.dataset.avatarGenerator = avatarDither.version;
     img.dataset.avatarUrl = "";
     img.src = fallback;
   }
@@ -248,6 +171,8 @@ BTFW.define("feature:chat-avatars", [], async () => {
       img.dataset.avatarSize = `${size}`;
     }
     img.dataset.avatarFallback = normalizedType;
+    if (normalizedType === "svg") img.dataset.avatarGenerator = avatarDither.version;
+    else delete img.dataset.avatarGenerator;
     img.dataset.avatarUrl = normalizedType === "url" ? src : "";
     img.src = src;
   }
@@ -285,11 +210,13 @@ BTFW.define("feature:chat-avatars", [], async () => {
       const key = cacheKey(name);
       const currentSrc = existingImg.getAttribute("src") || "";
       const isSvg = currentSrc.startsWith("data:image/svg+xml");
-      applyAvatarSource(existingImg, currentSrc || initialsDataURL(name, px), {
+      const needsGeneratedRefresh = isSvg && existingImg.dataset.avatarGenerator !== avatarDither.version;
+      const resolvedSrc = (!currentSrc || needsGeneratedRefresh) ? avatarDither.dataUrl(name, px) : currentSrc;
+      applyAvatarSource(existingImg, resolvedSrc, {
         key,
         label: name,
         size: px,
-        type: isSvg ? "svg" : "url"
+        type: (isSvg || needsGeneratedRefresh || !currentSrc) ? "svg" : "url"
       });
       if (!isSvg && currentSrc) {
         setCachedAvatarUrl(name, currentSrc);
@@ -322,7 +249,7 @@ BTFW.define("feature:chat-avatars", [], async () => {
     }
 
     if (!chosenSrc) {
-      chosenSrc = initialsDataURL(name, px);
+      chosenSrc = avatarDither.dataUrl(name, px);
       sourceType = "svg";
     }
 
@@ -458,7 +385,7 @@ BTFW.define("feature:chat-avatars", [], async () => {
 
   /* ---------------- Userlist avatars ----------------
      Same source order as chat (profile image from the item's jQuery data ->
-     cached URL -> colored initials SVG). Always shown (independent of the
+     cached URL -> deterministic dither SVG). Always shown (independent of the
      chat avatar on/off mode) since the userlist is its own UI. Cheap enough
      for hundreds of users: cached SVGs/URLs + a debounced observer. */
   const UL_AVATAR_PX = 28;
@@ -492,7 +419,7 @@ BTFW.define("feature:chat-avatars", [], async () => {
     if (src) {
       setCachedAvatarUrl(name, src);
     } else {
-      src = initialsDataURL(name, UL_AVATAR_PX);
+      src = avatarDither.dataUrl(name, UL_AVATAR_PX);
       type = "svg";
     }
 
@@ -644,8 +571,8 @@ BTFW.define("feature:chat-avatars", [], async () => {
     getMode,
     // ⚡ PERFORMANCE: Expose cache stats for debugging
     getCacheStats: () => ({
-      svgCacheSize: avatarCache.size,
-      svgCacheMaxSize: MAX_CACHE_SIZE,
+      svgCacheSize: avatarDither.getCacheStats().size,
+      svgCacheMaxSize: avatarDither.getCacheStats().limit,
       urlCacheSize: avatarUrlStore.size,
       urlCacheLimit: AVATAR_URL_CACHE_LIMIT
     })

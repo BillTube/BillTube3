@@ -1,5 +1,6 @@
 
-BTFW.define("feature:navbar", [], async () => {
+BTFW.define("feature:navbar", ["util:avatar-dither"], async ({ init }) => {
+  const avatarDither = await init("util:avatar-dither");
   const $  = (s,r=document)=>r.querySelector(s);
 
   const MOBILE_BREAKPOINT = 768;
@@ -57,23 +58,6 @@ BTFW.define("feature:navbar", [], async () => {
       // Many installs expose USEROPTS.avatar; harmless if absent
       return (window.USEROPTS && USEROPTS.avatar) ? USEROPTS.avatar : "";
     } catch(_) { return ""; }
-  }
-
-  function initialsDataURL(name, sizePx){
-    const colors = ["#1abc9c","#16a085","#f1c40f","#f39c12","#2ecc71","#27ae60","#e67e22",
-                    "#d35400","#3498db","#2980b9","#e74c3c","#c0392b","#9b59b6","#8e44ad",
-                    "#0080a5","#34495e","#2c3e50"];
-    const seed = (name||"?").codePointAt(0) || 63;
-    const bg = colors[seed % colors.length];
-    const letters = (name||"?").trim().slice(0,2).toUpperCase() || "?";
-    const sz = sizePx || 28;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}">
-      <rect width="100%" height="100%" rx="${Math.round(sz*0.2)}" fill="${bg}"/>
-      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
-            fill="#fff" font-family="Inter,Arial,sans-serif" font-weight="600"
-            font-size="${Math.round(sz*0.5)}">${letters}</text>
-    </svg>`;
-    return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
   }
 
   function findNavList(){
@@ -142,7 +126,11 @@ BTFW.define("feature:navbar", [], async () => {
   function buildAvatarElement(name){
     const size = 28;
     let src = name ? (getProfileImgFromUserlist(name) || getCyTubeAvatar() || "") : "";
-    if (!src) src = initialsDataURL(name || "Guest", size);
+    let generated = false;
+    if (!src) {
+      src = avatarDither.dataUrl(name || "Guest", size);
+      generated = true;
+    }
 
     const a = document.createElement("a");
     a.href   = name ? "/account/profile" : "/login";
@@ -156,6 +144,15 @@ BTFW.define("feature:navbar", [], async () => {
     img.src = src;
     img.alt = name || "guest";
     img.width = size; img.height = size;
+    img.dataset.avatarFallback = generated ? "svg" : "url";
+    if (generated) img.dataset.avatarGenerator = avatarDither.version;
+    else {
+      img.addEventListener("error", () => {
+        img.src = avatarDither.dataUrl(name || "Guest", size);
+        img.dataset.avatarFallback = "svg";
+        img.dataset.avatarGenerator = avatarDither.version;
+      }, { once: true });
+    }
 
     a.appendChild(img);
     return a;

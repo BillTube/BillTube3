@@ -281,6 +281,12 @@
   object-fit: cover;
 }
 
+/* Pixel-built fallbacks keep their complete 8×8 mark instead of losing the
+   corner cells to the circular crop used for profile photos. */
+#btfw-navhost .btfw-nav-avatar[data-avatar-generator^="dither-"] {
+  border-radius: 8px;
+}
+
 @media (max-width: 1024px) {
   #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
     padding: 0 clamp(12px, 5vw, 24px);
