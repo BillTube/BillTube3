@@ -1,1 +1,0 @@
-BTFW.define('feature:resize', [], async () => ({name:'feature:resize'}));
