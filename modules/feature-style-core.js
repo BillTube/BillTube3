@@ -69,11 +69,54 @@ BTFW.define("feature:styleCore", [], async () => {
     }
   }
 
+  function installPrimaryButtonRipple() {
+    const root = document.documentElement;
+    if (!root || root.dataset.btfwButtonMotion === "1") return;
+    root.dataset.btfwButtonMotion = "1";
+
+    const selector = [
+      ".btfw-btn--primary",
+      ".btfw-theme-admin .btn-primary",
+      ".btfw-admin-actions .btn-primary",
+      ".btfw-theme-admin .btfw-mkt-btn--primary"
+    ].join(",");
+
+    document.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || !(event.target instanceof Element)) return;
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+      const button = event.target.closest(selector);
+      if (!button || button.disabled || button.getAttribute("aria-disabled") === "true") return;
+
+      const rect = button.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const radius = Math.hypot(
+        Math.max(x, rect.width - x),
+        Math.max(y, rect.height - y)
+      );
+      const ripple = document.createElement("span");
+      ripple.className = "btfw-button-ripple";
+      ripple.setAttribute("aria-hidden", "true");
+      ripple.style.left = `${x}px`;
+      ripple.style.top = `${y}px`;
+      ripple.style.width = `${radius * 2}px`;
+      ripple.style.height = `${radius * 2}px`;
+      button.classList.add("btfw-button-ripple-host");
+      button.appendChild(ripple);
+
+      const remove = () => ripple.remove();
+      ripple.addEventListener("animationend", remove, { once: true });
+      setTimeout(remove, 650);
+    });
+  }
+
   ensureSlate();
   setTimeout(ensureSlate, 400);
 
   ensureUiDepsAndZ();
   setTimeout(ensureUiDepsAndZ, 300);
+  installPrimaryButtonRipple();
 
   // Persist "fluid" layout so CyTube renders consistently for all users
   try {
