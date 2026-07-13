@@ -518,7 +518,7 @@
    ====================================================================== */
 
 .btfw-chat-topbar {
-  background: color-mix(in srgb, var(--btfw-color-panel) 60%, transparent 40%) !important;
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 60%, transparent 40%) !important;
   background-image: var(--btfw-dither-image), var(--btfw-surface-glow) !important;
   background-size: var(--btfw-dither-size), auto;
   background-position: 0 0, center;
@@ -574,9 +574,6 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background-image: var(--btfw-dither-image);
-  background-size: var(--btfw-dither-size);
-  background-position: 0 0;
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent 92%);
   pointer-events: none;
   z-index: -1;
