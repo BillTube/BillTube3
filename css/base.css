@@ -645,6 +645,10 @@ a:hover {
   --btfw-gap: 2px;
 }
 
+:root:not(.btfw-compact-stack){
+  --btfw-gap: 8px;
+}
+
 #btfw-grid{
   display: grid;
   grid-template-columns: minmax(520px,7fr) var(--btfw-split-width) minmax(var(--btfw-chat-min),3fr);
@@ -843,6 +847,17 @@ a:hover {
   padding-inline: 0;
   transition: padding 0.24s ease, gap 0.24s ease;
 }
+
+body:not(.btfw-mobile-stack-enabled) #btfw-stack:not(.btfw-stack--compact) .btfw-stack-list{
+  gap: 16px;
+  margin-top: 16px;
+  padding-inline: clamp(14px, 2vw, 36px);
+}
+
+body:not(.btfw-mobile-stack-enabled) #btfw-stack:not(.btfw-stack--compact) .btfw-stack-item{
+  margin-top: 12px;
+}
+
 .btfw-stack-list--compact{
   gap: calc(var(--btfw-gap) + 4px);
 }
