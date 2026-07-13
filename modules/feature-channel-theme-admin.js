@@ -1039,18 +1039,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         border-radius: 12px;
         cursor: pointer;
         color: var(--btfw-admin-text);
-        transition: background 160ms ease,
-                    border-color 160ms ease,
-                    box-shadow var(--btfw-motion-base, 220ms) var(--btfw-ease-out, cubic-bezier(0.2, 0.9, 0.25, 1)),
-                    transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-overshoot, cubic-bezier(0.34, 1.56, 0.64, 1));
+        transition: background 160ms ease, border-color 160ms ease;
         font: inherit;
         text-align: left;
         width: 100%;
       }
-      .btfw-theme-admin .btfw-switch:hover {
-        border-color: color-mix(in srgb, var(--btfw-color-accent) 35%, var(--btfw-admin-border-soft));
-      }
-      .btfw-theme-admin .btfw-switch:not(:disabled):active { box-shadow: none; transform: translateY(1px) scale(0.99); }
+      .btfw-theme-admin .btfw-switch:hover { border-color: color-mix(in srgb, var(--btfw-color-accent) 35%, var(--btfw-admin-border-soft)); }
       .btfw-theme-admin .btfw-switch[aria-pressed="true"] {
         background: color-mix(in srgb, var(--btfw-color-accent) 14%, var(--btfw-admin-surface-alt));
         border-color: color-mix(in srgb, var(--btfw-color-accent) 55%, transparent);
@@ -1254,23 +1248,19 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .modal-footer .btfw-admin-actions { display: none; margin: 0; }
       .modal-footer .btfw-admin-actions.is-visible { display: flex; }
       .modal-footer .btfw-admin-actions .btn-primary,
-      .modal-footer .btfw-admin-actions .btn-secondary { padding: 6px 14px; border-radius: 8px; border: 0; font-weight: 600; letter-spacing: 0.01em; cursor: pointer; font-size: 0.85rem; transition: filter 0.16s ease, border-color 0.18s ease, box-shadow var(--btfw-motion-base, 220ms) var(--btfw-ease-out, cubic-bezier(0.2, 0.9, 0.25, 1)), transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-overshoot, cubic-bezier(0.34, 1.56, 0.64, 1)); }
+      .modal-footer .btfw-admin-actions .btn-secondary { padding: 6px 14px; border-radius: 8px; border: 0; font-weight: 600; letter-spacing: 0.01em; cursor: pointer; font-size: 0.85rem; transition: filter 0.16s ease, border-color 0.18s ease; }
       .modal-footer .btfw-admin-actions .btn-primary { background: var(--btfw-color-accent); color: color-mix(in srgb, var(--btfw-theme-text, #dce4ff) 98%, white 2%); }
       .modal-footer .btfw-admin-actions .btn-secondary { background: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%); color: var(--btfw-theme-text, #dce4ff); border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%); }
       .modal-footer .btfw-admin-actions .btn-primary:hover,
       .modal-footer .btfw-admin-actions .btn-secondary:hover { filter: brightness(1.08); }
-      .modal-footer .btfw-admin-actions .btn-primary:not(:disabled):active,
-      .modal-footer .btfw-admin-actions .btn-secondary:not(:disabled):active { box-shadow: none; transform: translateY(1px) scale(0.98); }
       .modal-footer .btfw-admin-actions .status { margin-left: auto; font-size: 0.78rem; color: color-mix(in srgb, var(--btfw-theme-text, #dce4ff) 70%, transparent 30%); text-align: right; }
       #channeloptions .modal-footer:has(.btfw-admin-actions) { display: flex; align-items: center; gap: 10px; }
       .btfw-theme-admin .buttons .btn-primary,
-      .btfw-theme-admin .buttons .btn-secondary { padding: 6px 14px; border-radius: 8px; border: 0; font-weight: 600; letter-spacing: 0.01em; cursor: pointer; font-size: 0.85rem; transition: filter 0.16s ease, border-color 0.18s ease, box-shadow var(--btfw-motion-base, 220ms) var(--btfw-ease-out, cubic-bezier(0.2, 0.9, 0.25, 1)), transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-overshoot, cubic-bezier(0.34, 1.56, 0.64, 1)); }
+      .btfw-theme-admin .buttons .btn-secondary { padding: 6px 14px; border-radius: 8px; border: 0; font-weight: 600; letter-spacing: 0.01em; cursor: pointer; font-size: 0.85rem; transition: filter 0.16s ease, border-color 0.18s ease; }
       .btfw-theme-admin .buttons .btn-primary { background: var(--btfw-color-accent); color: color-mix(in srgb, var(--btfw-admin-text) 98%, white 2%); }
       .btfw-theme-admin .buttons .btn-secondary { background: color-mix(in srgb, var(--btfw-admin-surface-alt) 90%, transparent 10%); color: var(--btfw-admin-text); border: 1px solid var(--btfw-admin-border-soft); }
       .btfw-theme-admin .buttons .btn-primary:hover,
       .btfw-theme-admin .buttons .btn-secondary:hover { filter: brightness(1.08); }
-      .btfw-theme-admin .buttons .btn-primary:not(:disabled):active,
-      .btfw-theme-admin .buttons .btn-secondary:not(:disabled):active { box-shadow: none; transform: translateY(1px) scale(0.98); }
       .btfw-theme-admin .buttons .btn-secondary:hover { border-color: var(--btfw-admin-border); }
       .btfw-theme-admin .status { font-size: 0.78rem; color: var(--btfw-admin-text-soft); }
       .btfw-theme-admin .integrations-callout { padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--btfw-admin-surface-alt) 92%, transparent 8%); border: 1px dashed var(--btfw-admin-border-soft); display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; color: var(--btfw-admin-text-soft); }
@@ -1327,17 +1317,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         cursor: pointer; border: 1px solid var(--btfw-admin-border-soft);
         background: color-mix(in srgb, var(--btfw-admin-surface-alt) 90%, transparent 10%);
         color: var(--btfw-admin-text);
-        transition: filter 0.16s ease,
-                    border-color 0.18s ease,
-                    background 0.16s ease,
-                    box-shadow var(--btfw-motion-base, 220ms) var(--btfw-ease-out, cubic-bezier(0.2, 0.9, 0.25, 1)),
-                    transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-overshoot, cubic-bezier(0.34, 1.56, 0.64, 1));
+        transition: filter 0.16s ease, border-color 0.18s ease, background 0.16s ease;
       }
       .btfw-theme-admin .btfw-mkt-btn:hover { border-color: var(--btfw-admin-border); filter: brightness(1.1); }
-      .btfw-theme-admin .btfw-mkt-btn:active { box-shadow: none; transform: translateY(1px) scale(0.98); }
       .btfw-theme-admin .btfw-mkt-btn:disabled { opacity: 0.55; cursor: default; filter: none; }
-      .btfw-theme-admin .btfw-mkt-btn:disabled:hover,
-      .btfw-theme-admin .btfw-mkt-btn:disabled:active { box-shadow: none; transform: none; }
       .btfw-theme-admin .btfw-mkt-btn--primary {
         background: color-mix(in srgb, var(--btfw-color-accent) 26%, var(--btfw-admin-surface) 74%);
         border-color: color-mix(in srgb, var(--btfw-color-accent) 60%, transparent);
@@ -1346,47 +1329,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-mkt-btn--primary:hover {
         background: color-mix(in srgb, var(--btfw-color-accent) 40%, var(--btfw-admin-surface) 60%);
         border-color: var(--btfw-color-accent); filter: none;
-      }
-
-      @media (hover: hover) and (pointer: fine) {
-        .btfw-theme-admin .btfw-switch:not(:disabled):hover {
-          box-shadow: 0 8px 18px color-mix(in srgb, var(--btfw-color-accent) 10%, transparent);
-          transform: translateY(-1px);
-        }
-        .modal-footer .btfw-admin-actions .btn-primary:not(:disabled):hover,
-        .modal-footer .btfw-admin-actions .btn-secondary:not(:disabled):hover,
-        .btfw-theme-admin .buttons .btn-primary:not(:disabled):hover,
-        .btfw-theme-admin .buttons .btn-secondary:not(:disabled):hover,
-        .btfw-theme-admin .btfw-mkt-btn:not(:disabled):hover {
-          box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
-          transform: translateY(-2px);
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .btfw-theme-admin .btfw-switch,
-        .modal-footer .btfw-admin-actions .btn-primary,
-        .modal-footer .btfw-admin-actions .btn-secondary,
-        .btfw-theme-admin .buttons .btn-primary,
-        .btfw-theme-admin .buttons .btn-secondary,
-        .btfw-theme-admin .btfw-mkt-btn {
-          transition: none !important;
-        }
-        .btfw-theme-admin .btfw-switch:hover,
-        .btfw-theme-admin .btfw-switch:active,
-        .modal-footer .btfw-admin-actions .btn-primary:hover,
-        .modal-footer .btfw-admin-actions .btn-primary:active,
-        .modal-footer .btfw-admin-actions .btn-secondary:hover,
-        .modal-footer .btfw-admin-actions .btn-secondary:active,
-        .btfw-theme-admin .buttons .btn-primary:hover,
-        .btfw-theme-admin .buttons .btn-primary:active,
-        .btfw-theme-admin .buttons .btn-secondary:hover,
-        .btfw-theme-admin .buttons .btn-secondary:active,
-        .btfw-theme-admin .btfw-mkt-btn:hover,
-        .btfw-theme-admin .btfw-mkt-btn:active {
-          box-shadow: none;
-          transform: none;
-        }
       }
 
       /* Emote preview grid (shown after Preview / before Add) */
