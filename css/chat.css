@@ -481,6 +481,14 @@
   display: block;
 }
 
+/* Generated fallbacks are deliberately pixel-built. Keep their ordered-dither
+   cells crisp while profile photos retain the browser's normal interpolation. */
+#messagebuffer .btfw-chat-avatar[data-avatar-generator^="dither-"],
+#userlist .btfw-ul-avatar[data-avatar-generator^="dither-"],
+#btfw-navhost .btfw-nav-avatar[data-avatar-generator^="dither-"] {
+  image-rendering: pixelated;
+}
+
 /* Keep images/GIFs reasonable inside chat */
 #messagebuffer .chat-msg img{
   max-width: 100%;

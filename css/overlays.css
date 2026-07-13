@@ -266,7 +266,7 @@
   background: color-mix(in srgb, var(--btfw-color-accent) 14%, transparent) !important;
 }
 
-/* Per-user avatar (mirrors chat avatars: profile image -> initials SVG) */
+/* Per-user avatar (mirrors chat avatars: profile image -> dither SVG) */
 #userlist.btfw-userlist-overlay .btfw-ul-avatar{
   width: 28px;
   height: 28px;
