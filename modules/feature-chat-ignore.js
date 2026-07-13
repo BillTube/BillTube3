@@ -332,7 +332,14 @@ BTFW.define("feature:chat-ignore", [], async () => {
   function buildUserMenuModel(name) {
     const c = userContext(name);
     const main = [], mod = [];
-    if (!c.self) {
+    if (c.self) {
+      // Self-targeting moderation actions are either meaningless (PM/ignore)
+      // or dangerous (kick/mute/ban). Leader control is intentionally kept:
+      // channel owners and moderators use it to claim or release leader.
+      if (c.present && can("leaderctl")) {
+        mod.push({ act: "leader", icon: "fa fa-star", label: c.leader ? "Remove leader" : "Give leader" });
+      }
+    } else {
       if (c.loggedIn && c.present) main.push({ act: "pm", icon: "fa fa-comment", label: "Private message" });
       main.push({ act: "ignore", icon: c.ignored ? "fa fa-user-check" : "fa fa-user-slash", label: c.ignored ? "Unignore user" : "Ignore user", active: c.ignored });
 
@@ -386,7 +393,9 @@ BTFW.define("feature:chat-ignore", [], async () => {
     };
     model.main.forEach(addItem);
     if (model.mod.length) {
-      const sep = document.createElement("div"); sep.className = "btfw-ctxmenu-sep"; body.appendChild(sep);
+      if (model.main.length) {
+        const sep = document.createElement("div"); sep.className = "btfw-ctxmenu-sep"; body.appendChild(sep);
+      }
       model.mod.forEach(addItem);
     }
   }
@@ -539,11 +548,12 @@ BTFW.define("feature:chat-ignore", [], async () => {
     if (!entry) return;
     const name = nameFromUserlistEntry(entry);
     if (!name) return;
-    // Always suppress CyTube's native dropdown for userlist entries.
+    const model = buildUserMenuModel(name);
+    // Only replace CyTube's menu when we actually have something to show.
+    // This avoids swallowing right-click for users with no applicable actions.
+    if (!model.hasAny) { hideUserMenu(); return; }
     e.preventDefault();
     e.stopImmediatePropagation();
-    const model = buildUserMenuModel(name);
-    if (!model.hasAny) { hideUserMenu(); return; }  // e.g. yourself → no menu
     showUserMenu(e.clientX || 0, e.clientY || 0, name, model);
   }
 
