@@ -1000,16 +1000,18 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
            (Also guards against host CSS styling the generic .section name.) */
         padding: 0;
         border-radius: 10px;
-        border: 1px solid var(--btfw-admin-border-soft);
+        border: 1px solid var(--btfw-panel-border-soft);
         margin-bottom: 8px;
-        background: color-mix(in srgb, var(--btfw-admin-surface) 86%, transparent 14%);
-        background-image: var(--btfw-surface-glow);
+        background-color: color-mix(in srgb, var(--btfw-admin-surface) 90%, transparent 10%);
+        background-image: var(--btfw-panel-gradient-soft);
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%);
         overflow: hidden;
-        transition: border-color 0.18s ease, background 0.18s ease;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease;
       }
       .btfw-theme-admin details.section[open] {
-        border-color: var(--btfw-admin-border);
-        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 90%, transparent 10%);
+        border-color: var(--btfw-panel-border);
+        background-image: var(--btfw-panel-gradient);
+        box-shadow: var(--btfw-panel-shadow);
       }
       .btfw-theme-admin summary.section__summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; cursor: pointer; list-style: none; }
       .btfw-theme-admin summary.section__summary::-webkit-details-marker { display: none; }
@@ -1034,8 +1036,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         align-items: center;
         gap: 14px;
         padding: 10px 14px;
-        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 78%, transparent);
-        border: 1px solid var(--btfw-admin-border-soft);
+        background-color: color-mix(in srgb, var(--btfw-admin-surface-alt) 82%, transparent);
+        background-image: var(--btfw-panel-gradient-soft);
+        border: 1px solid var(--btfw-panel-border-soft);
         border-radius: 12px;
         cursor: pointer;
         color: var(--btfw-admin-text);
@@ -1052,7 +1055,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
       .btfw-theme-admin .btfw-switch:not(:disabled):active { box-shadow: none; transform: translateY(1px) scale(0.99); }
       .btfw-theme-admin .btfw-switch[aria-pressed="true"] {
-        background: color-mix(in srgb, var(--btfw-color-accent) 14%, var(--btfw-admin-surface-alt));
+        background-color: color-mix(in srgb, var(--btfw-color-accent) 14%, var(--btfw-admin-surface-alt));
         border-color: color-mix(in srgb, var(--btfw-color-accent) 55%, transparent);
       }
       .btfw-theme-admin .btfw-switch:focus-visible {
@@ -1123,7 +1126,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
       /* Palette swatches — one responsive row, each shows the readable hex */
       .btfw-theme-admin .btfw-palette__swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
-      .btfw-theme-admin .btfw-swatch { display: flex; flex-direction: column; gap: 7px; padding: 9px; border-radius: 11px; background: var(--btfw-admin-surface); border: 1px solid var(--btfw-admin-border-soft); cursor: pointer; transition: border-color 0.15s ease; }
+      .btfw-theme-admin .btfw-swatch { display: flex; flex-direction: column; gap: 7px; padding: 9px; border-radius: 11px; background-color: var(--btfw-admin-surface); background-image: var(--btfw-panel-gradient-soft); border: 1px solid var(--btfw-panel-border-soft); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%); cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
       .btfw-theme-admin .btfw-swatch:hover { border-color: color-mix(in srgb, var(--btfw-color-accent) 50%, var(--btfw-admin-border-soft)); }
       .btfw-theme-admin .btfw-swatch input[type="color"] { width: 100%; height: 34px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 0; background: none; cursor: pointer; }
       .btfw-theme-admin .btfw-swatch input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
@@ -1132,16 +1135,38 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-swatch__name { font-size: 0.78rem; font-weight: 600; color: var(--btfw-admin-text); letter-spacing: 0.02em; }
       .btfw-theme-admin .btfw-swatch__hex { font-size: 0.7rem; font-family: "JetBrains Mono", monospace; color: var(--btfw-admin-text-soft); text-transform: uppercase; }
       /* Live preview — a real mini-mockup that renders the colors in context */
-      .btfw-theme-admin .preview.btfw-tp { display: block; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--btfw-admin-border-soft); background: var(--bg, #05060d); grid-template-columns: none; }
-      .btfw-theme-admin .btfw-tp__bar { display: flex; align-items: center; gap: 6px; padding: 9px 13px; background: var(--surface, #0b111d); }
+      .btfw-theme-admin .preview.btfw-tp {
+        --btfw-tp-panel-gradient: linear-gradient(135deg, color-mix(in srgb, var(--text, #e8ecf7) 6%, transparent), transparent 40%),
+          radial-gradient(110% 100% at 0% 0%, color-mix(in srgb, var(--accent, #6d4df6) 18%, transparent), transparent 62%),
+          linear-gradient(145deg, color-mix(in srgb, var(--panel, #141f36) 84%, var(--accent, #6d4df6) 16%), color-mix(in srgb, var(--surface, #0b111d) 94%, var(--accent, #6d4df6) 6%));
+        --btfw-tp-surface-gradient: linear-gradient(135deg, color-mix(in srgb, var(--text, #e8ecf7) 4%, transparent), transparent 44%),
+          linear-gradient(145deg, color-mix(in srgb, var(--surface, #0b111d) 90%, var(--accent, #6d4df6) 10%), color-mix(in srgb, var(--bg, #05060d) 95%, var(--accent, #6d4df6) 5%));
+        --btfw-tp-border: color-mix(in srgb, var(--accent, #6d4df6) 36%, var(--panel, #141f36) 64%);
+        display: block; padding: 0; border-radius: 12px; overflow: hidden;
+        border: 1px solid var(--btfw-tp-border);
+        background: var(--bg, #05060d); grid-template-columns: none;
+        box-shadow: 0 18px 40px color-mix(in srgb, var(--bg, #05060d) 48%, transparent),
+          0 5px 18px color-mix(in srgb, var(--accent, #6d4df6) 14%, transparent);
+      }
+      @supports (color: color-mix(in oklch, red, blue)) {
+        .btfw-theme-admin .preview.btfw-tp {
+          --btfw-tp-panel-gradient: linear-gradient(135deg, color-mix(in oklch, var(--text, #e8ecf7) 6%, transparent), transparent 40%),
+            radial-gradient(110% 100% at 0% 0%, color-mix(in oklch, var(--accent, #6d4df6) 18%, transparent), transparent 62%),
+            linear-gradient(145deg, color-mix(in oklch, var(--panel, #141f36) 84%, var(--accent, #6d4df6) 16%), color-mix(in oklch, var(--surface, #0b111d) 94%, var(--accent, #6d4df6) 6%));
+          --btfw-tp-surface-gradient: linear-gradient(135deg, color-mix(in oklch, var(--text, #e8ecf7) 4%, transparent), transparent 44%),
+            linear-gradient(145deg, color-mix(in oklch, var(--surface, #0b111d) 90%, var(--accent, #6d4df6) 10%), color-mix(in oklch, var(--bg, #05060d) 95%, var(--accent, #6d4df6) 5%));
+          --btfw-tp-border: color-mix(in oklch, var(--accent, #6d4df6) 36%, var(--panel, #141f36) 64%);
+        }
+      }
+      .btfw-theme-admin .btfw-tp__bar { display: flex; align-items: center; gap: 6px; padding: 9px 13px; background-color: var(--surface, #0b111d); background-image: var(--btfw-tp-surface-gradient); border-bottom: 1px solid color-mix(in srgb, var(--accent, #6d4df6) 20%, transparent); }
       .btfw-theme-admin .btfw-tp__dot { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, var(--text, #fff) 28%, transparent); }
       .btfw-theme-admin .btfw-tp__barlabel { margin-left: 7px; font-size: 0.72rem; color: color-mix(in srgb, var(--text, #fff) 62%, transparent); letter-spacing: 0.05em; text-transform: uppercase; }
       .btfw-theme-admin .btfw-tp__body { display: grid; grid-template-columns: 1.05fr 1fr; gap: 12px; padding: 14px; background: var(--bg, #05060d); }
-      .btfw-theme-admin .btfw-tp__panel { background: var(--panel, #141f36); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 7px; }
+      .btfw-theme-admin .btfw-tp__panel { background-color: var(--panel, #141f36); background-image: var(--btfw-tp-panel-gradient); border: 1px solid var(--btfw-tp-border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 7px; box-shadow: 0 12px 28px color-mix(in srgb, var(--bg, #05060d) 42%, transparent), inset 0 1px 0 color-mix(in srgb, var(--text, #e8ecf7) 8%, transparent); }
       .btfw-theme-admin .btfw-tp__heading { font-size: 0.95rem; font-weight: 700; color: var(--text, #e8ecf7); }
       .btfw-theme-admin .btfw-tp__sub { font-size: 0.77rem; line-height: 1.5; color: color-mix(in srgb, var(--text, #e8ecf7) 75%, transparent); }
       .btfw-theme-admin .btfw-tp__btn { align-self: flex-start; margin-top: 5px; padding: 7px 16px; border: 0; border-radius: 8px; background: var(--accent, #6d4df6); color: var(--on-accent, #fff); font-weight: 600; font-size: 0.8rem; cursor: default; }
-      .btfw-theme-admin .btfw-tp__chat { background: var(--surface, #0b111d); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 9px; }
+      .btfw-theme-admin .btfw-tp__chat { background-color: var(--surface, #0b111d); background-image: var(--btfw-tp-surface-gradient); border: 1px solid color-mix(in srgb, var(--accent, #6d4df6) 24%, var(--surface, #0b111d) 76%); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 9px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text, #e8ecf7) 6%, transparent); }
       .btfw-theme-admin .btfw-tp__msg { font-size: 0.79rem; line-height: 1.45; color: var(--chat, #cfd6e6); }
       .btfw-theme-admin .btfw-tp__user { color: var(--accent, #6d4df6); font-weight: 700; margin-right: 5px; }
       @media (max-width: 600px){ .btfw-theme-admin .btfw-tp__body { grid-template-columns: 1fr; } }
@@ -1165,8 +1190,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         gap: 2px;
         padding: 6px;
         border-radius: 12px;
-        border: 1px solid var(--btfw-admin-border-soft);
-        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 62%, transparent 38%);
+        border: 1px solid var(--btfw-panel-border-soft);
+        background-color: color-mix(in srgb, var(--btfw-admin-surface-alt) 72%, transparent 28%);
+        background-image: var(--btfw-panel-gradient-soft);
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 5%, transparent 95%);
       }
       .btfw-theme-admin .btfw-admin-nav__item {
         display: flex;
@@ -3413,7 +3440,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                 </optgroup>
                 <option value="custom">Custom mix</option>
               </select>
-              <p class="help">Choose a curated palette to start from, then fine-tune any swatch.</p>
+              <p class="help">Choose a palette, then fine-tune any swatch. Surface, Panel, and Accent automatically blend into the card gradients, matching borders, and soft glow.</p>
             </div>
             <div class="btfw-palette__swatches">
               <label class="btfw-swatch"><input type="color" data-btfw-bind="colors.background"><span class="btfw-swatch__name">Background</span><span class="btfw-swatch__hex" data-hex="background"></span></label>

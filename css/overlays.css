@@ -1510,13 +1510,16 @@
 .modal.btfw-bulma-skin .btfw-card,
 .modal.btfw-bulma-skin .modal-content {
   /* Match the Theme Settings modal-card chrome (radius, surface, border, shadow). */
-  background: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
+  background-color: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
+  background-image: var(--btfw-panel-gradient-soft);
   color: var(--btfw-color-text);
   border-radius: var(--btfw-radius);
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 85%, transparent 15%);
+  border: 1px solid var(--btfw-panel-border);
   box-shadow:
     0 32px 64px color-mix(in srgb, var(--btfw-color-bg) 60%, transparent 40%),
-    0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%);
+    0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%),
+    0 0 40px color-mix(in srgb, var(--btfw-color-accent) 8%, transparent 92%),
+    inset 0 1px 0 color-mix(in srgb, var(--btfw-color-text) 8%, transparent 92%);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1541,7 +1544,8 @@
    the title can actually breathe instead of being crammed next to the tabs. */
 .modal.btfw-bulma-skin .btfw-card-head,
 .modal.btfw-bulma-skin .modal-header {
-  background: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+  background-image: var(--btfw-panel-gradient-soft);
   border: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--btfw-border) 80%, transparent 20%);
   border-radius: 0;
@@ -1728,7 +1732,8 @@
 /* Footer — subtle separator, right-aligned actions. */
 .modal.btfw-bulma-skin .btfw-card-foot,
 .modal.btfw-bulma-skin .modal-footer {
-  background: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+  background-image: var(--btfw-panel-gradient-soft);
   border: 0;
   border-top: 1px solid color-mix(in srgb, var(--btfw-border) 80%, transparent 20%);
   padding: 14px 24px;
@@ -1744,8 +1749,9 @@
 .modal.btfw-bulma-skin .modal-body .card,
 .modal.btfw-bulma-skin .modal-body .panel,
 .modal.btfw-bulma-skin .modal-body .well {
-  background: color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%);
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 30%, transparent 70%);
+  background-color: color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%);
+  background-image: var(--btfw-panel-gradient-soft);
+  border: 1px solid var(--btfw-panel-border-soft);
   border-radius: 12px;
   box-shadow: none;
 }

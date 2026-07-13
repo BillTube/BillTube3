@@ -244,12 +244,11 @@ footer {
 .poll-menu,
 .pollwrap,
 .queue_temp {
-  background: rgba(0, 0, 0, 0.08)
-    linear-gradient(180deg,
-      color-mix(in srgb, var(--btfw-color-panel) 96%, black 4%),
-      color-mix(in srgb, var(--btfw-color-surface) 92%, black 8%));
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%);
+  background-image: var(--btfw-panel-gradient-soft);
   border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 9%, transparent 92%);
+  border: 1px solid var(--btfw-panel-border-soft);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-color-text) 5%, transparent 95%);
   color: var(--btfw-color-text);
 }
 
@@ -843,17 +842,19 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   border-color:  color-mix(in srgb, var(--btfw-border) 28%, transparent 92%);
 }
 .btfw-stack-item{
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 40%);
+  border: 1px solid var(--btfw-panel-border);
   border-radius: var(--btfw-radius);
-  background: color-mix(in srgb, var(--btfw-color-panel) 86%, transparent 14%);
-  background-image: var(--btfw-surface-glow);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--btfw-color-bg) 22%, transparent 78%);
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+  background-image: var(--btfw-panel-gradient);
+  box-shadow: var(--btfw-panel-shadow);
   overflow: hidden;
   margin-top: 20px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .btfw-stack-item:hover{
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 30%, transparent 70%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, var(--btfw-color-panel) 52%);
+  box-shadow: var(--btfw-panel-shadow),
+    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 12%, transparent 88%);
 }
 .btfw-stack-item__header{
   display: flex;
@@ -1481,9 +1482,10 @@ nav.pagination.is-centered.btfw-gif-pager {
 #useroptions .btfw-useroptions-panel {
   padding: 16px 18px;
   border-radius: var(--btfw-radius);
-  background: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
-  box-shadow: 0 12px 26px color-mix(in srgb, var(--btfw-color-bg) 40%, transparent 60%);
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
+  background-image: var(--btfw-panel-gradient);
+  border: 1px solid var(--btfw-panel-border);
+  box-shadow: var(--btfw-panel-shadow);
 }
 
 #useroptions .btfw-useroptions-panel h5 {
@@ -1663,13 +1665,15 @@ nav.pagination.is-centered.btfw-gif-pager {
      Settings modal so the two are the same size. */
   height: clamp(560px, 88vh, 1070px);
   max-height: 94vh;
-  background: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
-  background-image: var(--btfw-surface-glow);
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 85%, transparent 15%);
+  background-color: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
+  background-image: var(--btfw-panel-gradient-soft);
+  border: 1px solid var(--btfw-panel-border);
   border-radius: var(--btfw-radius);
   box-shadow:
     0 32px 64px color-mix(in srgb, var(--btfw-color-bg) 60%, transparent 40%),
-    0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%);
+    0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%),
+    0 0 40px color-mix(in srgb, var(--btfw-color-accent) 8%, transparent 92%),
+    inset 0 1px 0 color-mix(in srgb, var(--btfw-color-text) 8%, transparent 92%);
   color: var(--btfw-color-text);
   overflow: hidden;
 }
@@ -1730,13 +1734,12 @@ nav.pagination.is-centered.btfw-gif-pager {
 }
 
 #btfw-theme-modal .btfw-ts-card{
-  background: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 78%, transparent 22%);
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
+  background-image: var(--btfw-panel-gradient);
+  border: 1px solid var(--btfw-panel-border);
   border-radius: var(--btfw-radius);
   padding: 20px 22px;
-  box-shadow:
-    0 24px 48px color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%),
-    inset 0 1px 0 color-mix(in srgb, var(--btfw-color-text) 8%, transparent 92%);
+  box-shadow: var(--btfw-panel-shadow);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1803,10 +1806,11 @@ nav.pagination.is-centered.btfw-gif-pager {
   gap: 12px;
   padding: 16px 18px;
   border-radius: var(--btfw-radius);
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 74%, transparent 26%);
-  background: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+  border: 1px solid var(--btfw-panel-border-soft);
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+  background-image: var(--btfw-panel-gradient-soft);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-color-text) 7%, transparent 93%);
-  transition: border-color 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
 }
 
 #btfw-theme-modal .btfw-notify-sound.is-muted{
@@ -2772,8 +2776,10 @@ body, #wrap { padding-top: 0 !important; }
     letter-spacing: 0.5px !important;
 }
 
-/* 3. MODERN BORDER RADIUS & THEME-AWARE SHADOWS */
-#videowrap, #chatwrap, .well, .panel, .modal-content, #rightpane, #leftpane {
+/* 3. MODERN BORDER RADIUS & THEME-AWARE SHADOWS
+   Only the structural media columns are deliberately borderless. Component
+   wells, panels and modal cards keep their palette-derived borders. */
+#videowrap, #chatwrap, #rightpane, #leftpane {
     border: none !important;
 }
 
