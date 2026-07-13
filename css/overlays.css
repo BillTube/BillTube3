@@ -1512,6 +1512,8 @@
   /* Match the Theme Settings modal-card chrome (radius, surface, border, shadow). */
   background-color: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
   background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   color: var(--btfw-color-text);
   border-radius: var(--btfw-radius);
   border: 1px solid var(--btfw-panel-border);
@@ -1546,6 +1548,8 @@
 .modal.btfw-bulma-skin .modal-header {
   background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
   background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--btfw-border) 80%, transparent 20%);
   border-radius: 0;
@@ -1734,6 +1738,8 @@
 .modal.btfw-bulma-skin .modal-footer {
   background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
   background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border: 0;
   border-top: 1px solid color-mix(in srgb, var(--btfw-border) 80%, transparent 20%);
   padding: 14px 24px;
@@ -1751,6 +1757,8 @@
 .modal.btfw-bulma-skin .modal-body .well {
   background-color: color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%);
   background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border: 1px solid var(--btfw-panel-border-soft);
   border-radius: 12px;
   box-shadow: none;

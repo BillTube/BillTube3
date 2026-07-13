@@ -12,11 +12,20 @@
   --btfw-color-text-muted: color-mix(in srgb, var(--btfw-color-text) 62%, transparent 38%);
   --btfw-border: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
   --btfw-card-bg: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  /* Optional ordered-dot material. Channel admin sets data-btfw-dither on the
+     root; off remains a real no-op layer so existing gradients stay unchanged. */
+  --btfw-dither-image: none;
+  --btfw-dither-size: auto;
+  --btfw-panel-background-size: var(--btfw-dither-size), auto, auto, auto;
+  --btfw-panel-background-position: 0 0, center, center, center;
+  --btfw-button-background-size: var(--btfw-dither-size), auto;
+  --btfw-button-background-position: 0 0, center;
   /* Palette-derived material. Panel + Surface form the body, Accent colors
      the near edge and border, and Background anchors the elevation. The
      sRGB recipe is the compatibility fallback; modern browsers get the more
      even OKLCH blend below. */
-  --btfw-panel-gradient: linear-gradient(135deg,
+  --btfw-panel-gradient: var(--btfw-dither-image),
+    linear-gradient(135deg,
       color-mix(in srgb, var(--btfw-color-text) 5%, transparent) 0%,
       transparent 38%),
     radial-gradient(115% 95% at 0% 0%,
@@ -25,7 +34,8 @@
     linear-gradient(145deg,
       color-mix(in srgb, var(--btfw-color-panel) 86%, var(--btfw-color-accent) 14%),
       color-mix(in srgb, var(--btfw-color-surface) 94%, var(--btfw-color-accent) 6%));
-  --btfw-panel-gradient-soft: linear-gradient(135deg,
+  --btfw-panel-gradient-soft: var(--btfw-dither-image),
+    linear-gradient(135deg,
       color-mix(in srgb, var(--btfw-color-text) 4%, transparent) 0%,
       transparent 42%),
     radial-gradient(115% 95% at 0% 0%,
@@ -113,9 +123,31 @@
   --btfw-navbar-pill-text: color-mix(in srgb, var(--btfw-color-text) 96%, white 4%);
 }
 
+:root[data-btfw-dither="subtle"] {
+  --btfw-dither-image: radial-gradient(circle at 1px 1px,
+      color-mix(in srgb, var(--btfw-color-accent) 13%, transparent) 0 0.65px,
+      transparent 0.8px);
+  --btfw-dither-size: 4.5px 4.5px;
+}
+
+:root[data-btfw-dither="medium"] {
+  --btfw-dither-image: radial-gradient(circle at 1px 1px,
+      color-mix(in srgb, var(--btfw-color-accent) 21%, transparent) 0 0.82px,
+      transparent 0.98px);
+  --btfw-dither-size: 4px 4px;
+}
+
+:root[data-btfw-dither="bold"] {
+  --btfw-dither-image: radial-gradient(circle at 1px 1px,
+      color-mix(in srgb, var(--btfw-color-accent) 32%, transparent) 0 1px,
+      transparent 1.15px);
+  --btfw-dither-size: 3.5px 3.5px;
+}
+
 @supports (color: color-mix(in oklch, red, blue)) {
   :root {
-    --btfw-panel-gradient: linear-gradient(135deg,
+    --btfw-panel-gradient: var(--btfw-dither-image),
+      linear-gradient(135deg,
         color-mix(in oklch, var(--btfw-color-text) 5%, transparent) 0%,
         transparent 38%),
       radial-gradient(115% 95% at 0% 0%,
@@ -124,7 +156,8 @@
       linear-gradient(145deg,
         color-mix(in oklch, var(--btfw-color-panel) 86%, var(--btfw-color-accent) 14%),
         color-mix(in oklch, var(--btfw-color-surface) 94%, var(--btfw-color-accent) 6%));
-    --btfw-panel-gradient-soft: linear-gradient(135deg,
+    --btfw-panel-gradient-soft: var(--btfw-dither-image),
+      linear-gradient(135deg,
         color-mix(in oklch, var(--btfw-color-text) 4%, transparent) 0%,
         transparent 42%),
       radial-gradient(115% 95% at 0% 0%,

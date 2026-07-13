@@ -69,6 +69,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     endlessClouds: { label: "Clouds", uri: "url('data:image/svg+xml,%3Csvg%20width%3D%2256%22%20height%3D%2228%22%20viewBox%3D%220%200%2056%2028%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ctitle%3Eclouds%3C%2Ftitle%3E%3Cpath%20d%3D%22M56%2026c-2.813%200-5.456.726-7.752%202H56v-2zm-26%202h4.087C38.707%2020.783%2046.795%2016%2056%2016v-2c-.672%200-1.339.024-1.999.07L54%2014c0-1.105.895-2%202-2v-2c-2.075%200-3.78%201.58-3.98%203.602-.822-1.368-1.757-2.66-2.793-3.862C50.644%207.493%2053.147%206%2056%206V4c-3.375%200-6.359%201.672-8.17%204.232-.945-.948-1.957-1.828-3.03-2.634C47.355%202.198%2051.42%200%2056%200h-7.752c-1.998%201.108-3.733%202.632-5.09%204.454-1.126-.726-2.307-1.374-3.536-1.936.63-.896%201.33-1.738%202.095-2.518H39.03c-.46.557-.893%201.137-1.297%201.737-1.294-.48-2.633-.866-4.009-1.152.12-.196.24-.392.364-.585H30l-.001.07C29.339.024%2028.672%200%2028%200c-.672%200-1.339.024-1.999.07L26%200h-4.087c.124.193.245.389.364.585-1.376.286-2.715.673-4.009%201.152-.404-.6-.837-1.18-1.297-1.737h-2.688c.764.78%201.466%201.622%202.095%202.518-1.23.562-2.41%201.21-3.536%201.936C11.485%202.632%209.75%201.108%207.752%200H0c4.58%200%208.645%202.199%2011.2%205.598-1.073.806-2.085%201.686-3.03%202.634C6.359%205.672%203.375%204%200%204v2c2.852%200%205.356%201.493%206.773%203.74-1.036%201.203-1.971%202.494-2.793%203.862C3.78%2011.58%202.075%2010%200%2010v2c1.105%200%202%20.895%202%202l-.001.07C1.339%2014.024.672%2014%200%2014v2c9.205%200%2017.292%204.783%2021.913%2012H26c0-1.105.895-2%202-2s2%20.895%202%202zM7.752%2028C5.456%2026.726%202.812%2026%200%2026v2h7.752zM56%2020c-6.832%200-12.936%203.114-16.971%208h2.688c3.63-3.703%208.688-6%2014.283-6v-2zm-39.029%208C12.936%2023.114%206.831%2020%200%2020v2c5.595%200%2010.653%202.297%2014.283%206h2.688zm15.01-.398c.821-1.368%201.756-2.66%202.792-3.862C33.356%2021.493%2030.853%2020%2028%2020c-2.852%200-5.356%201.493-6.773%203.74%201.036%201.203%201.971%202.494%202.793%203.862C24.22%2025.58%2025.925%2024%2028%2024s3.78%201.58%203.98%203.602zm14.287-11.865C42.318%209.864%2035.61%206%2028%206c-7.61%200-14.318%203.864-18.268%209.737-1.294-.48-2.633-.866-4.009-1.152C10.275%207.043%2018.548%202%2028%202c9.452%200%2017.725%205.043%2022.277%2012.585-1.376.286-2.715.673-4.009%201.152zm-5.426%202.717c1.126-.726%202.307-1.374%203.536-1.936C40.76%2011.367%2034.773%208%2028%208s-12.76%203.367-16.378%208.518c1.23.562%202.41%201.21%203.536%201.936C18.075%2014.537%2022.741%2012%2028%2012s9.925%202.537%2012.842%206.454zm-4.672%203.778c.945-.948%201.957-1.828%203.03-2.634C36.645%2016.198%2032.58%2014%2028%2014c-4.58%200-8.645%202.199-11.2%205.598%201.073.806%202.085%201.686%203.03%202.634C21.641%2019.672%2024.625%2018%2028%2018s6.359%201.672%208.17%204.232z%22%20fill%3D%22%23a1b2c3%22%20fill-opacity%3D%220.987%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')" }
   };
   const PATTERN_OPACITY = { subtle: 0.1, medium: 0.2, bold: 0.32 };
+  const DITHER_INTENSITIES = ["subtle", "medium", "bold"];
 
   function patternImageValue(key, accentHex, intensity){
     const p = BG_PATTERNS[key];
@@ -79,7 +80,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   }
 
   const DEFAULT_CONFIG = {
-    version: 9,
+    version: 10,
     tint: "midnight",
     colors: {
       background: "#0d0d0d",
@@ -94,6 +95,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     background: {
       pattern: "none",
       intensity: "medium"
+    },
+    material: {
+      dither: false,
+      ditherIntensity: "subtle"
     },
     // Channel-wide event countdown banner (feature:event-countdown).
     // startsAtMs is the UTC epoch; startsAtLocal only repopulates the
@@ -853,6 +858,20 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     } catch (_) {}
   }
 
+  function applyRuntimeMaterial(theme){
+    if (!theme || typeof theme !== "object" || typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (!root) return;
+    const material = theme.material && typeof theme.material === "object"
+      ? theme.material
+      : (theme.material = JSON.parse(JSON.stringify(DEFAULT_CONFIG.material)));
+    material.dither = Boolean(material.dither);
+    if (!DITHER_INTENSITIES.includes(material.ditherIntensity)) {
+      material.ditherIntensity = "subtle";
+    }
+    root.setAttribute("data-btfw-dither", material.dither ? material.ditherIntensity : "off");
+  }
+
   function applyRuntimeTypography(theme){
     if (!theme || typeof theme !== "object") return;
     const typography = (theme.typography && typeof theme.typography === "object") ? theme.typography : (theme.typography = {});
@@ -883,6 +902,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     applyRuntimeSlider(normalized);
     applyRuntimeBranding(normalized);
     applyRuntimeColors(normalized);
+    applyRuntimeMaterial(normalized);
     applyRuntimeIntegrations(normalized);
     applyRuntimeTypography(normalized);
     applyRuntimePlaylistCatalog(normalized);
@@ -1004,6 +1024,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         margin-bottom: 8px;
         background-color: color-mix(in srgb, var(--btfw-admin-surface) 90%, transparent 10%);
         background-image: var(--btfw-panel-gradient-soft);
+        background-size: var(--btfw-panel-background-size);
+        background-position: var(--btfw-panel-background-position);
         box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%);
         overflow: hidden;
         transition: border-color 0.18s ease, box-shadow 0.18s ease;
@@ -1038,6 +1060,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         padding: 10px 14px;
         background-color: color-mix(in srgb, var(--btfw-admin-surface-alt) 82%, transparent);
         background-image: var(--btfw-panel-gradient-soft);
+        background-size: var(--btfw-panel-background-size);
+        background-position: var(--btfw-panel-background-position);
         border: 1px solid var(--btfw-panel-border-soft);
         border-radius: 12px;
         cursor: pointer;
@@ -1126,7 +1150,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
       /* Palette swatches — one responsive row, each shows the readable hex */
       .btfw-theme-admin .btfw-palette__swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
-      .btfw-theme-admin .btfw-swatch { display: flex; flex-direction: column; gap: 7px; padding: 9px; border-radius: 11px; background-color: var(--btfw-admin-surface); background-image: var(--btfw-panel-gradient-soft); border: 1px solid var(--btfw-panel-border-soft); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%); cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+      .btfw-theme-admin .btfw-swatch { display: flex; flex-direction: column; gap: 7px; padding: 9px; border-radius: 11px; background-color: var(--btfw-admin-surface); background-image: var(--btfw-panel-gradient-soft); background-size: var(--btfw-panel-background-size); background-position: var(--btfw-panel-background-position); border: 1px solid var(--btfw-panel-border-soft); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%); cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
       .btfw-theme-admin .btfw-swatch:hover { border-color: color-mix(in srgb, var(--btfw-color-accent) 50%, var(--btfw-admin-border-soft)); }
       .btfw-theme-admin .btfw-swatch input[type="color"] { width: 100%; height: 34px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 0; background: none; cursor: pointer; }
       .btfw-theme-admin .btfw-swatch input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
@@ -1136,10 +1160,14 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-swatch__hex { font-size: 0.7rem; font-family: "JetBrains Mono", monospace; color: var(--btfw-admin-text-soft); text-transform: uppercase; }
       /* Live preview — a real mini-mockup that renders the colors in context */
       .btfw-theme-admin .preview.btfw-tp {
-        --btfw-tp-panel-gradient: linear-gradient(135deg, color-mix(in srgb, var(--text, #e8ecf7) 6%, transparent), transparent 40%),
+        --btfw-tp-dither-image: none;
+        --btfw-tp-dither-size: auto;
+        --btfw-tp-panel-gradient: var(--btfw-tp-dither-image),
+          linear-gradient(135deg, color-mix(in srgb, var(--text, #e8ecf7) 6%, transparent), transparent 40%),
           radial-gradient(110% 100% at 0% 0%, color-mix(in srgb, var(--accent, #6d4df6) 18%, transparent), transparent 62%),
           linear-gradient(145deg, color-mix(in srgb, var(--panel, #141f36) 84%, var(--accent, #6d4df6) 16%), color-mix(in srgb, var(--surface, #0b111d) 94%, var(--accent, #6d4df6) 6%));
-        --btfw-tp-surface-gradient: linear-gradient(135deg, color-mix(in srgb, var(--text, #e8ecf7) 4%, transparent), transparent 44%),
+        --btfw-tp-surface-gradient: var(--btfw-tp-dither-image),
+          linear-gradient(135deg, color-mix(in srgb, var(--text, #e8ecf7) 4%, transparent), transparent 44%),
           linear-gradient(145deg, color-mix(in srgb, var(--surface, #0b111d) 90%, var(--accent, #6d4df6) 10%), color-mix(in srgb, var(--bg, #05060d) 95%, var(--accent, #6d4df6) 5%));
         --btfw-tp-border: color-mix(in srgb, var(--accent, #6d4df6) 36%, var(--panel, #141f36) 64%);
         display: block; padding: 0; border-radius: 12px; overflow: hidden;
@@ -1148,25 +1176,39 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         box-shadow: 0 18px 40px color-mix(in srgb, var(--bg, #05060d) 48%, transparent),
           0 5px 18px color-mix(in srgb, var(--accent, #6d4df6) 14%, transparent);
       }
+      .btfw-theme-admin .preview.btfw-tp[data-dither="subtle"] {
+        --btfw-tp-dither-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent, #6d4df6) 16%, transparent) 0 0.65px, transparent 0.8px);
+        --btfw-tp-dither-size: 4.5px 4.5px;
+      }
+      .btfw-theme-admin .preview.btfw-tp[data-dither="medium"] {
+        --btfw-tp-dither-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent, #6d4df6) 24%, transparent) 0 0.82px, transparent 0.98px);
+        --btfw-tp-dither-size: 4px 4px;
+      }
+      .btfw-theme-admin .preview.btfw-tp[data-dither="bold"] {
+        --btfw-tp-dither-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent, #6d4df6) 36%, transparent) 0 1px, transparent 1.15px);
+        --btfw-tp-dither-size: 3.5px 3.5px;
+      }
       @supports (color: color-mix(in oklch, red, blue)) {
         .btfw-theme-admin .preview.btfw-tp {
-          --btfw-tp-panel-gradient: linear-gradient(135deg, color-mix(in oklch, var(--text, #e8ecf7) 6%, transparent), transparent 40%),
+          --btfw-tp-panel-gradient: var(--btfw-tp-dither-image),
+            linear-gradient(135deg, color-mix(in oklch, var(--text, #e8ecf7) 6%, transparent), transparent 40%),
             radial-gradient(110% 100% at 0% 0%, color-mix(in oklch, var(--accent, #6d4df6) 18%, transparent), transparent 62%),
             linear-gradient(145deg, color-mix(in oklch, var(--panel, #141f36) 84%, var(--accent, #6d4df6) 16%), color-mix(in oklch, var(--surface, #0b111d) 94%, var(--accent, #6d4df6) 6%));
-          --btfw-tp-surface-gradient: linear-gradient(135deg, color-mix(in oklch, var(--text, #e8ecf7) 4%, transparent), transparent 44%),
+          --btfw-tp-surface-gradient: var(--btfw-tp-dither-image),
+            linear-gradient(135deg, color-mix(in oklch, var(--text, #e8ecf7) 4%, transparent), transparent 44%),
             linear-gradient(145deg, color-mix(in oklch, var(--surface, #0b111d) 90%, var(--accent, #6d4df6) 10%), color-mix(in oklch, var(--bg, #05060d) 95%, var(--accent, #6d4df6) 5%));
           --btfw-tp-border: color-mix(in oklch, var(--accent, #6d4df6) 36%, var(--panel, #141f36) 64%);
         }
       }
-      .btfw-theme-admin .btfw-tp__bar { display: flex; align-items: center; gap: 6px; padding: 9px 13px; background-color: var(--surface, #0b111d); background-image: var(--btfw-tp-surface-gradient); border-bottom: 1px solid color-mix(in srgb, var(--accent, #6d4df6) 20%, transparent); }
+      .btfw-theme-admin .btfw-tp__bar { display: flex; align-items: center; gap: 6px; padding: 9px 13px; background-color: var(--surface, #0b111d); background-image: var(--btfw-tp-surface-gradient); background-size: var(--btfw-tp-dither-size), auto, auto; background-position: 0 0, center, center; border-bottom: 1px solid color-mix(in srgb, var(--accent, #6d4df6) 20%, transparent); }
       .btfw-theme-admin .btfw-tp__dot { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, var(--text, #fff) 28%, transparent); }
       .btfw-theme-admin .btfw-tp__barlabel { margin-left: 7px; font-size: 0.72rem; color: color-mix(in srgb, var(--text, #fff) 62%, transparent); letter-spacing: 0.05em; text-transform: uppercase; }
       .btfw-theme-admin .btfw-tp__body { display: grid; grid-template-columns: 1.05fr 1fr; gap: 12px; padding: 14px; background: var(--bg, #05060d); }
-      .btfw-theme-admin .btfw-tp__panel { background-color: var(--panel, #141f36); background-image: var(--btfw-tp-panel-gradient); border: 1px solid var(--btfw-tp-border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 7px; box-shadow: 0 12px 28px color-mix(in srgb, var(--bg, #05060d) 42%, transparent), inset 0 1px 0 color-mix(in srgb, var(--text, #e8ecf7) 8%, transparent); }
+      .btfw-theme-admin .btfw-tp__panel { background-color: var(--panel, #141f36); background-image: var(--btfw-tp-panel-gradient); background-size: var(--btfw-tp-dither-size), auto, auto, auto; background-position: 0 0, center, center, center; border: 1px solid var(--btfw-tp-border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 7px; box-shadow: 0 12px 28px color-mix(in srgb, var(--bg, #05060d) 42%, transparent), inset 0 1px 0 color-mix(in srgb, var(--text, #e8ecf7) 8%, transparent); }
       .btfw-theme-admin .btfw-tp__heading { font-size: 0.95rem; font-weight: 700; color: var(--text, #e8ecf7); }
       .btfw-theme-admin .btfw-tp__sub { font-size: 0.77rem; line-height: 1.5; color: color-mix(in srgb, var(--text, #e8ecf7) 75%, transparent); }
-      .btfw-theme-admin .btfw-tp__btn { align-self: flex-start; margin-top: 5px; padding: 7px 16px; border: 0; border-radius: 8px; background: var(--accent, #6d4df6); color: var(--on-accent, #fff); font-weight: 600; font-size: 0.8rem; cursor: default; }
-      .btfw-theme-admin .btfw-tp__chat { background-color: var(--surface, #0b111d); background-image: var(--btfw-tp-surface-gradient); border: 1px solid color-mix(in srgb, var(--accent, #6d4df6) 24%, var(--surface, #0b111d) 76%); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 9px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text, #e8ecf7) 6%, transparent); }
+      .btfw-theme-admin .btfw-tp__btn { align-self: flex-start; margin-top: 5px; padding: 7px 16px; border: 0; border-radius: 8px; background-color: var(--accent, #6d4df6); background-image: var(--btfw-tp-dither-image); background-size: var(--btfw-tp-dither-size); color: var(--on-accent, #fff); font-weight: 600; font-size: 0.8rem; cursor: default; }
+      .btfw-theme-admin .btfw-tp__chat { background-color: var(--surface, #0b111d); background-image: var(--btfw-tp-surface-gradient); background-size: var(--btfw-tp-dither-size), auto, auto; background-position: 0 0, center, center; border: 1px solid color-mix(in srgb, var(--accent, #6d4df6) 24%, var(--surface, #0b111d) 76%); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 9px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text, #e8ecf7) 6%, transparent); }
       .btfw-theme-admin .btfw-tp__msg { font-size: 0.79rem; line-height: 1.45; color: var(--chat, #cfd6e6); }
       .btfw-theme-admin .btfw-tp__user { color: var(--accent, #6d4df6); font-weight: 700; margin-right: 5px; }
       @media (max-width: 600px){ .btfw-theme-admin .btfw-tp__body { grid-template-columns: 1fr; } }
@@ -1193,6 +1235,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         border: 1px solid var(--btfw-panel-border-soft);
         background-color: color-mix(in srgb, var(--btfw-admin-surface-alt) 72%, transparent 28%);
         background-image: var(--btfw-panel-gradient-soft);
+        background-size: var(--btfw-panel-background-size);
+        background-position: var(--btfw-panel-background-position);
         box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 5%, transparent 95%);
       }
       .btfw-theme-admin .btfw-admin-nav__item {
@@ -2124,6 +2168,14 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     normalized.sliderEnabled = Boolean(slider.enabled);
     normalized.sliderJson = slider.feedUrl || slider.url || normalized.sliderJson || "";
 
+    if (!normalized.material || typeof normalized.material !== "object") {
+      normalized.material = JSON.parse(JSON.stringify(defaults.material));
+    }
+    normalized.material.dither = Boolean(normalized.material.dither);
+    if (!DITHER_INTENSITIES.includes(normalized.material.ditherIntensity)) {
+      normalized.material.ditherIntensity = "subtle";
+    }
+
     if (!normalized.integrations || typeof normalized.integrations !== "object") {
       normalized.integrations = JSON.parse(JSON.stringify(defaults.integrations));
     }
@@ -2667,6 +2719,11 @@ function replaceBlock(original, startMarker, endMarker, block){
       preview.style.setProperty("--chat", chat);
       preview.style.setProperty("--accent", accent);
       preview.style.setProperty("--on-accent", readableTextOn(accent));
+      const material = cfg.material && typeof cfg.material === "object" ? cfg.material : DEFAULT_CONFIG.material;
+      const ditherIntensity = DITHER_INTENSITIES.includes(material.ditherIntensity)
+        ? material.ditherIntensity
+        : "subtle";
+      preview.dataset.dither = material.dither ? ditherIntensity : "off";
       preview.style.background = "";
       // Show the chosen backdrop pattern behind the mockup body.
       const previewBody = preview.querySelector(".btfw-tp__body");
@@ -2723,6 +2780,25 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (field) {
       field.classList.toggle('is-disabled', !isCustom);
     }
+  }
+
+  function syncDitherToggle(panel, cfg){
+    if (!panel || !cfg || typeof cfg !== "object") return;
+    if (!cfg.material || typeof cfg.material !== "object") {
+      cfg.material = JSON.parse(JSON.stringify(DEFAULT_CONFIG.material));
+    }
+    const button = panel.querySelector('#btfw-theme-dither-toggle');
+    const input = panel.querySelector('#btfw-theme-dither-enabled');
+    const intensity = panel.querySelector('#btfw-theme-dither-intensity');
+    const intensityRow = panel.querySelector('[data-role="dither-intensity-row"]');
+    if (!button || !input) return;
+    const enabled = Boolean(cfg.material.dither);
+    input.checked = enabled;
+    button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    const state = button.querySelector('[data-role="state-label"]');
+    if (state) state.textContent = enabled ? 'On' : 'Off';
+    if (intensity) intensity.disabled = !enabled;
+    if (intensityRow) intensityRow.hidden = !enabled;
   }
 
   function syncMovieInfoToggle(panel, cfg){
@@ -3464,6 +3540,25 @@ function replaceBlock(original, startMarker, endMarker, block){
               </div>
               <p class="help">Optional tiled backdrop drawn with your Background and Accent colors (patterns by heropatterns.com). Pick "None" for a flat background.</p>
             </div>
+            <div class="field btfw-switch-field">
+              <button type="button" class="btfw-switch" id="btfw-theme-dither-toggle" role="switch" aria-pressed="false">
+                <span class="btfw-switch__track" aria-hidden="true"><span class="btfw-switch__knob"></span></span>
+                <span class="btfw-switch__meta">
+                  <span class="btfw-switch__title">Dither surface material</span>
+                  <span class="btfw-switch__state" data-role="state-label">Off</span>
+                </span>
+              </button>
+              <input type="checkbox" id="btfw-theme-dither-enabled" data-btfw-bind="material.dither" hidden>
+              <div class="btfw-pattern-intensity" data-role="dither-intensity-row" hidden>
+                <label for="btfw-theme-dither-intensity">Intensity</label>
+                <select id="btfw-theme-dither-intensity" data-btfw-bind="material.ditherIntensity">
+                  <option value="subtle">Subtle</option>
+                  <option value="medium">Medium</option>
+                  <option value="bold">Bold</option>
+                </select>
+              </div>
+              <p class="help">Adds a static, Accent-colored dot matrix to page washes, cards, modals, and buttons. Video, posters, emotes, profile images, inputs, and chat text remain untouched.</p>
+            </div>
             <div class="preview btfw-tp" data-role="theme-preview" aria-hidden="true">
               <div class="btfw-tp__bar"><span class="btfw-tp__dot"></span><span class="btfw-tp__dot"></span><span class="btfw-tp__dot"></span><span class="btfw-tp__barlabel">Live preview</span></div>
               <div class="btfw-tp__body">
@@ -3854,6 +3949,21 @@ function replaceBlock(original, startMarker, endMarker, block){
     }
 
     bindModuleFieldWatcher(panel, onChange);
+
+    const ditherButton = panel.querySelector('#btfw-theme-dither-toggle');
+    const ditherInput = panel.querySelector('#btfw-theme-dither-enabled');
+    if (ditherButton && ditherInput) {
+      ditherButton.addEventListener('click', () => {
+        const next = !ditherInput.checked;
+        ditherInput.checked = next;
+        if (!cfg.material || typeof cfg.material !== "object") {
+          cfg.material = JSON.parse(JSON.stringify(DEFAULT_CONFIG.material));
+        }
+        cfg.material.dither = next;
+        syncDitherToggle(panel, cfg);
+        onChange();
+      });
+    }
 
     const resetBtn = panel.querySelector('#btfw-theme-reset');
     if (resetBtn) {
@@ -4268,6 +4378,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     updateTypographyFieldState(panel);
     updateSliderFieldState(panel);
     syncMovieInfoToggle(panel, cfg);
+    syncDitherToggle(panel, cfg);
     syncMoviePollToggle(panel, cfg);
     syncAutoSubsToggle(panel, cfg);
     syncAudioEnhancerToggle(panel, cfg);
@@ -4318,6 +4429,13 @@ function replaceBlock(original, startMarker, endMarker, block){
     }
     updated.sliderEnabled = Boolean(updated.slider?.enabled);
     updated.sliderJson = updated.slider?.feedUrl || "";
+    if (!updated.material || typeof updated.material !== "object") {
+      updated.material = cloneDefaults().material;
+    }
+    updated.material.dither = Boolean(updated.material.dither);
+    if (!DITHER_INTENSITIES.includes(updated.material.ditherIntensity)) {
+      updated.material.ditherIntensity = "subtle";
+    }
     if (!updated.integrations || typeof updated.integrations !== "object") {
       updated.integrations = cloneDefaults().integrations;
     }
@@ -4771,6 +4889,13 @@ function replaceBlock(original, startMarker, endMarker, block){
     }
     if (!PATTERN_OPACITY[cfg.background.intensity]) {
       cfg.background.intensity = "medium";
+    }
+    if (!cfg.material || typeof cfg.material !== "object") {
+      cfg.material = cloneDefaults().material;
+    }
+    cfg.material.dither = Boolean(cfg.material.dither);
+    if (!DITHER_INTENSITIES.includes(cfg.material.ditherIntensity)) {
+      cfg.material.ditherIntensity = "subtle";
     }
 
 let initializing = true;

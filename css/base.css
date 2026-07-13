@@ -37,7 +37,9 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: var(--btfw-page-glow);
+  background-image: var(--btfw-dither-image), var(--btfw-page-glow);
+  background-size: var(--btfw-dither-size), auto;
+  background-position: 0 0, center top;
 }
 
 /* Strengthen the thumb only while the pointer is over the scrolling box.
@@ -246,6 +248,8 @@ footer {
 .queue_temp {
   background-color: color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%);
   background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border-radius: 14px;
   border: 1px solid var(--btfw-panel-border-soft);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-color-text) 5%, transparent 95%);
@@ -608,9 +612,13 @@ footer {
 button,
 .btn-primary,
 .btn-default {
-  background: linear-gradient(135deg,
+  background-color: var(--btfw-color-accent);
+  background-image: var(--btfw-dither-image),
+    linear-gradient(135deg,
       color-mix(in srgb, var(--btfw-color-accent) 88%, white 12%),
       color-mix(in srgb, var(--btfw-color-accent) 62%, black 8%));
+  background-size: var(--btfw-button-background-size);
+  background-position: var(--btfw-button-background-position);
   border: 0;
   color: var(--btfw-color-on-accent);
   border-radius: 12px;
@@ -846,6 +854,8 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   border-radius: var(--btfw-radius);
   background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
   background-image: var(--btfw-panel-gradient);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   box-shadow: var(--btfw-panel-shadow);
   overflow: hidden;
   margin-top: 20px;
@@ -1484,6 +1494,8 @@ nav.pagination.is-centered.btfw-gif-pager {
   border-radius: var(--btfw-radius);
   background-color: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
   background-image: var(--btfw-panel-gradient);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border: 1px solid var(--btfw-panel-border);
   box-shadow: var(--btfw-panel-shadow);
 }
@@ -1667,6 +1679,8 @@ nav.pagination.is-centered.btfw-gif-pager {
   max-height: 94vh;
   background-color: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
   background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border: 1px solid var(--btfw-panel-border);
   border-radius: var(--btfw-radius);
   box-shadow:
@@ -1736,6 +1750,8 @@ nav.pagination.is-centered.btfw-gif-pager {
 #btfw-theme-modal .btfw-ts-card{
   background-color: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
   background-image: var(--btfw-panel-gradient);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border: 1px solid var(--btfw-panel-border);
   border-radius: var(--btfw-radius);
   padding: 20px 22px;
@@ -1809,6 +1825,8 @@ nav.pagination.is-centered.btfw-gif-pager {
   border: 1px solid var(--btfw-panel-border-soft);
   background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
   background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-color-text) 7%, transparent 93%);
   transition: border-color 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
 }

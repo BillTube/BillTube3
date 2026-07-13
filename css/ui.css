@@ -478,7 +478,10 @@ html { font-size: 16px; }
   padding: 8px 16px;
   border-radius: var(--btfw-radius-xs, 8px);
   border: 1px solid var(--btfw-btn-border);
-  background: var(--btfw-btn-bg);
+  background-color: var(--btfw-btn-bg);
+  background-image: var(--btfw-dither-image);
+  background-size: var(--btfw-dither-size);
+  background-position: 0 0;
   color: var(--btfw-btn-text);
   font-size: 0.82rem;
   font-weight: 600;
@@ -492,7 +495,7 @@ html { font-size: 16px; }
               transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-overshoot, cubic-bezier(0.34, 1.56, 0.64, 1));
 }
 .btfw-btn:not([disabled]):not([aria-disabled="true"]):hover {
-  background: var(--btfw-btn-bg-hover);
+  background-color: var(--btfw-btn-bg-hover);
   border-color: var(--btfw-btn-border-hover);
   color: var(--btfw-btn-text);
 }
