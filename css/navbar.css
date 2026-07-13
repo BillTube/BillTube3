@@ -408,3 +408,35 @@
   outline: none;
 }
 
+/* Desktop-only density option. Mobile keeps the roomier drawer dimensions and
+   touch targets above, regardless of this local preference. */
+:root[data-btfw-navbar-density="standard"] #btfw-navhost:not(.btfw-navhost--mobile) {
+  height: 64px;
+  min-height: 64px;
+}
+
+:root[data-btfw-navbar-density="compact"] #btfw-navhost:not(.btfw-navhost--mobile) {
+  height: 52px;
+  min-height: 52px;
+}
+
+:root[data-btfw-navbar-density="compact"] #btfw-navhost:not(.btfw-navhost--mobile) > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top),
+:root[data-btfw-navbar-density="compact"] #btfw-navhost:not(.btfw-navhost--mobile) :is(.navbar-header, .navbar-brand-container) {
+  min-height: 52px;
+}
+
+:root[data-btfw-navbar-density="compact"] #btfw-navhost:not(.btfw-navhost--mobile) > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+  padding-inline: 12px;
+}
+
+:root[data-btfw-navbar-density="compact"] #btfw-navhost:not(.btfw-navhost--mobile) :is(.navbar-nav, .nav) > li > :is(a, button) {
+  gap: 6px;
+  padding: 5px 8px;
+  font-size: 0.9rem;
+}
+
+:root[data-btfw-navbar-density="compact"] #btfw-navhost:not(.btfw-navhost--mobile) .btfw-nav-avatar {
+  width: 28px;
+  height: 28px;
+}
+

@@ -641,6 +641,10 @@ a:hover {
 }
 
 /* ---------- Main 2-column grid: left content + splitter + right chat ---------- */
+:root.btfw-compact-stack{
+  --btfw-gap: 2px;
+}
+
 #btfw-grid{
   display: grid;
   grid-template-columns: minmax(520px,7fr) var(--btfw-split-width) minmax(var(--btfw-chat-min),3fr);
@@ -840,14 +844,15 @@ a:hover {
   transition: padding 0.24s ease, gap 0.24s ease;
 }
 .btfw-stack-list--compact{
-  gap: calc(var(--btfw-gap) + 6px);
+  gap: calc(var(--btfw-gap) + 4px);
 }
 body:not(.btfw-mobile-stack-enabled) #btfw-stack .btfw-stack-list.btfw-stack-list--compact{
-  padding-inline: clamp(16px, 5vw, 130px);
+  padding-inline: clamp(2px, 0.8vw, 12px);
 }
 body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack-item{
   border-radius: var(--btfw-radius);
   border-color:  color-mix(in srgb, var(--btfw-border) 28%, transparent 92%);
+  margin-top: 6px;
 }
 .btfw-stack-item{
   border: 1px solid var(--btfw-panel-border);
@@ -1764,6 +1769,34 @@ nav.pagination.is-centered.btfw-gif-pager {
 
 #btfw-theme-modal .btfw-ts-panel[data-tab="notifications"] .btfw-ts-grid{
   grid-template-columns: minmax(0, 1fr);
+}
+
+#btfw-theme-modal .btfw-general-reset{
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 74%, transparent 26%);
+  border-radius: var(--btfw-radius-sm);
+  background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+#btfw-theme-modal .btfw-general-reset strong{
+  display: block;
+  font-size: 0.88rem;
+  color: color-mix(in srgb, var(--btfw-color-text) 90%, transparent 10%);
+}
+
+#btfw-theme-modal .btfw-general-reset p{
+  margin: 3px 0 0;
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--btfw-color-text) 60%, transparent 40%);
+}
+
+#btfw-theme-modal .btfw-general-reset .button{
+  flex: 0 0 auto;
 }
 
 #btfw-theme-modal .btfw-ts-card{
@@ -2738,6 +2771,15 @@ body:not(.is-scrolling) #queue li {
 }
 @media (prefers-reduced-motion: reduce) {
   .btfw-tab-in { animation: none; }
+}
+
+:root[data-btfw-motion="reduced"] *,
+:root[data-btfw-motion="reduced"] *::before,
+:root[data-btfw-motion="reduced"] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
 }
 
 /* Channel Settings + User options: every Bootstrap tab-pane (incl. the BillTube

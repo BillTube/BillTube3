@@ -57,7 +57,12 @@ BTFW.define("feature:themeSettings", [], async () => {
     stackCompact: "btfw:stack:compact",       // "1" | "0"
     localSubs   : "btfw:video:localsubs",     // "1" | "0"
     billcastEnabled: "btfw:billcast:enabled", // "1" | "0"
-    layoutSide  : "btfw:layout:chatSide"      // "left" | "right"
+    layoutSide  : "btfw:layout:chatSide",     // "left" | "right"
+    layoutChatWidth: "btfw:layout:chatWidth", // preset width in px
+    layoutVideoWidth: "btfw:grid:leftPx",     // custom divider position
+    motionPreference: "btfw:motion:preference", // "system" | "reduced"
+    surfaceTexture: "btfw:visual:surfaceTexture", // "follow" | "off"
+    navbarCompact: "btfw:navbar:compact"      // "1" | "0"
   };
 
   // storage helpers
@@ -104,6 +109,18 @@ BTFW.define("feature:themeSettings", [], async () => {
     document.documentElement.classList.toggle("btfw-compact-stack", active);
     if (stackModule?.setCompactSpacing) stackModule.setCompactSpacing(active);
     else resolveStack().then(mod => { if (mod?.setCompactSpacing) mod.setCompactSpacing(active); });
+  }
+
+  function applySurfaceTexture(value){
+    document.documentElement.dataset.btfwSurfaceTexture = value === "off" ? "off" : "follow";
+  }
+
+  function applyNavbarDensity(enabled){
+    const compact = !!enabled;
+    document.documentElement.dataset.btfwNavbarDensity = compact ? "compact" : "standard";
+    document.dispatchEvent(new CustomEvent("btfw:navbar:densityChanged", {
+      detail: { compact }
+    }));
   }
 
   // cross-feature bridges (lazy)
@@ -235,7 +252,7 @@ BTFW.define("feature:themeSettings", [], async () => {
                 <section class="btfw-ts-card">
                   <header class="btfw-ts-card__header">
                     <h3>Layout</h3>
-                    <p>Position the chat column and adjust the panel spacing below the video.</p>
+                    <p>Set the page proportions and how tightly the main areas sit together.</p>
                   </header>
                   <div class="btfw-ts-card__body">
                     <div class="btfw-ts-control">
@@ -248,15 +265,67 @@ BTFW.define("feature:themeSettings", [], async () => {
                       </div>
                     </div>
                     <div class="btfw-ts-control">
-                      <label class="btfw-input__label">Stack spacing <button type="button" class="btfw-ts-info" aria-label="More info" data-tip="When on, the panels below the video (Now Playing, playlist, featured channels, polls…) get a little side padding on desktop so they aren't flush to the edges. Turn it off for a tighter, edge-to-edge look."><i class="fa fa-circle-info" aria-hidden="true"></i></button></label>
+                      <label class="btfw-input__label" for="btfw-chat-width">Chat width <button type="button" class="btfw-ts-info" aria-label="More info" data-tip="Choose a saved chat width or use the divider for a custom size. Whichever you adjust last becomes the saved layout."><i class="fa fa-circle-info" aria-hidden="true"></i></button></label>
+                      <div class="select is-small">
+                        <select id="btfw-chat-width">
+                          <option value="auto">Automatic</option>
+                          <option value="360">Narrow (360px)</option>
+                          <option value="420">Balanced (420px)</option>
+                          <option value="480">Wide (480px)</option>
+                          <option value="custom" disabled>Custom (divider)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="btfw-ts-control">
+                      <label class="btfw-input__label">Layout density <button type="button" class="btfw-ts-info" aria-label="More info" data-tip="Tightens the page edges, space around the video/chat divider, and panels below the video. A small gap remains so controls and the divider stay clear."><i class="fa fa-circle-info" aria-hidden="true"></i></button></label>
                       <button type="button" class="btfw-compact-stack-btn" id="btfw-compact-stack-toggle" aria-pressed="true">
-                        <span class="btfw-compact-stack-label">Compact stack</span>
+                        <span class="btfw-compact-stack-label">Compact layout</span>
                         <span class="btfw-compact-stack-status">On</span>
                       </button>
                     </div>
                   </div>
                 </section>
 
+                <section class="btfw-ts-card">
+                  <header class="btfw-ts-card__header">
+                    <h3>Appearance</h3>
+                    <p>Personal display choices stored only in this browser.</p>
+                  </header>
+                  <div class="btfw-ts-card__body">
+                    <div class="btfw-ts-control">
+                      <label class="btfw-input__label" for="btfw-motion-preference">Motion preference</label>
+                      <div class="select is-small">
+                        <select id="btfw-motion-preference">
+                          <option value="system">Follow device</option>
+                          <option value="reduced">Reduce motion</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="btfw-ts-control">
+                      <label class="btfw-input__label" for="btfw-surface-texture">Surface texture <button type="button" class="btfw-ts-info" aria-label="More info" data-tip="Follow the channel's dither texture setting, or hide that texture on this device. Colors and gradients remain unchanged."><i class="fa fa-circle-info" aria-hidden="true"></i></button></label>
+                      <div class="select is-small">
+                        <select id="btfw-surface-texture">
+                          <option value="follow">Follow channel</option>
+                          <option value="off">Off on this device</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="btfw-ts-control">
+                      <label class="btfw-input__label">Navigation density <button type="button" class="btfw-ts-info" aria-label="More info" data-tip="Shortens the desktop navbar and its controls. The mobile menu keeps its touch-friendly size."><i class="fa fa-circle-info" aria-hidden="true"></i></button></label>
+                      <button type="button" class="btfw-compact-stack-btn" id="btfw-compact-navbar-toggle" aria-pressed="false">
+                        <span class="btfw-compact-stack-label">Compact navbar</span>
+                        <span class="btfw-compact-stack-status">Off</span>
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              </div>
+              <div class="btfw-general-reset">
+                <div>
+                  <strong>Reset General preferences</strong>
+                  <p>Restore the default layout, motion, texture, and navbar choices on this device.</p>
+                </div>
+                <button type="button" class="button is-small" id="btfw-general-reset">Reset General</button>
               </div>
             </div>
 
@@ -433,23 +502,73 @@ BTFW.define("feature:themeSettings", [], async () => {
       updateLabel(chatTextSlider.value || "14");
     }
 
-    const compactBtn = $("#btfw-compact-stack-toggle", m);
-    if (compactBtn && !compactBtn._btfwSync) {
-      const status = compactBtn.querySelector(".btfw-compact-stack-status");
+    const wirePressToggle = (button) => {
+      if (!button || button._btfwSync) return;
+      const status = button.querySelector(".btfw-compact-stack-status");
       const sync = (state) => {
         const on = !!state;
-        compactBtn.setAttribute("aria-pressed", on ? "true" : "false");
-        compactBtn.classList.toggle("is-active", on);
+        button.setAttribute("aria-pressed", on ? "true" : "false");
+        button.classList.toggle("is-active", on);
         if (status) status.textContent = on ? "On" : "Off";
-        compactBtn.dataset.state = on ? "on" : "off";
+        button.dataset.state = on ? "on" : "off";
       };
-      compactBtn.addEventListener("click", (ev) => {
+      button.addEventListener("click", (ev) => {
         ev.preventDefault();
-        const next = compactBtn.getAttribute("aria-pressed") !== "true";
+        const next = button.getAttribute("aria-pressed") !== "true";
         sync(next);
       });
-      compactBtn._btfwSync = sync;
-    }
+      button._btfwSync = sync;
+    };
+    wirePressToggle($("#btfw-compact-stack-toggle", m));
+    wirePressToggle($("#btfw-compact-navbar-toggle", m));
+
+    const widthSelect = $("#btfw-chat-width", m);
+    widthSelect?.addEventListener("change", () => {
+      const width = widthSelect.value === "auto" ? null : Number(widthSelect.value);
+      document.dispatchEvent(new CustomEvent("btfw:layout:chatWidthRequest", {
+        detail: { width, source: "settings" }
+      }));
+    });
+    document.addEventListener("btfw:layout:widthChanged", (event) => {
+      const select = $("#btfw-chat-width", m);
+      if (!select) return;
+      const detail = event?.detail || {};
+      if (detail.mode === "preset" && ["360","420","480"].includes(String(detail.preset))) {
+        select.value = String(detail.preset);
+      } else {
+        select.value = detail.mode === "auto" ? "auto" : "custom";
+      }
+    });
+
+    $("#btfw-general-reset", m)?.addEventListener("click", () => {
+      const side = $("#btfw-chat-side", m);
+      const width = $("#btfw-chat-width", m);
+      const motionSelect = $("#btfw-motion-preference", m);
+      const textureSelect = $("#btfw-surface-texture", m);
+      const layoutToggle = $("#btfw-compact-stack-toggle", m);
+      const navbarToggle = $("#btfw-compact-navbar-toggle", m);
+      if (side) side.value = "right";
+      if (width) width.value = "auto";
+      if (motionSelect) motionSelect.value = "system";
+      if (textureSelect) textureSelect.value = "follow";
+      layoutToggle?._btfwSync?.(true);
+      navbarToggle?._btfwSync?.(false);
+
+      set(TS_KEYS.layoutSide, "right");
+      set(TS_KEYS.stackCompact, "1");
+      set(TS_KEYS.motionPreference, "system");
+      set(TS_KEYS.surfaceTexture, "follow");
+      set(TS_KEYS.navbarCompact, "0");
+      motion.setPreference("system");
+      applySurfaceTexture("follow");
+      applyNavbarDensity(false);
+      applyCompactStack(true);
+      document.dispatchEvent(new CustomEvent("btfw:layout:chatSideChanged", { detail:{ side:"right" } }));
+      document.dispatchEvent(new CustomEvent("btfw:layout:chatWidthRequest", {
+        detail: { width:null, source:"reset" }
+      }));
+      document.dispatchEvent(new CustomEvent("btfw:stack:compactChanged", { detail:{ enabled:true } }));
+    });
 
     // Open via event
     document.addEventListener("btfw:openThemeSettings", open);
@@ -539,6 +658,10 @@ BTFW.define("feature:themeSettings", [], async () => {
     const notifyMovieVotingOn = $("#btfw-notify-movievoting", m)?.checked;
     const compactBtn  = $("#btfw-compact-stack-toggle", m);
     const compactOn   = compactBtn ? compactBtn.getAttribute("aria-pressed") === "true" : true;
+    const navbarBtn   = $("#btfw-compact-navbar-toggle", m);
+    const navbarCompactOn = navbarBtn ? navbarBtn.getAttribute("aria-pressed") === "true" : false;
+    const motionPreference = $("#btfw-motion-preference", m)?.value || "system";
+    const surfaceTexture = $("#btfw-surface-texture", m)?.value || "follow";
     const localSubsOn = $("#btfw-localsubs-toggle", m)?.checked;
     const billcastOn  = $("#btfw-billcast-toggle", m)?.checked;
     const chatSide    = $("#btfw-chat-side", m)?.value || "right";
@@ -553,6 +676,9 @@ BTFW.define("feature:themeSettings", [], async () => {
     set(TS_KEYS.notifyPolls, notifyPollsOn ? "1":"0");
     set(TS_KEYS.notifyMovieVoting, notifyMovieVotingOn ? "1":"0");
     set(TS_KEYS.stackCompact, compactOn ? "1":"0");
+    set(TS_KEYS.motionPreference, motionPreference);
+    set(TS_KEYS.surfaceTexture, surfaceTexture);
+    set(TS_KEYS.navbarCompact, navbarCompactOn ? "1":"0");
     set(TS_KEYS.localSubs,   localSubsOn ? "1":"0");
     set(TS_KEYS.billcastEnabled, billcastOn ? "1":"0");
     set(TS_KEYS.layoutSide, chatSide);
@@ -564,6 +690,9 @@ BTFW.define("feature:themeSettings", [], async () => {
     applyChatTextPx(parseInt(chatTextPx,10));
     applyEmoteSize(emoteSize);
     applyCompactStack(compactOn);
+    motion.setPreference(motionPreference);
+    applySurfaceTexture(surfaceTexture);
+    applyNavbarDensity(navbarCompactOn);
 
     // notify modules
     document.dispatchEvent(new CustomEvent("btfw:chat:gifAutoplayChanged", { detail:{ autoplay: !!gifAutoOn } }));
@@ -575,6 +704,7 @@ BTFW.define("feature:themeSettings", [], async () => {
       values: {
         avatarsMode, chatTextPx: parseInt(chatTextPx,10),
         emoteSize, gifAutoplay: !!gifAutoOn, compactStack: !!compactOn,
+        motionPreference, surfaceTexture, navbarCompact: !!navbarCompactOn,
         localSubs: !!localSubsOn, billcastEnabled: !!billcastOn,
         joinNotices: !!joinNoticesOn,
         notifyNowPlaying: !!notifyNowPlayingOn,
@@ -626,6 +756,21 @@ BTFW.define("feature:themeSettings", [], async () => {
     const layoutSelect = $("#btfw-chat-side", m);
     const sideNow = get(TS_KEYS.layoutSide, "right");
     if (layoutSelect) layoutSelect.value = ["left","right"].includes(sideNow) ? sideNow : "right";
+    const widthSelect = $("#btfw-chat-width", m);
+    if (widthSelect) {
+      const savedChatWidth = get(TS_KEYS.layoutChatWidth, "");
+      const savedVideoWidth = get(TS_KEYS.layoutVideoWidth, "");
+      widthSelect.value = ["360","420","480"].includes(savedChatWidth)
+        ? savedChatWidth
+        : (savedVideoWidth ? "custom" : "auto");
+    }
+    const motionSelect = $("#btfw-motion-preference", m);
+    if (motionSelect) motionSelect.value = get(TS_KEYS.motionPreference, "system") === "reduced" ? "reduced" : "system";
+    const textureSelect = $("#btfw-surface-texture", m);
+    if (textureSelect) textureSelect.value = get(TS_KEYS.surfaceTexture, "follow") === "off" ? "off" : "follow";
+    const navbarCompact = get(TS_KEYS.navbarCompact, "0") === "1";
+    const navbarBtn = $("#btfw-compact-navbar-toggle", m);
+    if (navbarBtn?._btfwSync) navbarBtn._btfwSync(navbarCompact);
 
     if (typeof m._btfwRenderIgnoreList === "function") m._btfwRenderIgnoreList();
 
@@ -771,6 +916,9 @@ BTFW.define("feature:themeSettings", [], async () => {
     applyChatTextPx(parseInt(get(TS_KEYS.chatTextPx, "14"),10));
     applyEmoteSize(get(TS_KEYS.emoteSize,"medium"));
     applyCompactStack(get(TS_KEYS.stackCompact, "1") === "1");
+    motion.setPreference(get(TS_KEYS.motionPreference, "system"), { persist:false });
+    applySurfaceTexture(get(TS_KEYS.surfaceTexture, "follow"));
+    applyNavbarDensity(get(TS_KEYS.navbarCompact, "0") === "1");
     wireOpeners();
     decorateUserOptions();
     bindUserOptions();

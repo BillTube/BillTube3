@@ -144,6 +144,11 @@
   --btfw-dither-size: 3.5px 3.5px;
 }
 
+:root[data-btfw-surface-texture="off"] {
+  --btfw-dither-image: none !important;
+  --btfw-dither-size: auto !important;
+}
+
 @supports (color: color-mix(in oklch, red, blue)) {
   :root {
     --btfw-panel-gradient: var(--btfw-dither-image),

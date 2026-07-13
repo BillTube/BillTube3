@@ -1,11 +1,26 @@
 BTFW.define("util:motion", [], async () => {
+  const STORAGE_KEY = "btfw:motion:preference";
+  const VALID_PREFERENCES = new Set(["system", "reduced"]);
   const reduceQuery = (typeof window !== "undefined" && window.matchMedia)
     ? window.matchMedia("(prefers-reduced-motion: reduce)")
     : null;
-  let reduceMotion = !!(reduceQuery && reduceQuery.matches);
+  let systemReduceMotion = !!(reduceQuery && reduceQuery.matches);
+  let preference = "system";
+
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (VALID_PREFERENCES.has(stored)) preference = stored;
+  } catch (_) {}
+
+  function syncRootPreference() {
+    if (typeof document === "undefined") return;
+    document.documentElement.dataset.btfwMotion = preference;
+  }
+
+  syncRootPreference();
 
   if (reduceQuery) {
-    const onChange = (event) => { reduceMotion = !!event.matches; };
+    const onChange = (event) => { systemReduceMotion = !!event.matches; };
     if (typeof reduceQuery.addEventListener === "function") {
       reduceQuery.addEventListener("change", onChange);
     } else if (typeof reduceQuery.addListener === "function") {
@@ -14,7 +29,23 @@ BTFW.define("util:motion", [], async () => {
   }
 
   function prefersReducedMotion() {
-    return reduceMotion;
+    return preference === "reduced" || (preference === "system" && systemReduceMotion);
+  }
+
+  function getPreference() {
+    return preference;
+  }
+
+  function setPreference(next, options = {}) {
+    preference = VALID_PREFERENCES.has(next) ? next : "system";
+    syncRootPreference();
+    if (options.persist !== false) {
+      try { localStorage.setItem(STORAGE_KEY, preference); } catch (_) {}
+    }
+    document.dispatchEvent(new CustomEvent("btfw:motion:preferenceApplied", {
+      detail: { preference, reduced: prefersReducedMotion() }
+    }));
+    return preference;
   }
 
   function toMilliseconds(timeString) {
@@ -174,6 +205,8 @@ BTFW.define("util:motion", [], async () => {
 
   return {
     prefersReducedMotion,
+    getPreference,
+    setPreference,
     waitForTransition,
     openModal,
     closeModal,
