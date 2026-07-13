@@ -85,7 +85,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     btn.type = "button";
     btn.id = "btfw-pl-copytoggle";
     btn.className = "button is-dark is-small btfw-plbar__action-btn";
-    btn.textContent = "Copy titles";
+    btn.innerHTML = '<i class="fa fa-copy" aria-hidden="true"></i><span class="sr-only">Copy titles</span>';
     btn.setAttribute("aria-pressed", copyTitlesEnabled ? "true" : "false");
     btn.addEventListener("click", () => {
       copyTitlesEnabled = !copyTitlesEnabled;
@@ -102,6 +102,9 @@ BTFW.define("feature:playlist-tools", [], async () => {
   function updateCopyTitlesToggleAppearance(){
     if (!copyTitlesToggle) return;
     copyTitlesToggle.setAttribute("aria-pressed", copyTitlesEnabled ? "true" : "false");
+    const label = copyTitlesEnabled ? "Disable copy-title buttons" : "Enable copy-title buttons";
+    copyTitlesToggle.setAttribute("aria-label", label);
+    copyTitlesToggle.setAttribute("title", label);
     copyTitlesToggle.classList.toggle("is-success", copyTitlesEnabled);
     copyTitlesToggle.classList.toggle("is-dark", !copyTitlesEnabled);
     copyTitlesToggle.classList.toggle("is-outlined", copyTitlesEnabled);

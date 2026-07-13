@@ -1117,11 +1117,12 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   width: 100% !important;
   flex: 1 1 100% !important;
   min-width: 0 !important;
-  padding-right: 56px !important; /* leave room for the corner count chip */
+  padding-right: 0 !important;
 }
 
-/* TOP row: action buttons. Uniform 6px gap so the row stays consistent
-   even across nested .btn-group containers (which we also flatten below). */
+/* TOP row: action buttons. Symmetric side padding reserves room for the
+   corner count while keeping the complete tool cluster centered against the
+   playlist panel rather than offsetting it from only one side. */
 .btfw-plbar__primary .btfw-plbar__actions {
   order: 1 !important;
   display: flex !important;
@@ -1129,9 +1130,10 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   align-items: center !important;
   gap: 6px !important;
   flex: 0 0 auto !important;
-  justify-content: flex-start !important;
-  width: auto !important;
-  padding-right: 0 !important;
+  justify-content: center !important;
+  width: 100% !important;
+  padding: 0 56px !important;
+  box-sizing: border-box !important;
 }
 
 /* Bootstrap nests playlist controls inside .btn-group with negative
@@ -1258,7 +1260,8 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 .btfw-plbar #clearplaylist,
 .btfw-plbar #shuffleplaylist,
 .btfw-plbar #showcustomembed,
-.btfw-plbar #showmediaurl {
+.btfw-plbar #showmediaurl,
+.btfw-plbar #btfw-pl-copytoggle {
   width: 38px !important;
   padding: 0 !important;
 }
@@ -1346,6 +1349,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 
 @media (max-width: 860px) {
   .btfw-plbar__primary { padding-right: 0 !important; }
+  .btfw-plbar__primary .btfw-plbar__actions { padding-inline: 0 !important; }
   .btfw-plbar__primary > .field.has-addons,
   .btfw-plbar__primary > .btfw-plbar__search { max-width: none !important; }
   .btfw-plbar__count { top: 8px !important; right: 10px !important; }
