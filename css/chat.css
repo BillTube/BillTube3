@@ -259,9 +259,8 @@
     max-width: 100%;
 }
 
-/* Voting card in the topbar: minimal — bare star glyphs and tiny ghost icons,
-   no backgrounds, no borders. Avg score lives in the topbar pill on the
-   right; this row is purely the rate-yourself action. */
+/* Voting surface in the topbar. Keep it compact, but give it enough contrast
+   and structure to read as an interactive rating control. */
 #chatwrap .btfw-chat-topbar #btfw-ratings-wrapper {
     width: 100%;
     flex: 0 0 auto;
@@ -274,21 +273,30 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     width: 100%;
-    padding: 0;
+    padding: 4px 6px;
     margin: 0;
-    background: transparent;
-    border: 0;
+    background: color-mix(in srgb, var(--btfw-color-surface) 74%, transparent 26%);
+    border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+    border-radius: 999px;
     box-shadow: none;
     font-size: 12px;
 }
 #chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__header { display: contents; }
-#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__label { display: none; }
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__label {
+    display: inline-flex;
+    order: -2;
+    align-items: center;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    color: color-mix(in srgb, var(--btfw-color-text) 62%, transparent 38%);
+}
 
 #chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__stars {
     display: inline-flex;
-    gap: 1px;
+    gap: 2px;
     padding: 0;
     background: transparent;
     border: 0;
@@ -298,11 +306,11 @@
     background: transparent;
     border: 0;
     box-shadow: none;
-    padding: 0 1px;
+    padding: 1px 2px;
     margin: 0;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1;
-    color: color-mix(in srgb, var(--btfw-color-text) 30%, transparent 70%);
+    color: color-mix(in srgb, var(--btfw-color-text) 46%, transparent 54%);
     cursor: pointer;
     transition: color 0.15s ease;
 }
@@ -318,35 +326,37 @@
    tell at a glance that they haven't voted yet. The hover/focus rules
    above still bring them up to full accent on interaction. */
 #chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__stars button[data-community="true"] {
-    color: color-mix(in srgb, var(--btfw-rating-accent, #ffd166) 60%, transparent 40%);
+    color: color-mix(in srgb, var(--btfw-rating-accent, #ffd166) 72%, transparent 28%);
 }
 
 #chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions {
     margin: 0 0 0 auto;
     order: 99;
-    gap: 2px;
+    gap: 4px;
     display: inline-flex;
     background: transparent;
 }
 #chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions button {
     appearance: none;
-    background: transparent;
-    border: 0;
+    background: color-mix(in srgb, var(--btfw-color-panel) 72%, transparent 28%);
+    border: 1px solid color-mix(in srgb, var(--btfw-color-text) 12%, transparent 88%);
     box-shadow: none;
-    padding: 0 4px;
+    padding: 0;
     margin: 0;
-    width: auto;
-    height: auto;
-    font-size: 13px;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    font-size: 12px;
     line-height: 1;
-    color: color-mix(in srgb, var(--btfw-color-text) 38%, transparent 62%);
+    color: color-mix(in srgb, var(--btfw-color-text) 68%, transparent 32%);
     cursor: pointer;
     transition: color 0.15s ease;
 }
 #chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions button:hover,
 #chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions button:focus-visible {
     color: var(--btfw-color-text);
-    background: transparent;
+    background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+    border-color: color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%);
 }
 
 /* The avg/votes line is redundant with the topbar star pill — hide the

@@ -100,6 +100,7 @@ BTFW.define("feature:channels", [], async () => {
         link.rel = 'noopener noreferrer';
         link.className = 'btfw-channels__link';
         link.title = channel.title || channel.channel_url;
+        link.setAttribute('aria-label', channel.title || 'Visit channel');
 
         const media = document.createElement('div');
         media.className = 'btfw-channels__media';
@@ -111,12 +112,7 @@ BTFW.define("feature:channels", [], async () => {
         img.onerror = function(){ this.classList.add('is-missing'); };
         media.appendChild(img);
 
-        const label = document.createElement('span');
-        label.className = 'btfw-channels__label';
-        label.textContent = channel.title || channel.channel_url || 'Channel';
-
         link.appendChild(media);
-        link.appendChild(label);
         item.appendChild(link);
         track.appendChild(item);
       });
@@ -218,40 +214,6 @@ BTFW.define("feature:channels", [], async () => {
 
       .btfw-channels__link:hover .btfw-channels__thumb {
         transform: scale(1.1);
-      }
-
-      /* Frosted glass — blur + a gradient mask that fades the frost in toward
-         the bottom, where the title sits. */
-      .btfw-channels__link::after {
-        content: "";
-        position: absolute;
-        inset: -0.5rem;
-        z-index: 1;
-        pointer-events: none;
-        -webkit-backdrop-filter: blur(9px) saturate(1.4) brightness(0.82);
-        backdrop-filter: blur(9px) saturate(1.4) brightness(0.82);
-        background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.12) 100%);
-        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.1) 36%, rgba(0,0,0,0.55) 54%, #000 74%);
-        mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.1) 36%, rgba(0,0,0,0.55) 54%, #000 74%);
-      }
-
-      .btfw-channels__label {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 2;
-        padding: 7px 10px 8px;
-        font-weight: 700;
-        letter-spacing: 0.01em;
-        font-size: 12px;
-        line-height: 1.22;
-        color: #fff;
-        text-shadow: 0 1px 4px rgba(0,0,0,0.55);
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
       }
 
       .btfw-channels__arrow {

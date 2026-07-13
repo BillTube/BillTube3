@@ -941,6 +941,21 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   border-radius: var(--btfw-radius-sm) !important;
 }
 
+/* Quill's default syntax block is bright white, which reads like an unthemed
+   embed inside a dark MOTD. Keep authored alignment and formatting, but bring
+   the surface, text and border into the active channel palette. */
+#motdwrap .ql-syntax,
+#motd .ql-syntax {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+  border-radius: var(--btfw-radius-xs, 8px);
+  background: color-mix(in srgb, var(--btfw-color-bg) 78%, var(--btfw-color-surface) 22%) !important;
+  color: color-mix(in srgb, var(--btfw-color-text) 90%, transparent 10%) !important;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* Grouped items use the same minimal treatment as the default headers above —
    no special tinted band or rounded inner corners. */
 .btfw-stack-item.btfw-group-item .btfw-stack-item__title {
