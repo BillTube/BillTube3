@@ -154,12 +154,13 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
       build: () => `
         <div id="btfw-emotes-pop" class="btfw-emotes-pop">
           <div class="btfw-emotes-head">
-            <div class="btfw-emotes-tabs">
-              <button class="btfw-tab is-active" data-tab="emotes">Channel</button>
-              <button class="btfw-tab" data-tab="emoji">Emoji</button>
-              <button class="btfw-tab" data-tab="recent">Recent</button>
-            </div>
-            <button class="btfw-emotes-close" data-btfw-popover-close title="Close">×</button>
+            <span class="btfw-emotes-title">Emotes</span>
+            <button class="btfw-emotes-close" data-btfw-popover-close title="Close" aria-label="Close">×</button>
+          </div>
+          <div class="btfw-emotes-tabs">
+            <button class="btfw-tab is-active" data-tab="emotes">Channel</button>
+            <button class="btfw-tab" data-tab="emoji">Emoji</button>
+            <button class="btfw-tab" data-tab="recent">Recent</button>
           </div>
           <div class="btfw-emotes-search">
             <input id="btfw-emotes-search" type="search" placeholder="Search…" autocomplete="off" />

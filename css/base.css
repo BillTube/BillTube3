@@ -235,6 +235,37 @@ footer {
     border-color: color-mix(in srgb, #f43f5e 38%, transparent) !important;
     color: #fb7185 !important;
 }
+
+/* Open/closed lock icons share one slot and cross-fade through it. Keeping
+   both glyphs in a controlled wrapper also prevents CyTube's replacement
+   Glyphicon from appearing beside the themed icon. */
+#plmeta #qlockbtn .btfw-pllock__swap {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 1em;
+    height: 1em;
+}
+#plmeta #qlockbtn .btfw-pllock__icon {
+    grid-area: 1 / 1;
+    line-height: 1;
+    transition:
+      opacity var(--btfw-motion-base, 220ms) ease,
+      filter var(--btfw-motion-base, 220ms) ease,
+      transform var(--btfw-motion-base, 220ms) var(--btfw-ease-out, ease-out);
+}
+#plmeta #qlockbtn .btfw-pllock__swap[data-state="locked"] .btfw-pllock__icon--locked,
+#plmeta #qlockbtn .btfw-pllock__swap[data-state="open"] .btfw-pllock__icon--open {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+}
+#plmeta #qlockbtn .btfw-pllock__swap[data-state="locked"] .btfw-pllock__icon--open,
+#plmeta #qlockbtn .btfw-pllock__swap[data-state="open"] .btfw-pllock__icon--locked {
+    opacity: 0;
+    filter: blur(2px);
+    transform: scale(.35);
+}
 #wrap {
   padding: 0 0 0px !important;
 }
@@ -641,6 +672,14 @@ a:hover {
 }
 
 /* ---------- Main 2-column grid: left content + splitter + right chat ---------- */
+:root.btfw-compact-stack{
+  --btfw-gap: 2px;
+}
+
+:root:not(.btfw-compact-stack){
+  --btfw-gap: 8px;
+}
+
 #btfw-grid{
   display: grid;
   grid-template-columns: minmax(520px,7fr) var(--btfw-split-width) minmax(var(--btfw-chat-min),3fr);
@@ -839,15 +878,27 @@ a:hover {
   padding-inline: 0;
   transition: padding 0.24s ease, gap 0.24s ease;
 }
+
+body:not(.btfw-mobile-stack-enabled) #btfw-stack:not(.btfw-stack--compact) .btfw-stack-list{
+  gap: 16px;
+  margin-top: 16px;
+  padding-inline: clamp(14px, 2vw, 36px);
+}
+
+body:not(.btfw-mobile-stack-enabled) #btfw-stack:not(.btfw-stack--compact) .btfw-stack-item{
+  margin-top: 12px;
+}
+
 .btfw-stack-list--compact{
-  gap: calc(var(--btfw-gap) + 6px);
+  gap: calc(var(--btfw-gap) + 4px);
 }
 body:not(.btfw-mobile-stack-enabled) #btfw-stack .btfw-stack-list.btfw-stack-list--compact{
-  padding-inline: clamp(16px, 5vw, 130px);
+  padding-inline: clamp(2px, 0.8vw, 12px);
 }
 body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack-item{
   border-radius: var(--btfw-radius);
   border-color:  color-mix(in srgb, var(--btfw-border) 28%, transparent 92%);
+  margin-top: 6px;
 }
 .btfw-stack-item{
   border: 1px solid var(--btfw-panel-border);
@@ -939,6 +990,21 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 }
 .btfw-stack-item__body #btfw-channels .btfw-channels__link {
   border-radius: var(--btfw-radius-sm) !important;
+}
+
+/* Quill's default syntax block is bright white, which reads like an unthemed
+   embed inside a dark MOTD. Keep authored alignment and formatting, but bring
+   the surface, text and border into the active channel palette. */
+#motdwrap .ql-syntax,
+#motd .ql-syntax {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+  border-radius: var(--btfw-radius-xs, 8px);
+  background: color-mix(in srgb, var(--btfw-color-bg) 78%, var(--btfw-color-surface) 22%) !important;
+  color: color-mix(in srgb, var(--btfw-color-text) 90%, transparent 10%) !important;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* Grouped items use the same minimal treatment as the default headers above —
@@ -1102,11 +1168,12 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   width: 100% !important;
   flex: 1 1 100% !important;
   min-width: 0 !important;
-  padding-right: 56px !important; /* leave room for the corner count chip */
+  padding-right: 0 !important;
 }
 
-/* TOP row: action buttons. Uniform 6px gap so the row stays consistent
-   even across nested .btn-group containers (which we also flatten below). */
+/* TOP row: action buttons. Symmetric side padding reserves room for the
+   corner count while keeping the complete tool cluster centered against the
+   playlist panel rather than offsetting it from only one side. */
 .btfw-plbar__primary .btfw-plbar__actions {
   order: 1 !important;
   display: flex !important;
@@ -1114,9 +1181,10 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   align-items: center !important;
   gap: 6px !important;
   flex: 0 0 auto !important;
-  justify-content: flex-start !important;
-  width: auto !important;
-  padding-right: 0 !important;
+  justify-content: center !important;
+  width: 100% !important;
+  padding: 0 56px !important;
+  box-sizing: border-box !important;
 }
 
 /* Bootstrap nests playlist controls inside .btn-group with negative
@@ -1243,7 +1311,8 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 .btfw-plbar #clearplaylist,
 .btfw-plbar #shuffleplaylist,
 .btfw-plbar #showcustomembed,
-.btfw-plbar #showmediaurl {
+.btfw-plbar #showmediaurl,
+.btfw-plbar #btfw-pl-copytoggle {
   width: 38px !important;
   padding: 0 !important;
 }
@@ -1253,6 +1322,27 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 .btfw-plbar .btfw-plbar__action-btn:hover {
   background: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%) !important;
   border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, transparent 52%) !important;
+}
+
+/* Action-specific icon cues inspired by Amicro's restrained morphs. */
+.btfw-plbar #btfw-pl-favtoggle > i,
+.btfw-plbar #btfw-pl-help > i,
+.btfw-plbar #btfw-pl-clear > i,
+.btfw-plbar #btfw-pl-scroll > i {
+  transform-origin: center;
+}
+.btfw-plbar #btfw-pl-favtoggle[aria-pressed="true"] > i {
+  color: #f5b301;
+  transform: rotate(-8deg) scale(1.18);
+}
+.btfw-plbar #btfw-pl-help[aria-expanded="true"] > i {
+  transform: rotate(14deg) scale(1.1);
+}
+.btfw-plbar #btfw-pl-clear:hover > i {
+  transform: rotate(90deg) scale(1.08);
+}
+.btfw-plbar #btfw-pl-scroll:hover > i {
+  transform: translate(2px, -2px) scale(1.06);
 }
 
 /* "Add media" sits in the row as just another action — neutral pill, no
@@ -1331,6 +1421,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 
 @media (max-width: 860px) {
   .btfw-plbar__primary { padding-right: 0 !important; }
+  .btfw-plbar__primary .btfw-plbar__actions { padding-inline: 0 !important; }
   .btfw-plbar__primary > .field.has-addons,
   .btfw-plbar__primary > .btfw-plbar__search { max-width: none !important; }
   .btfw-plbar__count { top: 8px !important; right: 10px !important; }
@@ -1745,6 +1836,34 @@ nav.pagination.is-centered.btfw-gif-pager {
 
 #btfw-theme-modal .btfw-ts-panel[data-tab="notifications"] .btfw-ts-grid{
   grid-template-columns: minmax(0, 1fr);
+}
+
+#btfw-theme-modal .btfw-general-reset{
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 74%, transparent 26%);
+  border-radius: var(--btfw-radius-sm);
+  background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+#btfw-theme-modal .btfw-general-reset strong{
+  display: block;
+  font-size: 0.88rem;
+  color: color-mix(in srgb, var(--btfw-color-text) 90%, transparent 10%);
+}
+
+#btfw-theme-modal .btfw-general-reset p{
+  margin: 3px 0 0;
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--btfw-color-text) 60%, transparent 40%);
+}
+
+#btfw-theme-modal .btfw-general-reset .button{
+  flex: 0 0 auto;
 }
 
 #btfw-theme-modal .btfw-ts-card{
@@ -2721,6 +2840,15 @@ body:not(.is-scrolling) #queue li {
   .btfw-tab-in { animation: none; }
 }
 
+:root[data-btfw-motion="reduced"] *,
+:root[data-btfw-motion="reduced"] *::before,
+:root[data-btfw-motion="reduced"] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
 /* Channel Settings + User options: every Bootstrap tab-pane (incl. the BillTube
    Theme panel, which is itself a tab-pane) animates in when it becomes active.
    The display:none -> block toggle restarts the animation each switch. */
@@ -2908,12 +3036,38 @@ body, #wrap { padding-top: 0 !important; }
   font-size: 12px;
   color: color-mix(in srgb, var(--btfw-color-text) 26%, transparent);
   opacity: 0;
-  transition: color .12s ease, opacity .12s ease, transform .12s ease;
+  transition:
+    color var(--btfw-motion-fast, 150ms) ease,
+    opacity var(--btfw-motion-fast, 150ms) ease,
+    transform var(--btfw-motion-base, 220ms) var(--btfw-ease-overshoot, ease-out);
 }
 #queue .queue_entry:hover .btfw-pl-star,
 #queue .queue_entry .btfw-pl-star.is-fav { opacity: 1; }
 #queue .queue_entry .btfw-pl-star:hover { transform: scale(1.18); color: #f5b301; }
-#queue .queue_entry .btfw-pl-star.is-fav { color: #f5b301; }
+#queue .queue_entry .btfw-pl-star.is-fav { color: #f5b301; transform: rotate(-7deg) scale(1.08); }
+#queue .queue_entry .btfw-pl-star.is-fav:hover { transform: rotate(0) scale(1.2); }
+
+@media (prefers-reduced-motion: reduce) {
+  #plmeta #qlockbtn .btfw-pllock__icon,
+  #queue .queue_entry .btfw-pl-star,
+  .btfw-plbar #btfw-pl-favtoggle > i,
+  .btfw-plbar #btfw-pl-help > i,
+  .btfw-plbar #btfw-pl-clear > i,
+  .btfw-plbar #btfw-pl-scroll > i {
+    transition: none !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+:root[data-btfw-motion="reduced"] #plmeta #qlockbtn .btfw-pllock__icon,
+:root[data-btfw-motion="reduced"] #queue .queue_entry .btfw-pl-star,
+:root[data-btfw-motion="reduced"] .btfw-plbar #btfw-pl-favtoggle > i,
+:root[data-btfw-motion="reduced"] .btfw-plbar #btfw-pl-help > i,
+:root[data-btfw-motion="reduced"] .btfw-plbar #btfw-pl-clear > i,
+:root[data-btfw-motion="reduced"] .btfw-plbar #btfw-pl-scroll > i {
+  transform: none !important;
+  filter: none !important;
+}
 
 /* "Show favorites only" toggle, active state. */
 #btfw-pl-favtoggle.is-active {

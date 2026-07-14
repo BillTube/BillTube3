@@ -5,29 +5,30 @@ BTFW.define("feature:footer", [], async () => {
 
   const BRANDING_HTML = `
     <div class="btfw-footer-branding__content">
+      <div class="btfw-footer-branding__credit">
+        <div class="btfw-footer-branding__identity">
+          <span class="btfw-footer-branding__mark" aria-hidden="true">BT</span>
+          <div>
+            <strong>BillTube Framework</strong>
+            <span class="btfw-footer-branding__version">Version 1</span>
+          </div>
+        </div>
+        <nav class="btfw-footer-branding__actions" aria-label="BillTube links">
+          <a href="http://discord.gg/fwadWd9" target="_blank" rel="noopener">
+            <i class="fa fa-comments" aria-hidden="true"></i>
+            Join Discord
+          </a>
+          <a class="is-accent" href="https://ko-fi.com/O5O02CIHL" rel="noopener noreferrer" target="_blank">
+            <span aria-hidden="true">☕</span>
+            Support on Ko-fi
+          </a>
+        </nav>
+      </div>
       <div class="btfw-footer-branding__disclaimer">
         <p>
-          The author is not responsible for any contents linked or referred to from these pages.
-          All CyTu.be does is link or embed content that was uploaded to popular Online Video hosting sites like Youtube.com /
-          Google Drive. All Google users signed a contract with the sites when they set up their accounts which forces them not
-          to upload illegal content. (<a href="https://www.lumendatabase.org/topics/14" target="_blank" rel="noopener">DMCA Safe Harbor</a>)
+          BillTube links to media hosted by third-party services and does not host video files.
+          <a href="https://www.lumendatabase.org/topics/14" target="_blank" rel="noopener">DMCA information</a>
         </p>
-      </div>
-      <div class="btfw-footer-branding__credit">
-        <h4>
-          <span>BillTube Framework</span>
-          <a href="http://discord.gg/fwadWd9" target="_blank" rel="noopener">Available Now</a>
-        </h4>
-        <div class="btfw-footer-branding__donate">
-          <a href="https://ko-fi.com/O5O02CIHL" rel="noopener noreferrer" target="_blank">
-            <img
-              src="https://storage.ko-fi.com/cdn/kofi3.png?v=3"
-              alt="Buy Me a Coffee at ko-fi.com"
-              height="36"
-              width="235"
-            />
-          </a>
-        </div>
       </div>
     </div>
   `;
@@ -37,72 +38,89 @@ BTFW.define("feature:footer", [], async () => {
     const style = document.createElement("style");
     style.id = "btfw-footer-styles";
     style.textContent = `
-      #btfw-footer, .btfw-footer {
+      #btfw-footer,
+      .btfw-footer {
         width: 100%;
       }
 
+      #btfw-stack-footer .btfw-footer__inner,
       .btfw-footer__inner {
         display: flex;
         flex-direction: column;
-        gap: 2rem;
-        padding: 1.5rem 1rem 3rem;
-        color: rgba(255, 255, 255, 0.85);
+        gap: 12px;
+        width: min(100%, 960px);
+        margin: 0 auto;
+        padding: 18px 12px 28px;
+        color: color-mix(in srgb, var(--btfw-color-text) 86%, transparent 14%);
       }
 
+      #btfw-stack-footer .btfw-footer__auth,
       .btfw-footer__auth {
         display: flex;
         flex-wrap: wrap;
-        gap: 14px;
+        gap: 10px;
         align-items: center;
         justify-content: center;
-        padding: 14px 16px;
-        background: color-mix(in srgb, var(--btfw-color-panel) 60%, transparent 40%);
-        border: 1px solid color-mix(in srgb, var(--btfw-border) 36%, transparent 64%);
+        width: fit-content;
+        max-width: 100%;
+        align-self: center;
+        padding: 10px 12px;
+        background:
+          linear-gradient(135deg,
+            color-mix(in srgb, var(--btfw-color-surface) 86%, transparent 14%),
+            color-mix(in srgb, var(--btfw-color-panel) 72%, transparent 28%));
+        border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
         border-radius: 14px;
       }
 
+      #btfw-stack-footer .btfw-footer__auth .btfw-footer__form,
       .btfw-footer__form {
         display: inline-flex !important;
         gap: 10px;
         align-items: center;
-        margin: 0;
-        padding: 0;
-        background: transparent;
-        border: 0;
-        box-shadow: none;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
         flex-wrap: wrap;
         flex: 0 1 auto;
       }
 
       /* Username + password inputs need higher specificity + !important to
          beat CyTube themes/slate.css which forces background-color rgb(22,26,32) */
+      #btfw-stack-footer .btfw-footer__auth input.form-control[type="text"],
+      #btfw-stack-footer .btfw-footer__auth input.form-control[type="password"],
       .btfw-footer__auth input.form-control[type="text"],
       .btfw-footer__auth input.form-control[type="password"] {
-        background-color: color-mix(in srgb, var(--btfw-color-bg) 55%, transparent 45%) !important;
+        background-color: color-mix(in srgb, var(--btfw-color-bg) 66%, transparent 34%) !important;
         background-image: none !important;
-        border: 1px solid color-mix(in srgb, var(--btfw-border) 45%, transparent 55%) !important;
+        border: 1px solid color-mix(in srgb, var(--btfw-color-text) 14%, transparent 86%) !important;
         border-radius: 999px !important;
         color: var(--btfw-color-text) !important;
         height: 36px !important;
-        padding: 0 16px !important;
+        padding: 0 14px !important;
         font-size: 13px !important;
         line-height: 1 !important;
         box-shadow: none !important;
-        width: 180px;
+        width: 165px;
         transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
       }
+      #btfw-stack-footer .btfw-footer__auth input.form-control:focus,
       .btfw-footer__auth input.form-control:focus {
         outline: none !important;
         border-color: color-mix(in srgb, var(--btfw-color-accent) 60%, transparent 40%) !important;
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%) !important;
-        background-color: color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%) !important;
+        background-color: color-mix(in srgb, var(--btfw-color-bg) 58%, transparent 42%) !important;
       }
       .btfw-footer__auth input.form-control::placeholder {
-        color: color-mix(in srgb, var(--btfw-color-text) 55%, transparent 45%);
+        color: color-mix(in srgb, var(--btfw-color-text) 58%, transparent 42%);
         opacity: 1;
       }
 
       /* "Remember me" label + checkbox */
+      #btfw-stack-footer .btfw-footer__auth label,
       .btfw-footer__auth label {
         display: inline-flex;
         align-items: center;
@@ -122,12 +140,14 @@ BTFW.define("feature:footer", [], async () => {
       }
 
       /* Login button — accent fill pill */
+      #btfw-stack-footer .btfw-footer__auth #login,
+      #btfw-stack-footer .btfw-footer__auth button.btn[type="submit"],
       .btfw-footer__auth #login,
       .btfw-footer__auth button.btn[type="submit"] {
-        background: color-mix(in srgb, var(--btfw-color-accent) 78%, transparent 22%);
-        border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 90%, transparent 10%);
+        background: color-mix(in srgb, var(--btfw-color-accent) 82%, var(--btfw-color-panel) 18%);
+        border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 72%, white 8%);
         border-radius: 999px;
-        color: var(--btfw-color-bg);
+        color: var(--btfw-color-on-accent, #fff);
         font-weight: 600;
         font-size: 13px;
         letter-spacing: 0.02em;
@@ -137,6 +157,8 @@ BTFW.define("feature:footer", [], async () => {
         box-shadow: none;
         transition: background 0.18s ease, border-color 0.18s ease;
       }
+      #btfw-stack-footer .btfw-footer__auth #login:hover,
+      #btfw-stack-footer .btfw-footer__auth button.btn[type="submit"]:hover,
       .btfw-footer__auth #login:hover,
       .btfw-footer__auth button.btn[type="submit"]:hover {
         background: var(--btfw-color-accent);
@@ -144,65 +166,177 @@ BTFW.define("feature:footer", [], async () => {
       }
 
       .btfw-footer-branding {
-        border-top: 1px solid rgba(255, 255, 255, 0.12);
-        padding-top: 1.25rem;
-        font-size: 0.85rem;
-        background: rgba(5, 6, 13, 0.35);
-        border-radius: 12px;
+        padding: 16px 18px;
+        font-size: 0.82rem;
+        background:
+          radial-gradient(circle at 0 0,
+            color-mix(in srgb, var(--btfw-color-accent) 13%, transparent 87%),
+            transparent 42%),
+          linear-gradient(135deg,
+            color-mix(in srgb, var(--btfw-color-surface) 90%, transparent 10%),
+            color-mix(in srgb, var(--btfw-color-panel) 82%, black 18%));
+        border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
+        border-radius: 16px;
+        box-shadow: 0 14px 30px color-mix(in srgb, var(--btfw-color-bg) 36%, transparent 64%);
+      }
+
+      .btfw-footer-branding__content {
+        display: grid;
+        gap: 14px;
+      }
+
+      .btfw-footer-branding__credit {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .btfw-footer-branding__identity {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .btfw-footer-branding__identity > div {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .btfw-footer-branding__identity strong {
+        color: var(--btfw-color-text);
+        font-size: 0.95rem;
+        letter-spacing: 0.01em;
+      }
+
+      .btfw-footer-branding__mark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+        border-radius: 11px;
+        border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 45%, transparent 55%);
+        background:
+          var(--btfw-dither-image, none),
+          color-mix(in srgb, var(--btfw-color-accent) 20%, var(--btfw-color-panel) 80%);
+        background-size: var(--btfw-dither-size, auto);
+        color: color-mix(in srgb, var(--btfw-color-text) 94%, white 6%);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+
+      .btfw-footer-branding__version {
+        display: inline-flex;
+        align-items: center;
+        min-height: 20px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
+        background: color-mix(in srgb, var(--btfw-color-accent) 12%, transparent 88%);
+        color: color-mix(in srgb, var(--btfw-color-text) 72%, transparent 28%);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .btfw-footer-branding__actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .btfw-footer-branding__actions a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 34px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--btfw-color-text) 14%, transparent 86%);
+        background: color-mix(in srgb, var(--btfw-color-panel) 72%, transparent 28%);
+        color: color-mix(in srgb, var(--btfw-color-text) 86%, transparent 14%);
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .btfw-footer-branding__actions a.is-accent {
+        border-color: color-mix(in srgb, var(--btfw-color-accent) 38%, transparent 62%);
+        background: color-mix(in srgb, var(--btfw-color-accent) 16%, transparent 84%);
+      }
+
+      .btfw-footer-branding__actions a:hover,
+      .btfw-footer-branding__actions a:focus-visible {
+        border-color: color-mix(in srgb, var(--btfw-color-accent) 55%, transparent 45%);
+        background: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+        color: var(--btfw-color-text);
+        outline: none;
       }
 
       .btfw-footer-branding__disclaimer {
-        margin-bottom: 1rem;
-        opacity: 0.8;
+        padding-top: 12px;
+        border-top: 1px solid color-mix(in srgb, var(--btfw-color-text) 10%, transparent 90%);
       }
 
       .btfw-footer-branding__disclaimer p {
         margin: 0;
-        text-align: center;
-        line-height: 1.5;
+        color: color-mix(in srgb, var(--btfw-color-text) 58%, transparent 42%);
+        font-size: 0.74rem;
+        line-height: 1.55;
       }
 
-      .btfw-footer-branding__disclaimer a,
-      .btfw-footer-branding__credit a {
-        color: var(--btfw-color-accent);
+      .btfw-footer-branding__disclaimer a {
+        color: color-mix(in srgb, var(--btfw-color-accent) 72%, var(--btfw-color-text) 28%);
         text-decoration: none;
         font-weight: 600;
       }
 
       .btfw-footer-branding__disclaimer a:hover,
-      .btfw-footer-branding__credit a:hover {
+      .btfw-footer-branding__disclaimer a:focus-visible {
+        color: var(--btfw-color-accent);
         text-decoration: underline;
       }
 
-      .btfw-footer-branding__credit {
-        text-align: center;
-      }
-
-      .btfw-footer-branding__credit h4 {
-        margin: 0;
-        font-size: 1rem;
-        font-weight: 600;
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-      }
-
-      .btfw-footer-branding__donate {
-        margin-top: 0.75rem;
-        display: flex;
-        justify-content: center;
-      }
-
-      @media (min-width: 640px) {
-        .btfw-footer__auth {
-          justify-content: flex-end;
-        }
-        .btfw-footer__inner {
-          padding-inline: 2.5rem;
-        }
-      }
-
       @media (max-width: 640px) {
+        #btfw-stack-footer .btfw-footer__inner,
+        .btfw-footer__inner {
+          padding: 12px 4px 20px;
+        }
+        #btfw-stack-footer .btfw-footer__auth,
+        .btfw-footer__auth {
+          width: 100%;
+        }
+        #btfw-stack-footer .btfw-footer__auth .btfw-footer__form,
+        .btfw-footer__form {
+          width: 100%;
+          justify-content: center;
+        }
+        #btfw-stack-footer .btfw-footer__auth input.form-control[type="text"],
+        #btfw-stack-footer .btfw-footer__auth input.form-control[type="password"],
+        .btfw-footer__auth input.form-control[type="text"],
+        .btfw-footer__auth input.form-control[type="password"] {
+          width: min(100%, 220px);
+          flex: 1 1 130px;
+        }
+        .btfw-footer-branding {
+          padding: 14px;
+        }
+        .btfw-footer-branding__credit {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .btfw-footer-branding__actions {
+          width: 100%;
+          justify-content: flex-start;
+        }
         .btfw-footer-branding {
           font-size: 0.8rem;
         }

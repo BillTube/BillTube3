@@ -982,10 +982,43 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-filter-status__btn.is-ghost { background: transparent; color: var(--btfw-admin-text-soft); }
       .btfw-theme-admin .btfw-filter-status__btn.is-ghost:hover { color: var(--btfw-admin-text); }
       .btfw-theme-admin .btfw-filter-status__note { margin: 0; font-size: 0.74rem; color: var(--btfw-admin-text-soft); }
-      .btfw-theme-admin .btfw-pattern-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; margin-top: 2px; }
+      .btfw-theme-admin .btfw-pattern-grid {
+        display: flex;
+        gap: 8px;
+        margin-top: 2px;
+        padding: 3px 3px 10px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-inline: contain;
+        scroll-snap-type: x proximity;
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--btfw-color-accent) 52%, transparent)
+          color-mix(in srgb, var(--btfw-admin-surface-alt) 72%, transparent);
+        cursor: grab;
+        touch-action: pan-y;
+        user-select: none;
+      }
+      .btfw-theme-admin .btfw-pattern-grid.is-dragging {
+        cursor: grabbing;
+        scroll-snap-type: none;
+      }
+      .btfw-theme-admin .btfw-pattern-grid::-webkit-scrollbar { height: 7px; }
+      .btfw-theme-admin .btfw-pattern-grid::-webkit-scrollbar-track {
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--btfw-admin-surface-alt) 72%, transparent);
+      }
+      .btfw-theme-admin .btfw-pattern-grid::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--btfw-color-accent) 52%, transparent);
+      }
+      .btfw-theme-admin .btfw-pattern-grid::-webkit-scrollbar-thumb:hover {
+        background: color-mix(in srgb, var(--btfw-color-accent) 70%, transparent);
+      }
       .btfw-theme-admin .btfw-pattern-tile {
         position: relative;
+        flex: 0 0 82px;
         height: 44px;
+        scroll-snap-align: start;
         border-radius: 8px;
         border: 1px solid var(--btfw-admin-border-soft);
         background-color: #0d0d0d;
@@ -2597,7 +2630,10 @@ function replaceBlock(original, startMarker, endMarker, block){
     const selected = cfg.background?.pattern || "none";
     panel.querySelectorAll(".btfw-pattern-tile").forEach(tile => {
       const key = tile.dataset.pattern;
-      tile.classList.toggle("is-active", key === selected);
+      const active = key === selected;
+      tile.classList.toggle("is-active", active);
+      tile.setAttribute("aria-checked", active ? "true" : "false");
+      tile.tabIndex = active ? 0 : -1;
       if (key === "none") return;
       tile.style.backgroundColor = bg;
       // tiles preview at a fixed readable opacity; intensity applies on Apply
@@ -2613,6 +2649,18 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (!grid || !input || grid.dataset.wired === "1") return;
     grid.dataset.wired = "1";
     const entries = [["none", { label: "None" }]].concat(Object.entries(BG_PATTERNS));
+    const selectTile = (tile, options = {}) => {
+      if (!tile) return;
+      const key = tile.dataset.pattern;
+      input.value = key;
+      // route through the standard bind flow so collectConfig/markDirty see it
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      if (cfg.background && typeof cfg.background === "object") cfg.background.pattern = key;
+      paintPatternPreviews(panel, cfg);
+      if (options.focus) tile.focus({ preventScroll: true });
+      tile.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
+    };
+
     entries.forEach(([key, def]) => {
       const tile = document.createElement("button");
       tile.type = "button";
@@ -2620,6 +2668,7 @@ function replaceBlock(original, startMarker, endMarker, block){
       tile.dataset.pattern = key;
       tile.title = def.label;
       tile.setAttribute("role", "radio");
+      tile.setAttribute("aria-label", def.label);
       if (key === "none") {
         tile.textContent = "None";
       } else {
@@ -2628,16 +2677,84 @@ function replaceBlock(original, startMarker, endMarker, block){
         label.textContent = def.label;
         tile.appendChild(label);
       }
-      tile.addEventListener("click", () => {
-        input.value = key;
-        // route through the standard bind flow so collectConfig/markDirty see it
-        input.dispatchEvent(new Event("change", { bubbles: true }));
-        if (cfg.background && typeof cfg.background === "object") cfg.background.pattern = key;
-        paintPatternPreviews(panel, cfg);
-      });
+      tile.addEventListener("click", () => selectTile(tile));
       grid.appendChild(tile);
     });
+
+    grid.addEventListener("keydown", (event) => {
+      const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+      if (!keys.includes(event.key)) return;
+      const tiles = Array.from(grid.querySelectorAll(".btfw-pattern-tile"));
+      if (!tiles.length) return;
+      const current = event.target.closest(".btfw-pattern-tile");
+      let index = Math.max(0, tiles.indexOf(current));
+      if (event.key === "Home") index = 0;
+      else if (event.key === "End") index = tiles.length - 1;
+      else if (event.key === "ArrowLeft") index = Math.max(0, index - 1);
+      else index = Math.min(tiles.length - 1, index + 1);
+      event.preventDefault();
+      selectTile(tiles[index], { focus: true });
+    });
+
+    let dragState = null;
+    let suppressClick = false;
+    grid.addEventListener("dragstart", (event) => event.preventDefault());
+    grid.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      dragState = {
+        id: event.pointerId,
+        startX: event.clientX,
+        startScroll: grid.scrollLeft,
+        moved: false
+      };
+    });
+    grid.addEventListener("pointermove", (event) => {
+      if (!dragState || dragState.id !== event.pointerId) return;
+      const delta = event.clientX - dragState.startX;
+      if (!dragState.moved && Math.abs(delta) < 4) return;
+      if (!dragState.moved) {
+        dragState.moved = true;
+        grid.classList.add("is-dragging");
+        // Capture only after this is definitely a drag. Capturing on pointerdown
+        // retargets a normal click to the strip and prevents the tile from
+        // receiving its click event.
+        try { grid.setPointerCapture(event.pointerId); } catch (_) {}
+      }
+      grid.scrollLeft = dragState.startScroll - delta;
+      event.preventDefault();
+    });
+    const finishDrag = (event) => {
+      if (!dragState || (event.pointerId != null && dragState.id !== event.pointerId)) return;
+      const moved = dragState.moved;
+      const pointerId = dragState.id;
+      dragState = null;
+      grid.classList.remove("is-dragging");
+      if (moved) {
+        try { grid.releasePointerCapture(pointerId); } catch (_) {}
+      }
+      if (moved) {
+        suppressClick = true;
+        setTimeout(() => { suppressClick = false; }, 0);
+      }
+    };
+    grid.addEventListener("pointerleave", (event) => {
+      if (!dragState || dragState.id !== event.pointerId || dragState.moved) return;
+      dragState = null;
+    });
+    grid.addEventListener("pointerup", finishDrag);
+    grid.addEventListener("pointercancel", finishDrag);
+    grid.addEventListener("lostpointercapture", finishDrag);
+    grid.addEventListener("click", (event) => {
+      if (!suppressClick) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
+
     paintPatternPreviews(panel, cfg);
+    requestAnimationFrame(() => {
+      const active = grid.querySelector(".btfw-pattern-tile.is-active");
+      active?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
+    });
   }
 
   function renderPreview(panel, cfg){
@@ -3480,7 +3597,7 @@ function replaceBlock(original, startMarker, endMarker, block){
             <div class="field">
               <label>Background pattern</label>
               <input type="hidden" data-btfw-bind="background.pattern" data-role="pattern-input">
-              <div class="btfw-pattern-grid" data-role="pattern-grid" role="radiogroup" aria-label="Background pattern"></div>
+              <div class="btfw-pattern-grid" data-role="pattern-grid" role="radiogroup" aria-label="Background pattern" aria-orientation="horizontal" aria-describedby="btfw-pattern-help"></div>
               <div class="btfw-pattern-intensity" data-role="pattern-intensity-row" hidden>
                 <label for="btfw-theme-pattern-intensity">Intensity</label>
                 <select id="btfw-theme-pattern-intensity" data-btfw-bind="background.intensity">
@@ -3489,7 +3606,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                   <option value="bold">Bold</option>
                 </select>
               </div>
-              <p class="help">Optional tiled backdrop drawn with your Background and Accent colors (patterns by heropatterns.com). Pick "None" for a flat background.</p>
+              <p class="help" id="btfw-pattern-help">Drag horizontally or use the arrow keys. Patterns use your Background and Accent colors (Hero Patterns); choose None for a flat background.</p>
             </div>
             <div class="field btfw-switch-field">
               <button type="button" class="btfw-switch" id="btfw-theme-dither-toggle" role="switch" aria-pressed="false">

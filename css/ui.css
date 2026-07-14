@@ -138,6 +138,26 @@ html { font-size: 16px; }
 .button:hover { color: var(--btfw-color-text, #e8eff4); }
 .button[disabled] { cursor: not-allowed; opacity: 0.5; }
 
+/* Small, consistent physical feedback for the native button layer. More
+   specific components can still provide their own directional icon motion. */
+.button:not([disabled]):not([aria-disabled="true"]) {
+  transition:
+    background-color var(--btfw-motion-fast, 150ms) ease,
+    border-color var(--btfw-motion-fast, 150ms) ease,
+    color var(--btfw-motion-fast, 150ms) ease,
+    box-shadow var(--btfw-motion-base, 220ms) var(--btfw-ease-out, ease-out),
+    transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-overshoot, ease-out);
+}
+.button:not([disabled]):not([aria-disabled="true"]):active {
+  transform: translateY(1px) scale(0.98);
+}
+.button > .fa,
+.button > .glyphicon {
+  transition:
+    color var(--btfw-motion-fast, 150ms) ease,
+    transform var(--btfw-motion-base, 220ms) var(--btfw-ease-out, ease-out);
+}
+
 .button.is-small { font-size: 0.75rem; border-radius: 2px; }
 .button.is-medium { font-size: 1.25rem; }
 .button.is-large { font-size: 1.5rem; }
@@ -572,6 +592,9 @@ html { font-size: 16px; }
 /* ---- Reduced motion -------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   .btfw-btn,
+  .button,
+  .button > .fa,
+  .button > .glyphicon,
   .btfw-field-input,
   .btfw-check,
   .btfw-check::before,
@@ -583,4 +606,10 @@ html { font-size: 16px; }
   .btfw-compact-stack-btn .btfw-compact-stack-status::after {
     transition: none !important;
   }
+  .button:not([disabled]):not([aria-disabled="true"]):active {
+    transform: none !important;
+  }
+}
+:root[data-btfw-motion="reduced"] .button:not([disabled]):not([aria-disabled="true"]):active {
+  transform: none !important;
 }

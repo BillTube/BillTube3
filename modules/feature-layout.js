@@ -1,5 +1,6 @@
 BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) => {
   const SPLIT_KEY = "btfw:grid:leftPx";
+  const CHAT_WIDTH_KEY = "btfw:layout:chatWidth";
   const CHAT_SIDE_KEY = "btfw:layout:chatSide";
   const NAV_HOST_ID = "btfw-navhost";
   const VIDEO_MIN_PX = 520;
@@ -10,6 +11,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   const MOBILE_THRESHOLD_MAX = 940;
 
   let videoColumnPx = null;
+  let chatWidthPresetPx = null;
   let chatSidePref = "right";
   let isVertical = false;
   let mobileToggleEl = null;
@@ -49,6 +51,12 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
 
   function loadVideoColumnWidth(){
     try {
+      const savedChat = parseInt(localStorage.getItem(CHAT_WIDTH_KEY) || "", 10);
+      if (!isNaN(savedChat) && savedChat >= CHAT_MIN_PX) {
+        chatWidthPresetPx = savedChat;
+        videoColumnPx = null;
+        return;
+      }
       const saved = parseInt(localStorage.getItem(SPLIT_KEY) || "", 10);
       if (!isNaN(saved) && saved >= VIDEO_MIN_PX) {
         videoColumnPx = saved;
@@ -68,7 +76,15 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       return;
     }
 
-    const stored = videoColumnPx ? Math.max(videoColumnPx, VIDEO_MIN_PX) : null;
+    const gridStyle = getComputedStyle(grid);
+    const splitWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--btfw-split-width")) || 8;
+    const gridPadding = (parseFloat(gridStyle.paddingLeft) || 0) + (parseFloat(gridStyle.paddingRight) || 0);
+    const columnGap = parseFloat(gridStyle.columnGap) || 0;
+    const columnSpace = Math.max(grid.clientWidth - gridPadding - splitWidth - (columnGap * 2), 0);
+    const presetVideo = chatWidthPresetPx
+      ? Math.max(columnSpace - chatWidthPresetPx, VIDEO_MIN_PX)
+      : null;
+    const stored = presetVideo || (videoColumnPx ? Math.max(videoColumnPx, VIDEO_MIN_PX) : null);
     // Starter split for users who haven't dragged the splitter: video-dominant
     // 80/20 on wide screens. The chat minmax floor (320px) means narrower
     // screens automatically hand chat more than 20% so it stays readable, and
@@ -90,15 +106,59 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     grid.classList.toggle("btfw-grid--chat-right", chatSidePref !== "left");
   }
 
-  function setVideoColumnWidth(px){
+  function setVideoColumnWidth(px, options = {}){
     if (!Number.isFinite(px)) return;
     const width = Math.max(px, VIDEO_MIN_PX);
+    if (options.keepChatPreset !== true) {
+      chatWidthPresetPx = null;
+      try { localStorage.removeItem(CHAT_WIDTH_KEY); } catch (_) {}
+    }
     videoColumnPx = width;
     try { localStorage.setItem(SPLIT_KEY, String(width)); } catch (_) {}
     applyColumnTemplate();
     // Re-fit any open chat popover in real time as the column resizes. Driven
     // here (every drag move) rather than via ResizeObserver so it can't stall.
     if (window.BTFW_repositionOpenPopins) window.BTFW_repositionOpenPopins();
+  }
+
+  function dispatchWidthChanged(source = "layout"){
+    const chat = document.getElementById("btfw-chatcol");
+    const video = document.getElementById("btfw-leftpad");
+    document.dispatchEvent(new CustomEvent("btfw:layout:widthChanged", {
+      detail: {
+        source,
+        mode: chatWidthPresetPx ? "preset" : (videoColumnPx ? "custom" : "auto"),
+        chatWidth: chat ? Math.round(chat.getBoundingClientRect().width) : null,
+        videoWidth: video ? Math.round(video.getBoundingClientRect().width) : null,
+        preset: chatWidthPresetPx
+      }
+    }));
+  }
+
+  function setChatColumnWidth(px, source = "settings"){
+    const width = Number(px);
+    if (!Number.isFinite(width) || width < CHAT_MIN_PX) return;
+    chatWidthPresetPx = width;
+    videoColumnPx = null;
+    try {
+      localStorage.setItem(CHAT_WIDTH_KEY, String(width));
+      localStorage.removeItem(SPLIT_KEY);
+    } catch (_) {}
+    applyColumnTemplate();
+    refreshVideoSizing();
+    requestAnimationFrame(() => dispatchWidthChanged(source));
+  }
+
+  function resetColumnWidth(source = "settings"){
+    chatWidthPresetPx = null;
+    videoColumnPx = null;
+    try {
+      localStorage.removeItem(CHAT_WIDTH_KEY);
+      localStorage.removeItem(SPLIT_KEY);
+    } catch (_) {}
+    applyColumnTemplate();
+    refreshVideoSizing();
+    requestAnimationFrame(() => dispatchWidthChanged(source));
   }
 
   function computeThreshold(){
@@ -353,6 +413,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", stopResize);
       updateResponsiveLayout();
+      requestAnimationFrame(() => dispatchWidthChanged("divider"));
     }
   }
 
@@ -559,6 +620,20 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     chatSidePref = side;
     applyColumnTemplate();
     updateResponsiveLayout();
+  });
+
+  document.addEventListener("btfw:layout:chatWidthRequest", (ev) => {
+    const requested = ev?.detail?.width;
+    const source = ev?.detail?.source || "settings";
+    if (requested === null || requested === "auto") resetColumnWidth(source);
+    else setChatColumnWidth(requested, source);
+  });
+
+  document.addEventListener("btfw:navbar:densityChanged", () => {
+    requestAnimationFrame(() => {
+      setTop();
+      updateResponsiveLayout();
+    });
   });
 
   document.addEventListener("btfw:chat:barsReady", () => {

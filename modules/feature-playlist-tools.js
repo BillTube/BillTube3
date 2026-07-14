@@ -85,7 +85,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     btn.type = "button";
     btn.id = "btfw-pl-copytoggle";
     btn.className = "button is-dark is-small btfw-plbar__action-btn";
-    btn.textContent = "Copy titles";
+    btn.innerHTML = '<i class="fa fa-copy" aria-hidden="true"></i><span class="sr-only">Copy titles</span>';
     btn.setAttribute("aria-pressed", copyTitlesEnabled ? "true" : "false");
     btn.addEventListener("click", () => {
       copyTitlesEnabled = !copyTitlesEnabled;
@@ -102,6 +102,9 @@ BTFW.define("feature:playlist-tools", [], async () => {
   function updateCopyTitlesToggleAppearance(){
     if (!copyTitlesToggle) return;
     copyTitlesToggle.setAttribute("aria-pressed", copyTitlesEnabled ? "true" : "false");
+    const label = copyTitlesEnabled ? "Disable copy-title buttons" : "Enable copy-title buttons";
+    copyTitlesToggle.setAttribute("aria-label", label);
+    copyTitlesToggle.setAttribute("title", label);
     copyTitlesToggle.classList.toggle("is-success", copyTitlesEnabled);
     copyTitlesToggle.classList.toggle("is-dark", !copyTitlesEnabled);
     copyTitlesToggle.classList.toggle("is-outlined", copyTitlesEnabled);
@@ -1030,9 +1033,23 @@ BTFW.define("feature:playlist-tools", [], async () => {
   }
   function syncLockIcon(btn){
     if (!btn) return;
-    let icon = btn.querySelector("i.fa, .glyphicon");
-    if (!icon) { icon = document.createElement("i"); btn.prepend(icon); }
-    icon.className = "fa " + (lockIsLocked(btn) ? "fa-lock" : "fa-lock-open");
+    let swap = btn.querySelector(".btfw-pllock__swap");
+    if (!swap) {
+      swap = document.createElement("span");
+      swap.className = "btfw-pllock__swap";
+      swap.setAttribute("aria-hidden", "true");
+      swap.innerHTML = [
+        '<i class="fa fa-lock btfw-pllock__icon btfw-pllock__icon--locked"></i>',
+        '<i class="fa fa-lock-open btfw-pllock__icon btfw-pllock__icon--open"></i>'
+      ].join("");
+      btn.prepend(swap);
+    }
+    // CyTube can recreate its original Glyphicon while updating the button.
+    // Remove every icon outside our single controlled swap slot.
+    btn.querySelectorAll("i.fa, .glyphicon").forEach(icon => {
+      if (!swap.contains(icon)) icon.remove();
+    });
+    swap.dataset.state = lockIsLocked(btn) ? "locked" : "open";
   }
   function ensureLockButton(){
     const meta = document.getElementById("plmeta");

@@ -1,3 +1,16 @@
+/* The mobile section switcher is injected for every viewport. Keep it out of
+   desktop document flow unless the responsive layout explicitly enables it. */
+#btfw-mobile-tabbar {
+  display: none;
+}
+
+/* The mobile action sheet is also injected at every viewport. Its phone
+   breakpoint supplies the flex layout; keep the unstyled shell (and close
+   button) out of desktop document flow. */
+#btfw-mobile-sheet {
+  display: none;
+}
+
 /* --------- Tablet & down (<= 1100px): stack columns, unstick chat --------- */
 @media (max-width: 1100px){
   #btfw-grid.btfw-grid--vertical{
