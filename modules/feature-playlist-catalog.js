@@ -23,6 +23,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     authTimer: null,
     playlistCache: null,
     playlistCacheSocket: null,
+    viewMode: "poster",
   };
 
   function channelName(){
@@ -65,6 +66,16 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   }
 
   function tokenKey(){ return `btfw:tmdb:list-sync:${channelName()}`; }
+  function viewKey(){ return `btfw:playlist-catalogue:view:${channelName()}`; }
+  function readViewMode(){ try { return localStorage.getItem(viewKey()) === "vhs" ? "vhs" : "poster"; } catch (_) { return "poster"; } }
+  function setViewMode(mode){
+    state.viewMode = mode === "vhs" ? "vhs" : "poster";
+    state.modal?.classList.toggle("is-vhs", state.viewMode === "vhs");
+    const toggle = state.modal?.querySelector("[data-action=toggle-vhs]");
+    toggle?.setAttribute("aria-pressed", String(state.viewMode === "vhs"));
+    toggle?.setAttribute("aria-label", state.viewMode === "vhs" ? "Use poster catalogue design" : "Use VHS catalogue design");
+    try { localStorage.setItem(viewKey(), state.viewMode); } catch (_) {}
+  }
   function getWriteSession(){
     try {
       const value = JSON.parse(localStorage.getItem(tokenKey()) || "{}");
@@ -125,6 +136,12 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       #btfw-playlist-catalogue h2 { margin:0; font-size:1.2rem; flex:1; }
       #btfw-playlist-catalogue button { border:0; border-radius:9px; cursor:pointer; color:inherit; background:rgba(255,255,255,.09); padding:8px 11px; }
       #btfw-playlist-catalogue button:hover { background:rgba(255,255,255,.16); }
+      #btfw-playlist-catalogue .btfw-catalogue__view-toggle { display:inline-flex; align-items:center; gap:8px; min-height:34px; padding:5px 6px 5px 10px; color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 72%,transparent); font-size:.72rem; font-weight:800; letter-spacing:.075em; text-transform:uppercase; }
+      #btfw-playlist-catalogue .btfw-catalogue__switch { position:relative; width:31px; height:18px; flex:none; border:1px solid rgba(255,255,255,.16); border-radius:999px; background:rgba(0,0,0,.35); box-shadow:inset 0 1px 3px rgba(0,0,0,.45); transition:background var(--btfw-motion-fast,150ms) ease,border-color var(--btfw-motion-fast,150ms) ease; }
+      #btfw-playlist-catalogue .btfw-catalogue__switch::after { content:""; position:absolute; width:12px; height:12px; left:2px; top:2px; border-radius:50%; background:#d9dce4; box-shadow:0 1px 3px rgba(0,0,0,.55); transition:transform var(--btfw-motion-fast,150ms) var(--btfw-ease-out,ease-out),background var(--btfw-motion-fast,150ms) ease; }
+      #btfw-playlist-catalogue .btfw-catalogue__view-toggle[aria-pressed="true"] { color:var(--btfw-color-text,#eef2ff); background:color-mix(in srgb,var(--btfw-color-accent) 16%,rgba(255,255,255,.06)); }
+      #btfw-playlist-catalogue .btfw-catalogue__view-toggle[aria-pressed="true"] .btfw-catalogue__switch { border-color:color-mix(in srgb,var(--btfw-color-accent) 64%,#fff 10%); background:color-mix(in srgb,var(--btfw-color-accent) 62%,#10131a); }
+      #btfw-playlist-catalogue .btfw-catalogue__view-toggle[aria-pressed="true"] .btfw-catalogue__switch::after { transform:translateX(13px); background:#fff; }
       #btfw-playlist-catalogue .btfw-catalogue__filters { display:grid; grid-template-columns:minmax(210px,1fr) minmax(130px,.46fr) minmax(150px,.56fr); gap:10px; padding:14px 20px 16px; border-bottom:1px solid color-mix(in srgb,var(--btfw-border,#2a2f3a) 72%,transparent); background:color-mix(in srgb,var(--btfw-color-panel,#171d2b) 82%,transparent); }
       #btfw-playlist-catalogue .btfw-catalogue__filter { min-width:0; display:flex; flex-direction:column; gap:5px; color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 66%,transparent); font-size:.68rem; font-weight:700; letter-spacing:.075em; text-transform:uppercase; }
       #btfw-playlist-catalogue input, #btfw-playlist-catalogue select { box-sizing:border-box; width:100%; min-width:0; min-height:40px; border:1px solid color-mix(in srgb,var(--btfw-border,#2a2f3a) 70%,transparent); border-radius:12px; padding:9px 13px; color:var(--btfw-color-text,#eef2ff); background:color-mix(in srgb,var(--btfw-color-panel,#171d2b) 84%,transparent); box-shadow:inset 0 1px 0 rgba(255,255,255,.035); transition:border-color .14s ease,box-shadow .14s ease,background .14s ease; }
@@ -146,6 +163,47 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       #btfw-playlist-catalogue .btfw-catalogue__title { color:inherit; font-weight:700; text-decoration:none; line-height:1.25; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       #btfw-playlist-catalogue .btfw-catalogue__meta { margin-top:5px; color:rgba(238,242,255,.67); font-size:.8rem; }
       #btfw-playlist-catalogue .btfw-catalogue__overview { margin:7px 0 0; color:rgba(238,242,255,.78); font-size:.78rem; line-height:1.36; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs { display:none; }
+      #btfw-playlist-catalogue.is-vhs .btfw-catalogue__grid { grid-template-columns:repeat(auto-fill,minmax(255px,1fr)); gap:18px 16px; }
+      #btfw-playlist-catalogue.is-vhs .btfw-catalogue__card { padding:12px 12px 11px; border-radius:15px; background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.025)); box-shadow:inset 0 1px 0 rgba(255,255,255,.035); }
+      #btfw-playlist-catalogue.is-vhs .btfw-catalogue__poster--classic { display:none; }
+      #btfw-playlist-catalogue.is-vhs .btfw-catalogue__vhs { position:relative; display:block; width:100%; aspect-ratio:1.82/1; color:inherit; text-decoration:none; perspective:900px; outline:none; filter:drop-shadow(0 12px 9px rgba(0,0,0,.42)); transition:filter var(--btfw-motion-fast,150ms) ease,transform var(--btfw-motion-fast,150ms) var(--btfw-ease-out,ease-out); }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-rotor { position:absolute; inset:0; display:block; transform-style:preserve-3d; transition:transform 360ms cubic-bezier(.2,.72,.22,1); }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-face { position:absolute; inset:0; display:block; overflow:hidden; border:1px solid rgba(255,255,255,.16); border-radius:8px 8px 11px 11px; backface-visibility:hidden; -webkit-backface-visibility:hidden; box-shadow:inset 0 2px 1px rgba(255,255,255,.1),inset 0 -4px 8px rgba(0,0,0,.72),0 2px 0 #050607; }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-front { background:linear-gradient(90deg,transparent 4%,rgba(255,255,255,.06) 4.5%,transparent 5.2%,transparent 94.8%,rgba(255,255,255,.06) 95.5%,transparent 96%),linear-gradient(180deg,#272a2e 0,#111317 14%,#090b0e 82%,#181b1f 100%); }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-front::before { content:""; position:absolute; z-index:3; left:7%; right:7%; top:5.5%; height:4px; border-top:1px solid rgba(255,255,255,.18); border-bottom:1px solid rgba(0,0,0,.9); border-radius:50%; opacity:.72; }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-front::after { content:""; position:absolute; z-index:4; left:33%; right:33%; bottom:7%; height:20%; border:1px solid rgba(255,255,255,.1); background:linear-gradient(180deg,#08090b,#1d2024 65%,#050607); clip-path:polygon(12% 0,88% 0,100% 100%,0 100%); box-shadow:inset 0 2px 4px #000; }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-label { position:absolute; z-index:1; inset:10% 8% 18%; overflow:hidden; display:block; border:1px solid rgba(240,234,211,.4); border-radius:4px; background:linear-gradient(135deg,#3b3e43,#15171b); box-shadow:0 1px 0 rgba(255,255,255,.1),inset 0 0 16px rgba(0,0,0,.2); }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-art { display:block; width:100%; height:100%; object-fit:cover; object-position:center 28%; background:linear-gradient(135deg,#343944,#14171d); filter:saturate(.88) contrast(.96); }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-label::after { content:""; position:absolute; inset:0; background:linear-gradient(105deg,rgba(255,255,255,.18),transparent 18%,transparent 70%,rgba(0,0,0,.28)),linear-gradient(180deg,rgba(239,229,198,.12),transparent 42%,rgba(12,13,15,.2)); mix-blend-mode:soft-light; pointer-events:none; }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-reel { position:absolute; z-index:3; top:48%; width:22%; aspect-ratio:1; display:block; border:clamp(3px,.55vw,6px) solid rgba(225,222,205,.88); border-radius:50%; background:repeating-conic-gradient(from 4deg,#797b78 0 7deg,#24272a 7deg 15deg); box-shadow:0 0 0 3px rgba(7,8,9,.9),0 0 0 4px rgba(255,255,255,.12),inset 0 0 0 5px #111316,inset 0 0 8px #000; transition:transform 420ms cubic-bezier(.2,.72,.22,1); }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-reel::after { content:""; position:absolute; inset:34%; border-radius:50%; background:#050607; box-shadow:0 0 0 2px rgba(238,235,218,.72); }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-reel--left { left:17%; }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-reel--right { right:17%; }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-mark { position:absolute; z-index:5; left:10%; bottom:5%; color:rgba(232,231,220,.58); font:700 clamp(6px,.64vw,9px)/1 ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:.12em; }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-back { transform:rotateY(180deg); background:radial-gradient(circle at 23% 29%,#08090a 0 8%,#777a79 8.5% 10%,#17191c 10.5% 17%,transparent 17.5%),radial-gradient(circle at 77% 29%,#08090a 0 8%,#777a79 8.5% 10%,#17191c 10.5% 17%,transparent 17.5%),linear-gradient(180deg,#22252a,#090a0d 82%,#1a1d21); }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-back::after { content:""; position:absolute; left:4%; right:4%; bottom:5%; height:7%; border-radius:1px; background:repeating-linear-gradient(90deg,#050607 0 3%,#23262a 3% 5%); box-shadow:0 -1px rgba(255,255,255,.09); }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-info { position:absolute; z-index:2; left:10%; right:10%; top:12%; bottom:16%; display:flex; flex-direction:column; padding:8px 10px; overflow:hidden; border:1px solid rgba(78,68,52,.46); border-radius:3px; color:#25221d; background:linear-gradient(165deg,#e5dfcc,#c7bea7); box-shadow:0 1px 0 rgba(255,255,255,.18),inset 0 0 18px rgba(92,72,42,.12); text-shadow:none; }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-title { display:block; overflow:hidden; color:#1d1a16; font-size:clamp(.7rem,.9vw,.84rem); font-weight:800; line-height:1.14; white-space:nowrap; text-overflow:ellipsis; }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-meta { display:block; margin-top:3px; padding-bottom:4px; border-bottom:1px solid rgba(48,41,32,.28); color:#554c3e; font:700 clamp(.52rem,.62vw,.62rem)/1.1 ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:.04em; text-transform:uppercase; }
+      #btfw-playlist-catalogue .btfw-catalogue__vhs-overview { display:-webkit-box; margin-top:5px; overflow:hidden; color:#39342c; font-size:clamp(.56rem,.68vw,.68rem); line-height:1.22; -webkit-box-orient:vertical; -webkit-line-clamp:3; }
+      #btfw-playlist-catalogue.is-vhs .btfw-catalogue__copy { padding:10px 3px 1px; }
+      #btfw-playlist-catalogue.is-vhs .btfw-catalogue__overview { display:none; -webkit-line-clamp:2; }
+      @media (hover:hover) and (pointer:fine){
+        #btfw-playlist-catalogue.is-vhs .btfw-catalogue__vhs:hover, #btfw-playlist-catalogue.is-vhs .btfw-catalogue__vhs:focus-visible { transform:translateY(-3px); filter:drop-shadow(0 17px 12px rgba(0,0,0,.5)); }
+        #btfw-playlist-catalogue.is-vhs .btfw-catalogue__vhs:hover .btfw-catalogue__vhs-rotor, #btfw-playlist-catalogue.is-vhs .btfw-catalogue__vhs:focus-visible .btfw-catalogue__vhs-rotor { transform:rotateY(180deg); }
+        #btfw-playlist-catalogue.is-vhs .btfw-catalogue__vhs:hover .btfw-catalogue__vhs-reel--left, #btfw-playlist-catalogue.is-vhs .btfw-catalogue__vhs:focus-visible .btfw-catalogue__vhs-reel--left { transform:rotate(-18deg); }
+        #btfw-playlist-catalogue.is-vhs .btfw-catalogue__vhs:hover .btfw-catalogue__vhs-reel--right, #btfw-playlist-catalogue.is-vhs .btfw-catalogue__vhs:focus-visible .btfw-catalogue__vhs-reel--right { transform:rotate(18deg); }
+        #btfw-playlist-catalogue.is-vhs .btfw-catalogue__vhs:active { transform:translateY(-1px) scale(.99); }
+      }
+      @media(max-width:640px){ #btfw-playlist-catalogue.is-vhs .btfw-catalogue__grid { grid-template-columns:1fr; } #btfw-playlist-catalogue.is-vhs .btfw-catalogue__overview { display:-webkit-box; } }
+      @media(hover:none){ #btfw-playlist-catalogue.is-vhs .btfw-catalogue__overview { display:-webkit-box; } }
+      #btfw-playlist-catalogue.is-vhs .btfw-catalogue__vhs:focus-visible { border-radius:10px; box-shadow:0 0 0 3px color-mix(in srgb,var(--btfw-color-accent) 58%,transparent); }
+      #btfw-playlist-catalogue.is-vhs .btfw-catalogue__vhs:focus-visible .btfw-catalogue__vhs-rotor { transform:rotateY(180deg); }
+      @media(max-width:430px){ #btfw-playlist-catalogue .btfw-catalogue__view-toggle > span:first-child { display:none; } #btfw-playlist-catalogue .btfw-catalogue__view-toggle { padding-left:6px; } }
+      @media (prefers-reduced-motion:reduce){ #btfw-playlist-catalogue .btfw-catalogue__vhs, #btfw-playlist-catalogue .btfw-catalogue__vhs-rotor, #btfw-playlist-catalogue .btfw-catalogue__vhs-reel { transition:none !important; transform:none !important; } #btfw-playlist-catalogue.is-vhs .btfw-catalogue__overview { display:-webkit-box; } }
+      :root[data-btfw-motion="reduced"] #btfw-playlist-catalogue .btfw-catalogue__vhs, :root[data-btfw-motion="reduced"] #btfw-playlist-catalogue .btfw-catalogue__vhs-rotor, :root[data-btfw-motion="reduced"] #btfw-playlist-catalogue .btfw-catalogue__vhs-reel { transition:none !important; transform:none !important; }
+      :root[data-btfw-motion="reduced"] #btfw-playlist-catalogue.is-vhs .btfw-catalogue__overview { display:-webkit-box; }
       #btfw-playlist-catalogue .btfw-catalogue__empty { padding:34px 0; text-align:center; color:rgba(238,242,255,.68); }
       #btfw-playlist-catalogue .btfw-catalogue__foot { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 20px 14px; color:rgba(238,242,255,.48); font-size:.72rem; border-top:1px solid rgba(255,255,255,.08); }
       #btfw-playlist-catalogue .btfw-catalogue__foot span:first-child { min-width:0; }
@@ -162,13 +220,14 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     modal.id = "btfw-playlist-catalogue";
     modal.innerHTML = `
       <section class="btfw-catalogue__dialog" role="dialog" aria-modal="true" aria-labelledby="btfw-catalogue-title">
-        <header class="btfw-catalogue__head"><h2 id="btfw-catalogue-title">Movie Catalogue</h2><button type="button" data-action="close" aria-label="Close catalogue">×</button></header>
+        <header class="btfw-catalogue__head"><h2 id="btfw-catalogue-title">Movie Catalogue</h2><button type="button" class="btfw-catalogue__view-toggle" data-action="toggle-vhs" aria-label="Use VHS catalogue design" aria-pressed="false"><span>VHS</span><span class="btfw-catalogue__switch" aria-hidden="true"></span></button><button type="button" data-action="close" aria-label="Close catalogue">×</button></header>
         <div class="btfw-catalogue__filters"><label class="btfw-catalogue__filter"><span>Search catalog</span><input type="search" data-role="query" placeholder="Find a movie…"></label><label class="btfw-catalogue__filter"><span>Format</span><select data-role="type"><option value="">All media</option><option value="movie">Movies</option><option value="tv">TV shows</option></select></label><label class="btfw-catalogue__filter"><span>Sort by</span><select data-role="sort"><option value="order">Playlist order</option><option value="title">Title</option><option value="date">Release date</option><option value="rating">TMDB rating</option></select></label></div>
         <div class="btfw-catalogue__status" data-role="status"></div><main class="btfw-catalogue__body"><div class="btfw-catalogue__grid" data-role="list"></div></main>
         <footer class="btfw-catalogue__foot"><span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span><span class="btfw-catalogue__load-status" data-role="load-status"></span></footer>
       </section>`;
     document.body.appendChild(modal);
     state.modal = modal;
+    setViewMode(readViewMode());
     state.listEl = $("[data-role=list]", modal);
     state.statusEl = $("[data-role=status]", modal);
     state.loadStatusEl = $("[data-role=load-status]", modal);
@@ -176,6 +235,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     state.typeEl = $("[data-role=type]", modal);
     state.sortEl = $("[data-role=sort]", modal);
     modal.addEventListener("click", event => { if (event.target === modal || event.target.closest("[data-action=close]")) closeModal(); });
+    $("[data-action=toggle-vhs]", modal).addEventListener("click", () => setViewMode(state.viewMode === "vhs" ? "poster" : "vhs"));
     modal.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
     [state.queryEl, state.typeEl, state.sortEl].forEach(el => el.addEventListener("input", () => { render(); if (state.queryEl.value.trim()) loadAllPages(); }));
     $(".btfw-catalogue__body", modal).addEventListener("scroll", event => {
@@ -230,7 +290,9 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       const rating = Number(item.vote_average || 0);
       const id = encodeURIComponent(item.id || "");
       const url = `https://www.themoviedb.org/${itemType(item) === "tv" ? "tv" : "movie"}/${id}`;
-      return `<article class="btfw-catalogue__card"><img class="btfw-catalogue__poster" ${poster ? `data-src="${escapeAttr(poster)}"` : ""} alt="" loading="lazy"><div class="btfw-catalogue__copy"><a class="btfw-catalogue__title" href="${url}" target="_blank" rel="noopener">${title}</a><div class="btfw-catalogue__meta">${type}${year ? ` · ${escapeHtml(year)}` : ""}${rating ? ` · ★ ${rating.toFixed(1)}` : ""}</div>${item.overview ? `<p class="btfw-catalogue__overview">${escapeHtml(item.overview)}</p>` : ""}</div></article>`;
+      const meta = `${type}${year ? ` · ${escapeHtml(year)}` : ""}${rating ? ` · ★ ${rating.toFixed(1)}` : ""}`;
+      const overview = item.overview ? escapeHtml(item.overview) : "No synopsis available.";
+      return `<article class="btfw-catalogue__card"><img class="btfw-catalogue__poster btfw-catalogue__poster--classic" ${poster ? `data-src="${escapeAttr(poster)}"` : ""} alt="" loading="lazy"><a class="btfw-catalogue__vhs" href="${url}" target="_blank" rel="noopener" aria-label="View ${escapeAttr(itemTitle(item))} on TMDB"><span class="btfw-catalogue__vhs-rotor"><span class="btfw-catalogue__vhs-face btfw-catalogue__vhs-front" aria-hidden="true"><span class="btfw-catalogue__vhs-label"><img class="btfw-catalogue__vhs-art" ${poster ? `data-src="${escapeAttr(poster)}"` : ""} alt="" loading="lazy"></span><span class="btfw-catalogue__vhs-reel btfw-catalogue__vhs-reel--left"></span><span class="btfw-catalogue__vhs-reel btfw-catalogue__vhs-reel--right"></span><span class="btfw-catalogue__vhs-mark">VHS · BT-120</span></span><span class="btfw-catalogue__vhs-face btfw-catalogue__vhs-back" aria-hidden="true"><span class="btfw-catalogue__vhs-info"><span class="btfw-catalogue__vhs-title">${title}</span><span class="btfw-catalogue__vhs-meta">${meta}</span><span class="btfw-catalogue__vhs-overview">${overview}</span></span></span></span></a><div class="btfw-catalogue__copy"><a class="btfw-catalogue__title" href="${url}" target="_blank" rel="noopener">${title}</a><div class="btfw-catalogue__meta">${meta}</div>${item.overview ? `<p class="btfw-catalogue__overview">${overview}</p>` : ""}</div></article>`;
     }).join("");
     state.listEl.querySelectorAll("img[data-src]").forEach(img => { img.src = img.dataset.src; });
   }
