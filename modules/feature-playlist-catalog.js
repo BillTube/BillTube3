@@ -136,6 +136,9 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       #btfw-playlist-catalogue h2 { margin:0; font-size:1.2rem; flex:1; }
       #btfw-playlist-catalogue button { border:0; border-radius:9px; cursor:pointer; color:inherit; background:rgba(255,255,255,.09); padding:8px 11px; }
       #btfw-playlist-catalogue button:hover { background:rgba(255,255,255,.16); }
+      #btfw-playlist-catalogue [data-action="close"] { border:0; border-radius:12px; padding:0 4px; background:transparent; color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 70%,transparent); font-size:18px; line-height:1; transition:color .14s ease; }
+      #btfw-playlist-catalogue [data-action="close"]:hover { background:transparent; color:var(--btfw-color-accent); }
+      #btfw-playlist-catalogue [data-action="close"]:focus-visible { outline:2px solid color-mix(in srgb,var(--btfw-color-accent) 68%,transparent); outline-offset:1px; }
       #btfw-playlist-catalogue .btfw-catalogue__view-toggle { display:inline-flex; align-items:center; gap:8px; min-height:34px; padding:5px 6px 5px 10px; color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 72%,transparent); font-size:.72rem; font-weight:800; letter-spacing:.075em; text-transform:uppercase; }
       #btfw-playlist-catalogue .btfw-catalogue__switch { position:relative; width:31px; height:18px; flex:none; border:1px solid rgba(255,255,255,.16); border-radius:999px; background:rgba(0,0,0,.35); box-shadow:inset 0 1px 3px rgba(0,0,0,.45); transition:background var(--btfw-motion-fast,150ms) ease,border-color var(--btfw-motion-fast,150ms) ease; }
       #btfw-playlist-catalogue .btfw-catalogue__switch::after { content:""; position:absolute; width:12px; height:12px; left:2px; top:2px; border-radius:50%; background:#d9dce4; box-shadow:0 1px 3px rgba(0,0,0,.55); transition:transform var(--btfw-motion-fast,150ms) var(--btfw-ease-out,ease-out),background var(--btfw-motion-fast,150ms) ease; }
