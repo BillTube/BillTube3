@@ -373,20 +373,30 @@ BTFW.define("feature:ratings", [], async () => {
       #btfw-ratings .btfw-ratings__actions button { display:inline-flex; align-items:center; justify-content:center; min-width:0; }
       #btfw-ratings .btfw-ratings__stars { display:flex; align-items:center; gap:3px; }
       #btfw-ratings .btfw-ratings__stars button { appearance:none; border:none; background:none; color:rgba(255,255,255,.32);
-        cursor:pointer; padding:0 2px; font-size:18px; line-height:1; transition:color .15s ease; }
+        cursor:pointer; padding:0 2px; font-size:18px; line-height:1; transform-origin:50% 65%;
+        transition:color var(--btfw-motion-fast,150ms) ease, filter var(--btfw-motion-fast,150ms) ease,
+          transform var(--btfw-motion-base,220ms) var(--btfw-ease-overshoot,cubic-bezier(.34,1.56,.64,1)); }
       #btfw-ratings[data-loading="true"] .btfw-ratings__stars button,
       #btfw-ratings[data-disabled="true"] .btfw-ratings__stars button { cursor:default; pointer-events:none; opacity:.55; }
       #btfw-ratings .btfw-ratings__stars button[data-active="true"],
       #btfw-ratings .btfw-ratings__stars button:hover,
       #btfw-ratings .btfw-ratings__stars button:focus-visible { color: var(--btfw-rating-accent, #ffd166); }
+      #btfw-ratings .btfw-ratings__stars button:hover,
+      #btfw-ratings .btfw-ratings__stars button:focus-visible { filter:drop-shadow(0 2px 5px color-mix(in srgb,var(--btfw-rating-accent,#ffd166) 35%,transparent)); transform:translateY(-1px) scale(1.2); }
+      #btfw-ratings .btfw-ratings__stars button:active { transform:translateY(1px) scale(.92); }
       #btfw-ratings .btfw-ratings__meta-group { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px; opacity:.8; }
       #btfw-ratings .btfw-ratings__meta { white-space:nowrap; }
       #btfw-ratings .btfw-ratings__self { font-size:12px; opacity:.9; color: var(--btfw-rating-accent, #ffd166); }
       #btfw-ratings .btfw-ratings__error { font-size:11px; color:#ff879d; }
       #btfw-ratings .btfw-ratings__refresh,
       #btfw-ratings .btfw-ratings__list { appearance:none; border:none; background:none; color:rgba(255,255,255,.45);
-        cursor:pointer; padding:0 4px; font-size:14px; line-height:1; transition:color .15s ease; }
+        cursor:pointer; padding:0 4px; font-size:14px; line-height:1; transition:color var(--btfw-motion-fast,150ms) ease, transform var(--btfw-motion-base,220ms) var(--btfw-ease-out,ease-out); }
       #btfw-ratings .btfw-ratings__list { font-size:13px; }
+      #btfw-ratings .btfw-ratings__refresh:hover,
+      #btfw-ratings .btfw-ratings__refresh:focus-visible { transform:rotate(90deg); }
+      #btfw-ratings .btfw-ratings__refresh:active { transform:rotate(180deg) scale(.9); }
+      #btfw-ratings .btfw-ratings__list:hover,
+      #btfw-ratings .btfw-ratings__list:focus-visible { transform:scaleX(1.14); }
       #btfw-ratings .btfw-ratings__refresh:hover,
       #btfw-ratings .btfw-ratings__refresh:focus-visible,
       #btfw-ratings .btfw-ratings__list:hover,
@@ -460,6 +470,17 @@ BTFW.define("feature:ratings", [], async () => {
         line-height: 1;
       }
       .btfw-rating-pill__value { font-variant-numeric: tabular-nums; }
+      @media (prefers-reduced-motion: reduce) {
+        #btfw-ratings .btfw-ratings__stars button,
+        #btfw-ratings .btfw-ratings__refresh,
+        #btfw-ratings .btfw-ratings__list { transition:none !important; transform:none !important; filter:none !important; }
+      }
+      :root[data-btfw-motion="reduced"] #btfw-ratings .btfw-ratings__stars button,
+      :root[data-btfw-motion="reduced"] #btfw-ratings .btfw-ratings__refresh,
+      :root[data-btfw-motion="reduced"] #btfw-ratings .btfw-ratings__list {
+        transform:none !important;
+        filter:none !important;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -1173,7 +1194,6 @@ BTFW.define("feature:ratings", [], async () => {
     el.hidden = true;
     el.innerHTML = `
       <div class="btfw-ratings__header">
-        <span class="btfw-ratings__label">Rate</span>
         <div class="btfw-ratings__actions">
           <button type="button" class="btfw-ratings__list" title="Show rated movies" aria-label="Show rated movies">≣</button>
           <button type="button" class="btfw-ratings__refresh" title="Refresh rating" aria-label="Refresh rating">⟳</button>

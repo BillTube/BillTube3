@@ -235,6 +235,37 @@ footer {
     border-color: color-mix(in srgb, #f43f5e 38%, transparent) !important;
     color: #fb7185 !important;
 }
+
+/* Open/closed lock icons share one slot and cross-fade through it. Keeping
+   both glyphs in a controlled wrapper also prevents CyTube's replacement
+   Glyphicon from appearing beside the themed icon. */
+#plmeta #qlockbtn .btfw-pllock__swap {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 1em;
+    height: 1em;
+}
+#plmeta #qlockbtn .btfw-pllock__icon {
+    grid-area: 1 / 1;
+    line-height: 1;
+    transition:
+      opacity var(--btfw-motion-base, 220ms) ease,
+      filter var(--btfw-motion-base, 220ms) ease,
+      transform var(--btfw-motion-base, 220ms) var(--btfw-ease-out, ease-out);
+}
+#plmeta #qlockbtn .btfw-pllock__swap[data-state="locked"] .btfw-pllock__icon--locked,
+#plmeta #qlockbtn .btfw-pllock__swap[data-state="open"] .btfw-pllock__icon--open {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+}
+#plmeta #qlockbtn .btfw-pllock__swap[data-state="locked"] .btfw-pllock__icon--open,
+#plmeta #qlockbtn .btfw-pllock__swap[data-state="open"] .btfw-pllock__icon--locked {
+    opacity: 0;
+    filter: blur(2px);
+    transform: scale(.35);
+}
 #wrap {
   padding: 0 0 0px !important;
 }
@@ -1291,6 +1322,27 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 .btfw-plbar .btfw-plbar__action-btn:hover {
   background: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%) !important;
   border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, transparent 52%) !important;
+}
+
+/* Action-specific icon cues inspired by Amicro's restrained morphs. */
+.btfw-plbar #btfw-pl-favtoggle > i,
+.btfw-plbar #btfw-pl-help > i,
+.btfw-plbar #btfw-pl-clear > i,
+.btfw-plbar #btfw-pl-scroll > i {
+  transform-origin: center;
+}
+.btfw-plbar #btfw-pl-favtoggle[aria-pressed="true"] > i {
+  color: #f5b301;
+  transform: rotate(-8deg) scale(1.18);
+}
+.btfw-plbar #btfw-pl-help[aria-expanded="true"] > i {
+  transform: rotate(14deg) scale(1.1);
+}
+.btfw-plbar #btfw-pl-clear:hover > i {
+  transform: rotate(90deg) scale(1.08);
+}
+.btfw-plbar #btfw-pl-scroll:hover > i {
+  transform: translate(2px, -2px) scale(1.06);
 }
 
 /* "Add media" sits in the row as just another action — neutral pill, no
@@ -2984,12 +3036,38 @@ body, #wrap { padding-top: 0 !important; }
   font-size: 12px;
   color: color-mix(in srgb, var(--btfw-color-text) 26%, transparent);
   opacity: 0;
-  transition: color .12s ease, opacity .12s ease, transform .12s ease;
+  transition:
+    color var(--btfw-motion-fast, 150ms) ease,
+    opacity var(--btfw-motion-fast, 150ms) ease,
+    transform var(--btfw-motion-base, 220ms) var(--btfw-ease-overshoot, ease-out);
 }
 #queue .queue_entry:hover .btfw-pl-star,
 #queue .queue_entry .btfw-pl-star.is-fav { opacity: 1; }
 #queue .queue_entry .btfw-pl-star:hover { transform: scale(1.18); color: #f5b301; }
-#queue .queue_entry .btfw-pl-star.is-fav { color: #f5b301; }
+#queue .queue_entry .btfw-pl-star.is-fav { color: #f5b301; transform: rotate(-7deg) scale(1.08); }
+#queue .queue_entry .btfw-pl-star.is-fav:hover { transform: rotate(0) scale(1.2); }
+
+@media (prefers-reduced-motion: reduce) {
+  #plmeta #qlockbtn .btfw-pllock__icon,
+  #queue .queue_entry .btfw-pl-star,
+  .btfw-plbar #btfw-pl-favtoggle > i,
+  .btfw-plbar #btfw-pl-help > i,
+  .btfw-plbar #btfw-pl-clear > i,
+  .btfw-plbar #btfw-pl-scroll > i {
+    transition: none !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+:root[data-btfw-motion="reduced"] #plmeta #qlockbtn .btfw-pllock__icon,
+:root[data-btfw-motion="reduced"] #queue .queue_entry .btfw-pl-star,
+:root[data-btfw-motion="reduced"] .btfw-plbar #btfw-pl-favtoggle > i,
+:root[data-btfw-motion="reduced"] .btfw-plbar #btfw-pl-help > i,
+:root[data-btfw-motion="reduced"] .btfw-plbar #btfw-pl-clear > i,
+:root[data-btfw-motion="reduced"] .btfw-plbar #btfw-pl-scroll > i {
+  transform: none !important;
+  filter: none !important;
+}
 
 /* "Show favorites only" toggle, active state. */
 #btfw-pl-favtoggle.is-active {
