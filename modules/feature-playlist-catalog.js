@@ -23,7 +23,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     authTimer: null,
     playlistCache: null,
     playlistCacheSocket: null,
-    viewMode: "poster",
+    viewMode: "vhs",
   };
 
   function channelName(){
@@ -67,7 +67,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
 
   function tokenKey(){ return `btfw:tmdb:list-sync:${channelName()}`; }
   function viewKey(){ return `btfw:playlist-catalogue:view:${channelName()}`; }
-  function readViewMode(){ try { return localStorage.getItem(viewKey()) === "vhs" ? "vhs" : "poster"; } catch (_) { return "poster"; } }
+  function readViewMode(){ try { return localStorage.getItem(viewKey()) === "poster" ? "poster" : "vhs"; } catch (_) { return "vhs"; } }
   function setViewMode(mode){
     state.viewMode = mode === "vhs" ? "vhs" : "poster";
     state.modal?.classList.toggle("is-vhs", state.viewMode === "vhs");
