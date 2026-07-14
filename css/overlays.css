@@ -2192,7 +2192,9 @@ html[data-btfw-theme="dark"] .panel {
 .btfw-notice{
   pointer-events: auto;
   width: 100%;
-  background-color: var(--btfw-notice-bg, color-mix(in srgb, var(--btfw-overlay-bg) 96%, transparent 4%));
+  /* Keep the glass effect, but give text a reliably dark surface underneath. */
+  background-color: color-mix(in srgb,
+    var(--btfw-notice-bg, var(--btfw-overlay-bg)) 88%, transparent 12%);
   background-image: var(--btfw-dither-image);
   background-size: var(--btfw-dither-size);
   background-position: 0 0;
@@ -2210,7 +2212,7 @@ html[data-btfw-theme="dark"] .panel {
 }
 
 .btfw-notice--info{
-  --btfw-notice-bg: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
+  --btfw-notice-bg: color-mix(in srgb, var(--btfw-color-bg) 84%, var(--btfw-color-accent) 16%);
   --btfw-notice-border: color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);
   --btfw-notice-accent: color-mix(in srgb, var(--btfw-color-accent) 70%, #5aa2ff 30%);
   --btfw-notice-icon-bg: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
@@ -2218,13 +2220,14 @@ html[data-btfw-theme="dark"] .panel {
 }
 
 .btfw-notice--success{
+  --btfw-notice-bg: color-mix(in srgb, var(--btfw-color-bg) 84%, var(--btfw-color-accent) 16%);
   --btfw-notice-accent: var(--btfw-color-accent);
   --btfw-notice-icon-bg: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
   --btfw-notice-icon-color: var(--btfw-color-on-accent);
 }
 
 .btfw-notice--warn{
-  --btfw-notice-bg: color-mix(in srgb, #ffb347 36%, var(--btfw-color-panel) 64%);
+  --btfw-notice-bg: color-mix(in srgb, var(--btfw-color-bg) 80%, #ffb347 20%);
   --btfw-notice-border: color-mix(in srgb, #ffb347 48%, var(--btfw-color-accent) 52%);
   --btfw-notice-accent: color-mix(in srgb, #ffb347 70%, var(--btfw-color-accent) 30%);
   --btfw-notice-icon-bg: color-mix(in srgb, #ffb347 26%, transparent 74%);
@@ -2232,7 +2235,7 @@ html[data-btfw-theme="dark"] .panel {
 }
 
 .btfw-notice--error{
-  --btfw-notice-bg: color-mix(in srgb, #ff6f96 36%, var(--btfw-color-panel) 64%);
+  --btfw-notice-bg: color-mix(in srgb, var(--btfw-color-bg) 80%, #ff6f96 20%);
   --btfw-notice-border: color-mix(in srgb, #ff6f96 48%, var(--btfw-color-accent) 52%);
   --btfw-notice-accent: color-mix(in srgb, #ff6f96 70%, var(--btfw-color-accent) 30%);
   --btfw-notice-icon-bg: color-mix(in srgb, #ff6f96 26%, transparent 74%);
