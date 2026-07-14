@@ -518,6 +518,10 @@
    ====================================================================== */
 
 .btfw-chat-topbar {
+  /* The blur creates a stacking context. Lift that context above the later
+     paint-contained message buffer so child toasts can cover chat media. */
+  position: relative;
+  z-index: 20;
   background-color: color-mix(in srgb, var(--btfw-color-bg) 42%, var(--btfw-color-panel) 58%) !important;
   background-image:
     var(--btfw-dither-image),

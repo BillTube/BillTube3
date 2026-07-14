@@ -121,53 +121,10 @@
   border-color: var(--btfw-vjs-accent-soft);
 }
 
+/* The large centre overlay duplicates the persistent control-bar play button
+   and obscures the video while a source reloads. */
 #videowrap .video-js.btfw-videojs-themed .vjs-big-play-button{
-  top: 50%;
-  left: 50%;
-  /* We center with transform; zero VideoJS's default centering margin
-     (-0.81em/-1.5em) so the two don't stack and push the button off-centre. */
-  margin: 0;
-  transform: translate(-50%, -50%);
-  width: 84px;
-  height: 84px;
-  border-radius: 22px;
-  background: color-mix(in srgb, var(--btfw-color-bg) 30%, black 70%);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
-  box-shadow: 0 16px 34px color-mix(in srgb, var(--btfw-color-bg) 56%, transparent 44%),
-    0 6px 16px color-mix(in srgb, black 20%, transparent 80%);
-
-  display: grid;
-  place-items: center;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-}
-
-#videowrap .video-js.btfw-videojs-themed .vjs-big-play-button .vjs-icon-placeholder{
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  line-height: 1;
-}
-#videowrap .video-js.btfw-videojs-themed .vjs-big-play-button .vjs-icon-placeholder:before{
-  font-size: 40px;
-  line-height: 1;
-  /* The VideoJS play glyph carries a right-bearing inside its font cell, so it
-     renders right-of-centre even when its box is centred. Pull it back left so
-     the triangle sits centred in the button. */
-  margin-left: -4px;
-  color: var(--btfw-vjs-text-strong);
-}
-
-#videowrap .video-js.btfw-videojs-themed .vjs-big-play-button:hover{
-  background: color-mix(in srgb, var(--btfw-color-bg) 18%, black 82%);
-  transform: translate(-50%, -50%) scale(1.02);
-  box-shadow: 0 20px 40px color-mix(in srgb, var(--btfw-color-bg) 62%, transparent 38%),
-    0 8px 20px color-mix(in srgb, black 24%, transparent 76%);
-
-}
-
-#videowrap .video-js.btfw-videojs-themed.vjs-has-started .vjs-big-play-button{
-  display: none;
+  display: none !important;
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-control-bar{
