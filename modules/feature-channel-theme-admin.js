@@ -2765,14 +2765,19 @@ function replaceBlock(original, startMarker, endMarker, block){
         startScroll: grid.scrollLeft,
         moved: false
       };
-      grid.classList.add("is-dragging");
-      try { grid.setPointerCapture(event.pointerId); } catch (_) {}
     });
     grid.addEventListener("pointermove", (event) => {
       if (!dragState || dragState.id !== event.pointerId) return;
       const delta = event.clientX - dragState.startX;
       if (!dragState.moved && Math.abs(delta) < 4) return;
-      dragState.moved = true;
+      if (!dragState.moved) {
+        dragState.moved = true;
+        grid.classList.add("is-dragging");
+        // Capture only after this is definitely a drag. Capturing on pointerdown
+        // retargets a normal click to the strip and prevents the tile from
+        // receiving its click event.
+        try { grid.setPointerCapture(event.pointerId); } catch (_) {}
+      }
       grid.scrollLeft = dragState.startScroll - delta;
       event.preventDefault();
     });
@@ -2782,12 +2787,18 @@ function replaceBlock(original, startMarker, endMarker, block){
       const pointerId = dragState.id;
       dragState = null;
       grid.classList.remove("is-dragging");
-      try { grid.releasePointerCapture(pointerId); } catch (_) {}
+      if (moved) {
+        try { grid.releasePointerCapture(pointerId); } catch (_) {}
+      }
       if (moved) {
         suppressClick = true;
         setTimeout(() => { suppressClick = false; }, 0);
       }
     };
+    grid.addEventListener("pointerleave", (event) => {
+      if (!dragState || dragState.id !== event.pointerId || dragState.moved) return;
+      dragState = null;
+    });
     grid.addEventListener("pointerup", finishDrag);
     grid.addEventListener("pointercancel", finishDrag);
     grid.addEventListener("lostpointercapture", finishDrag);
