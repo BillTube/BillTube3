@@ -853,12 +853,10 @@
 }
 
 #btfw-emotes-pop .btfw-emotes-head {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas: "tabs close";
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  justify-content: space-between;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--btfw-border);
   position: sticky;
   top: 0;
@@ -868,11 +866,18 @@
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.18);
 }
 
+#btfw-emotes-pop .btfw-emotes-title {
+  color: var(--btfw-color-text);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
 #btfw-emotes-pop .btfw-emotes-tabs {
-  grid-area: tabs;
   display: inline-flex;
   flex-wrap: wrap;
   gap: 4px;
+  padding: 10px 10px 0;
 }
 #btfw-emotes-pop .btfw-tab {
   background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
@@ -957,21 +962,17 @@
   opacity: 1;
 }
 #btfw-emotes-pop .btfw-emotes-close {
-  grid-area: close;
-  width: 28px; height: 28px;
-  border-radius: 8px;
-  border: 1px solid var(--btfw-border);
-  background: color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%);
-  color: var(--btfw-color-text-soft);
+  background: transparent;
+  border: 0;
+  padding: 0 4px;
+  color: color-mix(in srgb, var(--btfw-color-text) 70%, transparent);
+  font-size: 18px;
+  line-height: 1;
   cursor: pointer;
-  transition: background var(--btfw-motion-fast, 150ms) ease,
-              border-color var(--btfw-motion-fast, 150ms) ease,
-              color var(--btfw-motion-fast, 150ms) ease;
+  transition: color .14s ease;
 }
 #btfw-emotes-pop .btfw-emotes-close:hover {
-  background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);
-  color: var(--btfw-color-text);
+  color: var(--btfw-color-accent);
 }
 #btfw-emotes-pop .btfw-emotes-close:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 68%, transparent 32%);
@@ -1046,13 +1047,6 @@
 }
 
 @media (max-width: 640px){
-  #btfw-emotes-pop .btfw-emotes-head {
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "tabs close"
-      "search search";
-    align-items: start;
-  }
 
   #btfw-emotes-pop .btfw-emotes-tabs {
     justify-content: flex-start;
