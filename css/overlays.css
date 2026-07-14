@@ -518,15 +518,47 @@
    ====================================================================== */
 
 .btfw-chat-topbar {
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 60%, transparent 40%) !important;
-  background-image: var(--btfw-dither-image), var(--btfw-surface-glow) !important;
-  background-size: var(--btfw-dither-size), auto;
-  background-position: 0 0, center;
-  /* Flat theme shape — subtle border, no glossy top highlight or drop shadow
-     (the inset white line + heavy shadow made it look unlike the rest). */
-  border: 1px solid color-mix(in srgb, var(--btfw-border) 42%, transparent 58%);
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%) !important;
+  background-image: var(--btfw-panel-gradient) !important;
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 30%, var(--btfw-border) 70%);
   border-radius: 14px;
-  box-shadow: none;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 11%, transparent 89%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 42%, transparent 58%),
+    0 10px 26px color-mix(in srgb, var(--btfw-color-bg) 28%, transparent 72%),
+    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 5%, transparent 95%);
+  backdrop-filter: blur(16px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+}
+
+/* A hairline spectrum catches the channel accent at the top/left while the
+   lower/right edge recedes. This is the compact counterpart to the stack
+   cards' palette-derived border and shadow. */
+.btfw-chat-topbar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, white 18%, transparent 82%) 0%,
+    color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%) 28%,
+    transparent 54%,
+    color-mix(in srgb, var(--btfw-color-accent) 13%, transparent 87%) 78%,
+    color-mix(in srgb, white 7%, transparent 93%) 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.btfw-chat-topbar > * {
+  position: relative;
+  z-index: 2;
 }
 
 .btfw-chat-bottombar {
@@ -544,6 +576,136 @@
   background: transparent;
   border: 0;
   box-shadow: none;
+}
+
+/* Shared compact-material treatment for the rating control and composer.
+   The rating row is intentionally the darker inset surface; the input is the
+   lighter, interactive layer. Both remain fully palette-driven. */
+#chatwrap .btfw-chat-topbar #btfw-ratings {
+  padding: 6px 9px;
+  gap: 7px;
+  background-color: color-mix(in srgb, var(--btfw-color-bg) 48%, var(--btfw-color-panel) 52%);
+  background-image:
+    var(--btfw-dither-image),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, white 7%, transparent 93%) 0%,
+      transparent 42%,
+      color-mix(in srgb, var(--btfw-color-bg) 18%, transparent 82%) 100%
+    );
+  background-size: var(--btfw-dither-size), auto;
+  background-position: 0 0, center;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 34%, var(--btfw-border) 66%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 10%, transparent 90%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 48%, transparent 52%),
+    0 5px 14px color-mix(in srgb, var(--btfw-color-bg) 30%, transparent 70%),
+    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 5%, transparent 95%);
+}
+
+#chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions button {
+  background: color-mix(in srgb, var(--btfw-color-panel) 80%, transparent 20%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 20%, var(--btfw-border) 80%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 9%, transparent 91%),
+    0 2px 6px color-mix(in srgb, var(--btfw-color-bg) 24%, transparent 76%);
+}
+
+#chatwrap .btfw-chat-topbar .btfw-rating-pill {
+  padding: 6px 11px 6px 9px !important;
+  background-color: color-mix(in srgb, var(--btfw-color-bg) 48%, var(--btfw-color-panel) 52%) !important;
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, white 7%, transparent 93%),
+    transparent 50%
+  ) !important;
+  border-color: color-mix(in srgb, var(--btfw-rating-accent, #ffd166) 42%, var(--btfw-border) 58%) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 10%, transparent 90%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 44%, transparent 56%),
+    0 5px 14px color-mix(in srgb, var(--btfw-color-bg) 28%, transparent 72%);
+}
+
+#chatline {
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%) !important;
+  background-image:
+    var(--btfw-dither-image),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, white 8%, transparent 92%) 0%,
+      transparent 44%,
+      color-mix(in srgb, var(--btfw-color-bg) 12%, transparent 88%) 100%
+    ) !important;
+  background-size: var(--btfw-dither-size), auto !important;
+  background-position: 0 0, center !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 25%, var(--btfw-border) 75%) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 10%, transparent 90%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 38%, transparent 62%),
+    0 6px 18px color-mix(in srgb, var(--btfw-color-bg) 24%, transparent 76%),
+    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 4%, transparent 96%) !important;
+  transition:
+    background-color var(--btfw-motion-fast, 150ms) ease,
+    border-color var(--btfw-motion-fast, 150ms) ease,
+    box-shadow var(--btfw-motion-base, 220ms) var(--btfw-ease-out, ease-out) !important;
+}
+#chatline:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 38%, var(--btfw-border) 62%) !important;
+}
+#chatline:focus {
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 68%, white 8%) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 13%, transparent 87%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 30%, transparent 70%),
+    0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%),
+    0 8px 22px color-mix(in srgb, var(--btfw-color-bg) 30%, transparent 70%) !important;
+}
+
+/* The compact tool tray belongs to the composer surface family. Its buttons
+   remain individually inset, while the shared shell carries the shiny edge. */
+#btfw-chat-actions #btfw-chatactions-pill,
+#btfw-chatactions-burger {
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 76%, transparent 24%);
+  background-image:
+    var(--btfw-dither-image),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, white 8%, transparent 92%) 0%,
+      transparent 46%,
+      color-mix(in srgb, var(--btfw-color-bg) 14%, transparent 86%) 100%
+    );
+  background-size: var(--btfw-dither-size), auto;
+  background-position: 0 0, center;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 27%, var(--btfw-border) 73%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 10%, transparent 90%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 38%, transparent 62%),
+    0 5px 15px color-mix(in srgb, var(--btfw-color-bg) 24%, transparent 76%),
+    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 4%, transparent 96%);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .btfw-chat-topbar,
+  #chatwrap .btfw-chat-topbar #btfw-ratings,
+  #chatwrap .btfw-chat-topbar .btfw-rating-pill,
+  #btfw-chat-actions #btfw-chatactions-pill,
+  #btfw-chatactions-burger,
+  #chatline {
+    background-color: var(--btfw-color-panel) !important;
+    background-image: none !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .btfw-chat-topbar,
+  #chatwrap .btfw-chat-topbar #btfw-ratings,
+  #chatwrap .btfw-chat-topbar .btfw-rating-pill,
+  #btfw-chat-actions #btfw-chatactions-pill,
+  #btfw-chatactions-burger,
+  #chatline {
+    border-color: color-mix(in srgb, var(--btfw-color-text) 58%, var(--btfw-color-accent) 42%) !important;
+  }
 }
 
 .btfw-chat-actions .button.btfw-chatbtn {
