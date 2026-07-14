@@ -518,17 +518,33 @@
    ====================================================================== */
 
 .btfw-chat-topbar {
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 82%, transparent 18%) !important;
-  background-image: var(--btfw-panel-gradient) !important;
-  background-size: var(--btfw-panel-background-size);
-  background-position: var(--btfw-panel-background-position);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 30%, var(--btfw-border) 70%);
+  background-color: color-mix(in srgb, var(--btfw-color-bg) 42%, var(--btfw-color-panel) 58%) !important;
+  background-image:
+    var(--btfw-dither-image),
+    radial-gradient(
+      130% 190% at 0% -45%,
+      color-mix(in srgb, var(--btfw-color-accent) 14%, transparent 86%) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      110% 150% at 110% 120%,
+      color-mix(in srgb, var(--btfw-color-surface) 34%, transparent 66%) 0%,
+      transparent 70%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--btfw-color-panel) 72%, var(--btfw-color-bg) 28%) 0%,
+      color-mix(in srgb, var(--btfw-color-surface) 78%, var(--btfw-color-bg) 22%) 54%,
+      color-mix(in srgb, var(--btfw-color-bg) 62%, var(--btfw-color-panel) 38%) 100%
+    ) !important;
+  background-size: var(--btfw-dither-size), auto, auto, auto;
+  background-position: 0 0, center, center, center;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 12%, var(--btfw-color-panel) 88%);
   border-radius: 14px;
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 11%, transparent 89%),
-    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 42%, transparent 58%),
-    0 10px 26px color-mix(in srgb, var(--btfw-color-bg) 28%, transparent 72%),
-    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 5%, transparent 95%);
+    inset 0 1px 0 color-mix(in srgb, white 7%, transparent 93%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%),
+    0 9px 24px color-mix(in srgb, var(--btfw-color-bg) 20%, transparent 80%);
   backdrop-filter: blur(16px) saturate(125%);
   -webkit-backdrop-filter: blur(16px) saturate(125%);
 }
@@ -546,11 +562,11 @@
   pointer-events: none;
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, white 18%, transparent 82%) 0%,
-    color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%) 28%,
+    color-mix(in srgb, white 6%, transparent 94%) 0%,
+    color-mix(in srgb, var(--btfw-color-accent) 12%, transparent 88%) 28%,
     transparent 54%,
-    color-mix(in srgb, var(--btfw-color-accent) 13%, transparent 87%) 78%,
-    color-mix(in srgb, white 7%, transparent 93%) 100%
+    color-mix(in srgb, var(--btfw-color-accent) 5%, transparent 95%) 78%,
+    color-mix(in srgb, white 2%, transparent 98%) 100%
   );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
@@ -584,104 +600,119 @@
 #chatwrap .btfw-chat-topbar #btfw-ratings {
   padding: 6px 9px;
   gap: 7px;
-  background-color: color-mix(in srgb, var(--btfw-color-bg) 48%, var(--btfw-color-panel) 52%);
+  background-color: color-mix(in srgb, var(--btfw-color-bg) 62%, var(--btfw-color-panel) 38%);
   background-image:
     var(--btfw-dither-image),
+    radial-gradient(
+      120% 150% at 0% 0%,
+      color-mix(in srgb, var(--btfw-color-accent) 8%, transparent 92%) 0%,
+      transparent 58%
+    ),
     linear-gradient(
-      180deg,
-      color-mix(in srgb, white 7%, transparent 93%) 0%,
-      transparent 42%,
-      color-mix(in srgb, var(--btfw-color-bg) 18%, transparent 82%) 100%
+      145deg,
+      color-mix(in srgb, var(--btfw-color-panel) 42%, var(--btfw-color-bg) 58%) 0%,
+      color-mix(in srgb, var(--btfw-color-bg) 78%, var(--btfw-color-surface) 22%) 100%
     );
-  background-size: var(--btfw-dither-size), auto;
-  background-position: 0 0, center;
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 34%, var(--btfw-border) 66%);
+  background-size: var(--btfw-dither-size), auto, auto;
+  background-position: 0 0, center, center;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 12%, var(--btfw-color-surface) 88%);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 10%, transparent 90%),
-    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 48%, transparent 52%),
-    0 5px 14px color-mix(in srgb, var(--btfw-color-bg) 30%, transparent 70%),
-    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 5%, transparent 95%);
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent 94%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 56%, transparent 44%),
+    0 4px 12px color-mix(in srgb, var(--btfw-color-bg) 18%, transparent 82%);
 }
 
 #chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions button {
   background: color-mix(in srgb, var(--btfw-color-panel) 80%, transparent 20%);
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 20%, var(--btfw-border) 80%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 10%, var(--btfw-color-surface) 90%);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 9%, transparent 91%),
-    0 2px 6px color-mix(in srgb, var(--btfw-color-bg) 24%, transparent 76%);
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent 94%),
+    0 2px 6px color-mix(in srgb, var(--btfw-color-bg) 18%, transparent 82%);
 }
 
 #chatwrap .btfw-chat-topbar .btfw-rating-pill {
   padding: 6px 11px 6px 9px !important;
-  background-color: color-mix(in srgb, var(--btfw-color-bg) 48%, var(--btfw-color-panel) 52%) !important;
-  background-image: linear-gradient(
-    180deg,
-    color-mix(in srgb, white 7%, transparent 93%),
-    transparent 50%
-  ) !important;
-  border-color: color-mix(in srgb, var(--btfw-rating-accent, #ffd166) 42%, var(--btfw-border) 58%) !important;
+  background-color: color-mix(in srgb, var(--btfw-color-bg) 62%, var(--btfw-color-panel) 38%) !important;
+  background-image:
+    radial-gradient(
+      120% 150% at 0% 0%,
+      color-mix(in srgb, var(--btfw-rating-accent, #ffd166) 8%, transparent 92%),
+      transparent 58%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--btfw-color-panel) 42%, var(--btfw-color-bg) 58%),
+      color-mix(in srgb, var(--btfw-color-bg) 78%, var(--btfw-color-surface) 22%)
+    ) !important;
+  border-color: color-mix(in srgb, var(--btfw-rating-accent, #ffd166) 18%, var(--btfw-color-surface) 82%) !important;
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 10%, transparent 90%),
-    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 44%, transparent 56%),
-    0 5px 14px color-mix(in srgb, var(--btfw-color-bg) 28%, transparent 72%);
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent 94%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%),
+    0 4px 12px color-mix(in srgb, var(--btfw-color-bg) 18%, transparent 82%);
 }
 
 #chatline {
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%) !important;
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 66%, var(--btfw-color-bg) 34%) !important;
   background-image:
     var(--btfw-dither-image),
+    radial-gradient(
+      125% 160% at 0% 0%,
+      color-mix(in srgb, var(--btfw-color-accent) 7%, transparent 93%) 0%,
+      transparent 60%
+    ),
     linear-gradient(
-      180deg,
-      color-mix(in srgb, white 8%, transparent 92%) 0%,
-      transparent 44%,
-      color-mix(in srgb, var(--btfw-color-bg) 12%, transparent 88%) 100%
+      145deg,
+      color-mix(in srgb, var(--btfw-color-panel) 68%, var(--btfw-color-bg) 32%) 0%,
+      color-mix(in srgb, var(--btfw-color-surface) 66%, var(--btfw-color-bg) 34%) 100%
     ) !important;
-  background-size: var(--btfw-dither-size), auto !important;
-  background-position: 0 0, center !important;
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 25%, var(--btfw-border) 75%) !important;
+  background-size: var(--btfw-dither-size), auto, auto !important;
+  background-position: 0 0, center, center !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 10%, var(--btfw-color-surface) 90%) !important;
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 10%, transparent 90%),
-    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 38%, transparent 62%),
-    0 6px 18px color-mix(in srgb, var(--btfw-color-bg) 24%, transparent 76%),
-    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 4%, transparent 96%) !important;
+    inset 0 1px 0 color-mix(in srgb, white 7%, transparent 93%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 44%, transparent 56%),
+    0 5px 16px color-mix(in srgb, var(--btfw-color-bg) 15%, transparent 85%) !important;
   transition:
     background-color var(--btfw-motion-fast, 150ms) ease,
     border-color var(--btfw-motion-fast, 150ms) ease,
     box-shadow var(--btfw-motion-base, 220ms) var(--btfw-ease-out, ease-out) !important;
 }
 #chatline:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 38%, var(--btfw-border) 62%) !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 24%, var(--btfw-color-surface) 76%) !important;
 }
 #chatline:focus {
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 68%, white 8%) !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, var(--btfw-color-surface) 52%) !important;
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 13%, transparent 87%),
     inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 30%, transparent 70%),
-    0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%),
-    0 8px 22px color-mix(in srgb, var(--btfw-color-bg) 30%, transparent 70%) !important;
+    0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 14%, transparent 86%),
+    0 7px 20px color-mix(in srgb, var(--btfw-color-bg) 22%, transparent 78%) !important;
 }
 
 /* The compact tool tray belongs to the composer surface family. Its buttons
    remain individually inset, while the shared shell carries the shiny edge. */
 #btfw-chat-actions #btfw-chatactions-pill,
 #btfw-chatactions-burger {
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 76%, transparent 24%);
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 62%, var(--btfw-color-bg) 38%);
   background-image:
     var(--btfw-dither-image),
+    radial-gradient(
+      125% 160% at 0% 0%,
+      color-mix(in srgb, var(--btfw-color-accent) 7%, transparent 93%) 0%,
+      transparent 60%
+    ),
     linear-gradient(
-      180deg,
-      color-mix(in srgb, white 8%, transparent 92%) 0%,
-      transparent 46%,
-      color-mix(in srgb, var(--btfw-color-bg) 14%, transparent 86%) 100%
+      145deg,
+      color-mix(in srgb, var(--btfw-color-panel) 64%, var(--btfw-color-bg) 36%) 0%,
+      color-mix(in srgb, var(--btfw-color-surface) 62%, var(--btfw-color-bg) 38%) 100%
     );
-  background-size: var(--btfw-dither-size), auto;
-  background-position: 0 0, center;
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 27%, var(--btfw-border) 73%);
+  background-size: var(--btfw-dither-size), auto, auto;
+  background-position: 0 0, center, center;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 10%, var(--btfw-color-surface) 90%);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 10%, transparent 90%),
-    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 38%, transparent 62%),
-    0 5px 15px color-mix(in srgb, var(--btfw-color-bg) 24%, transparent 76%),
-    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 4%, transparent 96%);
+    inset 0 1px 0 color-mix(in srgb, white 7%, transparent 93%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 46%, transparent 54%),
+    0 4px 13px color-mix(in srgb, var(--btfw-color-bg) 15%, transparent 85%);
 }
 
 @media (prefers-reduced-transparency: reduce) {
