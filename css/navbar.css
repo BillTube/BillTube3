@@ -26,26 +26,33 @@
   isolation: isolate;
 }
 
-:root[data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
-  background-size: 180% 180% !important;
+:root[data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before {
+  content: "";
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--btfw-gradient-navbar-runtime-layer);
+  background-size: 180% 180%;
   background-position: 0% 42%;
 }
 
-:root[data-btfw-gradient-navbar="on"][data-btfw-gradient-motion="slow"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+:root[data-btfw-gradient-navbar="on"][data-btfw-gradient-motion="slow"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before {
   animation: btfw-gradient-single-drift 28s ease-in-out infinite;
 }
 
-:root[data-btfw-gradient-navbar="on"][data-btfw-gradient-motion="medium"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+:root[data-btfw-gradient-navbar="on"][data-btfw-gradient-motion="medium"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before {
   animation: btfw-gradient-single-drift 18s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root[data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+  :root[data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before {
     animation: none !important;
   }
 }
 
-:root[data-btfw-motion="reduced"][data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+:root[data-btfw-motion="reduced"][data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before {
   animation: none !important;
 }
 
