@@ -12,6 +12,10 @@
   --btfw-color-text-muted: color-mix(in srgb, var(--btfw-color-text) 62%, transparent 38%);
   --btfw-border: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
   --btfw-card-bg: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  /* Quiet inset surfaces let the outer channel gradient show through without
+     stacking another gradient inside every card and control group. */
+  --btfw-nested-surface: color-mix(in srgb, var(--btfw-color-panel) 84%, transparent 16%);
+  --btfw-nested-surface-soft: color-mix(in srgb, var(--btfw-color-surface) 80%, transparent 20%);
   /* Optional ordered-dot material. Channel admin sets data-btfw-dither on the
      root; off remains a real no-op layer so existing gradients stay unchanged. */
   --btfw-dither-image: none;

@@ -1389,7 +1389,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         border: 1px solid var(--btfw-panel-border-soft);
         margin-bottom: 8px;
         background-color: color-mix(in srgb, var(--btfw-admin-surface) 90%, transparent 10%);
-        background-image: var(--btfw-panel-gradient-soft);
+        background-image: none;
         background-size: var(--btfw-panel-background-size);
         background-position: var(--btfw-panel-background-position);
         box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%);
@@ -1398,7 +1398,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
       .btfw-theme-admin details.section[open] {
         border-color: var(--btfw-panel-border);
-        background-image: var(--btfw-panel-gradient);
+        background-image: none;
         box-shadow: var(--btfw-panel-shadow);
       }
       .btfw-theme-admin summary.section__summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; cursor: pointer; list-style: none; }
@@ -1425,7 +1425,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         gap: 14px;
         padding: 10px 14px;
         background-color: color-mix(in srgb, var(--btfw-admin-surface-alt) 82%, transparent);
-        background-image: var(--btfw-panel-gradient-soft);
+        background-image: none;
         background-size: var(--btfw-panel-background-size);
         background-position: var(--btfw-panel-background-position);
         border: 1px solid var(--btfw-panel-border-soft);
@@ -1516,7 +1516,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
       /* Palette swatches — one responsive row, each shows the readable hex */
       .btfw-theme-admin .btfw-palette__swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
-      .btfw-theme-admin .btfw-swatch { display: flex; flex-direction: column; gap: 7px; padding: 9px; border-radius: 11px; background-color: var(--btfw-admin-surface); background-image: var(--btfw-panel-gradient-soft); background-size: var(--btfw-panel-background-size); background-position: var(--btfw-panel-background-position); border: 1px solid var(--btfw-panel-border-soft); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%); cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+      .btfw-theme-admin .btfw-swatch { display: flex; flex-direction: column; gap: 7px; padding: 9px; border-radius: 11px; background-color: var(--btfw-admin-surface); background-image: none; background-size: var(--btfw-panel-background-size); background-position: var(--btfw-panel-background-position); border: 1px solid var(--btfw-panel-border-soft); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%); cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
       .btfw-theme-admin .btfw-swatch:hover { border-color: color-mix(in srgb, var(--btfw-color-accent) 50%, var(--btfw-admin-border-soft)); }
       .btfw-theme-admin .btfw-swatch input[type="color"] { width: 100%; height: 34px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 0; background: none; cursor: pointer; }
       .btfw-theme-admin .btfw-swatch input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
@@ -1665,7 +1665,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         border-radius: 12px;
         border: 1px solid var(--btfw-panel-border-soft);
         background-color: color-mix(in srgb, var(--btfw-admin-surface-alt) 72%, transparent 28%);
-        background-image: var(--btfw-panel-gradient-soft);
+        background-image: none;
         background-size: var(--btfw-panel-background-size);
         background-position: var(--btfw-panel-background-position);
         box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 5%, transparent 95%);

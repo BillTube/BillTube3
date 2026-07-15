@@ -1198,8 +1198,8 @@
 /* Header / footer */
 .modal-card-head,
 .modal-card-foot {
-  background-color: color-mix(in srgb, var(--btfw-overlay-bg) 92%, transparent 8%);
-  background-image: var(--btfw-panel-gradient-soft);
+  background-color: var(--btfw-nested-surface);
+  background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   border-color: var(--btfw-border);
@@ -1225,8 +1225,8 @@
 
 /* Body */
 .modal-card-body {
-  background-color: color-mix(in srgb, var(--btfw-overlay-elevated) 94%, transparent 6%) !important;
-  background-image: var(--btfw-panel-gradient-soft) !important;
+  background-color: var(--btfw-nested-surface-soft) !important;
+  background-image: none !important;
   background-size: var(--btfw-panel-background-size) !important;
   background-position: var(--btfw-panel-background-position) !important;
   color: var(--btfw-color-text)!important;
@@ -1772,8 +1772,8 @@
    the title can actually breathe instead of being crammed next to the tabs. */
 .modal.btfw-bulma-skin .btfw-card-head,
 .modal.btfw-bulma-skin .modal-header {
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
-  background-image: var(--btfw-panel-gradient-soft);
+  background-color: var(--btfw-nested-surface);
+  background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   border: 0;
@@ -1962,8 +1962,8 @@
 /* Footer — subtle separator, right-aligned actions. */
 .modal.btfw-bulma-skin .btfw-card-foot,
 .modal.btfw-bulma-skin .modal-footer {
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
-  background-image: var(--btfw-panel-gradient-soft);
+  background-color: var(--btfw-nested-surface);
+  background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   border: 0;
@@ -1981,8 +1981,8 @@
 .modal.btfw-bulma-skin .modal-body .card,
 .modal.btfw-bulma-skin .modal-body .panel,
 .modal.btfw-bulma-skin .modal-body .well {
-  background-color: color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%);
-  background-image: var(--btfw-panel-gradient-soft);
+  background-color: var(--btfw-nested-surface-soft);
+  background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   border: 1px solid var(--btfw-panel-border-soft);
