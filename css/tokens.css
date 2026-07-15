@@ -20,6 +20,8 @@
   --btfw-gradient-panel-layer: none;
   --btfw-gradient-panel-soft-layer: none;
   --btfw-gradient-navbar-layer: none;
+  --btfw-navbar-gradient-size: auto;
+  --btfw-navbar-gradient-position: center;
   --btfw-panel-background-size: var(--btfw-dither-size), auto, auto, auto, auto;
   --btfw-panel-background-position: 0 0, center, center, center, center;
   --btfw-page-background-size: var(--btfw-dither-size), auto, auto;
