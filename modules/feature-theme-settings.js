@@ -3,6 +3,7 @@ BTFW.define("feature:themeSettings", [], async () => {
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const motion = await BTFW.init("util:motion");
+  const rangeSliders = await BTFW.init("util:rangeSliders");
 
   /* ---------- Info (ⓘ) tooltips ----------
      One shared tooltip on <body> so it isn't clipped by the scrolling panels.
@@ -473,6 +474,7 @@ BTFW.define("feature:themeSettings", [], async () => {
       </div>
     `;
     document.body.appendChild(m);
+    rangeSliders.enhanceAll(m);
 
     // Close actions
     $(".modal-background", m).addEventListener("click", close);
@@ -773,6 +775,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     if (navbarBtn?._btfwSync) navbarBtn._btfwSync(navbarCompact);
 
     if (typeof m._btfwRenderIgnoreList === "function") m._btfwRenderIgnoreList();
+    rangeSliders.syncAll(m);
 
     motion.openModal(m);
     document.dispatchEvent(new CustomEvent("btfw:themeSettings:open"));

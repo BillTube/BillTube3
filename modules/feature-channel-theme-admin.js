@@ -1,6 +1,7 @@
 BTFW.define("feature:channelThemeAdmin", [], async () => {
   const $  = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const rangeSliders = await BTFW.init("util:rangeSliders");
 
   const JS_BLOCK_START  = "// ==BTFW_THEME_ADMIN_START==";
   const JS_BLOCK_END    = "// ==BTFW_THEME_ADMIN_END==";
@@ -1510,13 +1511,20 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
       .btfw-theme-admin .btfw-gradient-balance-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
       .btfw-theme-admin .btfw-gradient-balance-label strong { color: var(--btfw-admin-text); font-size: .75rem; }
-      .btfw-theme-admin .btfw-gradient-balance { position: relative; height: 38px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--btfw-admin-text) 16%, transparent); background: var(--btfw-gradient-balance-fill, none); box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 18px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 28%, transparent); touch-action: none; cursor: crosshair; }
+      .btfw-theme-admin .btfw-gradient-balance { position: relative; height: 38px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--btfw-admin-text) 16%, transparent); background: var(--btfw-gradient-balance-fill, none); box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 18px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 28%, transparent); touch-action: none; cursor: crosshair; transform-origin: center; transition: box-shadow 150ms ease-out, filter 150ms ease-out, transform 250ms cubic-bezier(.22,1,.36,1); }
       .btfw-theme-admin .btfw-gradient-balance::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,.13), transparent 45%, rgba(0,0,0,.12)); }
-      .btfw-theme-admin .btfw-gradient-balance__active { position: absolute; z-index: 1; top: 2px; bottom: 2px; border: 2px solid rgba(255,255,255,.88); border-radius: 999px; pointer-events: none; box-shadow: 0 0 0 1px rgba(0,0,0,.2), 0 3px 12px rgba(0,0,0,.22); }
+      .btfw-theme-admin .btfw-gradient-balance__active { position: absolute; z-index: 1; top: 2px; bottom: 2px; border: 2px solid rgba(255,255,255,.88); border-radius: 999px; pointer-events: none; box-shadow: 0 0 0 1px rgba(0,0,0,.2), 0 3px 12px rgba(0,0,0,.22); transition: left 150ms ease-out, width 150ms ease-out, box-shadow 150ms ease-out; }
       .btfw-theme-admin .btfw-gradient-balance__handle { position: absolute; z-index: 4; top: 50%; width: 24px; height: 34px; margin: -17px 0 0 -12px; border: 0; padding: 0; background: transparent; cursor: ew-resize; touch-action: none; }
-      .btfw-theme-admin .btfw-gradient-balance__handle::before { content: ""; position: absolute; left: 10px; top: 8px; width: 4px; height: 18px; border-radius: 999px; background: white; box-shadow: 0 1px 4px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.12); }
+      .btfw-theme-admin .btfw-gradient-balance__handle::before { content: ""; position: absolute; left: 10px; top: 8px; width: 4px; height: 18px; border-radius: 999px; background: white; box-shadow: 0 1px 4px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.12); transition: transform 150ms ease-out, box-shadow 150ms ease-out; }
       .btfw-theme-admin .btfw-gradient-balance__handle:focus-visible { outline: 2px solid white; outline-offset: 1px; border-radius: 8px; }
       .btfw-theme-admin .btfw-gradient-balance-hint { margin: 6px 2px 11px; color: var(--btfw-admin-text-soft); font-size: .68rem; }
+      .btfw-theme-admin .btfw-gradient-balance:hover,
+      .btfw-theme-admin .btfw-gradient-balance:focus-within { filter: brightness(1.04); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 3px color-mix(in srgb, var(--btfw-theme-accent, #7aa2f7) 20%, transparent), 0 10px 22px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 32%, transparent); }
+      .btfw-theme-admin .btfw-gradient-balance.is-dragging { transform: scaleY(.97); transition-duration: 80ms; }
+      .btfw-theme-admin .btfw-gradient-balance.is-dragging .btfw-gradient-balance__active { box-shadow: 0 0 0 1px rgba(0,0,0,.24), 0 4px 16px rgba(0,0,0,.28); transition: none; }
+      .btfw-theme-admin .btfw-gradient-balance.is-dragging .btfw-gradient-balance__handle::before { transform: scaleY(1.12); box-shadow: 0 1px 5px rgba(0,0,0,.62), 0 0 0 1px rgba(0,0,0,.14); }
+      @media (prefers-reduced-motion: reduce) { .btfw-theme-admin .btfw-gradient-balance, .btfw-theme-admin .btfw-gradient-balance__active, .btfw-theme-admin .btfw-gradient-balance__handle::before { transition: none; } .btfw-theme-admin .btfw-gradient-balance.is-dragging { transform: none; } }
+      html[data-btfw-motion="reduced"] .btfw-theme-admin .btfw-gradient-balance, html[data-btfw-motion="reduced"] .btfw-theme-admin .btfw-gradient-balance__active, html[data-btfw-motion="reduced"] .btfw-theme-admin .btfw-gradient-balance__handle::before { transition: none; }
 
       .btfw-theme-admin .btfw-gradient-stops { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
       .btfw-theme-admin .btfw-gradient-stop { display: grid; grid-template-columns: 32px minmax(0, 1fr); grid-template-areas: "color title" "color meta"; column-gap: 8px; align-items: center; min-width: 0; padding: 8px; border-radius: 9px; border: 1px solid var(--btfw-admin-border-soft); background: color-mix(in srgb, var(--btfw-admin-surface) 88%, transparent); cursor: pointer; transition: border-color 150ms ease, background 150ms ease; }
@@ -3420,6 +3428,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (noiseOutput) noiseOutput.textContent = `${gradient.noise}%`;
     const angleField = panel.querySelector("[data-role=gradient-angle-field]");
     if (angleField) angleField.hidden = !["linear", "conic"].includes(gradient.type);
+    rangeSliders.syncAll(panel);
   }
 
   function syncDitherToggle(panel, cfg){
@@ -4719,6 +4728,7 @@ function replaceBlock(original, startMarker, endMarker, block){
           draggingIndex = index;
           setActiveGradientBand(panel, index);
           syncGradientEditor(panel, cfg);
+          balance.classList.add("is-dragging");
           handle.setPointerCapture?.(event.pointerId);
         });
         handle.addEventListener("pointermove", event => {
@@ -4728,6 +4738,7 @@ function replaceBlock(original, startMarker, endMarker, block){
         const stopDragging = event => {
           if (draggingIndex !== index) return;
           draggingIndex = null;
+          balance.classList.remove("is-dragging");
           handle.releasePointerCapture?.(event.pointerId);
         };
         handle.addEventListener("pointerup", stopDragging);
