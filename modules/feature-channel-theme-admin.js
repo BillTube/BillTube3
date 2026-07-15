@@ -1318,6 +1318,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-gradient-studio > .btfw-switch-field { margin: 0; padding: 11px 12px; }
       .btfw-theme-admin .btfw-gradient-editor { padding: 0 12px 13px; border-top: 1px solid var(--btfw-admin-border-soft); }
       .btfw-theme-admin .btfw-gradient-editor[hidden] { display: none !important; }
+      .btfw-theme-admin [data-role="gradient-angle-field"][hidden] { display: none !important; }
       .btfw-theme-admin .btfw-gradient-lead { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 0 8px; }
       .btfw-theme-admin .btfw-gradient-lead .help { max-width: 560px; }
       .btfw-theme-admin .btfw-gradient-reset { flex: 0 0 auto; border: 1px solid var(--btfw-admin-border-soft); border-radius: 8px; padding: 5px 9px; background: transparent; color: var(--btfw-admin-text-soft); font-size: 0.72rem; cursor: pointer; }
@@ -3116,7 +3117,8 @@ function replaceBlock(original, startMarker, endMarker, block){
     const path = panel.querySelector("[data-role=gradient-path-preview]");
     if (path) {
       path.style.backgroundColor = colors.background || DEFAULT_CONFIG.colors.background;
-      path.style.backgroundImage = renderGradientLayer(cfg, 1.45).css;
+      const colorPath = stops.slice().sort((a, b) => a.position - b.position).map(stop => `${stop.color} ${stop.position}%`).join(", ");
+      path.style.backgroundImage = `linear-gradient(90deg, ${colorPath})`;
     }
   }
 
