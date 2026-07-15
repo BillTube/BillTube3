@@ -1158,10 +1158,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const panelActive = active && gradient.targets.panels;
     const navbarActive = active && gradient.targets.navbar;
     const staticTheme = staticGradientTheme(theme);
-    const page = pageActive ? addGradientNoise(renderGradientLayer(theme, 1), gradient.noise) : { css: "none", count: 1 };
+    const page = pageActive ? addGradientNoise(renderGradientLayer(staticTheme, 1), gradient.noise) : { css: "none", count: 1 };
     const panel = panelActive ? addGradientNoise(renderGradientLayer(staticTheme, 0.7), gradient.noise) : { css: "none", count: 1 };
     const panelSoft = panelActive ? addGradientNoise(renderGradientLayer(staticTheme, 0.42), gradient.noise) : { css: "none", count: 1 };
-    const navbar = navbarActive ? addGradientNoise(renderGradientLayer(theme, 0.78), gradient.noise) : { css: "none", count: 1 };
+    const navbar = navbarActive ? addGradientNoise(renderGradientLayer(staticTheme, 0.78), gradient.noise) : { css: "none", count: 1 };
     root.setAttribute("data-btfw-gradient", active ? "on" : "off");
     root.setAttribute("data-btfw-gradient-type", gradient.type);
     root.setAttribute("data-btfw-gradient-page", pageActive ? "on" : "off");
@@ -2906,10 +2906,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       };
     };
     const staticCfg = staticGradientTheme(cfg);
-    const page = compose(renderGradientLayer(cfg, 1), gradient.targets.page);
+    const page = compose(renderGradientLayer(staticCfg, 1), gradient.targets.page);
     const panel = compose(renderGradientLayer(staticCfg, 0.7), gradient.targets.panels);
     const panelSoft = compose(renderGradientLayer(staticCfg, 0.42), gradient.targets.panels);
-    const navbar = compose(renderGradientLayer(cfg, 0.78), gradient.targets.navbar);
+    const navbar = compose(renderGradientLayer(staticCfg, 0.78), gradient.targets.navbar);
     return [
       `--btfw-gradient-noise:${noise}`,
       `--btfw-gradient-page-layer:${page.css}`,
@@ -3258,8 +3258,8 @@ function replaceBlock(original, startMarker, endMarker, block){
       const staticCfg = staticGradientTheme(cfg);
       const panelGradient = gradient.enabled && gradient.targets.panels ? addGradientNoise(renderGradientLayer(staticCfg, 0.7), gradient.noise) : { css: "none", count: 1 };
       const softGradient = gradient.enabled && gradient.targets.panels ? addGradientNoise(renderGradientLayer(staticCfg, 0.42), gradient.noise) : { css: "none", count: 1 };
-      const navbarGradient = gradient.enabled && gradient.targets.navbar ? addGradientNoise(renderGradientLayer(cfg, 0.78), gradient.noise) : { css: "none", count: 1 };
-      const pageGradient = gradient.enabled && gradient.targets.page ? addGradientNoise(renderGradientLayer(cfg, 1), gradient.noise) : { css: "none", count: 1 };
+      const navbarGradient = gradient.enabled && gradient.targets.navbar ? addGradientNoise(renderGradientLayer(staticCfg, 0.78), gradient.noise) : { css: "none", count: 1 };
+      const pageGradient = gradient.enabled && gradient.targets.page ? addGradientNoise(renderGradientLayer(staticCfg, 1), gradient.noise) : { css: "none", count: 1 };
       preview.style.setProperty("--btfw-tp-gradient-panel", panelGradient.css);
       preview.style.setProperty("--btfw-tp-gradient-soft", softGradient.css);
       preview.style.setProperty("--btfw-tp-gradient-navbar", navbarGradient.css);
