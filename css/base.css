@@ -37,10 +37,32 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: var(--btfw-dither-image), var(--btfw-page-glow);
-  background-size: var(--btfw-dither-size), auto;
-  background-position: 0 0, center top;
+  background-image: var(--btfw-dither-image), var(--btfw-gradient-page-layer), var(--btfw-page-glow);
+  background-size: var(--btfw-page-background-size);
+  background-position: var(--btfw-page-background-position);
 }
+
+@keyframes btfw-gradient-ambient-drift {
+  0%, 100% { transform: scale(1.08) translate3d(-1.2%, -0.8%, 0); }
+  50% { transform: scale(1.12) translate3d(1.1%, 1%, 0); }
+}
+
+:root[data-btfw-gradient-page="on"][data-btfw-gradient-motion="slow"] body::before {
+  animation: btfw-gradient-ambient-drift 28s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+
+:root[data-btfw-gradient-page="on"][data-btfw-gradient-motion="medium"] body::before {
+  animation: btfw-gradient-ambient-drift 18s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-btfw-gradient-page="on"] body::before { animation: none !important; transform: none !important; }
+}
+:root[data-btfw-motion="reduced"][data-btfw-gradient-page="on"] body::before { animation: none !important; transform: none !important; }
 
 /* Strengthen the thumb only while the pointer is over the scrolling box.
    (The page-level bar on html stays faint — the pointer is always "over"

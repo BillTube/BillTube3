@@ -12,8 +12,8 @@
   padding: 0 16px;
   border: 0;
   border-radius: 0 !important;
-  background: var(--btfw-navbar-bg, var(--btfw-color-panel)) !important;
-  background-image: none !important;
+  background-color: var(--btfw-navbar-bg, var(--btfw-color-panel)) !important;
+  background-image: var(--btfw-gradient-navbar-layer) !important;
   min-height: var(--btfw-navbar-height);
   box-sizing: border-box;
   display: flex;

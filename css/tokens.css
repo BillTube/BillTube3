@@ -16,8 +16,14 @@
      root; off remains a real no-op layer so existing gradients stay unchanged. */
   --btfw-dither-image: none;
   --btfw-dither-size: auto;
-  --btfw-panel-background-size: var(--btfw-dither-size), auto, auto, auto;
-  --btfw-panel-background-position: 0 0, center, center, center;
+  --btfw-gradient-page-layer: none;
+  --btfw-gradient-panel-layer: none;
+  --btfw-gradient-panel-soft-layer: none;
+  --btfw-gradient-navbar-layer: none;
+  --btfw-panel-background-size: var(--btfw-dither-size), auto, auto, auto, auto;
+  --btfw-panel-background-position: 0 0, center, center, center, center;
+  --btfw-page-background-size: var(--btfw-dither-size), auto, auto;
+  --btfw-page-background-position: 0 0, center, center top;
   --btfw-button-background-size: var(--btfw-dither-size), auto;
   --btfw-button-background-position: 0 0, center;
   /* Palette-derived material. Panel + Surface form the body, Accent colors
@@ -25,6 +31,7 @@
      sRGB recipe is the compatibility fallback; modern browsers get the more
      even OKLCH blend below. */
   --btfw-panel-gradient: var(--btfw-dither-image),
+    var(--btfw-gradient-panel-layer),
     linear-gradient(135deg,
       color-mix(in srgb, var(--btfw-color-text) 5%, transparent) 0%,
       transparent 38%),
@@ -35,6 +42,7 @@
       color-mix(in srgb, var(--btfw-color-panel) 86%, var(--btfw-color-accent) 14%),
       color-mix(in srgb, var(--btfw-color-surface) 94%, var(--btfw-color-accent) 6%));
   --btfw-panel-gradient-soft: var(--btfw-dither-image),
+    var(--btfw-gradient-panel-soft-layer),
     linear-gradient(135deg,
       color-mix(in srgb, var(--btfw-color-text) 4%, transparent) 0%,
       transparent 42%),
@@ -152,6 +160,7 @@
 @supports (color: color-mix(in oklch, red, blue)) {
   :root {
     --btfw-panel-gradient: var(--btfw-dither-image),
+      var(--btfw-gradient-panel-layer),
       linear-gradient(135deg,
         color-mix(in oklch, var(--btfw-color-text) 5%, transparent) 0%,
         transparent 38%),
@@ -162,6 +171,7 @@
         color-mix(in oklch, var(--btfw-color-panel) 86%, var(--btfw-color-accent) 14%),
         color-mix(in oklch, var(--btfw-color-surface) 94%, var(--btfw-color-accent) 6%));
     --btfw-panel-gradient-soft: var(--btfw-dither-image),
+      var(--btfw-gradient-panel-soft-layer),
       linear-gradient(135deg,
         color-mix(in oklch, var(--btfw-color-text) 4%, transparent) 0%,
         transparent 42%),
