@@ -1178,7 +1178,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const panelActive = active && gradient.targets.panels;
     const navbarActive = active && gradient.targets.navbar;
     const staticTheme = staticGradientTheme(theme);
-    const page = pageActive ? addGradientNoise(renderGradientLayer(staticTheme, 1), gradient.noise) : { css: "none", count: 1 };
+    const page = pageActive ? renderRuntimeSurfaceGradient(staticTheme, 1) : { css: "none", count: 1 };
     const panel = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.7) : { css: "none", count: 1 };
     const panelSoft = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.42) : { css: "none", count: 1 };
     const navbar = navbarActive ? renderRuntimeSurfaceGradient(staticTheme, 0.78) : { css: "none", count: 1 };
@@ -2928,10 +2928,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       };
     };
     const staticCfg = staticGradientTheme(cfg);
-    const page = compose(renderGradientLayer(staticCfg, 1), gradient.targets.page);
-    // Channel CSS is shared by every viewer, so repeated surfaces use the same
-    // lightweight native gradient as the live runtime. Noise and filtered SVG
-    // presets remain exclusive to the single page layer.
+    // Channel CSS is shared by every viewer, so applied surfaces use the same
+    // lightweight native gradient as the live runtime. Detailed filtered SVG
+    // artwork remains confined to the toolkit preview.
+    const page = active && gradient.targets.page
+      ? renderRuntimeSurfaceGradient(staticCfg, 1)
+      : { css: "none", count: 1 };
     const panel = active && gradient.targets.panels
       ? renderRuntimeSurfaceGradient(staticCfg, 0.7)
       : { css: "none", count: 1 };
