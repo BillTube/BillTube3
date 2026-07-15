@@ -168,13 +168,21 @@ BTFW.define("feature:footer", [], async () => {
       .btfw-footer-branding {
         padding: 16px 18px;
         font-size: 0.82rem;
-        background:
+        background-color: color-mix(in srgb, var(--btfw-color-panel) 82%, var(--btfw-color-bg) 18%);
+        background-image:
+          var(--btfw-dither-image),
+          var(--btfw-gradient-panel-layer),
           radial-gradient(circle at 0 0,
             color-mix(in srgb, var(--btfw-color-accent) 13%, transparent 87%),
             transparent 42%),
+          radial-gradient(circle at 100% 100%,
+            color-mix(in srgb, var(--btfw-color-surface) 14%, transparent 86%),
+            transparent 52%),
           linear-gradient(135deg,
             color-mix(in srgb, var(--btfw-color-surface) 90%, transparent 10%),
             color-mix(in srgb, var(--btfw-color-panel) 82%, black 18%));
+        background-size: var(--btfw-panel-background-size);
+        background-position: var(--btfw-panel-background-position);
         border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
         border-radius: 16px;
         box-shadow: 0 14px 30px color-mix(in srgb, var(--btfw-color-bg) 36%, transparent 64%);

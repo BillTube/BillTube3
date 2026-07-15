@@ -70,13 +70,13 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   };
   const PATTERN_OPACITY = { subtle: 0.1, medium: 0.2, bold: 0.32 };
   const DITHER_INTENSITIES = ["subtle", "medium", "bold"];
-  const GRADIENT_TYPES = ["flow", "mesh", "linear", "conic", "radial", "rings", "pixel", "ios"];
+  const GRADIENT_TYPES = ["flow", "mesh", "linear", "conic", "retro", "rings", "pixel", "ios"];
   const GRADIENT_TYPE_LABELS = {
     flow: "Flow",
     mesh: "Mesh",
     linear: "Linear",
     conic: "Conic",
-    radial: "Radial",
+    retro: "Retro",
     rings: "Rings",
     pixel: "Pixel",
     ios: "iOS"
@@ -920,6 +920,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       ? theme.gradient
       : (theme.gradient = JSON.parse(JSON.stringify(defaults)));
     gradient.enabled = Boolean(gradient.enabled);
+    if (gradient.type === "radial") gradient.type = "retro";
     if (!GRADIENT_TYPES.includes(gradient.type)) gradient.type = defaults.type;
     if (!GRADIENT_SOURCES.includes(gradient.source)) gradient.source = defaults.source;
     gradient.angle = Math.round(clampGradientNumber(gradient.angle, 0, 360, defaults.angle));
@@ -1007,9 +1008,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return gradientRgbHex(a.map((channel, index) => channel + ((b[index] - channel) * mix)));
   }
 
-  function renderPixelQuilt(stops, opacity){
-    const columns = 15;
-    const rows = 9;
+  function renderPixelQuilt(stops, opacity, motion){
+    const animation = gradientSvgMotion(motion, "pixel");
+    const columns = 17;
+    const rows = 11;
     const cell = 80;
     const levels = Array.from({ length: 9 }, (_, index) => gradientColorAt(stops, index / 8));
     const paths = levels.map(() => []);
@@ -1021,11 +1023,25 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
           Math.sin((column + row + 2) * 0.39) + 3
         ) / 6;
         const level = Math.round(Math.min(1, Math.max(0, field)) * (levels.length - 1));
-        paths[level].push(`M${column * cell} ${row * cell}h${cell}v${cell}h-${cell}z`);
+        paths[level].push(`M${(column - 1) * cell} ${(row - 1) * cell}h${cell}v${cell}h-${cell}z`);
       }
     }
     const tiles = paths.map((parts, index) => parts.length ? `<path d="${parts.join("")}" fill="${levels[index]}"/>` : "").join("");
-    return gradientSvgLayer(`<defs><pattern id="q" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M0 80V0h80" fill="none" stroke="#fff" stroke-opacity=".12"/><path d="M0 80h80V0" fill="none" stroke="#000" stroke-opacity=".2"/></pattern></defs><g opacity="${opacity}">${tiles}<rect width="1200" height="720" fill="url(#q)"/></g>`);
+    return gradientSvgLayer(`${animation.style}<defs><pattern id="q" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M0 80V0h80" fill="none" stroke="#fff" stroke-opacity=".12"/><path d="M0 80h80V0" fill="none" stroke="#000" stroke-opacity=".2"/></pattern></defs><g${animation.attribute} opacity="${opacity}">${tiles}<rect x="-80" y="-80" width="1360" height="880" fill="url(#q)"/></g>`);
+  }
+
+  function gradientSvgMotion(motion, kind){
+    if (!motion || motion === "off") return { style: "", attribute: "" };
+    const pixel = kind === "pixel";
+    const duration = pixel ? (motion === "medium" ? 8 : 14) : (motion === "medium" ? 10 : 18);
+    const timing = pixel ? "steps(8,end)" : "ease-in-out";
+    const frames = pixel
+      ? "0%{transform:translate(-80px,-80px)}50%{transform:translate(0,-80px)}100%{transform:translate(0,0)}"
+      : "0%,100%{transform:translate(-24px,-14px) scale(1.05)}50%{transform:translate(26px,16px) scale(1.08)}";
+    return {
+      style: `<style>@keyframes btfwGradientMotion{${frames}}.btfw-gradient-motion{transform-box:fill-box;transform-origin:center;animation:btfwGradientMotion ${duration}s ${timing} infinite alternate}@media (prefers-reduced-motion:reduce){.btfw-gradient-motion{animation:none}}</style>`,
+      attribute: ` class="btfw-gradient-motion"`
+    };
   }
 
   function renderGradientLayer(theme, strengthScale = 1){
@@ -1037,9 +1053,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const colorPath = stops.map(stop => `${colorAt(stop)} ${stop.position}%`).join(", ");
 
     if (gradient.type === "flow") {
+      const animation = gradientSvgMotion(gradient.motion, "flow");
       const displacement = Math.round(72 + (gradient.soften * 0.9));
-      const blur = Math.round(18 + (gradient.soften * 0.42));
-      return gradientSvgLayer(`<defs><filter id="f" x="-35%" y="-45%" width="170%" height="190%"><feTurbulence type="fractalNoise" baseFrequency=".006 .011" numOctaves="2" seed="17" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${displacement}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[0].color}" fill-opacity=".42"/><g filter="url(#f)"><ellipse cx="105" cy="105" rx="520" ry="390" fill="${stops[0].color}"/><ellipse cx="430" cy="715" rx="610" ry="410" fill="${stops[1].color}"/><ellipse cx="825" cy="100" rx="555" ry="390" fill="${stops[2].color}"/><ellipse cx="1190" cy="650" rx="590" ry="430" fill="${stops[3].color}"/><ellipse cx="655" cy="365" rx="390" ry="255" fill="${gradientColorAt(stops, .58)}" fill-opacity=".74"/></g></g>`);
+      const blur = Math.round(6 + (gradient.soften * 0.18));
+      return gradientSvgLayer(`${animation.style}<defs><filter id="f" x="-35%" y="-45%" width="170%" height="190%"><feTurbulence type="fractalNoise" baseFrequency=".005 .01" numOctaves="3" seed="17" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${displacement}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter></defs><g${animation.attribute} opacity="${opacity}"><rect width="1200" height="720" fill="${stops[0].color}" fill-opacity=".28"/><g filter="url(#f)"><ellipse cx="95" cy="90" rx="405" ry="305" fill="${stops[0].color}"/><ellipse cx="320" cy="690" rx="455" ry="325" fill="${stops[1].color}"/><ellipse cx="790" cy="80" rx="455" ry="310" fill="${stops[2].color}"/><ellipse cx="1140" cy="620" rx="470" ry="350" fill="${stops[3].color}"/><ellipse cx="620" cy="390" rx="330" ry="235" fill="${gradientColorAt(stops, .58)}" fill-opacity=".84"/></g></g>`);
     }
 
     if (gradient.type === "mesh") {
@@ -1048,30 +1065,35 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
 
     if (gradient.type === "ios") {
-      const gloss = Math.max(0.04, (alpha / 100) * 0.22).toFixed(3);
-      return {
-        css: `radial-gradient(90% 70% at 12% 8%, rgba(255,255,255,${gloss}), rgba(255,255,255,0) 60%), linear-gradient(135deg in oklab, ${colorPath})`,
-        count: 2,
-        sizes: ["cover", "cover"],
-        positions: ["center", "center"]
-      };
+      const animation = gradientSvgMotion(gradient.motion, "ios");
+      const svgStops = stops.map(stop => `<stop offset="${stop.position}%" stop-color="${stop.color}"/>`).join("");
+      return gradientSvgLayer(`${animation.style}<defs><linearGradient id="i" gradientUnits="userSpaceOnUse" x1="-100" y1="-60" x2="1300" y2="780">${svgStops}</linearGradient><radialGradient id="g" cx="12%" cy="8%" r="72%" fx="12%" fy="8%"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><g${animation.attribute} opacity="${opacity}"><rect x="-100" y="-60" width="1400" height="840" fill="url(#i)"/><rect x="-100" y="-60" width="1400" height="840" fill="url(#g)"/></g>`);
     }
 
     if (gradient.type === "rings") {
-      const melt = Math.round(14 + (gradient.soften * 0.55));
-      const blur = Math.max(1, Math.round(gradient.soften * 0.08));
-      const rings = Array.from({ length: 12 }, (_, index) => `<circle cx="80" cy="760" r="${62 + (index * 115)}" fill="none" stroke="${gradientColorAt(stops, index / 11)}" stroke-width="118"/>`).join("");
-      return gradientSvgLayer(`<defs><filter id="r" x="-20%" y="-25%" width="145%" height="155%"><feTurbulence type="fractalNoise" baseFrequency=".004 .009" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${melt}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[0].color}" fill-opacity=".3"/><g filter="url(#r)">${rings}</g></g>`);
+      const melt = Math.round(8 + (gradient.soften * 0.45));
+      const blur = Math.round(10 + (gradient.soften * 0.2));
+      const rings = Array.from({ length: 12 }, (_, index) => `<circle cx="1450" cy="360" r="${90 + (index * 135)}" fill="none" stroke="${gradientColorAt(stops, index / 11)}" stroke-width="150"/>`).join("");
+      return gradientSvgLayer(`<defs><filter id="r" filterUnits="userSpaceOnUse" x="-220" y="-220" width="3400" height="1160"><feTurbulence type="fractalNoise" baseFrequency=".003 .012" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${melt}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[3].color}" fill-opacity=".5"/><g filter="url(#r)">${rings}</g></g>`);
     }
 
     if (gradient.type === "pixel") {
-      return renderPixelQuilt(stops, opacity);
+      return renderPixelQuilt(stops, opacity, gradient.motion);
     }
 
-    if (gradient.type === "radial") {
-      const svgStops = stops.map(stop => `<stop offset="${stop.position}%" stop-color="${stop.color}"/>`).join("");
-      return gradientSvgLayer(`<defs><radialGradient id="c" gradientUnits="userSpaceOnUse" cx="600" cy="350" r="450">${svgStops}</radialGradient></defs><rect width="1200" height="720" fill="url(#c)" opacity="${opacity}"/>`);
+    if (gradient.type === "retro") {
+      const rgbLight = stop => { const rgb = gradientHexRgb(stop.color); return (rgb[0] * 0.2126) + (rgb[1] * 0.7152) + (rgb[2] * 0.0722); };
+      const brightestIndex = stops.reduce((best, stop, index) => rgbLight(stop) > rgbLight(stops[best]) ? index : best, 0);
+      const centers = [[192, 590], [936, 187], [1056, 605], [288, 115]];
+      const blur = Math.round(24 + (gradient.soften * 0.42));
+      const grain = (0.045 + (gradient.noise / 900)).toFixed(3);
+      const duration = gradient.motion === "medium" ? 10 : 18;
+      const motionStyle = gradient.motion === "off" ? "" : `<style>@keyframes retroA{0%,100%{transform:translate(-34px,18px)}50%{transform:translate(42px,-28px)}}@keyframes retroB{0%,100%{transform:translate(28px,-24px)}50%{transform:translate(-38px,30px)}}.retro-blob{transform-box:fill-box;transform-origin:center;animation:retroA ${duration}s ease-in-out infinite}.retro-1,.retro-3{animation-name:retroB;animation-delay:-${Math.round(duration / 3)}s}@media (prefers-reduced-motion:reduce){.retro-blob{animation:none}}</style>`;
+      const fields = stops.map((stop, index) => index === brightestIndex ? "" : `<radialGradient id="retro${index}"><stop offset="0" stop-color="${stop.color}" stop-opacity=".98"/><stop offset=".55" stop-color="${stop.color}" stop-opacity=".82"/><stop offset="1" stop-color="${stop.color}" stop-opacity="0"/></radialGradient>`).join("");
+      const blobs = stops.map((stop, index) => index === brightestIndex ? "" : `<ellipse class="retro-blob retro-${index}" cx="${centers[index][0]}" cy="${centers[index][1]}" rx="540" ry="405" fill="url(#retro${index})"/>`).join("");
+      return gradientSvgLayer(`${motionStyle}<defs>${fields}<filter id="retroWarp" x="-30%" y="-40%" width="170%" height="180%"><feTurbulence type="fractalNoise" baseFrequency=".006 .01" numOctaves="3" seed="11" result="warp"/><feDisplacementMap in="SourceGraphic" in2="warp" scale="88" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter><filter id="retroGrain"><feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="3" seed="19"/><feColorMatrix type="saturate" values="0"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[brightestIndex].color}"/><g filter="url(#retroWarp)">${blobs}</g><rect width="1200" height="720" filter="url(#retroGrain)" opacity="${grain}" style="mix-blend-mode:soft-light"/></g>`);
     }
+
     if (gradient.type === "conic") {
       const forward = stops.map(stop => `${colorAt(stop)} ${(stop.position * 1.8).toFixed(1)}deg`);
       const reverse = [...stops].reverse().map(stop => `${colorAt(stop)} ${(360 - (stop.position * 1.8)).toFixed(1)}deg`);
@@ -1480,11 +1502,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-gradient-stage::before { content: ""; position: absolute; z-index: 2; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,.1), transparent 32%, rgba(0,0,0,.12)); }
       .btfw-theme-admin .btfw-gradient-stage::after { content: ""; position: absolute; z-index: 3; inset: 0; pointer-events: none; background-image: var(--btfw-gradient-stage-noise, none); background-size: 160px 160px; mix-blend-mode: soft-light; }
       .btfw-theme-admin .btfw-gradient-stage__badge { position: absolute; z-index: 4; left: 10px; top: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(4,6,12,.48); color: rgba(255,255,255,.9); font-size: .64rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; backdrop-filter: blur(8px); }
-      @keyframes btfw-gradient-studio-flow { 0%,100% { transform: scale(1.16) translate3d(-2.5%,-1.5%,0) rotate(-1deg); } 50% { transform: scale(1.2) translate3d(2.5%,1.8%,0) rotate(1.2deg); } }
-      .btfw-theme-admin .btfw-gradient-stage[data-gradient-type="flow"][data-gradient-motion="slow"] .btfw-gradient-stage__visual,
-      .btfw-theme-admin .btfw-gradient-stage[data-gradient-type="ios"][data-gradient-motion="slow"] .btfw-gradient-stage__visual { animation: btfw-gradient-studio-flow 13s ease-in-out infinite; }
-      .btfw-theme-admin .btfw-gradient-stage[data-gradient-type="flow"][data-gradient-motion="medium"] .btfw-gradient-stage__visual,
-      .btfw-theme-admin .btfw-gradient-stage[data-gradient-type="ios"][data-gradient-motion="medium"] .btfw-gradient-stage__visual { animation: btfw-gradient-studio-flow 7.5s ease-in-out infinite; }
 
       .btfw-theme-admin .btfw-gradient-balance-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
       .btfw-theme-admin .btfw-gradient-balance-label strong { color: var(--btfw-admin-text); font-size: .75rem; }
@@ -3384,7 +3401,7 @@ function replaceBlock(original, startMarker, endMarker, block){
       visual.style.backgroundPosition = (stageLayer.positions || Array(stageLayer.count).fill("center")).join(", ");
       const label = stage.querySelector("[data-role=gradient-stage-label]");
       if (label) {
-        const animated = ["flow", "ios"].includes(gradient.type) && gradient.motion !== "off";
+        const animated = ["flow", "retro", "pixel", "ios"].includes(gradient.type) && gradient.motion !== "off";
         label.textContent = `${GRADIENT_TYPE_LABELS[gradient.type]} · ${animated ? "animated" : "static"}`;
       }
     }
@@ -4183,7 +4200,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                   <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="mesh"><span class="btfw-gradient-type__preview"></span><span>Mesh</span></button>
                   <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="linear"><span class="btfw-gradient-type__preview"></span><span>Linear</span></button>
                   <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="conic"><span class="btfw-gradient-type__preview"></span><span>Conic</span></button>
-                  <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="radial"><span class="btfw-gradient-type__preview"></span><span>Radial</span></button>
+                  <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="retro"><span class="btfw-gradient-type__preview"></span><span>Retro</span></button>
                   <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="rings"><span class="btfw-gradient-type__preview"></span><span>Rings</span></button>
                   <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="pixel"><span class="btfw-gradient-type__preview"></span><span>Pixel</span></button>
                   <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="ios"><span class="btfw-gradient-type__preview"></span><span>iOS</span></button>
@@ -4256,7 +4273,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                   <label class="btfw-gradient-target"><input type="checkbox" data-btfw-bind="gradient.targets.panels"> Panels &amp; stacks</label>
                   <label class="btfw-gradient-target"><input type="checkbox" data-btfw-bind="gradient.targets.navbar"> Navbar</label>
                 </div>
-                <p class="help" style="margin-top:9px">Flow and iOS animate when motion is enabled. Reduced-motion preferences are always respected.</p>
+                <p class="help" style="margin-top:9px">Flow, Retro, Pixel, and iOS animate when motion is enabled. Reduced-motion preferences are always respected.</p>
               </div>
             </div>
             <div class="field">
