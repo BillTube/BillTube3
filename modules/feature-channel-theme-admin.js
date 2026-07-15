@@ -1148,6 +1148,26 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     };
   }
 
+  // Repeated UI surfaces must stay cheap. The detailed presets above use large
+  // filtered SVGs, which are appropriate for one preview/page backdrop but can
+  // exhaust renderer memory when the same image is painted on every card,
+  // modal and toolbar. Preserve the configured colours, balance and strength
+  // with a native CSS gradient for all repeated runtime surfaces.
+  function renderRuntimeSurfaceGradient(theme, strengthScale = 1){
+    const gradient = normalizeGradientConfig(theme);
+    const stops = getGradientStops(theme);
+    const alpha = Math.round(clampGradientNumber(gradient.strength * strengthScale, 4, 72, 24));
+    const path = stops.map(stop =>
+      `color-mix(in srgb, ${stop.color} ${alpha}%, transparent) ${stop.position}%`
+    ).join(", ");
+    return {
+      css: `linear-gradient(${gradient.angle}deg in oklab, ${path})`,
+      count: 1,
+      sizes: ["cover"],
+      positions: ["center"]
+    };
+  }
+
   function applyRuntimeGradient(theme){
     if (!theme || typeof theme !== "object" || typeof document === "undefined") return;
     const root = document.documentElement;
@@ -1159,9 +1179,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const navbarActive = active && gradient.targets.navbar;
     const staticTheme = staticGradientTheme(theme);
     const page = pageActive ? addGradientNoise(renderGradientLayer(staticTheme, 1), gradient.noise) : { css: "none", count: 1 };
-    const panel = panelActive ? addGradientNoise(renderGradientLayer(staticTheme, 0.7), gradient.noise) : { css: "none", count: 1 };
-    const panelSoft = panelActive ? addGradientNoise(renderGradientLayer(staticTheme, 0.42), gradient.noise) : { css: "none", count: 1 };
-    const navbar = navbarActive ? addGradientNoise(renderGradientLayer(staticTheme, 0.78), gradient.noise) : { css: "none", count: 1 };
+    const panel = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.7) : { css: "none", count: 1 };
+    const panelSoft = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.42) : { css: "none", count: 1 };
+    const navbar = navbarActive ? renderRuntimeSurfaceGradient(staticTheme, 0.78) : { css: "none", count: 1 };
     root.setAttribute("data-btfw-gradient", active ? "on" : "off");
     root.setAttribute("data-btfw-gradient-type", gradient.type);
     root.setAttribute("data-btfw-gradient-page", pageActive ? "on" : "off");
@@ -2909,9 +2929,18 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     };
     const staticCfg = staticGradientTheme(cfg);
     const page = compose(renderGradientLayer(staticCfg, 1), gradient.targets.page);
-    const panel = compose(renderGradientLayer(staticCfg, 0.7), gradient.targets.panels);
-    const panelSoft = compose(renderGradientLayer(staticCfg, 0.42), gradient.targets.panels);
-    const navbar = compose(renderGradientLayer(staticCfg, 0.78), gradient.targets.navbar);
+    // Channel CSS is shared by every viewer, so repeated surfaces use the same
+    // lightweight native gradient as the live runtime. Noise and filtered SVG
+    // presets remain exclusive to the single page layer.
+    const panel = active && gradient.targets.panels
+      ? renderRuntimeSurfaceGradient(staticCfg, 0.7)
+      : { css: "none", count: 1 };
+    const panelSoft = active && gradient.targets.panels
+      ? renderRuntimeSurfaceGradient(staticCfg, 0.42)
+      : { css: "none", count: 1 };
+    const navbar = active && gradient.targets.navbar
+      ? renderRuntimeSurfaceGradient(staticCfg, 0.78)
+      : { css: "none", count: 1 };
     return [
       `--btfw-gradient-noise:${noise}`,
       `--btfw-gradient-page-layer:${page.css}`,
