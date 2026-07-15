@@ -924,7 +924,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     if (!GRADIENT_TYPES.includes(gradient.type)) gradient.type = defaults.type;
     if (!GRADIENT_SOURCES.includes(gradient.source)) gradient.source = defaults.source;
     gradient.angle = Math.round(clampGradientNumber(gradient.angle, 0, 360, defaults.angle));
-    gradient.strength = Math.round(clampGradientNumber(gradient.strength, 8, 72, defaults.strength));
+    gradient.strength = Math.round(clampGradientNumber(gradient.strength, 20, 72, defaults.strength));
     gradient.soften = Math.round(clampGradientNumber(gradient.soften, 0, 80, defaults.soften));
     gradient.noise = Math.round(clampGradientNumber(gradient.noise, 0, 100, defaults.noise));
     if (!GRADIENT_MOTIONS.includes(gradient.motion)) gradient.motion = defaults.motion;
@@ -4250,7 +4250,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                   </div>
                   <div class="field">
                     <label for="btfw-gradient-strength">Blend strength</label>
-                    <div class="btfw-gradient-range"><input type="range" id="btfw-gradient-strength" min="8" max="72" step="1" data-btfw-bind="gradient.strength"><output data-role="gradient-strength-value">34%</output></div>
+                    <div class="btfw-gradient-range"><input type="range" id="btfw-gradient-strength" min="20" max="72" step="1" data-btfw-bind="gradient.strength"><output data-role="gradient-strength-value">34%</output></div>
                   </div>
                   <div class="field">
                     <label for="btfw-gradient-motion">Motion</label>
