@@ -171,7 +171,7 @@ BTFW.define("feature:footer", [], async () => {
         background-color: color-mix(in srgb, var(--btfw-color-panel) 82%, var(--btfw-color-bg) 18%);
         background-image:
           var(--btfw-dither-image),
-          var(--btfw-gradient-panel-layer),
+          var(--btfw-gradient-panel-runtime-layer),
           radial-gradient(circle at 0 0,
             color-mix(in srgb, var(--btfw-color-accent) 13%, transparent 87%),
             transparent 42%),

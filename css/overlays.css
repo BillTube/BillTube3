@@ -525,7 +525,7 @@
   background-color: color-mix(in srgb, var(--btfw-color-bg) 42%, var(--btfw-color-panel) 58%) !important;
   background-image:
     var(--btfw-dither-image),
-    var(--btfw-gradient-panel-soft-layer),
+    var(--btfw-gradient-panel-soft-runtime-layer),
     radial-gradient(
       130% 190% at 0% -45%,
       color-mix(in srgb, var(--btfw-color-accent) 14%, transparent 86%) 0%,
@@ -701,7 +701,7 @@
   background-color: color-mix(in srgb, var(--btfw-color-panel) 62%, var(--btfw-color-bg) 38%);
   background-image:
     var(--btfw-dither-image),
-    var(--btfw-gradient-panel-soft-layer),
+    var(--btfw-gradient-panel-soft-runtime-layer),
     radial-gradient(
       125% 160% at 0% 0%,
       color-mix(in srgb, var(--btfw-color-accent) 7%, transparent 93%) 0%,

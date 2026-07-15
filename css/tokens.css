@@ -20,6 +20,11 @@
   --btfw-gradient-panel-layer: none;
   --btfw-gradient-panel-soft-layer: none;
   --btfw-gradient-navbar-layer: none;
+  /* Runtime-safe panel copies are intentionally static. Saved channel CSS may
+     still contain animated SVG layers, so repeated surfaces never consume the
+     raw variables directly while the framework is booting. */
+  --btfw-gradient-panel-runtime-layer: none;
+  --btfw-gradient-panel-soft-runtime-layer: none;
   --btfw-navbar-gradient-size: auto;
   --btfw-navbar-gradient-position: center;
   --btfw-panel-background-size: var(--btfw-dither-size), auto, auto, auto, auto;
@@ -33,7 +38,7 @@
      sRGB recipe is the compatibility fallback; modern browsers get the more
      even OKLCH blend below. */
   --btfw-panel-gradient: var(--btfw-dither-image),
-    var(--btfw-gradient-panel-layer),
+    var(--btfw-gradient-panel-runtime-layer),
     linear-gradient(135deg,
       color-mix(in srgb, var(--btfw-color-text) 5%, transparent) 0%,
       transparent 38%),
@@ -44,7 +49,7 @@
       color-mix(in srgb, var(--btfw-color-panel) 86%, var(--btfw-color-accent) 14%),
       color-mix(in srgb, var(--btfw-color-surface) 94%, var(--btfw-color-accent) 6%));
   --btfw-panel-gradient-soft: var(--btfw-dither-image),
-    var(--btfw-gradient-panel-soft-layer),
+    var(--btfw-gradient-panel-soft-runtime-layer),
     linear-gradient(135deg,
       color-mix(in srgb, var(--btfw-color-text) 4%, transparent) 0%,
       transparent 42%),
@@ -162,7 +167,7 @@
 @supports (color: color-mix(in oklch, red, blue)) {
   :root {
     --btfw-panel-gradient: var(--btfw-dither-image),
-      var(--btfw-gradient-panel-layer),
+      var(--btfw-gradient-panel-runtime-layer),
       linear-gradient(135deg,
         color-mix(in oklch, var(--btfw-color-text) 5%, transparent) 0%,
         transparent 38%),
@@ -173,7 +178,7 @@
         color-mix(in oklch, var(--btfw-color-panel) 86%, var(--btfw-color-accent) 14%),
         color-mix(in oklch, var(--btfw-color-surface) 94%, var(--btfw-color-accent) 6%));
     --btfw-panel-gradient-soft: var(--btfw-dither-image),
-      var(--btfw-gradient-panel-soft-layer),
+      var(--btfw-gradient-panel-soft-runtime-layer),
       linear-gradient(135deg,
         color-mix(in oklch, var(--btfw-color-text) 4%, transparent) 0%,
         transparent 42%),

@@ -1135,6 +1135,19 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return layer.positions || Array(layer.count).fill("center");
   }
 
+  function staticGradientTheme(theme){
+    const gradient = normalizeGradientConfig(theme);
+    return {
+      ...theme,
+      gradient: {
+        ...gradient,
+        motion: "off",
+        balance: [...gradient.balance],
+        stops: gradient.stops.map(stop => ({ ...stop }))
+      }
+    };
+  }
+
   function applyRuntimeGradient(theme){
     if (!theme || typeof theme !== "object" || typeof document === "undefined") return;
     const root = document.documentElement;
@@ -1144,9 +1157,10 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const pageActive = active && gradient.targets.page;
     const panelActive = active && gradient.targets.panels;
     const navbarActive = active && gradient.targets.navbar;
+    const staticTheme = staticGradientTheme(theme);
     const page = pageActive ? addGradientNoise(renderGradientLayer(theme, 1), gradient.noise) : { css: "none", count: 1 };
-    const panel = panelActive ? addGradientNoise(renderGradientLayer(theme, 0.7), gradient.noise) : { css: "none", count: 1 };
-    const panelSoft = panelActive ? addGradientNoise(renderGradientLayer(theme, 0.42), gradient.noise) : { css: "none", count: 1 };
+    const panel = panelActive ? addGradientNoise(renderGradientLayer(staticTheme, 0.7), gradient.noise) : { css: "none", count: 1 };
+    const panelSoft = panelActive ? addGradientNoise(renderGradientLayer(staticTheme, 0.42), gradient.noise) : { css: "none", count: 1 };
     const navbar = navbarActive ? addGradientNoise(renderGradientLayer(theme, 0.78), gradient.noise) : { css: "none", count: 1 };
     root.setAttribute("data-btfw-gradient", active ? "on" : "off");
     root.setAttribute("data-btfw-gradient-type", gradient.type);
@@ -1157,6 +1171,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     root.style.setProperty("--btfw-gradient-page-layer", page.css);
     root.style.setProperty("--btfw-gradient-panel-layer", panel.css);
     root.style.setProperty("--btfw-gradient-panel-soft-layer", panelSoft.css);
+    root.style.setProperty("--btfw-gradient-panel-runtime-layer", panel.css);
+    root.style.setProperty("--btfw-gradient-panel-soft-runtime-layer", panelSoft.css);
     root.style.setProperty("--btfw-gradient-navbar-layer", navbar.css);
     root.style.setProperty("--btfw-panel-background-size", ["var(--btfw-dither-size)", ...gradientLayerSizes(panel), ...Array(3).fill("auto")].join(", "));
     root.style.setProperty("--btfw-panel-background-position", ["0 0", ...gradientLayerPositions(panel), ...Array(3).fill("center")].join(", "));
@@ -2889,14 +2905,17 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         positions: ["0 0", ...gradientLayerPositions(layer)]
       };
     };
+    const staticCfg = staticGradientTheme(cfg);
     const page = compose(renderGradientLayer(cfg, 1), gradient.targets.page);
-    const panel = compose(renderGradientLayer(cfg, 0.7), gradient.targets.panels);
-    const panelSoft = compose(renderGradientLayer(cfg, 0.42), gradient.targets.panels);
+    const panel = compose(renderGradientLayer(staticCfg, 0.7), gradient.targets.panels);
+    const panelSoft = compose(renderGradientLayer(staticCfg, 0.42), gradient.targets.panels);
     const navbar = compose(renderGradientLayer(cfg, 0.78), gradient.targets.navbar);
     return [
       `--btfw-gradient-noise:${noise}`,
       `--btfw-gradient-page-layer:${page.css}`,
       `--btfw-gradient-panel-layer:${panel.css}`,
+      `--btfw-gradient-panel-runtime-layer:${panel.css}`,
+      `--btfw-gradient-panel-soft-runtime-layer:${panelSoft.css}`,
       `--btfw-gradient-panel-soft-layer:${panelSoft.css}`,
       `--btfw-gradient-navbar-layer:${navbar.css}`,
       `--btfw-panel-background-size:${["var(--btfw-dither-size)", ...gradientLayerSizes(panel), ...Array(3).fill("auto")].join(",")}`,
@@ -3236,8 +3255,9 @@ function replaceBlock(original, startMarker, endMarker, block){
         : "subtle";
       preview.dataset.dither = material.dither ? ditherIntensity : "off";
       const gradient = normalizeGradientConfig(cfg);
-      const panelGradient = gradient.enabled && gradient.targets.panels ? addGradientNoise(renderGradientLayer(cfg, 0.7), gradient.noise) : { css: "none", count: 1 };
-      const softGradient = gradient.enabled && gradient.targets.panels ? addGradientNoise(renderGradientLayer(cfg, 0.42), gradient.noise) : { css: "none", count: 1 };
+      const staticCfg = staticGradientTheme(cfg);
+      const panelGradient = gradient.enabled && gradient.targets.panels ? addGradientNoise(renderGradientLayer(staticCfg, 0.7), gradient.noise) : { css: "none", count: 1 };
+      const softGradient = gradient.enabled && gradient.targets.panels ? addGradientNoise(renderGradientLayer(staticCfg, 0.42), gradient.noise) : { css: "none", count: 1 };
       const navbarGradient = gradient.enabled && gradient.targets.navbar ? addGradientNoise(renderGradientLayer(cfg, 0.78), gradient.noise) : { css: "none", count: 1 };
       const pageGradient = gradient.enabled && gradient.targets.page ? addGradientNoise(renderGradientLayer(cfg, 1), gradient.noise) : { css: "none", count: 1 };
       preview.style.setProperty("--btfw-tp-gradient-panel", panelGradient.css);
@@ -3356,7 +3376,7 @@ function replaceBlock(original, startMarker, endMarker, block){
       typeButton.tabIndex = selected ? 0 : -1;
       const thumbnail = typeButton.querySelector(".btfw-gradient-type__preview");
       if (thumbnail && GRADIENT_TYPES.includes(type)) {
-        const thumbConfig = { ...cfg, gradient: { ...gradient, type, balance: [...gradient.balance], stops: gradient.stops.map(stop => ({ ...stop })) } };
+        const thumbConfig = { ...cfg, gradient: { ...gradient, type, motion: "off", balance: [...gradient.balance], stops: gradient.stops.map(stop => ({ ...stop })) } };
         const thumbLayer = renderGradientLayer(thumbConfig, 1.8);
         thumbnail.style.backgroundImage = thumbLayer.css;
         thumbnail.style.backgroundSize = (thumbLayer.sizes || Array(thumbLayer.count).fill("cover")).join(", ");
