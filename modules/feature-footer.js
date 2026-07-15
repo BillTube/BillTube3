@@ -470,7 +470,6 @@ BTFW.define("feature:footer", [], async () => {
   }
 
   let maintaining = false;
-  let maintenanceQueued = false;
 
   function maintainFooter(){
     if (maintaining) return;
@@ -485,34 +484,13 @@ BTFW.define("feature:footer", [], async () => {
     }
   }
 
-  function needsMaintenance(){
-    const stack = document.getElementById("btfw-stack-footer");
-    const footer = document.getElementById("btfw-footer");
-    if (!footer || (stack && !stack.contains(footer))) return true;
-    if (document.querySelector("footer#footer")) return true;
-    for (const form of document.querySelectorAll("#loginform, #logoutform")) {
-      if (!form.closest(".btfw-footer__auth")) return true;
-    }
-    return false;
-  }
-
-  function queueMaintenance(){
-    if (maintenanceQueued) return;
-    maintenanceQueued = true;
-    window.setTimeout(() => {
-      maintenanceQueued = false;
-      if (needsMaintenance()) maintainFooter();
-    }, 80);
-  }
-
   function boot(){
     maintainFooter();
-
-    if (!document._btfwFooterObserver) {
-      const observer = new MutationObserver(queueMaintenance);
-      observer.observe(document.body, { childList: true, subtree: true });
-      document._btfwFooterObserver = observer;
-    }
+    // The stack feature already owns footer placement. Reconcile only at its
+    // two bounded settling points instead of observing every mutation on the
+    // page (chat, playlist and media updates included).
+    document.addEventListener("btfw:layoutReady", maintainFooter, { once: true });
+    window.setTimeout(maintainFooter, 1600);
   }
 
   if (document.readyState === "loading") {
