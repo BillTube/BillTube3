@@ -1,7 +1,6 @@
 /* BTFW — feature:footer (auth forms relocation + branding/disclaimer block) */
 BTFW.define("feature:footer", [], async () => {
   const $  = (selector, root = document) => root.querySelector(selector);
-  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
   const BRANDING_HTML = `
     <div class="btfw-footer-branding__content">
@@ -442,7 +441,7 @@ BTFW.define("feature:footer", [], async () => {
     if (!wrap) return;
 
     ["#logoutform", "#loginform"].forEach(selector => {
-      $$(selector).forEach(form => {
+      document.querySelectorAll(selector).forEach(form => {
         if (form.matches("p#loginform")) {
           form.remove();
           return;
@@ -470,18 +469,47 @@ BTFW.define("feature:footer", [], async () => {
     });
   }
 
+  let maintaining = false;
+  let maintenanceQueued = false;
+
   function maintainFooter(){
-    ensureStyles();
-    moveForms();
-    insertBranding();
-    removeLegacyFooter();
+    if (maintaining) return;
+    maintaining = true;
+    try {
+      ensureStyles();
+      moveForms();
+      insertBranding();
+      removeLegacyFooter();
+    } finally {
+      maintaining = false;
+    }
+  }
+
+  function needsMaintenance(){
+    const stack = document.getElementById("btfw-stack-footer");
+    const footer = document.getElementById("btfw-footer");
+    if (!footer || (stack && !stack.contains(footer))) return true;
+    if (document.querySelector("footer#footer")) return true;
+    for (const form of document.querySelectorAll("#loginform, #logoutform")) {
+      if (!form.closest(".btfw-footer__auth")) return true;
+    }
+    return false;
+  }
+
+  function queueMaintenance(){
+    if (maintenanceQueued) return;
+    maintenanceQueued = true;
+    window.setTimeout(() => {
+      maintenanceQueued = false;
+      if (needsMaintenance()) maintainFooter();
+    }, 80);
   }
 
   function boot(){
     maintainFooter();
 
     if (!document._btfwFooterObserver) {
-      const observer = new MutationObserver(() => maintainFooter());
+      const observer = new MutationObserver(queueMaintenance);
       observer.observe(document.body, { childList: true, subtree: true });
       document._btfwFooterObserver = observer;
     }
