@@ -25,6 +25,8 @@
      raw variables directly while the framework is booting. */
   --btfw-gradient-panel-runtime-layer: none;
   --btfw-gradient-panel-soft-runtime-layer: none;
+  --btfw-gradient-page-runtime-layer: none;
+  --btfw-gradient-navbar-runtime-layer: none;
   --btfw-navbar-gradient-size: auto;
   --btfw-navbar-gradient-position: center;
   --btfw-panel-background-size: var(--btfw-dither-size), auto, auto, auto, auto;

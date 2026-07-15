@@ -1169,11 +1169,13 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     root.setAttribute("data-btfw-gradient-navbar", navbarActive ? "on" : "off");
     root.setAttribute("data-btfw-gradient-motion", pageActive ? gradient.motion : "off");
     root.style.setProperty("--btfw-gradient-page-layer", page.css);
+    root.style.setProperty("--btfw-gradient-page-runtime-layer", page.css);
     root.style.setProperty("--btfw-gradient-panel-layer", panel.css);
     root.style.setProperty("--btfw-gradient-panel-soft-layer", panelSoft.css);
     root.style.setProperty("--btfw-gradient-panel-runtime-layer", panel.css);
     root.style.setProperty("--btfw-gradient-panel-soft-runtime-layer", panelSoft.css);
     root.style.setProperty("--btfw-gradient-navbar-layer", navbar.css);
+    root.style.setProperty("--btfw-gradient-navbar-runtime-layer", navbar.css);
     root.style.setProperty("--btfw-panel-background-size", ["var(--btfw-dither-size)", ...gradientLayerSizes(panel), ...Array(3).fill("auto")].join(", "));
     root.style.setProperty("--btfw-panel-background-position", ["0 0", ...gradientLayerPositions(panel), ...Array(3).fill("center")].join(", "));
     root.style.setProperty("--btfw-page-background-size", ["var(--btfw-dither-size)", ...gradientLayerSizes(page), "auto"].join(", "));
@@ -2913,11 +2915,13 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return [
       `--btfw-gradient-noise:${noise}`,
       `--btfw-gradient-page-layer:${page.css}`,
+      `--btfw-gradient-page-runtime-layer:${page.css}`,
       `--btfw-gradient-panel-layer:${panel.css}`,
       `--btfw-gradient-panel-runtime-layer:${panel.css}`,
       `--btfw-gradient-panel-soft-runtime-layer:${panelSoft.css}`,
       `--btfw-gradient-panel-soft-layer:${panelSoft.css}`,
       `--btfw-gradient-navbar-layer:${navbar.css}`,
+      `--btfw-gradient-navbar-runtime-layer:${navbar.css}`,
       `--btfw-panel-background-size:${["var(--btfw-dither-size)", ...gradientLayerSizes(panel), ...Array(3).fill("auto")].join(",")}`,
       `--btfw-panel-background-position:${["0 0", ...gradientLayerPositions(panel), ...Array(3).fill("center")].join(",")}`,
       `--btfw-page-background-size:${["var(--btfw-dither-size)", ...gradientLayerSizes(page), "auto"].join(",")}`,

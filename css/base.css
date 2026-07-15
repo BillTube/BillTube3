@@ -37,7 +37,7 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: var(--btfw-dither-image), var(--btfw-gradient-page-layer), var(--btfw-page-glow);
+  background-image: var(--btfw-dither-image), var(--btfw-gradient-page-runtime-layer), var(--btfw-page-glow);
   background-size: var(--btfw-page-background-size);
   background-position: var(--btfw-page-background-position);
 }
