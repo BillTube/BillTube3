@@ -78,20 +78,13 @@ body::before {
   background-position: 0% 42%;
 }
 
-:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="slow"] .btfw-stack-item__body {
-  animation: btfw-gradient-single-drift 28s ease-in-out infinite;
-}
-
-:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="medium"] .btfw-stack-item__body {
-  animation: btfw-gradient-single-drift 18s ease-in-out infinite;
-}
 
 @media (prefers-reduced-motion: reduce) {
   :root[data-btfw-gradient-page="on"] body::before,
-  :root[data-btfw-gradient-panels="on"] .btfw-stack-item__body { animation: none !important; transform: none !important; }
+  :root[data-btfw-gradient-panels="on"] .btfw-stack-item { animation: none !important; transform: none !important; }
 }
 :root[data-btfw-motion="reduced"][data-btfw-gradient-page="on"] body::before { animation: none !important; transform: none !important; }
-:root[data-btfw-motion="reduced"][data-btfw-gradient-panels="on"] .btfw-stack-item__body { animation: none !important; }
+:root[data-btfw-motion="reduced"][data-btfw-gradient-panels="on"] .btfw-stack-item { animation: none !important; }
 
 /* Strengthen the thumb only while the pointer is over the scrolling box.
    (The page-level bar on html stays faint — the pointer is always "over"
@@ -967,6 +960,19 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, var(--btfw-color-panel) 52%);
   box-shadow: var(--btfw-panel-shadow),
     0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 12%, transparent 88%);
+}
+
+:root[data-btfw-gradient-panels="on"] .btfw-stack-item {
+  background-size: var(--btfw-dither-size), 180% 180%, auto, auto, auto;
+  background-position: 0 0, 0% 42%, center, center, center;
+}
+
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="slow"] .btfw-stack-item {
+  animation: btfw-gradient-panel-drift 28s ease-in-out infinite;
+}
+
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="medium"] .btfw-stack-item {
+  animation: btfw-gradient-panel-drift 18s ease-in-out infinite;
 }
 .btfw-stack-item__header{
   display: flex;
