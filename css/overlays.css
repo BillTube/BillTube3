@@ -1168,8 +1168,10 @@
 
 /* Card shell */
 .modal-card {
-  background: var(--btfw-overlay-elevated);
-  background-image: var(--btfw-surface-glow);
+  background-color: color-mix(in srgb, var(--btfw-overlay-elevated) 96%, transparent 4%);
+  background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   color: var(--btfw-color-text);
   border: 1px solid var(--btfw-overlay-border);
   border-radius: var(--btfw-radius);
@@ -1182,15 +1184,24 @@
    layers the glow image on top. */
 .modal.btfw-bulma-skin .modal-content,
 #btfw-emotes-pop,
-#btfw-gif-modal,
-#btfw-ct-modal {
-  background-image: var(--btfw-surface-glow) !important;
+#btfw-gif-modal .btfw-gif-pop,
+#btfw-ct-modal .btfw-ct-card,
+#btfw-cmds-modal .btfw-cmds-card,
+#btfw-userlist-pop,
+#btfw-pl-help-pop {
+  background-color: color-mix(in srgb, var(--btfw-overlay-bg) 94%, transparent 6%) !important;
+  background-image: var(--btfw-panel-gradient-soft) !important;
+  background-size: var(--btfw-panel-background-size) !important;
+  background-position: var(--btfw-panel-background-position) !important;
 }
 
 /* Header / footer */
 .modal-card-head,
 .modal-card-foot {
-  background: color-mix(in srgb, var(--btfw-overlay-bg) 96%, transparent 4%);
+  background-color: color-mix(in srgb, var(--btfw-overlay-bg) 92%, transparent 8%);
+  background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border-color: var(--btfw-border);
 }
 
@@ -1214,7 +1225,10 @@
 
 /* Body */
 .modal-card-body {
-  background: var(--btfw-overlay-elevated)!important;
+  background-color: color-mix(in srgb, var(--btfw-overlay-elevated) 94%, transparent 6%) !important;
+  background-image: var(--btfw-panel-gradient-soft) !important;
+  background-size: var(--btfw-panel-background-size) !important;
+  background-position: var(--btfw-panel-background-position) !important;
   color: var(--btfw-color-text)!important;
 }
 

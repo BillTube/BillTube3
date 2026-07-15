@@ -1055,7 +1055,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     if (gradient.type === "flow") {
       const animation = gradientSvgMotion(gradient.motion, "flow");
       const displacement = Math.round(72 + (gradient.soften * 0.9));
-      const blur = Math.round(6 + (gradient.soften * 0.18));
+      const blur = Math.round(18 + (gradient.soften * 0.42));
       return gradientSvgLayer(`${animation.style}<defs><filter id="f" x="-35%" y="-45%" width="170%" height="190%"><feTurbulence type="fractalNoise" baseFrequency=".005 .01" numOctaves="3" seed="17" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${displacement}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter></defs><g${animation.attribute} opacity="${opacity}"><rect width="1200" height="720" fill="${stops[0].color}" fill-opacity=".28"/><g filter="url(#f)"><ellipse cx="95" cy="90" rx="405" ry="305" fill="${stops[0].color}"/><ellipse cx="320" cy="690" rx="455" ry="325" fill="${stops[1].color}"/><ellipse cx="790" cy="80" rx="455" ry="310" fill="${stops[2].color}"/><ellipse cx="1140" cy="620" rx="470" ry="350" fill="${stops[3].color}"/><ellipse cx="620" cy="390" rx="330" ry="235" fill="${gradientColorAt(stops, .58)}" fill-opacity=".84"/></g></g>`);
     }
 
@@ -1499,8 +1499,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-gradient-type[aria-selected="true"] { color: var(--btfw-admin-text); border-color: color-mix(in srgb, var(--btfw-color-accent) 70%, white 6%); background: color-mix(in srgb, var(--btfw-color-accent) 16%, var(--btfw-admin-surface)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 18%, transparent); }
       .btfw-theme-admin .btfw-gradient-type__preview { width: 32px; height: 28px; border-radius: 6px; background-color: var(--btfw-theme-bg, #05060d); background-image: var(--btfw-gradient-thumb, none); background-size: var(--btfw-gradient-thumb-size, cover); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 0 0 1px rgba(255,255,255,.08); }
 
-      .btfw-theme-admin .btfw-gradient-stage { --btfw-gradient-stage-soften: 0px; position: relative; height: 184px; margin: 5px 0 13px; border-radius: 12px; overflow: hidden; isolation: isolate; background: var(--btfw-theme-bg, #05060d); border: 1px solid color-mix(in srgb, var(--btfw-admin-text) 16%, transparent); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 15px 32px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 42%, transparent); }
-      .btfw-theme-admin .btfw-gradient-stage__visual { position: absolute; inset: -14%; background-color: var(--btfw-theme-bg, #05060d); background-image: none; background-repeat: repeat; background-position: center; filter: blur(var(--btfw-gradient-stage-soften)) saturate(1.08); transform: scale(1.12); will-change: transform; }
+      .btfw-theme-admin .btfw-gradient-stage { position: relative; width: 100%; height: auto; aspect-ratio: 5 / 3; margin: 5px 0 13px; border-radius: 12px; overflow: hidden; isolation: isolate; background: var(--btfw-theme-bg, #05060d); border: 1px solid color-mix(in srgb, var(--btfw-admin-text) 16%, transparent); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 15px 32px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 42%, transparent); }
+      .btfw-theme-admin .btfw-gradient-stage__visual { position: absolute; inset: 0; background-color: var(--btfw-theme-bg, #05060d); background-image: none; background-repeat: no-repeat; background-position: center; filter: none; transform: none; }
       .btfw-theme-admin .btfw-gradient-stage::before { content: ""; position: absolute; z-index: 2; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,.1), transparent 32%, rgba(0,0,0,.12)); }
       .btfw-theme-admin .btfw-gradient-stage::after { content: ""; position: absolute; z-index: 3; inset: 0; pointer-events: none; background-image: var(--btfw-gradient-stage-noise, none); background-size: 160px 160px; mix-blend-mode: soft-light; }
       .btfw-theme-admin .btfw-gradient-stage__badge { position: absolute; z-index: 4; left: 10px; top: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(4,6,12,.48); color: rgba(255,255,255,.9); font-size: .64rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; backdrop-filter: blur(8px); }
@@ -1534,7 +1534,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-gradient-target input { margin: 0; accent-color: var(--btfw-color-accent); }
       @media (prefers-reduced-motion: reduce) { .btfw-theme-admin .btfw-gradient-stage__visual { animation: none !important; } }
       @media (max-width: 760px) { .btfw-theme-admin .btfw-gradient-type-grid, .btfw-theme-admin .btfw-gradient-stops { grid-template-columns: repeat(2, minmax(0, 1fr)); } .btfw-theme-admin .btfw-gradient-controls { grid-template-columns: 1fr 1fr; } }
-      @media (max-width: 500px) { .btfw-theme-admin .btfw-gradient-controls { grid-template-columns: 1fr; } .btfw-theme-admin .btfw-gradient-lead { align-items: flex-start; } .btfw-theme-admin .btfw-gradient-stage { height: 150px; } }
+      @media (max-width: 500px) { .btfw-theme-admin .btfw-gradient-controls { grid-template-columns: 1fr; } .btfw-theme-admin .btfw-gradient-lead { align-items: flex-start; } }
       /* Live preview — a real mini-mockup that renders the colors in context */
       .btfw-theme-admin .preview.btfw-tp {
         --btfw-tp-dither-image: none;
@@ -3395,7 +3395,6 @@ function replaceBlock(original, startMarker, endMarker, block){
       const stageLayer = renderGradientLayer(cfg, 2.15);
       stage.dataset.gradientType = gradient.type;
       stage.dataset.gradientMotion = gradient.motion;
-      stage.style.setProperty("--btfw-gradient-stage-soften", `${Math.round(gradient.soften * 0.34)}px`);
       stage.style.setProperty("--btfw-gradient-stage-noise", gradientNoiseImage(gradient.noise));
       visual.style.backgroundColor = colors.background || DEFAULT_CONFIG.colors.background;
       visual.style.backgroundImage = stageLayer.css;
