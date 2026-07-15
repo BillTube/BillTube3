@@ -1072,9 +1072,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
     if (gradient.type === "rings") {
       const melt = Math.round(8 + (gradient.soften * 0.45));
-      const blur = Math.round(10 + (gradient.soften * 0.2));
+      const blur = Math.round(5 + (gradient.soften * 0.14));
       const rings = Array.from({ length: 12 }, (_, index) => `<circle cx="1450" cy="360" r="${90 + (index * 135)}" fill="none" stroke="${gradientColorAt(stops, index / 11)}" stroke-width="150"/>`).join("");
-      return gradientSvgLayer(`<defs><filter id="r" filterUnits="userSpaceOnUse" x="-220" y="-220" width="3400" height="1160"><feTurbulence type="fractalNoise" baseFrequency=".003 .012" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${melt}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[3].color}" fill-opacity=".5"/><g filter="url(#r)">${rings}</g></g>`);
+      const glowColor = color => gradientRgbHex(gradientHexRgb(color).map(channel => channel + ((255 - channel) * 0.58)));
+      const glows = Array.from({ length: 12 }, (_, index) => `<circle cx="1450" cy="360" r="${90 + (index * 135)}" fill="none" stroke="${glowColor(gradientColorAt(stops, index / 11))}" stroke-opacity=".58" stroke-width="16"/>`).join("");
+      return gradientSvgLayer(`<defs><filter id="r" filterUnits="userSpaceOnUse" x="-220" y="-220" width="3400" height="1160"><feTurbulence type="fractalNoise" baseFrequency=".003 .012" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${melt}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter><filter id="rg" filterUnits="userSpaceOnUse" x="-220" y="-220" width="3400" height="1160"><feTurbulence type="fractalNoise" baseFrequency=".003 .012" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${melt}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="6"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[3].color}" fill-opacity=".5"/><g filter="url(#r)">${rings}</g><g filter="url(#rg)">${glows}</g></g>`);
     }
 
     if (gradient.type === "pixel") {
