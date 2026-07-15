@@ -554,6 +554,21 @@
   -webkit-backdrop-filter: blur(16px) saturate(125%);
 }
 
+:root[data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar {
+  background-size: var(--btfw-dither-size), 180% 180%, auto, auto, auto;
+  background-position: 0 0, 0% 42%, center, center, center;
+}
+
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="slow"] #chatwrap .btfw-chat-topbar,
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="slow"] #btfw-chat-actions #btfw-chatactions-pill {
+  animation: btfw-gradient-panel-drift 28s ease-in-out infinite;
+}
+
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="medium"] #chatwrap .btfw-chat-topbar,
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="medium"] #btfw-chat-actions #btfw-chatactions-pill {
+  animation: btfw-gradient-panel-drift 18s ease-in-out infinite;
+}
+
 /* A hairline spectrum catches the channel accent at the top/left while the
    lower/right edge recedes. This is the compact counterpart to the stack
    cards' palette-derived border and shadow. */
@@ -724,6 +739,23 @@
     inset 0 1px 0 color-mix(in srgb, white 7%, transparent 93%),
     inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 46%, transparent 54%),
     0 4px 13px color-mix(in srgb, var(--btfw-color-bg) 15%, transparent 85%);
+}
+
+:root[data-btfw-gradient-panels="on"] #btfw-chat-actions #btfw-chatactions-pill {
+  background-size: var(--btfw-dither-size), 180% 180%, auto, auto, auto;
+  background-position: 0 0, 0% 42%, center, center, center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar,
+  :root[data-btfw-gradient-panels="on"] #btfw-chat-actions #btfw-chatactions-pill {
+    animation: none !important;
+  }
+}
+
+:root[data-btfw-motion="reduced"][data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar,
+:root[data-btfw-motion="reduced"][data-btfw-gradient-panels="on"] #btfw-chat-actions #btfw-chatactions-pill {
+  animation: none !important;
 }
 
 @media (prefers-reduced-transparency: reduce) {

@@ -47,6 +47,19 @@ body::before {
   50% { transform: scale(1.12) translate3d(1.1%, 1%, 0); }
 }
 
+/* Runtime gradients stay native CSS for renderer safety. Only the few large,
+   persistent theme surfaces below move, and they do so by shifting one
+   oversized paint layer rather than creating filtered images per component. */
+@keyframes btfw-gradient-panel-drift {
+  0%, 100% { background-position: 0 0, 0% 42%, center, center, center; }
+  50% { background-position: 0 0, 100% 58%, center, center, center; }
+}
+
+@keyframes btfw-gradient-single-drift {
+  0%, 100% { background-position: 0% 42%; }
+  50% { background-position: 100% 58%; }
+}
+
 :root[data-btfw-gradient-page="on"][data-btfw-gradient-motion="slow"] body::before {
   animation: btfw-gradient-ambient-drift 28s ease-in-out infinite;
   transform-origin: center;
@@ -59,10 +72,26 @@ body::before {
   will-change: transform;
 }
 
+:root[data-btfw-gradient-panels="on"] .btfw-stack-item__body {
+  background-image: var(--btfw-gradient-panel-soft-runtime-layer);
+  background-size: 180% 180%;
+  background-position: 0% 42%;
+}
+
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="slow"] .btfw-stack-item__body {
+  animation: btfw-gradient-single-drift 28s ease-in-out infinite;
+}
+
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="medium"] .btfw-stack-item__body {
+  animation: btfw-gradient-single-drift 18s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  :root[data-btfw-gradient-page="on"] body::before { animation: none !important; transform: none !important; }
+  :root[data-btfw-gradient-page="on"] body::before,
+  :root[data-btfw-gradient-panels="on"] .btfw-stack-item__body { animation: none !important; transform: none !important; }
 }
 :root[data-btfw-motion="reduced"][data-btfw-gradient-page="on"] body::before { animation: none !important; transform: none !important; }
+:root[data-btfw-motion="reduced"][data-btfw-gradient-panels="on"] .btfw-stack-item__body { animation: none !important; }
 
 /* Strengthen the thumb only while the pointer is over the scrolling box.
    (The page-level bar on html stays faint — the pointer is always "over"

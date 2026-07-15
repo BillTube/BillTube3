@@ -15,7 +15,7 @@
   background-color: var(--btfw-navbar-bg, var(--btfw-color-panel)) !important;
   background-image: var(--btfw-gradient-navbar-runtime-layer) !important;
   background-size: var(--btfw-navbar-gradient-size, auto) !important;
-  background-position: var(--btfw-navbar-gradient-position, center) !important;
+  background-position: var(--btfw-navbar-gradient-position, center);
   min-height: var(--btfw-navbar-height);
   box-sizing: border-box;
   display: flex;
@@ -24,6 +24,29 @@
   gap: 0;
   flex-wrap: nowrap;
   isolation: isolate;
+}
+
+:root[data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+  background-size: 180% 180% !important;
+  background-position: 0% 42%;
+}
+
+:root[data-btfw-gradient-navbar="on"][data-btfw-gradient-motion="slow"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+  animation: btfw-gradient-single-drift 28s ease-in-out infinite;
+}
+
+:root[data-btfw-gradient-navbar="on"][data-btfw-gradient-motion="medium"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+  animation: btfw-gradient-single-drift 18s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+    animation: none !important;
+  }
+}
+
+:root[data-btfw-motion="reduced"][data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
+  animation: none !important;
 }
 
 /* Bootstrap stamps ::before/::after clearfix pseudo-elements on .navbar; in a

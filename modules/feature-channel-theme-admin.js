@@ -1187,7 +1187,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     root.setAttribute("data-btfw-gradient-page", pageActive ? "on" : "off");
     root.setAttribute("data-btfw-gradient-panels", panelActive ? "on" : "off");
     root.setAttribute("data-btfw-gradient-navbar", navbarActive ? "on" : "off");
-    root.setAttribute("data-btfw-gradient-motion", pageActive ? gradient.motion : "off");
+    root.setAttribute("data-btfw-gradient-motion", (pageActive || panelActive || navbarActive) ? gradient.motion : "off");
     root.style.setProperty("--btfw-gradient-page-layer", page.css);
     root.style.setProperty("--btfw-gradient-page-runtime-layer", page.css);
     root.style.setProperty("--btfw-gradient-panel-layer", panel.css);
