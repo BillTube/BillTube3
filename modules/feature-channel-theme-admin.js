@@ -968,51 +968,116 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }));
   }
 
+  function gradientSvgUrl(content){
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" preserveAspectRatio="xMidYMid slice">${content}</svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+  }
+
+  function gradientSvgLayer(content){
+    return {
+      css: gradientSvgUrl(content),
+      count: 1,
+      sizes: ["cover"],
+      positions: ["center"]
+    };
+  }
+
+  function gradientHexRgb(hex){
+    const match = /^#([0-9a-f]{6})$/i.exec(String(hex || ""));
+    if (!match) return [0, 0, 0];
+    return [0, 2, 4].map(offset => parseInt(match[1].slice(offset, offset + 2), 16));
+  }
+
+  function gradientRgbHex(rgb){
+    return `#${rgb.map(channel => Math.round(Math.min(255, Math.max(0, channel))).toString(16).padStart(2, "0")).join("")}`;
+  }
+
+  function gradientColorAt(stops, progress){
+    const value = Math.min(1, Math.max(0, progress));
+    const positioned = stops.map(stop => ({ ...stop, unit: stop.position / 100 }));
+    if (value <= positioned[0].unit) return positioned[0].color;
+    if (value >= positioned[positioned.length - 1].unit) return positioned[positioned.length - 1].color;
+    const upperIndex = positioned.findIndex(stop => stop.unit >= value);
+    const lower = positioned[Math.max(0, upperIndex - 1)];
+    const upper = positioned[upperIndex];
+    const span = Math.max(0.001, upper.unit - lower.unit);
+    const mix = (value - lower.unit) / span;
+    const a = gradientHexRgb(lower.color);
+    const b = gradientHexRgb(upper.color);
+    return gradientRgbHex(a.map((channel, index) => channel + ((b[index] - channel) * mix)));
+  }
+
+  function renderPixelQuilt(stops, opacity){
+    const columns = 15;
+    const rows = 9;
+    const cell = 80;
+    const levels = Array.from({ length: 9 }, (_, index) => gradientColorAt(stops, index / 8));
+    const paths = levels.map(() => []);
+    for (let row = 0; row < rows; row += 1) {
+      for (let column = 0; column < columns; column += 1) {
+        const field = (
+          Math.sin((column + 1) * 0.73) +
+          Math.cos((row + 1) * 0.91) +
+          Math.sin((column + row + 2) * 0.39) + 3
+        ) / 6;
+        const level = Math.round(Math.min(1, Math.max(0, field)) * (levels.length - 1));
+        paths[level].push(`M${column * cell} ${row * cell}h${cell}v${cell}h-${cell}z`);
+      }
+    }
+    const tiles = paths.map((parts, index) => parts.length ? `<path d="${parts.join("")}" fill="${levels[index]}"/>` : "").join("");
+    return gradientSvgLayer(`<defs><pattern id="q" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M0 80V0h80" fill="none" stroke="#fff" stroke-opacity=".12"/><path d="M0 80h80V0" fill="none" stroke="#000" stroke-opacity=".2"/></pattern></defs><g opacity="${opacity}">${tiles}<rect width="1200" height="720" fill="url(#q)"/></g>`);
+  }
+
   function renderGradientLayer(theme, strengthScale = 1){
     const gradient = normalizeGradientConfig(theme);
     const stops = getGradientStops(theme);
     const alpha = Math.round(clampGradientNumber(gradient.strength * strengthScale, 4, 72, 24));
+    const opacity = (alpha / 100).toFixed(2);
     const colorAt = stop => `color-mix(in srgb, ${stop.color} ${alpha}%, transparent)`;
     const colorPath = stops.map(stop => `${colorAt(stop)} ${stop.position}%`).join(", ");
-    const feather = Math.round(58 + (gradient.soften * 0.34));
 
-    if (gradient.type === "flow" || gradient.type === "mesh" || gradient.type === "ios") {
-      const positions = gradient.type === "flow"
-        ? [[12, 18], [38, 82], [68, 22], [90, 76]]
-        : gradient.type === "ios"
-          ? [[18, 22], [78, 18], [28, 82], [84, 76]]
-          : [[18, 20], [32, 78], [72, 26], [84, 76]];
-      const size = gradient.type === "ios" ? "64% 74%" : (gradient.type === "flow" ? "92% 112%" : "78% 94%");
+    if (gradient.type === "flow") {
+      const displacement = Math.round(72 + (gradient.soften * 0.9));
+      const blur = Math.round(18 + (gradient.soften * 0.42));
+      return gradientSvgLayer(`<defs><filter id="f" x="-35%" y="-45%" width="170%" height="190%"><feTurbulence type="fractalNoise" baseFrequency=".006 .011" numOctaves="2" seed="17" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${displacement}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[0].color}" fill-opacity=".42"/><g filter="url(#f)"><ellipse cx="105" cy="105" rx="520" ry="390" fill="${stops[0].color}"/><ellipse cx="430" cy="715" rx="610" ry="410" fill="${stops[1].color}"/><ellipse cx="825" cy="100" rx="555" ry="390" fill="${stops[2].color}"/><ellipse cx="1190" cy="650" rx="590" ry="430" fill="${stops[3].color}"/><ellipse cx="655" cy="365" rx="390" ry="255" fill="${gradientColorAt(stops, .58)}" fill-opacity=".74"/></g></g>`);
+    }
+
+    if (gradient.type === "mesh") {
+      const blur = Math.round(62 + (gradient.soften * 0.55));
+      return gradientSvgLayer(`<defs><filter id="m" x="-35%" y="-50%" width="170%" height="200%"><feGaussianBlur stdDeviation="${blur}"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${gradientColorAt(stops, .25)}" fill-opacity=".5"/><g filter="url(#m)"><ellipse cx="50" cy="95" rx="470" ry="335" fill="${stops[0].color}"/><ellipse cx="365" cy="690" rx="520" ry="345" fill="${stops[1].color}"/><ellipse cx="790" cy="50" rx="515" ry="330" fill="${stops[2].color}"/><ellipse cx="1200" cy="610" rx="535" ry="390" fill="${stops[3].color}"/><ellipse cx="645" cy="405" rx="380" ry="235" fill="${gradientColorAt(stops, .56)}" fill-opacity=".8"/></g></g>`);
+    }
+
+    if (gradient.type === "ios") {
+      const gloss = Math.max(0.04, (alpha / 100) * 0.22).toFixed(3);
       return {
-        css: stops.map((stop, index) => `radial-gradient(${size} at ${positions[index][0]}% ${positions[index][1]}%, ${colorAt(stop)} 0%, transparent ${feather}%)`).join(", "),
-        count: stops.length
+        css: `radial-gradient(90% 70% at 12% 8%, rgba(255,255,255,${gloss}), rgba(255,255,255,0) 60%), linear-gradient(135deg in oklab, ${colorPath})`,
+        count: 2,
+        sizes: ["cover", "cover"],
+        positions: ["center", "center"]
       };
     }
 
     if (gradient.type === "rings") {
-      const ringWidth = Math.round(10 + (gradient.soften / 16));
-      return {
-        css: `repeating-radial-gradient(circle at 50% 50%, ${colorAt(stops[0])} 0 ${ringWidth}%, ${colorAt(stops[1])} ${ringWidth}% ${ringWidth * 2}%, ${colorAt(stops[2])} ${ringWidth * 2}% ${ringWidth * 3}%, ${colorAt(stops[3])} ${ringWidth * 3}% ${ringWidth * 4}%)`,
-        count: 1
-      };
+      const melt = Math.round(14 + (gradient.soften * 0.55));
+      const blur = Math.max(1, Math.round(gradient.soften * 0.08));
+      const rings = Array.from({ length: 12 }, (_, index) => `<circle cx="80" cy="760" r="${62 + (index * 115)}" fill="none" stroke="${gradientColorAt(stops, index / 11)}" stroke-width="118"/>`).join("");
+      return gradientSvgLayer(`<defs><filter id="r" x="-20%" y="-25%" width="145%" height="155%"><feTurbulence type="fractalNoise" baseFrequency=".004 .009" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${melt}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[0].color}" fill-opacity=".3"/><g filter="url(#r)">${rings}</g></g>`);
     }
 
     if (gradient.type === "pixel") {
-      return {
-        css: `conic-gradient(from 90deg at 2px 2px, ${colorAt(stops[0])} 0 25%, ${colorAt(stops[1])} 0 50%, ${colorAt(stops[2])} 0 75%, ${colorAt(stops[3])} 0)`,
-        count: 1,
-        sizes: ["44px 44px"],
-        positions: ["center"]
-      };
+      return renderPixelQuilt(stops, opacity);
     }
 
     if (gradient.type === "radial") {
-      return { css: `radial-gradient(ellipse at 50% 42%, ${colorPath})`, count: 1 };
+      const svgStops = stops.map(stop => `<stop offset="${stop.position}%" stop-color="${stop.color}"/>`).join("");
+      return gradientSvgLayer(`<defs><radialGradient id="c" gradientUnits="userSpaceOnUse" cx="600" cy="350" r="450">${svgStops}</radialGradient></defs><rect width="1200" height="720" fill="url(#c)" opacity="${opacity}"/>`);
     }
     if (gradient.type === "conic") {
-      return { css: `conic-gradient(from ${gradient.angle}deg at 50% 50%, ${colorPath})`, count: 1 };
+      const forward = stops.map(stop => `${colorAt(stop)} ${(stop.position * 1.8).toFixed(1)}deg`);
+      const reverse = [...stops].reverse().map(stop => `${colorAt(stop)} ${(360 - (stop.position * 1.8)).toFixed(1)}deg`);
+      return { css: `conic-gradient(from ${gradient.angle}deg at 50% 50% in oklab, ${forward.concat(reverse).join(", ")})`, count: 1, sizes: ["cover"], positions: ["center"] };
     }
-    return { css: `linear-gradient(${gradient.angle}deg, ${colorPath})`, count: 1 };
+    return { css: `linear-gradient(${gradient.angle}deg in oklab, ${colorPath})`, count: 1, sizes: ["cover"], positions: ["center"] };
   }
 
   function gradientNoiseImage(amount){
