@@ -3291,10 +3291,10 @@ function replaceBlock(original, startMarker, endMarker, block){
       preview.dataset.dither = material.dither ? ditherIntensity : "off";
       const gradient = normalizeGradientConfig(cfg);
       const staticCfg = staticGradientTheme(cfg);
-      const panelGradient = gradient.enabled && gradient.targets.panels ? addGradientNoise(renderGradientLayer(staticCfg, 0.7), gradient.noise) : { css: "none", count: 1 };
-      const softGradient = gradient.enabled && gradient.targets.panels ? addGradientNoise(renderGradientLayer(staticCfg, 0.42), gradient.noise) : { css: "none", count: 1 };
-      const navbarGradient = gradient.enabled && gradient.targets.navbar ? addGradientNoise(renderGradientLayer(staticCfg, 0.78), gradient.noise) : { css: "none", count: 1 };
-      const pageGradient = gradient.enabled && gradient.targets.page ? addGradientNoise(renderGradientLayer(staticCfg, 1), gradient.noise) : { css: "none", count: 1 };
+      const panelGradient = gradient.enabled && gradient.targets.panels ? renderRuntimeSurfaceGradient(staticCfg, 0.7) : { css: "none", count: 1 };
+      const softGradient = gradient.enabled && gradient.targets.panels ? renderRuntimeSurfaceGradient(staticCfg, 0.42) : { css: "none", count: 1 };
+      const navbarGradient = gradient.enabled && gradient.targets.navbar ? renderRuntimeSurfaceGradient(staticCfg, 0.78) : { css: "none", count: 1 };
+      const pageGradient = gradient.enabled && gradient.targets.page ? renderRuntimeSurfaceGradient(staticCfg, 1) : { css: "none", count: 1 };
       preview.style.setProperty("--btfw-tp-gradient-panel", panelGradient.css);
       preview.style.setProperty("--btfw-tp-gradient-soft", softGradient.css);
       preview.style.setProperty("--btfw-tp-gradient-navbar", navbarGradient.css);
@@ -3412,7 +3412,7 @@ function replaceBlock(original, startMarker, endMarker, block){
       const thumbnail = typeButton.querySelector(".btfw-gradient-type__preview");
       if (thumbnail && GRADIENT_TYPES.includes(type)) {
         const thumbConfig = { ...cfg, gradient: { ...gradient, type, motion: "off", balance: [...gradient.balance], stops: gradient.stops.map(stop => ({ ...stop })) } };
-        const thumbLayer = renderGradientLayer(thumbConfig, 1.8);
+        const thumbLayer = renderRuntimeSurfaceGradient(thumbConfig, 1.8);
         thumbnail.style.backgroundImage = thumbLayer.css;
         thumbnail.style.backgroundSize = (thumbLayer.sizes || Array(thumbLayer.count).fill("cover")).join(", ");
         thumbnail.style.backgroundPosition = (thumbLayer.positions || Array(thumbLayer.count).fill("center")).join(", ");
@@ -5982,7 +5982,24 @@ setTimeout(() => {
   function boot(){
     if (!canManageChannel()) return;
     const modal = document.querySelector(CHANNEL_MODAL_SELECTOR);
-    ensureModalPanel(modal);
+    if (!modal) return;
+    // The channel-settings modal exists while hidden. Building the complete
+    // theme editor at page boot needlessly allocates every preview asset.
+    const initializeWhenVisible = () => {
+      const visible = modal.classList.contains("in") ||
+        modal.classList.contains("show") ||
+        modal.getAttribute("aria-hidden") === "false";
+      if (visible) ensureModalPanel(modal);
+    };
+    initializeWhenVisible();
+    if (!modal.dataset.btfwThemeAdminVisibilityObserved) {
+      modal.dataset.btfwThemeAdminVisibilityObserved = "1";
+      const visibilityObserver = new MutationObserver(initializeWhenVisible);
+      visibilityObserver.observe(modal, {
+        attributes: true,
+        attributeFilter: ["class", "style", "aria-hidden"]
+      });
+    }
   }
 
   if (document.readyState === "loading") {
