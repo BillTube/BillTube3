@@ -71,16 +71,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   };
   const PATTERN_OPACITY = { subtle: 0.1, medium: 0.2, bold: 0.32 };
   const DITHER_INTENSITIES = ["subtle", "medium", "bold"];
-  const GRADIENT_TYPES = ["flow", "mesh", "linear", "conic", "retro", "rings", "pixel", "ios"];
+  const GRADIENT_TYPES = ["flow", "retro", "linear", "pixel"];
   const GRADIENT_TYPE_LABELS = {
     flow: "Flow",
-    mesh: "Mesh",
     linear: "Linear",
-    conic: "Conic",
     retro: "Retro",
-    rings: "Rings",
-    pixel: "Pixel",
-    ios: "iOS"
+    pixel: "Pixel"
   };
   const GRADIENT_SOURCES = ["palette", "custom"];
   const GRADIENT_MOTIONS = ["off", "slow", "medium"];
@@ -922,6 +918,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       : (theme.gradient = JSON.parse(JSON.stringify(defaults)));
     gradient.enabled = Boolean(gradient.enabled);
     if (gradient.type === "radial") gradient.type = "retro";
+    if (["mesh", "conic", "rings", "ios"].includes(gradient.type)) gradient.type = "flow";
     if (!GRADIENT_TYPES.includes(gradient.type)) gradient.type = defaults.type;
     if (!GRADIENT_SOURCES.includes(gradient.source)) gradient.source = defaults.source;
     gradient.angle = Math.round(clampGradientNumber(gradient.angle, 0, 360, defaults.angle));
@@ -1148,18 +1145,20 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     };
   }
 
-  // Repeated UI surfaces must stay cheap. The detailed presets above use large
-  // filtered SVGs, which are appropriate for one preview/page backdrop but can
-  // exhaust renderer memory when the same image is painted on every card,
-  // modal and toolbar. Preserve the configured colours, balance and strength
-  // with a native CSS gradient for all repeated runtime surfaces.
+  // Repeated UI surfaces stay single-layer and filter-free. That retains each
+  // preset's character without placing animated SVG filters on every card,
+  // modal and toolbar.
   function renderRuntimeSurfaceGradient(theme, strengthScale = 1){
     const gradient = normalizeGradientConfig(theme);
     const stops = getGradientStops(theme);
     const alpha = Math.round(clampGradientNumber(gradient.strength * strengthScale, 4, 72, 24));
+    const opacity = (alpha / 100).toFixed(2);
     const path = stops.map(stop =>
       `color-mix(in srgb, ${stop.color} ${alpha}%, transparent) ${stop.position}%`
     ).join(", ");
+    if (gradient.type === "flow") return gradientSvgLayer(`<g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[3].color}"/><path d="M590-160H1450V475C1225 465 1015 555 895 810C745 650 635 520 540 350C600 210 620 25 590-160Z" fill="${stops[2].color}"/><path d="M-240 130C170 80 565 175 830 385C705 540 575 720 360 900H-240Z" fill="${stops[1].color}"/><path d="M130-180H1450V20C1110 15 870 105 705 300C485 225 300 190 105 230C55 120 60-50 130-180Z" fill="${stops[0].color}"/></g>`);
+    if (gradient.type === "retro") return gradientSvgLayer(`<defs><radialGradient id="r0"><stop offset="0" stop-color="${stops[0].color}"/><stop offset="1" stop-color="${stops[0].color}" stop-opacity="0"/></radialGradient><radialGradient id="r1"><stop offset="0" stop-color="${stops[1].color}"/><stop offset="1" stop-color="${stops[1].color}" stop-opacity="0"/></radialGradient><radialGradient id="r2"><stop offset="0" stop-color="${stops[2].color}"/><stop offset="1" stop-color="${stops[2].color}" stop-opacity="0"/></radialGradient></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[3].color}"/><ellipse cx="185" cy="585" rx="550" ry="410" fill="url(#r0)"/><ellipse cx="950" cy="175" rx="560" ry="410" fill="url(#r1)"/><ellipse cx="1050" cy="615" rx="540" ry="400" fill="url(#r2)"/></g>`);
+    if (gradient.type === "pixel") return renderPixelQuilt(stops, opacity, "off");
     return {
       css: `linear-gradient(${gradient.angle}deg in oklab, ${path})`,
       count: 1,
@@ -3468,7 +3467,7 @@ function replaceBlock(original, startMarker, endMarker, block){
       visual.style.backgroundPosition = (stageLayer.positions || Array(stageLayer.count).fill("center")).join(", ");
       const label = stage.querySelector("[data-role=gradient-stage-label]");
       if (label) {
-        const animated = ["flow", "retro", "pixel", "ios"].includes(gradient.type) && gradient.motion !== "off";
+        const animated = gradient.motion !== "off";
         label.textContent = `${GRADIENT_TYPE_LABELS[gradient.type]} · ${animated ? "animated" : "static"}`;
       }
     }
@@ -3482,7 +3481,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     const noiseOutput = panel.querySelector("[data-role=gradient-noise-value]");
     if (noiseOutput) noiseOutput.textContent = `${gradient.noise}%`;
     const angleField = panel.querySelector("[data-role=gradient-angle-field]");
-    if (angleField) angleField.hidden = !["linear", "conic"].includes(gradient.type);
+    if (angleField) angleField.hidden = gradient.type !== "linear";
     rangeSliders.syncAll(panel);
   }
 
@@ -4265,13 +4264,9 @@ function replaceBlock(original, startMarker, endMarker, block){
                 <input type="hidden" id="btfw-gradient-type" data-btfw-bind="gradient.type">
                 <div class="btfw-gradient-type-grid" role="tablist" aria-label="Gradient style">
                   <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="flow"><span class="btfw-gradient-type__preview"></span><span>Flow</span></button>
-                  <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="mesh"><span class="btfw-gradient-type__preview"></span><span>Mesh</span></button>
                   <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="linear"><span class="btfw-gradient-type__preview"></span><span>Linear</span></button>
-                  <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="conic"><span class="btfw-gradient-type__preview"></span><span>Conic</span></button>
                   <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="retro"><span class="btfw-gradient-type__preview"></span><span>Retro</span></button>
-                  <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="rings"><span class="btfw-gradient-type__preview"></span><span>Rings</span></button>
                   <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="pixel"><span class="btfw-gradient-type__preview"></span><span>Pixel</span></button>
-                  <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="ios"><span class="btfw-gradient-type__preview"></span><span>iOS</span></button>
                 </div>
                 <div class="btfw-gradient-stage" data-role="gradient-stage" aria-label="Live gradient preview">
                   <div class="btfw-gradient-stage__visual" data-role="gradient-stage-visual"></div>
