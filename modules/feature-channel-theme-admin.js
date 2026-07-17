@@ -1169,14 +1169,16 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   // Repeated UI surfaces stay single-layer and filter-free. That retains each
   // preset's character without placing animated SVG filters on every card,
   // modal and toolbar.
-  function renderRuntimeSurfaceGradient(theme, strengthScale = 1, surfaceColor){
+  function renderRuntimeSurfaceGradient(theme, strengthScale = 1, surfaceColor, target = { width: 1200, height: 720 }){
     const gradient = normalizeGradientConfig(theme);
     const stops = getGradientStops(theme);
     const colors = theme.colors && typeof theme.colors === "object" ? theme.colors : DEFAULT_CONFIG.colors;
     const surface = surfaceColor || colors.background || DEFAULT_CONFIG.colors.background;
+    const width = Math.max(8, Math.round(target.width || 1200));
+    const height = Math.max(8, Math.round(target.height || 720));
 
     if (gradientCanvas && typeof gradientCanvas.supportsCanvas === "function" && gradientCanvas.supportsCanvas() && ["flow", "linear", "retro", "pixel"].includes(gradient.type)) {
-      const layer = gradientCanvas.renderGradientLayer(gradient.type, 1200, 720, {
+      const layer = gradientCanvas.renderGradientLayer(gradient.type, width, height, {
         stops,
         strength: gradient.strength,
         soften: gradient.soften,
@@ -1216,10 +1218,14 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const navbarActive = active && gradient.targets.navbar;
     const staticTheme = staticGradientTheme(theme);
     const colors = theme.colors && typeof theme.colors === "object" ? theme.colors : DEFAULT_CONFIG.colors;
+    const navbarEl = document.querySelector('.navbar');
+    const navbarTarget = navbarEl
+      ? { width: navbarEl.offsetWidth, height: navbarEl.offsetHeight }
+      : { width: window.innerWidth, height: Math.max(30, parseInt(getComputedStyle(root).getPropertyValue('--btfw-navbar-height')) || 60) };
     const page = pageActive ? renderRuntimeSurfaceGradient(staticTheme, 1, colors.background) : { css: "none", count: 1 };
     const panel = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.7, colors.panel) : { css: "none", count: 1 };
     const panelSoft = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.42, colors.surface) : { css: "none", count: 1 };
-    const navbar = navbarActive ? renderRuntimeSurfaceGradient(staticTheme, 0.78, colors.panel) : { css: "none", count: 1 };
+    const navbar = navbarActive ? renderRuntimeSurfaceGradient(staticTheme, 0.78, colors.panel, navbarTarget) : { css: "none", count: 1 };
     root.setAttribute("data-btfw-gradient", active ? "on" : "off");
     root.setAttribute("data-btfw-gradient-type", gradient.type);
     root.setAttribute("data-btfw-gradient-page", pageActive ? "on" : "off");
@@ -2985,7 +2991,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       ? renderRuntimeSurfaceGradient(staticCfg, 0.42, colors.surface)
       : { css: "none", count: 1 };
     const navbar = active && gradient.targets.navbar
-      ? renderRuntimeSurfaceGradient(staticCfg, 0.78, colors.panel)
+      ? renderRuntimeSurfaceGradient(staticCfg, 0.78, colors.panel, { width: 1200, height: 60 })
       : { css: "none", count: 1 };
     return [
       `--btfw-gradient-noise:${noise}`,

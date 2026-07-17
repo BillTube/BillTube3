@@ -354,9 +354,9 @@ BTFW.define("util:gradientCanvas", [], async () => {
     const H = canvas.height;
 
     const alpha = Math.min(0.72, Math.max(0.04, (opts.strength * opts.strengthScale) / 100));
-    const columns = 17;
-    const rows = 11;
     const cell = Math.max(8, Math.round(Math.min(W, H) / 10));
+    const columns = Math.max(17, Math.ceil(W / cell) + 1);
+    const rows = Math.max(11, Math.ceil(H / cell) + 1);
     const levels = Array.from({ length: 9 }, (_, i) => colorAt(opts.stops, i / 8));
 
     // Base surface.
