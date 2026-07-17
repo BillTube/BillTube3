@@ -83,7 +83,7 @@ BTFW.define("util:gradientCanvas", [], async () => {
   function hexRgb(hex) {
     const match = /^#([0-9a-f]{6})$/i.exec(String(hex || ""));
     if (!match) return [0, 0, 0];
-    return [1, 3, 5].map(i => parseInt(match[1].slice(i, i + 2), 16));
+    return [0, 2, 4].map(i => parseInt(match[1].slice(i, i + 2), 16));
   }
 
   function rgbToOklab(r, g, b) {

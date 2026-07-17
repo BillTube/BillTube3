@@ -1584,7 +1584,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-gradient-stage::before { content: ""; position: absolute; z-index: 2; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,.1), transparent 32%, rgba(0,0,0,.12)); }
       .btfw-theme-admin .btfw-gradient-stage::after { content: ""; position: absolute; z-index: 3; inset: 0; pointer-events: none; background-image: var(--btfw-gradient-stage-noise, none); background-size: 160px 160px; mix-blend-mode: soft-light; }
       .btfw-theme-admin .btfw-gradient-stage__badge { position: absolute; z-index: 4; left: 10px; top: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(4,6,12,.48); color: rgba(255,255,255,.9); font-size: .64rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; backdrop-filter: blur(8px); }
-      .btfw-theme-admin .btfw-gradient-stage__canvas { position: absolute; inset: 0; width: 118%; height: 118%; left: -9%; top: -9%; object-fit: cover; will-change: transform; animation: btfw-gradient-canvas-drift 16s ease-in-out infinite alternate; }
+      .btfw-theme-admin .btfw-gradient-stage__canvas { position: absolute; left: -20%; top: -20%; width: 140%; height: 140%; object-fit: cover; will-change: transform; animation: btfw-gradient-canvas-drift 16s ease-in-out infinite alternate; }
       .btfw-theme-admin .btfw-gradient-stage[data-gradient-motion="off"] .btfw-gradient-stage__canvas,
       html[data-btfw-motion="reduced"] .btfw-theme-admin .btfw-gradient-stage__canvas { animation: none; }
       @keyframes btfw-gradient-canvas-drift {
