@@ -550,8 +550,8 @@
     inset 0 1px 0 color-mix(in srgb, white 7%, transparent 93%),
     inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%),
     0 9px 24px color-mix(in srgb, var(--btfw-color-bg) 20%, transparent 80%);
-  backdrop-filter: blur(16px) saturate(125%);
-  -webkit-backdrop-filter: blur(16px) saturate(125%);
+  backdrop-filter: blur(8px) saturate(125%);
+  -webkit-backdrop-filter: blur(8px) saturate(125%);
 }
 
 :root[data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar {

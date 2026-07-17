@@ -491,10 +491,12 @@ BTFW.define("feature:chat-avatars", ["util:avatar-dither"], async ({ init }) => 
     // CyTube can position the box AFTER our one-shot clamp, leaving it off-screen.
     // Watch the box's style so every (re)position is re-clamped; combined with the
     // idempotent clamp above this can't loop and never lags CyTube.
-    if (!box.__btfwClampObs && window.MutationObserver) {
-      box.__btfwClampObs = true;
-      new MutationObserver(() => clampProfileBoxNow(box))
-        .observe(box, { attributes: true, attributeFilter: ["style"] });
+    if (window.MutationObserver) {
+      if (box.__btfwClampObs) {
+        try { box.__btfwClampObs.disconnect(); } catch (_) {}
+      }
+      box.__btfwClampObs = new MutationObserver(() => clampProfileBoxNow(box));
+      box.__btfwClampObs.observe(box, { attributes: true, attributeFilter: ["style"] });
     }
     clampProfileBoxNow(box);
   }
