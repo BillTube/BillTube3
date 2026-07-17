@@ -410,11 +410,41 @@ BTFW.define("util:gradientCanvas", [], async () => {
     return canvas.toDataURL("image/png");
   }
 
+  // --------------------------------------------------------------------------
+  // 8-entry LRU memo cache: repeat renders during slider drags / panel syncs
+  // are near-instant. Keyed on type + dimensions + full normalized config.
+  // --------------------------------------------------------------------------
+  const RENDER_CACHE = new Map();
+  const RENDER_CACHE_MAX = 8;
+  function renderCacheKey(type, width, height, opts) {
+    return JSON.stringify({ type, width, height, opts });
+  }
+  function getCachedRender(key) {
+    const entry = RENDER_CACHE.get(key);
+    if (!entry) return undefined;
+    // Touch: move to end to keep LRU order.
+    RENDER_CACHE.delete(key);
+    RENDER_CACHE.set(key, entry);
+    return entry;
+  }
+  function setCachedRender(key, value) {
+    if (RENDER_CACHE.has(key)) RENDER_CACHE.delete(key);
+    else if (RENDER_CACHE.size >= RENDER_CACHE_MAX) {
+      const oldest = RENDER_CACHE.keys().next().value;
+      RENDER_CACHE.delete(oldest);
+    }
+    RENDER_CACHE.set(key, value);
+  }
+
   function renderGradientLayer(type, width, height, options = {}) {
     if (!supportsCanvas()) {
       return null;
     }
     const opts = normalizeOptions(options);
+    const key = renderCacheKey(type, width, height, opts);
+    const cached = getCachedRender(key);
+    if (cached) return cached;
+
     const canvas = document.createElement("canvas");
     canvas.style.width = "100%";
     canvas.style.height = "100%";
@@ -431,14 +461,17 @@ BTFW.define("util:gradientCanvas", [], async () => {
     render(canvas, width, height, opts);
 
     const dataUrl = canvasToDataUrl(canvas, options.format);
-    return {
+    const css = `url("${dataUrl}")`;
+    const result = {
       canvas,
       dataUrl,
-      css: dataUrl,
+      css,
       count: 1,
       sizes: ["cover"],
       positions: ["center"]
     };
+    setCachedRender(key, result);
+    return result;
   }
 
   return {

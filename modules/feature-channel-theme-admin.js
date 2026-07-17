@@ -1043,7 +1043,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     };
   }
 
-  function renderGradientLayer(theme, strengthScale = 1){
+  function renderGradientLayer(theme, strengthScale = 1, maxDpr = 2){
     const gradient = normalizeGradientConfig(theme);
     const stops = getGradientStops(theme);
     const colors = theme.colors && typeof theme.colors === "object" ? theme.colors : DEFAULT_CONFIG.colors;
@@ -1052,7 +1052,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     // Use the canvas pipeline when available for the four animated presets.
     // This avoids per-frame SVG filter re-rasterization and gives crisp, dithered
     // gradients that the CSS keyframes can animate on the compositor.
-    if (gradientCanvas && gradientCanvas.supportsCanvas() && ["flow", "linear", "retro", "pixel"].includes(gradient.type)) {
+    if (gradientCanvas && typeof gradientCanvas.supportsCanvas === "function" && gradientCanvas.supportsCanvas() && ["flow", "linear", "retro", "pixel"].includes(gradient.type)) {
       const layer = gradientCanvas.renderGradientLayer(gradient.type, 1200, 720, {
         stops,
         strength: gradient.strength,
@@ -1060,7 +1060,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         noise: gradient.noise,
         angle: gradient.angle,
         strengthScale,
-        surface
+        surface,
+        maxDpr
       });
       if (layer) return layer;
     }
@@ -1182,7 +1183,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         noise: gradient.noise,
         angle: gradient.angle,
         strengthScale,
-        surface
+        surface,
+        maxDpr: 1
       });
       if (layer) return layer;
     }
@@ -3501,7 +3503,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     const stage = panel.querySelector("[data-role=gradient-stage]");
     const visual = panel.querySelector("[data-role=gradient-stage-visual]");
     if (stage && visual) {
-      const stageLayer = renderGradientLayer(cfg, 2.15);
+      const stageLayer = renderGradientLayer(cfg, 2.15, 1.5);
       stage.dataset.gradientType = gradient.type;
       stage.dataset.gradientMotion = gradient.motion;
       stage.style.setProperty("--btfw-gradient-stage-noise", gradientNoiseImage(gradient.noise));
