@@ -270,6 +270,7 @@ document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopi
       ul.style.removeProperty("position");
       body.appendChild(ul);
     }
+    ensureUserlistDropdownMonitor();
   }
 
   const scheduleAdoptUserlist = (() => {
@@ -282,6 +283,149 @@ document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopi
         pending = false;
         adoptUserlistIntoPopover();
       });
+    };
+  })();
+
+  const ensureUserlistDropdownMonitor = (() => {
+    let host = null;
+    let hostObserver = null;
+    let hostScrollHandler = null;
+    const tracked = new Set();
+    const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
+    let rafPending = false;
+    let globalEventsWired = false;
+
+    function ensureGlobalEvents(){
+      if (globalEventsWired) return;
+      globalEventsWired = true;
+      const rebalance = () => scheduleReflow();
+      window.addEventListener("resize", rebalance, true);
+      window.addEventListener("scroll", rebalance, true);
+    }
+
+    function cleanupMenu(menu){
+      if (!menu) return;
+      const track = menu._btfwDropdownTrack;
+      if (track) {
+        try { track.attr && track.attr.disconnect(); } catch (_) {}
+        try { track.resize && track.resize.disconnect(); } catch (_) {}
+        menu.removeEventListener("transitionend", track.apply, true);
+        menu.removeEventListener("animationend", track.apply, true);
+        delete menu._btfwDropdownTrack;
+      }
+      menu.classList.remove("btfw-user-dropdown--shifted");
+      menu.style.removeProperty("--btfw-user-dropdown-shift");
+      tracked.delete(menu);
+    }
+
+    function clampMenu(menu){
+      if (!menu || !menu.isConnected) {
+        cleanupMenu(menu);
+        return;
+      }
+      const container = (host && host.isConnected && host) || menu.closest("#userlist");
+      if (!container) return;
+      const style = window.getComputedStyle(menu);
+      const visible = style.display !== "none" && style.visibility !== "hidden" && menu.offsetWidth > 0 && menu.offsetHeight > 0;
+      if (!visible) {
+        menu.classList.remove("btfw-user-dropdown--shifted");
+        menu.style.removeProperty("--btfw-user-dropdown-shift");
+        return;
+      }
+      const containerRect = container.getBoundingClientRect();
+      const menuRect = menu.getBoundingClientRect();
+      const overflowBottom = menuRect.bottom - containerRect.bottom;
+      if (overflowBottom <= 0) {
+        menu.classList.remove("btfw-user-dropdown--shifted");
+        menu.style.removeProperty("--btfw-user-dropdown-shift");
+        return;
+      }
+      const margin = 6;
+      const distanceFromTop = menuRect.top - containerRect.top;
+      const maxShift = Math.max(0, distanceFromTop - margin);
+      const desired = Math.min(menuRect.height - margin, overflowBottom + margin);
+      const shift = Math.min(desired, maxShift);
+      if (shift <= 0) {
+        menu.classList.remove("btfw-user-dropdown--shifted");
+        menu.style.removeProperty("--btfw-user-dropdown-shift");
+        return;
+      }
+      menu.style.setProperty("--btfw-user-dropdown-shift", `-${shift}px`);
+      menu.classList.add("btfw-user-dropdown--shifted");
+    }
+
+    function pruneTracked(){
+      tracked.forEach((menu) => {
+        if (!menu.isConnected) cleanupMenu(menu);
+      });
+    }
+
+    function trackMenu(menu){
+      if (!menu || tracked.has(menu)) {
+        clampMenu(menu);
+        return;
+      }
+      const apply = () => clampMenu(menu);
+      const attr = new MutationObserver(apply);
+      attr.observe(menu, { attributes: true, attributeFilter: ["style", "class"] });
+      let resize = null;
+      if (typeof ResizeObserver === "function") {
+        resize = new ResizeObserver(apply);
+        try { resize.observe(menu); } catch (_) { resize = null; }
+      }
+      menu.addEventListener("transitionend", apply, true);
+      menu.addEventListener("animationend", apply, true);
+      menu._btfwDropdownTrack = { attr, resize, apply };
+      tracked.add(menu);
+      apply();
+    }
+
+    function scanHost(){
+      pruneTracked();
+      if (!host || !host.isConnected) return;
+      host.querySelectorAll(".user-dropdown").forEach(trackMenu);
+    }
+
+    function scheduleReflow(){
+      if (rafPending) return;
+      rafPending = true;
+      raf(() => {
+        rafPending = false;
+        tracked.forEach((menu) => clampMenu(menu));
+      });
+    }
+
+    function attachToHost(next){
+      if (host === next && host) {
+        scanHost();
+        return;
+      }
+
+      if (hostObserver) {
+        try { hostObserver.disconnect(); } catch (_) {}
+        hostObserver = null;
+      }
+      if (host && hostScrollHandler) {
+        host.removeEventListener("scroll", hostScrollHandler);
+        hostScrollHandler = null;
+      }
+      tracked.forEach((menu) => cleanupMenu(menu));
+      tracked.clear();
+      host = next;
+      if (!host) return;
+
+      hostObserver = new MutationObserver(scanHost);
+      hostObserver.observe(host, { childList: true, subtree: true });
+      hostScrollHandler = () => scheduleReflow();
+      host.addEventListener("scroll", hostScrollHandler, { passive: true });
+      ensureGlobalEvents();
+      scanHost();
+    }
+
+    return () => {
+      const current = document.getElementById("userlist");
+      if (!current) return;
+      attachToHost(current);
     };
   })();
 

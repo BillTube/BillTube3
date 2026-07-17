@@ -1,7 +1,6 @@
 /* BTFW — feature:footer (auth forms relocation + branding/disclaimer block) */
 BTFW.define("feature:footer", [], async () => {
   const $  = (selector, root = document) => root.querySelector(selector);
-  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
   const BRANDING_HTML = `
     <div class="btfw-footer-branding__content">
@@ -168,13 +167,21 @@ BTFW.define("feature:footer", [], async () => {
       .btfw-footer-branding {
         padding: 16px 18px;
         font-size: 0.82rem;
-        background:
+        background-color: color-mix(in srgb, var(--btfw-color-panel) 82%, var(--btfw-color-bg) 18%);
+        background-image:
+          var(--btfw-dither-image),
+          var(--btfw-gradient-panel-runtime-layer),
           radial-gradient(circle at 0 0,
             color-mix(in srgb, var(--btfw-color-accent) 13%, transparent 87%),
             transparent 42%),
+          radial-gradient(circle at 100% 100%,
+            color-mix(in srgb, var(--btfw-color-surface) 14%, transparent 86%),
+            transparent 52%),
           linear-gradient(135deg,
             color-mix(in srgb, var(--btfw-color-surface) 90%, transparent 10%),
             color-mix(in srgb, var(--btfw-color-panel) 82%, black 18%));
+        background-size: var(--btfw-panel-background-size);
+        background-position: var(--btfw-panel-background-position);
         border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
         border-radius: 16px;
         box-shadow: 0 14px 30px color-mix(in srgb, var(--btfw-color-bg) 36%, transparent 64%);
@@ -434,7 +441,7 @@ BTFW.define("feature:footer", [], async () => {
     if (!wrap) return;
 
     ["#logoutform", "#loginform"].forEach(selector => {
-      $$(selector).forEach(form => {
+      document.querySelectorAll(selector).forEach(form => {
         if (form.matches("p#loginform")) {
           form.remove();
           return;
@@ -462,21 +469,28 @@ BTFW.define("feature:footer", [], async () => {
     });
   }
 
+  let maintaining = false;
+
   function maintainFooter(){
-    ensureStyles();
-    moveForms();
-    insertBranding();
-    removeLegacyFooter();
+    if (maintaining) return;
+    maintaining = true;
+    try {
+      ensureStyles();
+      moveForms();
+      insertBranding();
+      removeLegacyFooter();
+    } finally {
+      maintaining = false;
+    }
   }
 
   function boot(){
     maintainFooter();
-
-    if (!document._btfwFooterObserver) {
-      const observer = new MutationObserver(() => maintainFooter());
-      observer.observe(document.body, { childList: true, subtree: true });
-      document._btfwFooterObserver = observer;
-    }
+    // The stack feature already owns footer placement. Reconcile only at its
+    // two bounded settling points instead of observing every mutation on the
+    // page (chat, playlist and media updates included).
+    document.addEventListener("btfw:layoutReady", maintainFooter, { once: true });
+    window.setTimeout(maintainFooter, 1600);
   }
 
   if (document.readyState === "loading") {

@@ -8,11 +8,14 @@ BTFW.define("feature:auto-subs", [], async () => {
   // worker mirrors the addon's paths and rewrites subtitle URLs through itself.
   // Override via Theme Toolkit integrations or localStorage "btfw:stremio:subs".
   const STREMIO_DEFAULT_ADDON = "https://subs-proxy.billtube.workers.dev";
-  const LOCAL_LABEL_PREFIX = "Local: ";
+  const AUTO_LABEL_PREFIX = "Auto sub ";
+  const FETCH_TIMEOUT_MS = 15000;
+  const RETRY_DELAY_MS = 60000;
+  const MAX_CACHE_ENTRIES = 12;
 
-  function isLocalSubTrack(track) {
+  function isAutoSubTrack(track) {
     const label = track && typeof track.label === "string" ? track.label : "";
-    return label.indexOf(LOCAL_LABEL_PREFIX) === 0;
+    return label.indexOf(AUTO_LABEL_PREFIX) === 0;
   }
 
   const state = {
@@ -24,14 +27,25 @@ BTFW.define("feature:auto-subs", [], async () => {
     warnedNoWyzieKey: false,
     currentTitle: "",
     subsCache: new Map(),
+    retryAfter: new Map(),
     lastAddedTracks: [],
+    activeObjectUrls: new Set(),
     currentSubtitles: null,
     player: null,
+    playerVideo: null,
     socket: null,
     socketHandler: null,
     socketDetach: null,
     isFetching: false,
+    fetchingTitle: "",
+    requestVersion: 0,
+    fetchController: null,
+    lastAttachAt: 0,
+    preferredTrackIndex: null,
     trackWatcher: null,
+    recoveryTimer: null,
+    boundVideo: null,
+    videoReadyHandler: null,
     bootInterval: null,
     datasetObserver: null,
     updatingRuntime: false,
@@ -40,6 +54,68 @@ BTFW.define("feature:auto-subs", [], async () => {
 
   function $(selector, root = document) {
     return root.querySelector(selector);
+  }
+
+  function getVideoElement() {
+    const wrap = $("#videowrap");
+    return wrap?.querySelector("video") || $("#ytapiplayer video") || null;
+  }
+
+  function cancelCurrentFetch() {
+    state.requestVersion += 1;
+    if (state.fetchController) {
+      try { state.fetchController.abort(); } catch (_) {}
+    }
+    state.fetchController = null;
+    state.fetchingTitle = "";
+    state.isFetching = false;
+  }
+
+  async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+    if (typeof AbortController !== "function") {
+      return fetch(url, options);
+    }
+    const controller = new AbortController();
+    const parentSignal = options.signal;
+    const abortFromParent = () => {
+      try { controller.abort(); } catch (_) {}
+    };
+    if (parentSignal) {
+      if (parentSignal.aborted) {
+        abortFromParent();
+      } else {
+        parentSignal.addEventListener("abort", abortFromParent, { once: true });
+      }
+    }
+    const timer = setTimeout(() => {
+      try { controller.abort(); } catch (_) {}
+    }, timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+      if (parentSignal) {
+        try { parentSignal.removeEventListener("abort", abortFromParent); } catch (_) {}
+      }
+    }
+  }
+
+  function cacheSubtitles(title, subtitles) {
+    state.subsCache.delete(title);
+    state.subsCache.set(title, subtitles);
+    while (state.subsCache.size > MAX_CACHE_ENTRIES) {
+      const oldest = state.subsCache.keys().next().value;
+      if (oldest === undefined) break;
+      state.subsCache.delete(oldest);
+    }
+  }
+
+  function postponeRetry(title, delay = RETRY_DELAY_MS) {
+    if (title) state.retryAfter.set(title, Date.now() + delay);
+  }
+
+  function canRetry(title) {
+    return !title || Date.now() >= (state.retryAfter.get(title) || 0);
   }
 
   function toEnabledValue(value) {
@@ -208,25 +284,39 @@ BTFW.define("feature:auto-subs", [], async () => {
   }
 
   function getPlayer() {
-    if (state.player && typeof state.player.addRemoteTextTrack === "function") return state.player;
-    const wrap = $("#videowrap");
-    if (!wrap) return null;
-    const video = wrap.querySelector("video") || $("#ytapiplayer video");
-    if (!video) return null;
+    const video = getVideoElement();
+    if (!video || !video.isConnected) {
+      state.player = null;
+      state.playerVideo = null;
+      return null;
+    }
+    bindVideoLifecycle(video);
+    if (state.player && state.playerVideo === video && typeof state.player.addRemoteTextTrack === "function") {
+      try {
+        if (typeof state.player.isDisposed !== "function" || !state.player.isDisposed()) {
+          return state.player;
+        }
+      } catch (_) {}
+    }
+    state.player = null;
+    state.playerVideo = null;
     if (typeof window.videojs === "function") {
       try {
         state.player = window.videojs(video);
+        state.playerVideo = video;
         return state.player;
       } catch (_) {
         state.player = null;
       }
     }
     state.player = createNativeVideoAdapter(video);
+    state.playerVideo = video;
     return state.player;
   }
 
   function createNativeVideoAdapter(video) {
     return {
+      _btfwNative: true,
       addRemoteTextTrack(track) {
         if (!track || !track.src) return null;
         const el = document.createElement("track");
@@ -234,13 +324,16 @@ BTFW.define("feature:auto-subs", [], async () => {
         el.src = track.src;
         el.srclang = track.srclang || "en";
         el.label = track.label || "Auto subtitles";
+        el.default = Boolean(track.default);
         el.dataset.btfwAutoSubs = "1";
         video.appendChild(el);
-        try {
-          for (const item of video.textTracks) {
-            item.mode = item.label === el.label ? "showing" : "disabled";
-          }
-        } catch (_) {}
+        if (el.default) {
+          try {
+            for (const item of video.textTracks) {
+              item.mode = item.label === el.label ? "showing" : "disabled";
+            }
+          } catch (_) {}
+        }
         return el;
       },
       remoteTextTracks() {
@@ -257,6 +350,27 @@ BTFW.define("feature:auto-subs", [], async () => {
         });
       }
     };
+  }
+
+  function bindVideoLifecycle(video) {
+    if (state.boundVideo === video) return;
+    if (state.boundVideo && state.videoReadyHandler) {
+      try {
+        state.boundVideo.removeEventListener("loadedmetadata", state.videoReadyHandler);
+        state.boundVideo.removeEventListener("loadeddata", state.videoReadyHandler);
+      } catch (_) {}
+    }
+    state.boundVideo = video || null;
+    state.videoReadyHandler = null;
+    if (!video) return;
+    const handler = () => {
+      if (state.active) scheduleRecovery(100);
+    };
+    state.videoReadyHandler = handler;
+    try {
+      video.addEventListener("loadedmetadata", handler);
+      video.addEventListener("loadeddata", handler);
+    } catch (_) {}
   }
 
   function getSocket() {
@@ -293,19 +407,14 @@ BTFW.define("feature:auto-subs", [], async () => {
     }
     const handler = () => {
       if (!state.active) return;
+      cancelCurrentFetch();
       state.player = null;
+      state.playerVideo = null;
       state.currentTitle = "";
       state.currentSubtitles = null;
-      state.isFetching = false;
-      stopTrackWatcher();
       clearExistingTracks();
-      setTimeout(() => {
-        if (!state.active) return;
-        state.player = getPlayer();
-        if (state.player) {
-          processCurrentTitle();
-        }
-      }, 1000);
+      startTrackWatcher();
+      scheduleRecovery(300);
     };
 
     let detach = null;
@@ -404,44 +513,52 @@ BTFW.define("feature:auto-subs", [], async () => {
 
   function clearExistingTracks() {
     const player = getPlayer();
-    if (!player) return;
+    if (player) {
+      try {
+        const tracks = player.remoteTextTracks();
+        for (let i = 0; i < tracks.length; i++) {
+          const track = tracks[i];
+          if (isAutoSubTrack(track) && track.mode === "showing") {
+            const match = String(track.label || "").match(/^(?:Auto sub )(\d+)$/);
+            if (match) state.preferredTrackIndex = Math.max(0, Number(match[1]) - 1);
+          }
+        }
+      } catch (_) {}
+    }
     state.lastAddedTracks.forEach(trackEl => {
       try {
         if (trackEl) {
-          const src = trackEl.src || trackEl.track?.src || "";
-          if (src && src.startsWith("blob:")) {
-            URL.revokeObjectURL(src);
-          }
           if (trackEl.parentNode) {
             trackEl.remove();
-          } else if (trackEl.track) {
+          } else if (player && trackEl.track) {
             player.removeRemoteTextTrack(trackEl.track);
-          } else {
+          } else if (player) {
             player.removeRemoteTextTrack(trackEl);
           }
         }
       } catch (_) {}
     });
+    if (player) {
+      try {
+        const tracks = player.remoteTextTracks();
+        const toRemove = [];
+        for (let i = 0; i < tracks.length; i++) {
+          const track = tracks[i];
+          if (isAutoSubTrack(track)) toRemove.push(track);
+        }
+        toRemove.forEach(track => {
+          try { player.removeRemoteTextTrack(track); } catch (_) {}
+        });
+      } catch (_) {}
+    }
     state.lastAddedTracks = [];
-    try {
-      const tracks = player.remoteTextTracks();
-      const toRemove = [];
-      for (let i = 0; i < tracks.length; i++) {
-        const track = tracks[i];
-        if (!track || !track.src || !track.src.startsWith("blob:")) continue;
-        if (isLocalSubTrack(track)) continue; // preserve local-subs tracks
-        toRemove.push(track);
-      }
-      toRemove.forEach(track => {
-        try {
-          URL.revokeObjectURL(track.src);
-          player.removeRemoteTextTrack(track);
-        } catch (_) {}
-      });
-    } catch (_) {}
+    state.activeObjectUrls.forEach(url => {
+      try { URL.revokeObjectURL(url); } catch (_) {}
+    });
+    state.activeObjectUrls.clear();
   }
 
-  async function searchTMDB(title, year) {
+  async function searchTMDB(title, year, signal) {
     if (!state.tmdbKey) return null;
     const key = state.tmdbKey;
     let apiUrl = `${TMDB_API}/search/movie?api_key=${key}&query=${encodeURIComponent(title)}`;
@@ -449,13 +566,13 @@ BTFW.define("feature:auto-subs", [], async () => {
       apiUrl += `&primary_release_year=${year}`;
     }
     try {
-      const response = await fetch(apiUrl);
+      const response = await fetchWithTimeout(apiUrl, { signal });
       const data = await response.json();
       if (data.results && data.results.length > 0) {
         for (const movie of data.results) {
           const movieYear = movie.release_date ? parseInt(movie.release_date.substring(0, 4), 10) : null;
           if (isExactTitleMatch(title, movie.title, year, movieYear)) {
-            const extIdsResp = await fetch(`${TMDB_API}/movie/${movie.id}/external_ids?api_key=${key}`);
+            const extIdsResp = await fetchWithTimeout(`${TMDB_API}/movie/${movie.id}/external_ids?api_key=${key}`, { signal });
             const extIds = await extIdsResp.json();
             return extIds.imdb_id || null;
           }
@@ -464,7 +581,7 @@ BTFW.define("feature:auto-subs", [], async () => {
           for (const movie of data.results) {
             const movieYear = movie.release_date ? parseInt(movie.release_date.substring(0, 4), 10) : null;
             if (movieYear === year) {
-              const extIdsResp = await fetch(`${TMDB_API}/movie/${movie.id}/external_ids?api_key=${key}`);
+              const extIdsResp = await fetchWithTimeout(`${TMDB_API}/movie/${movie.id}/external_ids?api_key=${key}`, { signal });
               const extIds = await extIdsResp.json();
               return extIds.imdb_id || null;
             }
@@ -475,11 +592,11 @@ BTFW.define("feature:auto-subs", [], async () => {
     if (year) {
       const apiUrlNoYear = `${TMDB_API}/search/movie?api_key=${key}&query=${encodeURIComponent(title)}`;
       try {
-        const response = await fetch(apiUrlNoYear);
+        const response = await fetchWithTimeout(apiUrlNoYear, { signal });
         const data = await response.json();
         if (data.results && data.results.length > 0) {
           const movie = data.results[0];
-          const extIdsResp = await fetch(`${TMDB_API}/movie/${movie.id}/external_ids?api_key=${key}`);
+          const extIdsResp = await fetchWithTimeout(`${TMDB_API}/movie/${movie.id}/external_ids?api_key=${key}`, { signal });
           const extIds = await extIdsResp.json();
           return extIds.imdb_id || null;
         }
@@ -488,7 +605,7 @@ BTFW.define("feature:auto-subs", [], async () => {
     return null;
   }
 
-  async function fetchSubtitlesWyzie(imdbId, season, episode) {
+  async function fetchSubtitlesWyzie(imdbId, season, episode, signal) {
     if (!imdbId || !state.wyzieKey) return null;
     const sources = ["opensubtitles", "all"];
     for (const source of sources) {
@@ -503,12 +620,12 @@ BTFW.define("feature:auto-subs", [], async () => {
       params.append("key", state.wyzieKey);
       const url = `${WYZIE_API}?${params}`;
       try {
-        const resp = await fetch(url);
+        const resp = await fetchWithTimeout(url, { signal });
         if (!resp.ok) continue;
         const data = await resp.json();
         if (Array.isArray(data) && data.length > 0) {
           const converted = await Promise.all(
-            data.slice(0, 10).map(sub => convertSrtToVtt(sub))
+            data.slice(0, 10).map(sub => convertSrtToVtt(sub, signal))
           );
           const filtered = converted.filter(Boolean);
           if (filtered.length > 0) {
@@ -522,7 +639,7 @@ BTFW.define("feature:auto-subs", [], async () => {
     return null;
   }
 
-  async function fetchSubtitlesStremio(imdbId, season, episode) {
+  async function fetchSubtitlesStremio(imdbId, season, episode, signal) {
     const addon = getStremioAddon();
     if (!addon || !imdbId) return null;
     const isSeries = season !== null && episode !== null;
@@ -531,7 +648,7 @@ BTFW.define("feature:auto-subs", [], async () => {
       : `subtitles/movie/${imdbId}.json`;
     const url = `${addon}/${path}`;
     try {
-      const resp = await fetch(url);
+      const resp = await fetchWithTimeout(url, { signal });
       if (!resp.ok) return null;
       const data = await resp.json();
       const list = Array.isArray(data?.subtitles) ? data.subtitles : [];
@@ -542,7 +659,7 @@ BTFW.define("feature:auto-subs", [], async () => {
       });
       const pickFrom = englishOnly.length > 0 ? englishOnly : list;
       const converted = await Promise.all(
-        pickFrom.slice(0, 10).map(sub => convertSrtToVtt(sub))
+        pickFrom.slice(0, 10).map(sub => convertSrtToVtt(sub, signal))
       );
       const filtered = converted.filter(Boolean);
       return filtered.length > 0 ? filtered : null;
@@ -551,30 +668,28 @@ BTFW.define("feature:auto-subs", [], async () => {
     }
   }
 
-  async function fetchSubtitles(imdbId, season, episode) {
+  async function fetchSubtitles(imdbId, season, episode, signal) {
     if (!imdbId) return null;
     // Optional keyed sources first (reliable), then the keyless Stremio addon.
     if (state.wyzieKey) {
-      const wyzie = await fetchSubtitlesWyzie(imdbId, season, episode);
+      const wyzie = await fetchSubtitlesWyzie(imdbId, season, episode, signal);
       if (wyzie && wyzie.length > 0) return wyzie;
     }
     if (state.subdlKey) {
-      const subdl = await fetchSubtitlesSubDL(imdbId, season, episode);
+      const subdl = await fetchSubtitlesSubDL(imdbId, season, episode, signal);
       if (subdl && subdl.length > 0) return subdl;
     }
-    return await fetchSubtitlesStremio(imdbId, season, episode);
+    return await fetchSubtitlesStremio(imdbId, season, episode, signal);
   }
 
-  async function convertSrtToVtt(subtitle) {
+  async function convertSrtToVtt(subtitle, signal) {
     if (!subtitle || !subtitle.url) return null;
     try {
-      const srtResp = await fetch(subtitle.url);
+      const srtResp = await fetchWithTimeout(subtitle.url, { signal });
       if (!srtResp.ok) return null;
       const srtText = await srtResp.text();
       const vttText = srtText.trimStart().startsWith("WEBVTT") ? srtText : srtToVtt(srtText);
-      const blob = new Blob([vttText], { type: "text/vtt" });
-      const vttUrl = URL.createObjectURL(blob);
-      return { url: vttUrl, lang: subtitle.lang || "en" };
+      return { content: vttText, lang: subtitle.lang || "en" };
     } catch (_) {
       return null;
     }
@@ -642,7 +757,7 @@ BTFW.define("feature:auto-subs", [], async () => {
     catch (_) { return new TextDecoder("windows-1252").decode(outBytes); }
   }
 
-  async function fetchSubtitlesSubDL(imdbId, season, episode) {
+  async function fetchSubtitlesSubDL(imdbId, season, episode, signal) {
     if (!state.subdlKey || !imdbId) return null;
     const isSeries = season !== null && episode !== null;
     const params = new URLSearchParams({
@@ -655,7 +770,7 @@ BTFW.define("feature:auto-subs", [], async () => {
     if (isSeries) { params.append("season_number", season); params.append("episode_number", episode); }
     let list;
     try {
-      const resp = await fetch(`https://api.subdl.com/api/v1/subtitles?${params}`, { credentials: "omit" });
+      const resp = await fetchWithTimeout(`https://api.subdl.com/api/v1/subtitles?${params}`, { credentials: "omit", signal });
       if (!resp.ok) return null;
       const data = await resp.json();
       if (!data || data.status === false || !Array.isArray(data.subtitles)) return null;
@@ -670,47 +785,84 @@ BTFW.define("feature:auto-subs", [], async () => {
     const results = [];
     for (const sub of list) {
       try {
-        const zipResp = await fetch(`https://dl.subdl.com${sub.url}`, { credentials: "omit" });
+        const zipResp = await fetchWithTimeout(`https://dl.subdl.com${sub.url}`, { credentials: "omit", signal });
         if (!zipResp.ok) continue;
         const srtText = await extractSrtFromZip(await zipResp.arrayBuffer());
         if (!srtText || !/-->/.test(srtText)) continue;
         const vttText = srtText.trimStart().startsWith("WEBVTT") ? srtText : srtToVtt(srtText);
-        const blob = new Blob([vttText], { type: "text/vtt" });
-        results.push({ url: URL.createObjectURL(blob), lang: "en" });
+        results.push({ content: vttText, lang: "en" });
       } catch (_) {}
     }
     return results.length > 0 ? results : null;
+  }
+
+  function hasAutoTracks(player) {
+    if (!player || typeof player.remoteTextTracks !== "function") return false;
+    try {
+      return Array.from(player.remoteTextTracks()).some(isAutoSubTrack);
+    } catch (_) {
+      return false;
+    }
   }
 
   function addSubtitlesToPlayer(subtitles) {
     if (!Array.isArray(subtitles) || subtitles.length === 0) return false;
     const player = getPlayer();
     if (!player || typeof player.addRemoteTextTrack !== "function") return false;
-    const existingTracks = player.remoteTextTracks();
-    const hasNonLocalBlobTracks = existingTracks && Array.from(existingTracks).some(
-      t => t.src && t.src.startsWith("blob:") && !isLocalSubTrack(t)
-    );
-    if (hasNonLocalBlobTracks) return false;
     clearExistingTracks();
     const added = [];
     subtitles.forEach((sub, idx) => {
-      if (!sub || !sub.url) return;
-      const label = `Auto sub ${idx + 1}`;
+      if (!sub || typeof sub.content !== "string" || !sub.content.trim()) return;
+      const label = `${AUTO_LABEL_PREFIX}${idx + 1}`;
+      const url = URL.createObjectURL(new Blob([sub.content], { type: "text/vtt" }));
+      state.activeObjectUrls.add(url);
+      const shouldShow = state.preferredTrackIndex === idx ||
+        (state.preferredTrackIndex === null && player._btfwNative && idx === 0);
       try {
         const trackEl = player.addRemoteTextTrack({
           kind: "subtitles",
-          src: sub.url,
+          src: url,
           srclang: sub.lang || "en",
-          label
+          label,
+          default: shouldShow
         }, false);
         if (trackEl) {
+          if (shouldShow && trackEl.track) {
+            try { trackEl.track.mode = "showing"; } catch (_) {}
+          }
           added.push(trackEl);
+        } else {
+          state.activeObjectUrls.delete(url);
+          URL.revokeObjectURL(url);
         }
-      } catch (_) {}
+      } catch (_) {
+        state.activeObjectUrls.delete(url);
+        try { URL.revokeObjectURL(url); } catch (_) {}
+      }
     });
     state.lastAddedTracks = added;
-    state.currentSubtitles = subtitles;
+    state.lastAttachAt = Date.now();
+    if (added.length > 0) state.currentSubtitles = subtitles;
     return added.length > 0;
+  }
+
+  function scheduleRecovery(delay = 250) {
+    if (state.recoveryTimer) clearTimeout(state.recoveryTimer);
+    state.recoveryTimer = setTimeout(() => {
+      state.recoveryTimer = null;
+      if (!state.active) return;
+      const title = getCurrentTitle();
+      if (!title || !shouldLoadSubtitles()) return;
+      const player = getPlayer();
+      if (!player) return;
+      if (title === state.currentTitle && state.currentSubtitles?.length) {
+        if (!hasAutoTracks(player) && Date.now() - state.lastAttachAt > 750) {
+          addSubtitlesToPlayer(state.currentSubtitles);
+        }
+        return;
+      }
+      processCurrentTitle();
+    }, Math.max(0, delay));
   }
 
   function startTrackWatcher() {
@@ -720,24 +872,31 @@ BTFW.define("feature:auto-subs", [], async () => {
         stopTrackWatcher();
         return;
       }
-      if (!shouldLoadSubtitles()) {
-        stopTrackWatcher();
-        clearExistingTracks();
-        return;
+      const video = getVideoElement();
+      if (video !== state.playerVideo) {
+        state.player = null;
+        state.playerVideo = null;
       }
+      if (!shouldLoadSubtitles()) return;
+      const title = getCurrentTitle();
+      if (!title) return;
       const player = getPlayer();
-      if (!player || !state.currentSubtitles || state.currentSubtitles.length === 0) return;
-      const existingTracks = player.remoteTextTracks();
-      const hasNonLocalBlobTracks = existingTracks && Array.from(existingTracks).some(
-        t => t.src && t.src.startsWith("blob:") && !isLocalSubTrack(t)
-      );
-      if (!hasNonLocalBlobTracks && state.lastAddedTracks.length > 0) {
-        state.lastAddedTracks = [];
-        setTimeout(() => {
-          if (state.active) {
-            addSubtitlesToPlayer(state.currentSubtitles);
-          }
-        }, 100);
+      if (!player) return;
+      try {
+        const tracks = player.remoteTextTracks();
+        for (let i = 0; i < tracks.length; i++) {
+          const track = tracks[i];
+          if (!isAutoSubTrack(track) || track.mode !== "showing") continue;
+          const match = String(track.label || "").match(/^(?:Auto sub )(\d+)$/);
+          if (match) state.preferredTrackIndex = Math.max(0, Number(match[1]) - 1);
+        }
+      } catch (_) {}
+      if (title === state.currentTitle && state.currentSubtitles?.length) {
+        if (!hasAutoTracks(player) && Date.now() - state.lastAttachAt > 750) {
+          addSubtitlesToPlayer(state.currentSubtitles);
+        }
+      } else if (!state.isFetching && canRetry(title)) {
+        scheduleRecovery(0);
       }
     }, 1000);
   }
@@ -750,30 +909,48 @@ BTFW.define("feature:auto-subs", [], async () => {
   }
 
   async function processCurrentTitle() {
-    if (!state.active || state.isFetching) return;
+    if (!state.active) return;
     const title = getCurrentTitle();
-    if (!title || title === state.currentTitle) return;
+    if (!title) return;
     if (!shouldLoadSubtitles()) {
-      state.currentTitle = title;
-      clearExistingTracks();
-      stopTrackWatcher();
+      scheduleRecovery(500);
       return;
     }
-    state.currentTitle = title;
+    const player = getPlayer();
+    if (!player || typeof player.addRemoteTextTrack !== "function") {
+      scheduleRecovery(500);
+      return;
+    }
+    if (title === state.currentTitle && state.currentSubtitles?.length) {
+      if (!hasAutoTracks(player)) addSubtitlesToPlayer(state.currentSubtitles);
+      startTrackWatcher();
+      return;
+    }
+    if (state.isFetching) {
+      if (state.fetchingTitle === title) return;
+      cancelCurrentFetch();
+    }
+    if (!canRetry(title)) return;
+    if (state.currentTitle && state.currentTitle !== title) {
+      clearExistingTracks();
+      state.currentSubtitles = null;
+    }
+    if (state.subsCache.has(title)) {
+      const cached = state.subsCache.get(title);
+      state.currentTitle = title;
+      state.currentSubtitles = cached;
+      addSubtitlesToPlayer(cached);
+      startTrackWatcher();
+      return;
+    }
+
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const version = ++state.requestVersion;
+    state.fetchController = controller;
+    state.fetchingTitle = title;
     state.isFetching = true;
+    const isCurrent = () => state.active && version === state.requestVersion && getCurrentTitle() === title;
     try {
-      const player = getPlayer();
-      if (!player || typeof player.addRemoteTextTrack !== "function") return;
-      if (state.subsCache.has(title)) {
-        const cached = state.subsCache.get(title);
-        if (cached) {
-          const added = addSubtitlesToPlayer(cached);
-          if (added) {
-            startTrackWatcher();
-          }
-        }
-        return;
-      }
       let season = null;
       let episode = null;
       const episodeMatch = title.match(/S(\d+)E(\d+)/i);
@@ -783,24 +960,32 @@ BTFW.define("feature:auto-subs", [], async () => {
       }
       const { title: cleanTitle, year } = extractYearAndTitle(title);
       const finalTitle = cleanMovieTitle(cleanTitle);
-      const imdbId = await searchTMDB(finalTitle, year);
+      const imdbId = await searchTMDB(finalTitle, year, controller?.signal);
+      if (!isCurrent()) return;
       if (!imdbId) {
-        state.subsCache.set(title, null);
+        postponeRetry(title, RETRY_DELAY_MS * 5);
         return;
       }
-      const subtitles = await fetchSubtitles(imdbId, season, episode);
-      if (subtitles && subtitles.length > 0) {
-        state.subsCache.set(title, subtitles);
-        const added = addSubtitlesToPlayer(subtitles);
-        if (added) {
-          startTrackWatcher();
-        }
-      } else {
-        state.subsCache.set(title, null);
+      const subtitles = await fetchSubtitles(imdbId, season, episode, controller?.signal);
+      if (!isCurrent()) return;
+      if (!subtitles || subtitles.length === 0) {
+        postponeRetry(title);
+        return;
       }
-    } catch (_) {
+      cacheSubtitles(title, subtitles);
+      state.retryAfter.delete(title);
+      state.currentTitle = title;
+      state.currentSubtitles = subtitles;
+      addSubtitlesToPlayer(subtitles);
+      startTrackWatcher();
+    } catch (error) {
+      if (isCurrent() && error?.name !== "AbortError") postponeRetry(title);
     } finally {
-      state.isFetching = false;
+      if (version === state.requestVersion) {
+        state.fetchController = null;
+        state.fetchingTitle = "";
+        state.isFetching = false;
+      }
     }
   }
 
@@ -827,11 +1012,8 @@ BTFW.define("feature:auto-subs", [], async () => {
           state.bootInterval = null;
         }
         hookSocketEvents();
-        clearExistingTracks();
-        if (shouldLoadSubtitles()) {
-          startTrackWatcher();
-          setTimeout(processCurrentTitle, 1000);
-        }
+        startTrackWatcher();
+        scheduleRecovery(500);
         return;
       }
       if (attempts >= 20 && state.bootInterval) {
@@ -870,8 +1052,12 @@ BTFW.define("feature:auto-subs", [], async () => {
     if (state.active) {
       updateRuntimeFlags(true);
       if (keyChanged) {
+        cancelCurrentFetch();
+        clearExistingTracks();
         state.subsCache.clear();
+        state.retryAfter.clear();
         state.currentTitle = "";
+        state.currentSubtitles = null;
       }
       if (!state.currentTitle || keyChanged) {
         processCurrentTitle();
@@ -882,11 +1068,17 @@ BTFW.define("feature:auto-subs", [], async () => {
     updateRuntimeFlags(true);
     ensureDatasetObserver();
     state.subsCache.clear();
+    state.retryAfter.clear();
     state.currentTitle = "";
     startBootProcess();
   }
 
   function deactivate() {
+    cancelCurrentFetch();
+    if (state.recoveryTimer) {
+      clearTimeout(state.recoveryTimer);
+      state.recoveryTimer = null;
+    }
     if (state.bootInterval) {
       clearInterval(state.bootInterval);
       state.bootInterval = null;
@@ -894,12 +1086,14 @@ BTFW.define("feature:auto-subs", [], async () => {
     stopTrackWatcher();
     clearExistingTracks();
     detachSocket();
+    bindVideoLifecycle(null);
     state.subsCache.clear();
+    state.retryAfter.clear();
     state.player = null;
+    state.playerVideo = null;
     state.currentSubtitles = null;
     state.lastAddedTracks = [];
     state.currentTitle = "";
-    state.isFetching = false;
     state.tmdbKey = null;
     state.wyzieKey = null;
     state.subdlKey = null;
@@ -953,11 +1147,13 @@ BTFW.define("feature:auto-subs", [], async () => {
     name: MODULE_NAME,
     refresh: () => {
       if (!state.active) return;
+      cancelCurrentFetch();
       state.currentTitle = "";
       processCurrentTitle();
     },
     clearCache: () => {
       state.subsCache.clear();
+      state.retryAfter.clear();
     }
   };
 });

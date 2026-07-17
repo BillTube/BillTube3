@@ -37,10 +37,90 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: var(--btfw-dither-image), var(--btfw-page-glow);
-  background-size: var(--btfw-dither-size), auto;
-  background-position: 0 0, center top;
+  background-image: var(--btfw-dither-image), var(--btfw-gradient-page-runtime-layer), var(--btfw-page-glow);
+  background-size: var(--btfw-page-background-size);
+  background-position: var(--btfw-page-background-position);
 }
+
+@keyframes btfw-gradient-ambient-drift {
+  0%, 100% { transform: scale(1.08) translate3d(-1.2%, -0.8%, 0); }
+  50% { transform: scale(1.12) translate3d(1.1%, 1%, 0); }
+}
+
+/* Runtime gradients stay native CSS for renderer safety. Only the few large,
+   persistent theme surfaces below move, and they do so by shifting one
+   oversized paint layer rather than creating filtered images per component. */
+@keyframes btfw-gradient-panel-drift {
+  0%, 100% { background-position: 0 0, 0% 42%, center, center, center; }
+  50% { background-position: 0 0, 100% 58%, center, center, center; }
+}
+
+@keyframes btfw-gradient-single-drift {
+  0%, 100% { background-position-x: 0%; }
+  50% { background-position-x: 100%; }
+}
+
+/* Each gradient preset keeps its own lightweight motion language at runtime. */
+@keyframes btfw-gradient-ambient-drift {
+  0%, 100% { transform: var(--btfw-gradient-page-p0); }
+  25% { transform: var(--btfw-gradient-page-p1); }
+  50% { transform: var(--btfw-gradient-page-p2); }
+  75% { transform: var(--btfw-gradient-page-p3); }
+}
+
+@keyframes btfw-gradient-panel-drift {
+  0%, 100% { background-position: 0 0, var(--btfw-gradient-surface-p0), center, center, center; background-size: var(--btfw-dither-size), var(--btfw-gradient-surface-size-p0), auto, auto, auto; }
+  25% { background-position: 0 0, var(--btfw-gradient-surface-p1), center, center, center; background-size: var(--btfw-dither-size), var(--btfw-gradient-surface-size-p1), auto, auto, auto; }
+  50% { background-position: 0 0, var(--btfw-gradient-surface-p2), center, center, center; background-size: var(--btfw-dither-size), var(--btfw-gradient-surface-size-p2), auto, auto, auto; }
+  75% { background-position: 0 0, var(--btfw-gradient-surface-p3), center, center, center; background-size: var(--btfw-dither-size), var(--btfw-gradient-surface-size-p3), auto, auto, auto; }
+}
+
+@keyframes btfw-gradient-single-drift {
+  0%, 100% { background-position: var(--btfw-gradient-surface-p0); background-size: var(--btfw-gradient-surface-size-p0); }
+  25% { background-position: var(--btfw-gradient-surface-p1); background-size: var(--btfw-gradient-surface-size-p1); }
+  50% { background-position: var(--btfw-gradient-surface-p2); background-size: var(--btfw-gradient-surface-size-p2); }
+  75% { background-position: var(--btfw-gradient-surface-p3); background-size: var(--btfw-gradient-surface-size-p3); }
+}
+
+/* The runtime layer stays CSS-only, but its path is tuned per editor style. */
+:root[data-btfw-gradient-type="flow"] { --btfw-gradient-surface-p0: 0% 35%; --btfw-gradient-surface-p1: 100% 65%; --btfw-gradient-surface-p2: 48% 18%; --btfw-gradient-surface-p3: 0% 35%; --btfw-gradient-surface-size-p0: 180% 180%; --btfw-gradient-surface-size-p1: 180% 180%; --btfw-gradient-surface-size-p2: 180% 180%; --btfw-gradient-surface-size-p3: 180% 180%; --btfw-gradient-page-p0: scale(1.08) translate3d(-1.2%, -0.8%, 0); --btfw-gradient-page-p1: scale(1.12) translate3d(1.1%, 1%, 0); --btfw-gradient-page-p2: scale(1.1) translate3d(0.2%, -1.2%, 0); --btfw-gradient-page-p3: scale(1.08) translate3d(-1.2%, -0.8%, 0); }
+:root[data-btfw-gradient-type="linear"] { --btfw-gradient-surface-p0: 0% 50%; --btfw-gradient-surface-p1: 100% 50%; --btfw-gradient-surface-p2: 0% 50%; --btfw-gradient-surface-p3: 100% 50%; --btfw-gradient-surface-size-p0: 180% 180%; --btfw-gradient-surface-size-p1: 180% 180%; --btfw-gradient-surface-size-p2: 180% 180%; --btfw-gradient-surface-size-p3: 180% 180%; --btfw-gradient-page-p0: scale(1.08) translate3d(-1.6%, 0, 0); --btfw-gradient-page-p1: scale(1.08) translate3d(1.6%, 0, 0); --btfw-gradient-page-p2: scale(1.08) translate3d(-1.6%, 0, 0); --btfw-gradient-page-p3: scale(1.08) translate3d(1.6%, 0, 0); }
+:root[data-btfw-gradient-type="retro"] { --btfw-gradient-surface-p0: 42% 0%; --btfw-gradient-surface-p1: 60% 100%; --btfw-gradient-surface-p2: 38% 68%; --btfw-gradient-surface-p3: 42% 0%; --btfw-gradient-surface-size-p0: 185% 185%; --btfw-gradient-surface-size-p1: 185% 185%; --btfw-gradient-surface-size-p2: 185% 185%; --btfw-gradient-surface-size-p3: 185% 185%; --btfw-gradient-page-p0: scale(1.09) translate3d(0, -1.2%, 0); --btfw-gradient-page-p1: scale(1.12) translate3d(0.8%, 1.3%, 0); --btfw-gradient-page-p2: scale(1.1) translate3d(-0.7%, 0.4%, 0); --btfw-gradient-page-p3: scale(1.09) translate3d(0, -1.2%, 0); }
+:root[data-btfw-gradient-type="pixel"] { --btfw-gradient-surface-p0: 0% 0%; --btfw-gradient-surface-p1: 100% 0%; --btfw-gradient-surface-p2: 100% 100%; --btfw-gradient-surface-p3: 0% 100%; --btfw-gradient-surface-size-p0: 180% 180%; --btfw-gradient-surface-size-p1: 180% 180%; --btfw-gradient-surface-size-p2: 180% 180%; --btfw-gradient-surface-size-p3: 180% 180%; --btfw-gradient-page-p0: scale(1.08) translate3d(-1%, -1%, 0); --btfw-gradient-page-p1: scale(1.08) translate3d(1%, -1%, 0); --btfw-gradient-page-p2: scale(1.08) translate3d(1%, 1%, 0); --btfw-gradient-page-p3: scale(1.08) translate3d(-1%, 1%, 0); }
+
+:root[data-btfw-gradient-type="pixel"] body::before,
+:root[data-btfw-gradient-type="pixel"] #chatwrap .btfw-chat-topbar,
+:root[data-btfw-gradient-type="pixel"] #btfw-chat-actions #btfw-chatactions-pill,
+:root[data-btfw-gradient-type="pixel"] .btfw-stack-item,
+:root[data-btfw-gradient-type="pixel"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before {
+  animation-timing-function: steps(6, end);
+}
+
+:root[data-btfw-gradient-page="on"][data-btfw-gradient-motion="slow"] body::before {
+  animation: btfw-gradient-ambient-drift 28s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+
+:root[data-btfw-gradient-page="on"][data-btfw-gradient-motion="medium"] body::before {
+  animation: btfw-gradient-ambient-drift 18s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+
+:root[data-btfw-gradient-panels="on"] .btfw-stack-item__body {
+  background-image: var(--btfw-gradient-panel-soft-runtime-layer);
+  background-size: 180% 180%;
+  background-position: 0% 42%;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-btfw-gradient-page="on"] body::before,
+  :root[data-btfw-gradient-panels="on"] .btfw-stack-item { animation: none !important; transform: none !important; }
+}
+:root[data-btfw-motion="reduced"][data-btfw-gradient-page="on"] body::before { animation: none !important; transform: none !important; }
+:root[data-btfw-motion="reduced"][data-btfw-gradient-panels="on"] .btfw-stack-item { animation: none !important; }
 
 /* Strengthen the thumb only while the pointer is over the scrolling box.
    (The page-level bar on html stays faint — the pointer is always "over"
@@ -917,6 +997,19 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   box-shadow: var(--btfw-panel-shadow),
     0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 12%, transparent 88%);
 }
+
+:root[data-btfw-gradient-panels="on"] .btfw-stack-item {
+  background-size: var(--btfw-dither-size), 180% 180%, auto, auto, auto;
+  background-position: 0 0, 0% 42%, center, center, center;
+}
+
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="slow"] .btfw-stack-item {
+  animation: btfw-gradient-panel-drift 28s ease-in-out infinite;
+}
+
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="medium"] .btfw-stack-item {
+  animation: btfw-gradient-panel-drift 18s ease-in-out infinite;
+}
 .btfw-stack-item__header{
   display: flex;
   align-items: center;
@@ -1583,8 +1676,8 @@ nav.pagination.is-centered.btfw-gif-pager {
 #useroptions .btfw-useroptions-panel {
   padding: 16px 18px;
   border-radius: var(--btfw-radius);
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
-  background-image: var(--btfw-panel-gradient);
+  background-color: var(--btfw-nested-surface);
+  background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   border: 1px solid var(--btfw-panel-border);
@@ -1867,8 +1960,8 @@ nav.pagination.is-centered.btfw-gif-pager {
 }
 
 #btfw-theme-modal .btfw-ts-card{
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
-  background-image: var(--btfw-panel-gradient);
+  background-color: var(--btfw-nested-surface);
+  background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   border: 1px solid var(--btfw-panel-border);
@@ -1942,8 +2035,8 @@ nav.pagination.is-centered.btfw-gif-pager {
   padding: 16px 18px;
   border-radius: var(--btfw-radius);
   border: 1px solid var(--btfw-panel-border-soft);
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
-  background-image: var(--btfw-panel-gradient-soft);
+  background-color: var(--btfw-nested-surface);
+  background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-color-text) 7%, transparent 93%);
@@ -2356,47 +2449,167 @@ nav.pagination.is-centered.btfw-gif-pager {
   }
 }
 
-/* Range sliders (chat text size, volumes) — themed track + thumb so they fit
-   the theme instead of the raw grey native control. */
-#btfw-theme-modal input[type="range"]{
+/* Feral-inspired dial ranges. JS only supplies the fill percentage and the
+   small edge resistance; the native input remains responsible for pointer,
+   touch, and keyboard semantics. */
+.btfw-dial-range{
+  --btfw-dial-track: color-mix(in srgb, var(--btfw-color-text, #eef0f8) 11%, var(--btfw-color-surface, #11141d));
+  --btfw-dial-fill: color-mix(in srgb, var(--btfw-color-accent, #7aa2f7) 58%, var(--btfw-color-surface, #11141d));
+  --btfw-dial-tick: color-mix(in srgb, var(--btfw-color-text, #eef0f8) 28%, transparent);
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  isolation: isolate;
+}
+.btfw-dial-range::before{
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 7px 10px;
+  border-radius: 7px;
+  background: repeating-linear-gradient(90deg,
+    transparent 0 calc(10% - 1px),
+    var(--btfw-dial-tick) calc(10% - 1px) 10%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease-out;
+}
+.btfw-dial-range:hover::before,
+.btfw-dial-range:focus-within::before,
+.btfw-dial-range:has(> input.is-dragging)::before{
+  opacity: .42;
+}
+.btfw-dial-range > input[type="range"]{
   -webkit-appearance: none;
   appearance: none;
-  height: 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--btfw-color-text) 16%, transparent 84%);
-  cursor: pointer;
-}
-#btfw-theme-modal input[type="range"]::-webkit-slider-runnable-track{
-  height: 6px; border-radius: 999px; background: transparent;
-}
-#btfw-theme-modal input[type="range"]::-moz-range-track{
-  height: 6px; border-radius: 999px;
-  background: color-mix(in srgb, var(--btfw-color-text) 16%, transparent 84%);
-}
-#btfw-theme-modal input[type="range"]::-moz-range-progress{
-  height: 6px; border-radius: 999px; background: var(--btfw-color-accent);
-}
-#btfw-theme-modal input[type="range"]::-webkit-slider-thumb{
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px; height: 16px; margin-top: -5px;
-  border-radius: 50%;
-  background: var(--btfw-color-accent);
-  border: 2px solid color-mix(in srgb, var(--btfw-color-surface) 68%, white 32%);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
-}
-#btfw-theme-modal input[type="range"]::-moz-range-thumb{
-  width: 16px; height: 16px;
-  border-radius: 50%;
-  background: var(--btfw-color-accent);
-  border: 2px solid color-mix(in srgb, var(--btfw-color-surface) 68%, white 32%);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
-}
-#btfw-theme-modal input[type="range"]:focus{
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
   outline: none;
+  background: linear-gradient(90deg,
+    var(--btfw-dial-fill) 0 var(--btfw-range-progress, 50%),
+    var(--btfw-dial-track) var(--btfw-range-progress, 50%) 100%);
+  box-shadow:
+    inset 0 1px 2px color-mix(in srgb, var(--btfw-color-bg, #05060d) 58%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--btfw-color-text, #eef0f8) 8%, transparent);
+  cursor: pointer;
+  touch-action: pan-y;
+  transform: translateX(var(--btfw-range-elastic-x, 0px)) scaleX(var(--btfw-range-elastic-scale, 1));
+  transform-origin: center;
+  transition: box-shadow 150ms ease-out, filter 150ms ease-out, transform 250ms cubic-bezier(.22, 1, .36, 1);
 }
-#btfw-theme-modal input[type="range"]:focus::-webkit-slider-thumb{
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+.btfw-dial-range > input[type="range"]:hover{
+  filter: brightness(1.06);
+}
+.btfw-dial-range > input[type="range"]:focus-visible{
+  box-shadow:
+    inset 0 1px 2px color-mix(in srgb, var(--btfw-color-bg, #05060d) 58%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--btfw-color-text, #eef0f8) 10%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--btfw-color-accent, #7aa2f7) 24%, transparent);
+}
+.btfw-dial-range > input[type="range"].is-dragging{
+  transition-duration: 80ms;
+}
+.btfw-dial-range > input[type="range"]::-webkit-slider-runnable-track{
+  height: 30px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+}
+.btfw-dial-range > input[type="range"]::-moz-range-track,
+.btfw-dial-range > input[type="range"]::-moz-range-progress{
+  height: 30px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+}
+.btfw-dial-range > input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance: none;
+  appearance: none;
+  width: 3px;
+  height: 20px;
+  margin-top: 5px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--btfw-color-text, #eef0f8) 94%, white 6%);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--btfw-color-bg, #05060d) 62%, transparent);
+  opacity: 0;
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+.btfw-dial-range > input[type="range"]::-moz-range-thumb{
+  width: 3px;
+  height: 20px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--btfw-color-text, #eef0f8) 94%, white 6%);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--btfw-color-bg, #05060d) 62%, transparent);
+  opacity: 0;
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+.btfw-dial-range:hover > input[type="range"]::-webkit-slider-thumb,
+.btfw-dial-range > input[type="range"]:focus-visible::-webkit-slider-thumb,
+.btfw-dial-range > input[type="range"].is-dragging::-webkit-slider-thumb{
+  opacity: .92;
+}
+.btfw-dial-range:hover > input[type="range"]::-moz-range-thumb,
+.btfw-dial-range > input[type="range"]:focus-visible::-moz-range-thumb,
+.btfw-dial-range > input[type="range"].is-dragging::-moz-range-thumb{
+  opacity: .92;
+}
+.btfw-dial-range > :is(output, .btfw-range-value, .btfw-notify-volume-value){
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  inset-inline-end: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  transform: translateY(-50%);
+  color: color-mix(in srgb, var(--btfw-color-text, #eef0f8) 92%, transparent);
+  font-size: .72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: end;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--btfw-color-bg, #05060d) 82%, transparent);
+  pointer-events: none;
+}
+.btfw-dial-range > input[type="range"]:disabled{
+  cursor: not-allowed;
+  opacity: .5;
+  filter: saturate(.5);
+}
+@media (pointer: coarse){
+  .btfw-dial-range{ min-height: 36px; }
+  .btfw-dial-range > input[type="range"],
+  .btfw-dial-range > input[type="range"]::-webkit-slider-runnable-track,
+  .btfw-dial-range > input[type="range"]::-moz-range-track,
+  .btfw-dial-range > input[type="range"]::-moz-range-progress{ height: 36px; }
+  .btfw-dial-range > input[type="range"]::-webkit-slider-thumb{ height: 24px; margin-top: 6px; }
+  .btfw-dial-range > input[type="range"]::-moz-range-thumb{ height: 24px; }
+  .btfw-dial-range::before{ inset-block: 8px; }
+}
+@media (prefers-reduced-motion: reduce){
+  .btfw-dial-range::before,
+  .btfw-dial-range > input[type="range"],
+  .btfw-dial-range > input[type="range"]::-webkit-slider-thumb,
+  .btfw-dial-range > input[type="range"]::-moz-range-thumb{ transition: none; }
+  .btfw-dial-range > input[type="range"]{ transform: none; }
+}
+html[data-btfw-motion="reduced"] .btfw-dial-range::before,
+html[data-btfw-motion="reduced"] .btfw-dial-range > input[type="range"]{
+  transition: none;
+}
+html[data-btfw-motion="reduced"] .btfw-dial-range > input[type="range"]{
+  transform: none;
 }
 
 #btfw-theme-modal .modal-card-foot{
