@@ -10,7 +10,6 @@ BTFW.define("feature:event-countdown", [], async () => {
 
   let el = null;
   let timer = null;
-  let syncTimer = null;
   let lastKey = "";
 
   function injectStyles(){
@@ -130,7 +129,6 @@ BTFW.define("feature:event-countdown", [], async () => {
 
   function teardown(){
     if (timer) { clearInterval(timer); timer = null; }
-    if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
     if (el) { el.remove(); el = null; }
   }
 
@@ -171,7 +169,7 @@ BTFW.define("feature:event-countdown", [], async () => {
     // The admin can change the event without a page reload (Apply updates the
     // runtime config); a cheap re-sync poll picks that up for the admin, and
     // is a no-op for everyone else.
-    syncTimer = setInterval(sync, 15000);
+    setInterval(sync, 15000);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
