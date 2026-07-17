@@ -1174,7 +1174,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const colors = theme.colors && typeof theme.colors === "object" ? theme.colors : DEFAULT_CONFIG.colors;
     const surface = surfaceColor || colors.background || DEFAULT_CONFIG.colors.background;
 
-    if (gradientCanvas && gradientCanvas.supportsCanvas() && ["flow", "linear", "retro", "pixel"].includes(gradient.type)) {
+    if (gradientCanvas && typeof gradientCanvas.supportsCanvas === "function" && gradientCanvas.supportsCanvas() && ["flow", "linear", "retro", "pixel"].includes(gradient.type)) {
       const layer = gradientCanvas.renderGradientLayer(gradient.type, 1200, 720, {
         stops,
         strength: gradient.strength,
