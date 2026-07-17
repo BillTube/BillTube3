@@ -87,7 +87,10 @@ BTFW.define("feature:notify", [], async () => {
     const cw = $("#chatwrap");
     if (!cw || cw._btfw_notify_obs) return;
     cw._btfw_notify_obs = true;
-    new MutationObserver(() => ensureStack()).observe(cw, {childList:true, subtree:true});
+    const buf = document.getElementById("messagebuffer");
+    if (buf) {
+      new MutationObserver(() => ensureStack()).observe(buf, {childList:true, subtree:false});
+    }
   }
 
   // ---- queue + API -----------------------------------------------------------

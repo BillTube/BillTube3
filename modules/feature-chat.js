@@ -145,7 +145,19 @@ function repositionOpenPopins(){
 // which is throttled in backgrounded/automated tabs.
 window.BTFW_repositionOpenPopins = repositionOpenPopins;
 window.addEventListener("resize", repositionOpenPopins);
-window.addEventListener("scroll", repositionOpenPopins, true);
+  const scheduleReposition = (() => {
+    let pending = false;
+    const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));
+    return (e) => {
+      if (pending) return;
+      pending = true;
+      raf(() => {
+        pending = false;
+        repositionOpenPopins();
+      });
+    };
+  })();
+  window.addEventListener("scroll", scheduleReposition, true);
 document.addEventListener("btfw:layoutReady", ()=> setTimeout(repositionOpenPopins, 0));
 
 // The live re-fit on chat-column resize (splitter drag, dock/layout switches) is

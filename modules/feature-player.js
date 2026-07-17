@@ -343,10 +343,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     togglePosterVisibility();
     watchPlayerMount();
 
-    // Periodic check like billtube2.js
-    setInterval(() => {
-      togglePosterVisibility();
-    }, 1000);
+    // Removed redundant poster visibility interval.
 
     if (typeof window !== "undefined" && window.socket && typeof socket.on === "function") {
       try {
