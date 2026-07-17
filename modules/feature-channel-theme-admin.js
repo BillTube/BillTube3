@@ -1,4 +1,4 @@
-BTFW.define("feature:channelThemeAdmin", [], async () => {
+BTFW.define("feature:channelThemeAdmin", ["util:gradientCanvas"], async (gradientCanvas) => {
   const $  = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
   const rangeSliders = await BTFW.init("util:rangeSliders");
@@ -1045,6 +1045,25 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   function renderGradientLayer(theme, strengthScale = 1){
     const gradient = normalizeGradientConfig(theme);
     const stops = getGradientStops(theme);
+    const colors = theme.colors && typeof theme.colors === "object" ? theme.colors : DEFAULT_CONFIG.colors;
+    const surface = colors.background || DEFAULT_CONFIG.colors.background;
+
+    // Use the canvas pipeline when available for the four animated presets.
+    // This avoids per-frame SVG filter re-rasterization and gives crisp, dithered
+    // gradients that the CSS keyframes can animate on the compositor.
+    if (gradientCanvas && gradientCanvas.supportsCanvas() && ["flow", "linear", "retro", "pixel"].includes(gradient.type)) {
+      const layer = gradientCanvas.renderGradientLayer(gradient.type, 1200, 720, {
+        stops,
+        strength: gradient.strength,
+        soften: gradient.soften,
+        noise: gradient.noise,
+        angle: gradient.angle,
+        strengthScale,
+        surface
+      });
+      if (layer) return layer;
+    }
+
     const alpha = Math.round(clampGradientNumber(gradient.strength * strengthScale, 4, 72, 24));
     const opacity = (alpha / 100).toFixed(2);
     const colorAt = stop => `color-mix(in srgb, ${stop.color} ${alpha}%, transparent)`;
@@ -1148,9 +1167,25 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   // Repeated UI surfaces stay single-layer and filter-free. That retains each
   // preset's character without placing animated SVG filters on every card,
   // modal and toolbar.
-  function renderRuntimeSurfaceGradient(theme, strengthScale = 1){
+  function renderRuntimeSurfaceGradient(theme, strengthScale = 1, surfaceColor){
     const gradient = normalizeGradientConfig(theme);
     const stops = getGradientStops(theme);
+    const colors = theme.colors && typeof theme.colors === "object" ? theme.colors : DEFAULT_CONFIG.colors;
+    const surface = surfaceColor || colors.background || DEFAULT_CONFIG.colors.background;
+
+    if (gradientCanvas && gradientCanvas.supportsCanvas() && ["flow", "linear", "retro", "pixel"].includes(gradient.type)) {
+      const layer = gradientCanvas.renderGradientLayer(gradient.type, 1200, 720, {
+        stops,
+        strength: gradient.strength,
+        soften: gradient.soften,
+        noise: gradient.noise,
+        angle: gradient.angle,
+        strengthScale,
+        surface
+      });
+      if (layer) return layer;
+    }
+
     const alpha = Math.round(clampGradientNumber(gradient.strength * strengthScale, 4, 72, 24));
     const opacity = (alpha / 100).toFixed(2);
     const path = stops.map(stop =>
@@ -1177,10 +1212,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const panelActive = active && gradient.targets.panels;
     const navbarActive = active && gradient.targets.navbar;
     const staticTheme = staticGradientTheme(theme);
-    const page = pageActive ? renderRuntimeSurfaceGradient(staticTheme, 1) : { css: "none", count: 1 };
-    const panel = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.7) : { css: "none", count: 1 };
-    const panelSoft = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.42) : { css: "none", count: 1 };
-    const navbar = navbarActive ? renderRuntimeSurfaceGradient(staticTheme, 0.78) : { css: "none", count: 1 };
+    const colors = theme.colors && typeof theme.colors === "object" ? theme.colors : DEFAULT_CONFIG.colors;
+    const page = pageActive ? renderRuntimeSurfaceGradient(staticTheme, 1, colors.background) : { css: "none", count: 1 };
+    const panel = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.7, colors.panel) : { css: "none", count: 1 };
+    const panelSoft = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.42, colors.surface) : { css: "none", count: 1 };
+    const navbar = navbarActive ? renderRuntimeSurfaceGradient(staticTheme, 0.78, colors.panel) : { css: "none", count: 1 };
     root.setAttribute("data-btfw-gradient", active ? "on" : "off");
     root.setAttribute("data-btfw-gradient-type", gradient.type);
     root.setAttribute("data-btfw-gradient-page", pageActive ? "on" : "off");
@@ -1545,6 +1581,14 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-gradient-stage::before { content: ""; position: absolute; z-index: 2; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,.1), transparent 32%, rgba(0,0,0,.12)); }
       .btfw-theme-admin .btfw-gradient-stage::after { content: ""; position: absolute; z-index: 3; inset: 0; pointer-events: none; background-image: var(--btfw-gradient-stage-noise, none); background-size: 160px 160px; mix-blend-mode: soft-light; }
       .btfw-theme-admin .btfw-gradient-stage__badge { position: absolute; z-index: 4; left: 10px; top: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(4,6,12,.48); color: rgba(255,255,255,.9); font-size: .64rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; backdrop-filter: blur(8px); }
+      .btfw-theme-admin .btfw-gradient-stage__canvas { position: absolute; inset: 0; width: 118%; height: 118%; left: -9%; top: -9%; object-fit: cover; will-change: transform; animation: btfw-gradient-canvas-drift 16s ease-in-out infinite alternate; }
+      .btfw-theme-admin .btfw-gradient-stage[data-gradient-motion="off"] .btfw-gradient-stage__canvas,
+      html[data-btfw-motion="reduced"] .btfw-theme-admin .btfw-gradient-stage__canvas { animation: none; }
+      @keyframes btfw-gradient-canvas-drift {
+        0% { transform: translate(-1.4%, 1.1%) scale(1.015) rotate(-0.4deg); }
+        50% { transform: translate(1.8%, -1.5%) scale(1.06) rotate(0.5deg); }
+        100% { transform: translate(-1.2%, -1.0%) scale(1.03) rotate(-0.2deg); }
+      }
 
       .btfw-theme-admin .btfw-gradient-balance-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
       .btfw-theme-admin .btfw-gradient-balance-label strong { color: var(--btfw-admin-text); font-size: .75rem; }
@@ -1580,7 +1624,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-gradient-target { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 5px 9px; border: 1px solid var(--btfw-admin-border-soft); border-radius: 999px; background: color-mix(in srgb, var(--btfw-admin-surface) 88%, transparent); color: var(--btfw-admin-text-soft); font-size: .72rem; cursor: pointer; }
       .btfw-theme-admin .btfw-gradient-target:has(input:checked) { color: var(--btfw-admin-text); border-color: color-mix(in srgb, var(--btfw-color-accent) 58%, transparent); background: color-mix(in srgb, var(--btfw-color-accent) 17%, var(--btfw-admin-surface)); }
       .btfw-theme-admin .btfw-gradient-target input { margin: 0; accent-color: var(--btfw-color-accent); }
-      @media (prefers-reduced-motion: reduce) { .btfw-theme-admin .btfw-gradient-stage__visual { animation: none !important; } }
+      @media (prefers-reduced-motion: reduce) { .btfw-theme-admin .btfw-gradient-stage__visual { animation: none !important; } .btfw-theme-admin .btfw-gradient-stage__canvas { animation: none !important; } }
       @media (max-width: 760px) { .btfw-theme-admin .btfw-gradient-type-grid, .btfw-theme-admin .btfw-gradient-stops { grid-template-columns: repeat(2, minmax(0, 1fr)); } .btfw-theme-admin .btfw-gradient-controls { grid-template-columns: 1fr 1fr; } }
       @media (max-width: 500px) { .btfw-theme-admin .btfw-gradient-controls { grid-template-columns: 1fr; } .btfw-theme-admin .btfw-gradient-lead { align-items: flex-start; } }
       /* Live preview — a real mini-mockup that renders the colors in context */
@@ -2927,20 +2971,18 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       };
     };
     const staticCfg = staticGradientTheme(cfg);
-    // Channel CSS is shared by every viewer, so applied surfaces use the same
-    // lightweight native gradient as the live runtime. Detailed filtered SVG
-    // artwork remains confined to the toolkit preview.
+    const colors = cfg.colors && typeof cfg.colors === "object" ? cfg.colors : DEFAULT_CONFIG.colors;
     const page = active && gradient.targets.page
-      ? renderRuntimeSurfaceGradient(staticCfg, 1)
+      ? renderRuntimeSurfaceGradient(staticCfg, 1, colors.background)
       : { css: "none", count: 1 };
     const panel = active && gradient.targets.panels
-      ? renderRuntimeSurfaceGradient(staticCfg, 0.7)
+      ? renderRuntimeSurfaceGradient(staticCfg, 0.7, colors.panel)
       : { css: "none", count: 1 };
     const panelSoft = active && gradient.targets.panels
-      ? renderRuntimeSurfaceGradient(staticCfg, 0.42)
+      ? renderRuntimeSurfaceGradient(staticCfg, 0.42, colors.surface)
       : { css: "none", count: 1 };
     const navbar = active && gradient.targets.navbar
-      ? renderRuntimeSurfaceGradient(staticCfg, 0.78)
+      ? renderRuntimeSurfaceGradient(staticCfg, 0.78, colors.panel)
       : { css: "none", count: 1 };
     return [
       `--btfw-gradient-noise:${noise}`,
@@ -3290,10 +3332,10 @@ function replaceBlock(original, startMarker, endMarker, block){
       preview.dataset.dither = material.dither ? ditherIntensity : "off";
       const gradient = normalizeGradientConfig(cfg);
       const staticCfg = staticGradientTheme(cfg);
-      const panelGradient = gradient.enabled && gradient.targets.panels ? renderRuntimeSurfaceGradient(staticCfg, 0.7) : { css: "none", count: 1 };
-      const softGradient = gradient.enabled && gradient.targets.panels ? renderRuntimeSurfaceGradient(staticCfg, 0.42) : { css: "none", count: 1 };
-      const navbarGradient = gradient.enabled && gradient.targets.navbar ? renderRuntimeSurfaceGradient(staticCfg, 0.78) : { css: "none", count: 1 };
-      const pageGradient = gradient.enabled && gradient.targets.page ? renderRuntimeSurfaceGradient(staticCfg, 1) : { css: "none", count: 1 };
+      const panelGradient = gradient.enabled && gradient.targets.panels ? renderRuntimeSurfaceGradient(staticCfg, 0.7, pnl) : { css: "none", count: 1 };
+      const softGradient = gradient.enabled && gradient.targets.panels ? renderRuntimeSurfaceGradient(staticCfg, 0.42, surface) : { css: "none", count: 1 };
+      const navbarGradient = gradient.enabled && gradient.targets.navbar ? renderRuntimeSurfaceGradient(staticCfg, 0.78, pnl) : { css: "none", count: 1 };
+      const pageGradient = gradient.enabled && gradient.targets.page ? renderRuntimeSurfaceGradient(staticCfg, 1, bg) : { css: "none", count: 1 };
       preview.style.setProperty("--btfw-tp-gradient-panel", panelGradient.css);
       preview.style.setProperty("--btfw-tp-gradient-soft", softGradient.css);
       preview.style.setProperty("--btfw-tp-gradient-navbar", navbarGradient.css);
@@ -3411,7 +3453,8 @@ function replaceBlock(original, startMarker, endMarker, block){
       const thumbnail = typeButton.querySelector(".btfw-gradient-type__preview");
       if (thumbnail && GRADIENT_TYPES.includes(type)) {
         const thumbConfig = { ...cfg, gradient: { ...gradient, type, motion: "off", balance: [...gradient.balance], stops: gradient.stops.map(stop => ({ ...stop })) } };
-        const thumbLayer = renderRuntimeSurfaceGradient(thumbConfig, 1.8);
+        const thumbColors = cfg.colors && typeof cfg.colors === "object" ? cfg.colors : DEFAULT_CONFIG.colors;
+        const thumbLayer = renderRuntimeSurfaceGradient(thumbConfig, 1.8, thumbColors.background);
         thumbnail.style.backgroundImage = thumbLayer.css;
         thumbnail.style.backgroundSize = (thumbLayer.sizes || Array(thumbLayer.count).fill("cover")).join(", ");
         thumbnail.style.backgroundPosition = (thumbLayer.positions || Array(thumbLayer.count).fill("center")).join(", ");
@@ -3462,9 +3505,17 @@ function replaceBlock(original, startMarker, endMarker, block){
       stage.dataset.gradientMotion = gradient.motion;
       stage.style.setProperty("--btfw-gradient-stage-noise", gradientNoiseImage(gradient.noise));
       visual.style.backgroundColor = colors.background || DEFAULT_CONFIG.colors.background;
-      visual.style.backgroundImage = stageLayer.css;
-      visual.style.backgroundSize = (stageLayer.sizes || Array(stageLayer.count).fill("cover")).join(", ");
-      visual.style.backgroundPosition = (stageLayer.positions || Array(stageLayer.count).fill("center")).join(", ");
+      visual.querySelectorAll("canvas[data-btfw-gradient-canvas]").forEach(c => c.remove());
+      if (stageLayer && stageLayer.canvas) {
+        visual.style.backgroundImage = "none";
+        stageLayer.canvas.classList.add("btfw-gradient-stage__canvas");
+        stageLayer.canvas.dataset.btfwGradientCanvas = gradient.type;
+        visual.appendChild(stageLayer.canvas);
+      } else {
+        visual.style.backgroundImage = stageLayer.css;
+        visual.style.backgroundSize = (stageLayer.sizes || Array(stageLayer.count).fill("cover")).join(", ");
+        visual.style.backgroundPosition = (stageLayer.positions || Array(stageLayer.count).fill("center")).join(", ");
+      }
       const label = stage.querySelector("[data-role=gradient-stage-label]");
       if (label) {
         const animated = gradient.motion !== "off";
