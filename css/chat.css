@@ -1331,15 +1331,6 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
   padding-right: 4px;
 }
 
-#userlist .user-dropdown {
-  --btfw-user-dropdown-shift: 0px;
-  transform-origin: top center;
-}
-
-#userlist .user-dropdown.btfw-user-dropdown--shifted {
-  transform: translateY(var(--btfw-user-dropdown-shift));
-}
-
 #userlist::-webkit-scrollbar {
   width: 8px;
 }
