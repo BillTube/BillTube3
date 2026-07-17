@@ -1,7 +1,6 @@
 BTFW.define("feature:channelThemeAdmin", [], async () => {
   const $  = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-  const rangeSliders = await BTFW.init("util:rangeSliders");
 
   const JS_BLOCK_START  = "// ==BTFW_THEME_ADMIN_START==";
   const JS_BLOCK_END    = "// ==BTFW_THEME_ADMIN_END==";
@@ -71,16 +70,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   };
   const PATTERN_OPACITY = { subtle: 0.1, medium: 0.2, bold: 0.32 };
   const DITHER_INTENSITIES = ["subtle", "medium", "bold"];
-  const GRADIENT_TYPES = ["flow", "retro", "linear", "pixel"];
-  const GRADIENT_TYPE_LABELS = {
-    flow: "Flow",
-    linear: "Linear",
-    retro: "Retro",
-    pixel: "Pixel"
-  };
-  const GRADIENT_SOURCES = ["palette", "custom"];
-  const GRADIENT_MOTIONS = ["off", "slow", "medium"];
-  const GRADIENT_PALETTE_KEYS = ["background", "surface", "panel", "accent"];
 
   function patternImageValue(key, accentHex, intensity){
     const p = BG_PATTERNS[key];
@@ -91,7 +80,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   }
 
   const DEFAULT_CONFIG = {
-    version: 12,
+    version: 10,
     tint: "midnight",
     colors: {
       background: "#0d0d0d",
@@ -110,27 +99,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     material: {
       dither: false,
       ditherIntensity: "subtle"
-    },
-    // Optional CSS-native color path. Palette mode follows the existing theme
-    // swatches automatically; custom mode gives each of the four stops its own
-    // color. Disabled by default so older channel themes render identically.
-    gradient: {
-      enabled: false,
-      type: "flow",
-      source: "palette",
-      stops: [
-        { color: "#0d0d0d", position: 13 },
-        { color: "#090d15", position: 38 },
-        { color: "#191b24", position: 63 },
-        { color: "#191434", position: 88 }
-      ],
-      balance: [25, 50, 75],
-      angle: 135,
-      strength: 34,
-      soften: 18,
-      noise: 8,
-      motion: "slow",
-      targets: { page: true, panels: true, navbar: true }
     },
     // Channel-wide event countdown banner (feature:event-countdown).
     // startsAtMs is the UTC epoch; startsAtLocal only repopulates the
@@ -904,305 +872,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     root.setAttribute("data-btfw-dither", material.dither ? material.ditherIntensity : "off");
   }
 
-  function clampGradientNumber(value, min, max, fallback){
-    const number = Number(value);
-    if (!Number.isFinite(number)) return fallback;
-    return Math.min(max, Math.max(min, number));
-  }
-
-  function normalizeGradientConfig(theme){
-    if (!theme || typeof theme !== "object") return JSON.parse(JSON.stringify(DEFAULT_CONFIG.gradient));
-    const defaults = DEFAULT_CONFIG.gradient;
-    const gradient = theme.gradient && typeof theme.gradient === "object"
-      ? theme.gradient
-      : (theme.gradient = JSON.parse(JSON.stringify(defaults)));
-    gradient.enabled = Boolean(gradient.enabled);
-    if (gradient.type === "radial") gradient.type = "retro";
-    if (["mesh", "conic", "rings", "ios"].includes(gradient.type)) gradient.type = "flow";
-    if (!GRADIENT_TYPES.includes(gradient.type)) gradient.type = defaults.type;
-    if (!GRADIENT_SOURCES.includes(gradient.source)) gradient.source = defaults.source;
-    gradient.angle = Math.round(clampGradientNumber(gradient.angle, 0, 360, defaults.angle));
-    gradient.strength = Math.round(clampGradientNumber(gradient.strength, 20, 72, defaults.strength));
-    gradient.soften = Math.round(clampGradientNumber(gradient.soften, 0, 80, defaults.soften));
-    gradient.noise = Math.round(clampGradientNumber(gradient.noise, 0, 100, defaults.noise));
-    if (!GRADIENT_MOTIONS.includes(gradient.motion)) gradient.motion = defaults.motion;
-    if (!gradient.targets || typeof gradient.targets !== "object") {
-      gradient.targets = { ...defaults.targets };
-    }
-    gradient.targets.page = gradient.targets.page !== false;
-    gradient.targets.panels = gradient.targets.panels !== false;
-    gradient.targets.navbar = gradient.targets.navbar !== false;
-
-    const incomingBalance = Array.isArray(gradient.balance) ? gradient.balance : [];
-    const balance = [];
-    defaults.balance.forEach((fallback, index) => {
-      const lower = index === 0 ? 6 : balance[index - 1] + 6;
-      const upper = 100 - ((defaults.balance.length - index) * 6);
-      balance.push(Math.round(clampGradientNumber(incomingBalance[index], lower, upper, fallback)));
-    });
-    gradient.balance = balance;
-
-    const edges = [0, ...balance, 100];
-    const incomingStops = Array.isArray(gradient.stops) ? gradient.stops : [];
-    gradient.stops = defaults.stops.map((fallback, index) => {
-      const stop = incomingStops[index] && typeof incomingStops[index] === "object" ? incomingStops[index] : {};
-      const color = /^#[0-9a-f]{6}$/i.test(String(stop.color || "")) ? String(stop.color) : fallback.color;
-      return {
-        color,
-        position: Math.round((edges[index] + edges[index + 1]) / 2)
-      };
-    });
-    return gradient;
-  }
-
-  function getGradientStops(theme){
-    const gradient = normalizeGradientConfig(theme);
-    const colors = theme.colors && typeof theme.colors === "object" ? theme.colors : DEFAULT_CONFIG.colors;
-    return gradient.stops.map((stop, index) => ({
-      color: gradient.source === "palette"
-        ? (colors[GRADIENT_PALETTE_KEYS[index]] || DEFAULT_CONFIG.colors[GRADIENT_PALETTE_KEYS[index]])
-        : stop.color,
-      position: stop.position,
-      paletteKey: GRADIENT_PALETTE_KEYS[index]
-    }));
-  }
-
-  function gradientSvgUrl(content){
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" preserveAspectRatio="xMidYMid slice">${content}</svg>`;
-    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-  }
-
-  function gradientSvgLayer(content){
-    return {
-      css: gradientSvgUrl(content),
-      count: 1,
-      sizes: ["cover"],
-      positions: ["center"]
-    };
-  }
-
-  function gradientHexRgb(hex){
-    const match = /^#([0-9a-f]{6})$/i.exec(String(hex || ""));
-    if (!match) return [0, 0, 0];
-    return [0, 2, 4].map(offset => parseInt(match[1].slice(offset, offset + 2), 16));
-  }
-
-  function gradientRgbHex(rgb){
-    return `#${rgb.map(channel => Math.round(Math.min(255, Math.max(0, channel))).toString(16).padStart(2, "0")).join("")}`;
-  }
-
-  function gradientColorAt(stops, progress){
-    const value = Math.min(1, Math.max(0, progress));
-    const positioned = stops.map(stop => ({ ...stop, unit: stop.position / 100 }));
-    if (value <= positioned[0].unit) return positioned[0].color;
-    if (value >= positioned[positioned.length - 1].unit) return positioned[positioned.length - 1].color;
-    const upperIndex = positioned.findIndex(stop => stop.unit >= value);
-    const lower = positioned[Math.max(0, upperIndex - 1)];
-    const upper = positioned[upperIndex];
-    const span = Math.max(0.001, upper.unit - lower.unit);
-    const mix = (value - lower.unit) / span;
-    const a = gradientHexRgb(lower.color);
-    const b = gradientHexRgb(upper.color);
-    return gradientRgbHex(a.map((channel, index) => channel + ((b[index] - channel) * mix)));
-  }
-
-  function renderPixelQuilt(stops, opacity, motion){
-    const animation = gradientSvgMotion(motion, "pixel");
-    const columns = 17;
-    const rows = 11;
-    const cell = 80;
-    const levels = Array.from({ length: 9 }, (_, index) => gradientColorAt(stops, index / 8));
-    const paths = levels.map(() => []);
-    for (let row = 0; row < rows; row += 1) {
-      for (let column = 0; column < columns; column += 1) {
-        const field = (
-          Math.sin((column + 1) * 0.73) +
-          Math.cos((row + 1) * 0.91) +
-          Math.sin((column + row + 2) * 0.39) + 3
-        ) / 6;
-        const level = Math.round(Math.min(1, Math.max(0, field)) * (levels.length - 1));
-        paths[level].push(`M${(column - 1) * cell} ${(row - 1) * cell}h${cell}v${cell}h-${cell}z`);
-      }
-    }
-    const tiles = paths.map((parts, index) => parts.length ? `<path d="${parts.join("")}" fill="${levels[index]}"/>` : "").join("");
-    return gradientSvgLayer(`${animation.style}<defs><pattern id="q" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M0 80V0h80" fill="none" stroke="#fff" stroke-opacity=".12"/><path d="M0 80h80V0" fill="none" stroke="#000" stroke-opacity=".2"/></pattern></defs><g${animation.attribute} opacity="${opacity}">${tiles}<rect x="-80" y="-80" width="1360" height="880" fill="url(#q)"/></g>`);
-  }
-
-  function gradientSvgMotion(motion, kind){
-    if (!motion || motion === "off") return { style: "", attribute: "" };
-    const pixel = kind === "pixel";
-    const duration = pixel ? (motion === "medium" ? 8 : 14) : (motion === "medium" ? 10 : 18);
-    const timing = pixel ? "steps(8,end)" : "ease-in-out";
-    const frames = pixel
-      ? "0%{transform:translate(-80px,-80px)}50%{transform:translate(0,-80px)}100%{transform:translate(0,0)}"
-      : "0%,100%{transform:translate(-24px,-14px) scale(1.05)}50%{transform:translate(26px,16px) scale(1.08)}";
-    return {
-      style: `<style>@keyframes btfwGradientMotion{${frames}}.btfw-gradient-motion{transform-box:fill-box;transform-origin:center;animation:btfwGradientMotion ${duration}s ${timing} infinite alternate}@media (prefers-reduced-motion:reduce){.btfw-gradient-motion{animation:none}}</style>`,
-      attribute: ` class="btfw-gradient-motion"`
-    };
-  }
-
-  function renderGradientLayer(theme, strengthScale = 1){
-    const gradient = normalizeGradientConfig(theme);
-    const stops = getGradientStops(theme);
-    const alpha = Math.round(clampGradientNumber(gradient.strength * strengthScale, 4, 72, 24));
-    const opacity = (alpha / 100).toFixed(2);
-    const colorAt = stop => `color-mix(in srgb, ${stop.color} ${alpha}%, transparent)`;
-    const colorPath = stops.map(stop => `${colorAt(stop)} ${stop.position}%`).join(", ");
-
-    if (gradient.type === "flow") {
-      // SVG-native port of FeralUI's MIT Flow defaults: scale 50, distortion 60, swirl 10.
-      const displacement = Math.round(96 + (gradient.soften * 0.72));
-      const blur = Math.round(16 + (gradient.soften * 0.34));
-      const duration = gradient.motion === "medium" ? 9 : 16;
-      const motionStyle = gradient.motion === "off" ? "" : `<style>@keyframes flow0{0%,100%{transform:translate(-18px,12px) scale(1.02)}50%{transform:translate(24px,-16px) scale(1.07)}}@keyframes flow1{0%,100%{transform:translate(-34px,22px) rotate(-1.5deg)}50%{transform:translate(38px,-24px) rotate(1.8deg)}}@keyframes flow2{0%,100%{transform:translate(30px,-26px) scale(1.04)}50%{transform:translate(-40px,28px) scale(1.09)}}@keyframes flow3{0%,100%{transform:translate(22px,28px) rotate(1.2deg)}50%{transform:translate(-28px,-30px) rotate(-1.6deg)}}.flow-field{transform-box:fill-box;transform-origin:center;animation-duration:${duration}s;animation-timing-function:ease-in-out;animation-iteration-count:infinite}.flow-0{animation-name:flow0}.flow-1{animation-name:flow1;animation-delay:-${Math.round(duration * .24)}s}.flow-2{animation-name:flow2;animation-delay:-${Math.round(duration * .46)}s}.flow-3{animation-name:flow3;animation-delay:-${Math.round(duration * .68)}s}@media (prefers-reduced-motion:reduce){.flow-field{animation:none}}</style>`;
-      const shapes = `<path class="flow-field flow-2" d="M590-160H1450V475C1225 465 1015 555 895 810C745 650 635 520 540 350C600 210 620 25 590-160Z" fill="${stops[2].color}"/><path class="flow-field flow-1" d="M-240 130C170 80 565 175 830 385C705 540 575 720 360 900H-240Z" fill="${stops[1].color}"/><path class="flow-field flow-0" d="M130-180H1450V20C1110 15 870 105 705 300C485 225 300 190 105 230C55 120 60-50 130-180Z" fill="${stops[0].color}"/>`;
-      return gradientSvgLayer(`${motionStyle}<defs><filter id="f" filterUnits="userSpaceOnUse" x="-280" y="-240" width="1760" height="1200"><feTurbulence type="fractalNoise" baseFrequency=".004 .008" numOctaves="3" seed="17" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${displacement}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[3].color}"/><g filter="url(#f)">${shapes}</g></g>`);
-    }
-
-    if (gradient.type === "mesh") {
-      const blur = Math.round(62 + (gradient.soften * 0.55));
-      return gradientSvgLayer(`<defs><filter id="m" x="-35%" y="-50%" width="170%" height="200%"><feGaussianBlur stdDeviation="${blur}"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${gradientColorAt(stops, .25)}" fill-opacity=".5"/><g filter="url(#m)"><ellipse cx="50" cy="95" rx="470" ry="335" fill="${stops[0].color}"/><ellipse cx="365" cy="690" rx="520" ry="345" fill="${stops[1].color}"/><ellipse cx="790" cy="50" rx="515" ry="330" fill="${stops[2].color}"/><ellipse cx="1200" cy="610" rx="535" ry="390" fill="${stops[3].color}"/><ellipse cx="645" cy="405" rx="380" ry="235" fill="${gradientColorAt(stops, .56)}" fill-opacity=".8"/></g></g>`);
-    }
-
-    if (gradient.type === "ios") {
-      const animation = gradientSvgMotion(gradient.motion, "ios");
-      const svgStops = stops.map(stop => `<stop offset="${stop.position}%" stop-color="${stop.color}"/>`).join("");
-      return gradientSvgLayer(`${animation.style}<defs><linearGradient id="i" gradientUnits="userSpaceOnUse" x1="-100" y1="-60" x2="1300" y2="780">${svgStops}</linearGradient><radialGradient id="g" cx="12%" cy="8%" r="72%" fx="12%" fy="8%"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><g${animation.attribute} opacity="${opacity}"><rect x="-100" y="-60" width="1400" height="840" fill="url(#i)"/><rect x="-100" y="-60" width="1400" height="840" fill="url(#g)"/></g>`);
-    }
-
-    if (gradient.type === "rings") {
-      const melt = Math.round(8 + (gradient.soften * 0.45));
-      const blur = Math.round(5 + (gradient.soften * 0.14));
-      const rings = Array.from({ length: 12 }, (_, index) => `<circle cx="1450" cy="360" r="${90 + (index * 135)}" fill="none" stroke="${gradientColorAt(stops, index / 11)}" stroke-width="150"/>`).join("");
-      const glowColor = color => gradientRgbHex(gradientHexRgb(color).map(channel => channel + ((255 - channel) * 0.58)));
-      const glows = Array.from({ length: 12 }, (_, index) => `<circle cx="1450" cy="360" r="${90 + (index * 135)}" fill="none" stroke="${glowColor(gradientColorAt(stops, index / 11))}" stroke-opacity=".58" stroke-width="16"/>`).join("");
-      return gradientSvgLayer(`<defs><filter id="r" filterUnits="userSpaceOnUse" x="-220" y="-220" width="3400" height="1160"><feTurbulence type="fractalNoise" baseFrequency=".003 .012" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${melt}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter><filter id="rg" filterUnits="userSpaceOnUse" x="-220" y="-220" width="3400" height="1160"><feTurbulence type="fractalNoise" baseFrequency=".003 .012" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${melt}" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="6"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[3].color}" fill-opacity=".5"/><g filter="url(#r)">${rings}</g><g filter="url(#rg)">${glows}</g></g>`);
-    }
-
-    if (gradient.type === "pixel") {
-      return renderPixelQuilt(stops, opacity, gradient.motion);
-    }
-
-    if (gradient.type === "retro") {
-      const rgbLight = stop => { const rgb = gradientHexRgb(stop.color); return (rgb[0] * 0.2126) + (rgb[1] * 0.7152) + (rgb[2] * 0.0722); };
-      const brightestIndex = stops.reduce((best, stop, index) => rgbLight(stop) > rgbLight(stops[best]) ? index : best, 0);
-      const centers = [[192, 590], [936, 187], [1056, 605], [288, 115]];
-      const blur = Math.round(24 + (gradient.soften * 0.42));
-      const grain = (0.045 + (gradient.noise / 900)).toFixed(3);
-      const duration = gradient.motion === "medium" ? 10 : 18;
-      const motionStyle = gradient.motion === "off" ? "" : `<style>@keyframes retroA{0%,100%{transform:translate(-34px,18px)}50%{transform:translate(42px,-28px)}}@keyframes retroB{0%,100%{transform:translate(28px,-24px)}50%{transform:translate(-38px,30px)}}.retro-blob{transform-box:fill-box;transform-origin:center;animation:retroA ${duration}s ease-in-out infinite}.retro-1,.retro-3{animation-name:retroB;animation-delay:-${Math.round(duration / 3)}s}@media (prefers-reduced-motion:reduce){.retro-blob{animation:none}}</style>`;
-      const fields = stops.map((stop, index) => index === brightestIndex ? "" : `<radialGradient id="retro${index}"><stop offset="0" stop-color="${stop.color}" stop-opacity=".98"/><stop offset=".55" stop-color="${stop.color}" stop-opacity=".82"/><stop offset="1" stop-color="${stop.color}" stop-opacity="0"/></radialGradient>`).join("");
-      const blobs = stops.map((stop, index) => index === brightestIndex ? "" : `<ellipse class="retro-blob retro-${index}" cx="${centers[index][0]}" cy="${centers[index][1]}" rx="540" ry="405" fill="url(#retro${index})"/>`).join("");
-      return gradientSvgLayer(`${motionStyle}<defs>${fields}<filter id="retroWarp" x="-30%" y="-40%" width="170%" height="180%"><feTurbulence type="fractalNoise" baseFrequency=".006 .01" numOctaves="3" seed="11" result="warp"/><feDisplacementMap in="SourceGraphic" in2="warp" scale="88" xChannelSelector="R" yChannelSelector="B"/><feGaussianBlur stdDeviation="${blur}"/></filter><filter id="retroGrain"><feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="3" seed="19"/><feColorMatrix type="saturate" values="0"/></filter></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[brightestIndex].color}"/><g filter="url(#retroWarp)">${blobs}</g><rect width="1200" height="720" filter="url(#retroGrain)" opacity="${grain}" style="mix-blend-mode:soft-light"/></g>`);
-    }
-
-    if (gradient.type === "conic") {
-      const forward = stops.map(stop => `${colorAt(stop)} ${(stop.position * 1.8).toFixed(1)}deg`);
-      const reverse = [...stops].reverse().map(stop => `${colorAt(stop)} ${(360 - (stop.position * 1.8)).toFixed(1)}deg`);
-      return { css: `conic-gradient(from ${gradient.angle}deg at 50% 50% in oklab, ${forward.concat(reverse).join(", ")})`, count: 1, sizes: ["cover"], positions: ["center"] };
-    }
-    return { css: `linear-gradient(${gradient.angle}deg in oklab, ${colorPath})`, count: 1, sizes: ["cover"], positions: ["center"] };
-  }
-
-  function gradientNoiseImage(amount){
-    const value = Math.round(clampGradientNumber(amount, 0, 100, 0));
-    if (!value) return "none";
-    const opacity = Math.min(0.28, value / 360).toFixed(3);
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".78" numOctaves="3" seed="11"/><feColorMatrix values="1 0 0 0 1 0 1 0 0 1 0 0 1 0 1 0 0 0 ${opacity} 0"/></filter><rect width="100%" height="100%" filter="url(#n)" opacity=".72"/></svg>`;
-    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-  }
-
-  function addGradientNoise(layer, amount){
-    const noise = gradientNoiseImage(amount);
-    if (noise === "none") return layer;
-    return {
-      css: `${noise}, ${layer.css}`,
-      count: layer.count + 1,
-      sizes: ["160px 160px", ...(layer.sizes || Array(layer.count).fill("auto"))],
-      positions: ["0 0", ...(layer.positions || Array(layer.count).fill("center"))]
-    };
-  }
-
-  function gradientLayerSizes(layer){
-    return layer.sizes || Array(layer.count).fill("auto");
-  }
-
-  function gradientLayerPositions(layer){
-    return layer.positions || Array(layer.count).fill("center");
-  }
-
-  function staticGradientTheme(theme){
-    const gradient = normalizeGradientConfig(theme);
-    return {
-      ...theme,
-      gradient: {
-        ...gradient,
-        motion: "off",
-        balance: [...gradient.balance],
-        stops: gradient.stops.map(stop => ({ ...stop }))
-      }
-    };
-  }
-
-  // Repeated UI surfaces stay single-layer and filter-free. That retains each
-  // preset's character without placing animated SVG filters on every card,
-  // modal and toolbar.
-  function renderRuntimeSurfaceGradient(theme, strengthScale = 1){
-    const gradient = normalizeGradientConfig(theme);
-    const stops = getGradientStops(theme);
-    const alpha = Math.round(clampGradientNumber(gradient.strength * strengthScale, 4, 72, 24));
-    const opacity = (alpha / 100).toFixed(2);
-    const path = stops.map(stop =>
-      `color-mix(in srgb, ${stop.color} ${alpha}%, transparent) ${stop.position}%`
-    ).join(", ");
-    if (gradient.type === "flow") return gradientSvgLayer(`<g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[3].color}"/><path d="M590-160H1450V475C1225 465 1015 555 895 810C745 650 635 520 540 350C600 210 620 25 590-160Z" fill="${stops[2].color}"/><path d="M-240 130C170 80 565 175 830 385C705 540 575 720 360 900H-240Z" fill="${stops[1].color}"/><path d="M130-180H1450V20C1110 15 870 105 705 300C485 225 300 190 105 230C55 120 60-50 130-180Z" fill="${stops[0].color}"/></g>`);
-    if (gradient.type === "retro") return gradientSvgLayer(`<defs><radialGradient id="r0"><stop offset="0" stop-color="${stops[0].color}"/><stop offset="1" stop-color="${stops[0].color}" stop-opacity="0"/></radialGradient><radialGradient id="r1"><stop offset="0" stop-color="${stops[1].color}"/><stop offset="1" stop-color="${stops[1].color}" stop-opacity="0"/></radialGradient><radialGradient id="r2"><stop offset="0" stop-color="${stops[2].color}"/><stop offset="1" stop-color="${stops[2].color}" stop-opacity="0"/></radialGradient></defs><g opacity="${opacity}"><rect width="1200" height="720" fill="${stops[3].color}"/><ellipse cx="185" cy="585" rx="550" ry="410" fill="url(#r0)"/><ellipse cx="950" cy="175" rx="560" ry="410" fill="url(#r1)"/><ellipse cx="1050" cy="615" rx="540" ry="400" fill="url(#r2)"/></g>`);
-    if (gradient.type === "pixel") return renderPixelQuilt(stops, opacity, "off");
-    return {
-      css: `linear-gradient(${gradient.angle}deg in oklab, ${path})`,
-      count: 1,
-      sizes: ["cover"],
-      positions: ["center"]
-    };
-  }
-
-  function applyRuntimeGradient(theme){
-    if (!theme || typeof theme !== "object" || typeof document === "undefined") return;
-    const root = document.documentElement;
-    if (!root) return;
-    const gradient = normalizeGradientConfig(theme);
-    const active = gradient.enabled;
-    const pageActive = active && gradient.targets.page;
-    const panelActive = active && gradient.targets.panels;
-    const navbarActive = active && gradient.targets.navbar;
-    const staticTheme = staticGradientTheme(theme);
-    const page = pageActive ? renderRuntimeSurfaceGradient(staticTheme, 1) : { css: "none", count: 1 };
-    const panel = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.7) : { css: "none", count: 1 };
-    const panelSoft = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.42) : { css: "none", count: 1 };
-    const navbar = navbarActive ? renderRuntimeSurfaceGradient(staticTheme, 0.78) : { css: "none", count: 1 };
-    root.setAttribute("data-btfw-gradient", active ? "on" : "off");
-    root.setAttribute("data-btfw-gradient-type", gradient.type);
-    root.setAttribute("data-btfw-gradient-page", pageActive ? "on" : "off");
-    root.setAttribute("data-btfw-gradient-panels", panelActive ? "on" : "off");
-    root.setAttribute("data-btfw-gradient-navbar", navbarActive ? "on" : "off");
-    root.setAttribute("data-btfw-gradient-motion", (pageActive || panelActive || navbarActive) ? gradient.motion : "off");
-    root.style.setProperty("--btfw-gradient-page-layer", page.css);
-    root.style.setProperty("--btfw-gradient-page-runtime-layer", page.css);
-    root.style.setProperty("--btfw-gradient-panel-layer", panel.css);
-    root.style.setProperty("--btfw-gradient-panel-soft-layer", panelSoft.css);
-    root.style.setProperty("--btfw-gradient-panel-runtime-layer", panel.css);
-    root.style.setProperty("--btfw-gradient-panel-soft-runtime-layer", panelSoft.css);
-    root.style.setProperty("--btfw-gradient-navbar-layer", navbar.css);
-    root.style.setProperty("--btfw-gradient-navbar-runtime-layer", navbar.css);
-    root.style.setProperty("--btfw-panel-background-size", ["var(--btfw-dither-size)", ...gradientLayerSizes(panel), ...Array(3).fill("auto")].join(", "));
-    root.style.setProperty("--btfw-panel-background-position", ["0 0", ...gradientLayerPositions(panel), ...Array(3).fill("center")].join(", "));
-    root.style.setProperty("--btfw-page-background-size", ["var(--btfw-dither-size)", ...gradientLayerSizes(page), "auto"].join(", "));
-    root.style.setProperty("--btfw-page-background-position", ["0 0", ...gradientLayerPositions(page), "center top"].join(", "));
-    root.style.setProperty("--btfw-navbar-gradient-size", gradientLayerSizes(navbar).join(", "));
-    root.style.setProperty("--btfw-navbar-gradient-position", gradientLayerPositions(navbar).join(", "));
-  }
-
   function applyRuntimeTypography(theme){
     if (!theme || typeof theme !== "object") return;
     const typography = (theme.typography && typeof theme.typography === "object") ? theme.typography : (theme.typography = {});
@@ -1234,7 +903,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     applyRuntimeBranding(normalized);
     applyRuntimeColors(normalized);
     applyRuntimeMaterial(normalized);
-    applyRuntimeGradient(normalized);
     applyRuntimeIntegrations(normalized);
     applyRuntimeTypography(normalized);
     applyRuntimePlaylistCatalog(normalized);
@@ -1388,7 +1056,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         border: 1px solid var(--btfw-panel-border-soft);
         margin-bottom: 8px;
         background-color: color-mix(in srgb, var(--btfw-admin-surface) 90%, transparent 10%);
-        background-image: none;
+        background-image: var(--btfw-panel-gradient-soft);
         background-size: var(--btfw-panel-background-size);
         background-position: var(--btfw-panel-background-position);
         box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%);
@@ -1397,7 +1065,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
       .btfw-theme-admin details.section[open] {
         border-color: var(--btfw-panel-border);
-        background-image: none;
+        background-image: var(--btfw-panel-gradient);
         box-shadow: var(--btfw-panel-shadow);
       }
       .btfw-theme-admin summary.section__summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; cursor: pointer; list-style: none; }
@@ -1424,7 +1092,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         gap: 14px;
         padding: 10px 14px;
         background-color: color-mix(in srgb, var(--btfw-admin-surface-alt) 82%, transparent);
-        background-image: none;
+        background-image: var(--btfw-panel-gradient-soft);
         background-size: var(--btfw-panel-background-size);
         background-position: var(--btfw-panel-background-position);
         border: 1px solid var(--btfw-panel-border-soft);
@@ -1509,7 +1177,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
       /* Palette swatches — one responsive row, each shows the readable hex */
       .btfw-theme-admin .btfw-palette__swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
-      .btfw-theme-admin .btfw-swatch { display: flex; flex-direction: column; gap: 7px; padding: 9px; border-radius: 11px; background-color: var(--btfw-admin-surface); background-image: none; background-size: var(--btfw-panel-background-size); background-position: var(--btfw-panel-background-position); border: 1px solid var(--btfw-panel-border-soft); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%); cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+      .btfw-theme-admin .btfw-swatch { display: flex; flex-direction: column; gap: 7px; padding: 9px; border-radius: 11px; background-color: var(--btfw-admin-surface); background-image: var(--btfw-panel-gradient-soft); background-size: var(--btfw-panel-background-size); background-position: var(--btfw-panel-background-position); border: 1px solid var(--btfw-panel-border-soft); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 6%, transparent 94%); cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
       .btfw-theme-admin .btfw-swatch:hover { border-color: color-mix(in srgb, var(--btfw-color-accent) 50%, var(--btfw-admin-border-soft)); }
       .btfw-theme-admin .btfw-swatch input[type="color"] { width: 100%; height: 34px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 0; background: none; cursor: pointer; }
       .btfw-theme-admin .btfw-swatch input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
@@ -1517,80 +1185,15 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-swatch input[type="color"]::-moz-color-swatch { border: 0; border-radius: 7px; }
       .btfw-theme-admin .btfw-swatch__name { font-size: 0.78rem; font-weight: 600; color: var(--btfw-admin-text); letter-spacing: 0.02em; }
       .btfw-theme-admin .btfw-swatch__hex { font-size: 0.7rem; font-family: "JetBrains Mono", monospace; color: var(--btfw-admin-text-soft); text-transform: uppercase; }
-      /* Gradient Studio — tactile colour-path controls inspired by dedicated
-         gradient tools, but designed to fit the existing channel toolkit. */
-      .btfw-theme-admin .btfw-gradient-studio { margin-top: 12px; border: 1px solid var(--btfw-admin-border-soft); border-radius: 13px; overflow: hidden; background: color-mix(in srgb, var(--btfw-admin-surface-alt) 84%, transparent 16%); }
-      .btfw-theme-admin .btfw-gradient-studio > .btfw-switch-field { margin: 0; padding: 11px 12px; }
-      .btfw-theme-admin .btfw-gradient-editor { padding: 0 12px 14px; border-top: 1px solid var(--btfw-admin-border-soft); }
-      .btfw-theme-admin .btfw-gradient-editor[hidden], .btfw-theme-admin [data-role="gradient-angle-field"][hidden] { display: none !important; }
-      .btfw-theme-admin .btfw-gradient-lead { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 0 8px; }
-      .btfw-theme-admin .btfw-gradient-lead .help { max-width: 560px; }
-      .btfw-theme-admin .btfw-gradient-reset { flex: 0 0 auto; border: 1px solid var(--btfw-admin-border-soft); border-radius: 8px; padding: 5px 9px; background: transparent; color: var(--btfw-admin-text-soft); font-size: 0.72rem; cursor: pointer; }
-      .btfw-theme-admin .btfw-gradient-reset:hover { color: var(--btfw-admin-text); border-color: var(--btfw-color-accent); }
-
-      .btfw-theme-admin .btfw-gradient-type-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin: 8px 0 11px; }
-      .btfw-theme-admin .btfw-gradient-type { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: center; gap: 7px; min-height: 42px; padding: 5px 7px; border: 1px solid var(--btfw-admin-border-soft); border-radius: 9px; background: color-mix(in srgb, var(--btfw-admin-surface) 88%, transparent); color: var(--btfw-admin-text-soft); cursor: pointer; text-align: left; font-size: 0.69rem; font-weight: 650; transition: border-color 150ms ease, background 150ms ease, color 150ms ease, transform 150ms ease; }
-      .btfw-theme-admin .btfw-gradient-type:hover { color: var(--btfw-admin-text); border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, var(--btfw-admin-border-soft)); transform: translateY(-1px); }
-      .btfw-theme-admin .btfw-gradient-type[aria-selected="true"] { color: var(--btfw-admin-text); border-color: color-mix(in srgb, var(--btfw-color-accent) 70%, white 6%); background: color-mix(in srgb, var(--btfw-color-accent) 16%, var(--btfw-admin-surface)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 18%, transparent); }
-      .btfw-theme-admin .btfw-gradient-type__preview { width: 32px; height: 28px; border-radius: 6px; background-color: var(--btfw-theme-bg, #05060d); background-image: var(--btfw-gradient-thumb, none); background-size: var(--btfw-gradient-thumb-size, cover); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 0 0 1px rgba(255,255,255,.08); }
-
-      .btfw-theme-admin .btfw-gradient-stage { position: relative; width: 100%; height: auto; aspect-ratio: 5 / 3; margin: 5px 0 13px; border-radius: 12px; overflow: hidden; isolation: isolate; background: var(--btfw-theme-bg, #05060d); border: 1px solid color-mix(in srgb, var(--btfw-admin-text) 16%, transparent); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 15px 32px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 42%, transparent); }
-      .btfw-theme-admin .btfw-gradient-stage__visual { position: absolute; inset: 0; background-color: var(--btfw-theme-bg, #05060d); background-image: none; background-repeat: no-repeat; background-position: center; filter: none; transform: none; }
-      .btfw-theme-admin .btfw-gradient-stage::before { content: ""; position: absolute; z-index: 2; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,.1), transparent 32%, rgba(0,0,0,.12)); }
-      .btfw-theme-admin .btfw-gradient-stage::after { content: ""; position: absolute; z-index: 3; inset: 0; pointer-events: none; background-image: var(--btfw-gradient-stage-noise, none); background-size: 160px 160px; mix-blend-mode: soft-light; }
-      .btfw-theme-admin .btfw-gradient-stage__badge { position: absolute; z-index: 4; left: 10px; top: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(4,6,12,.48); color: rgba(255,255,255,.9); font-size: .64rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; backdrop-filter: blur(8px); }
-
-      .btfw-theme-admin .btfw-gradient-balance-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
-      .btfw-theme-admin .btfw-gradient-balance-label strong { color: var(--btfw-admin-text); font-size: .75rem; }
-      .btfw-theme-admin .btfw-gradient-balance { position: relative; height: 38px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--btfw-admin-text) 16%, transparent); background: var(--btfw-gradient-balance-fill, none); box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 18px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 28%, transparent); touch-action: none; cursor: crosshair; transform-origin: center; transition: box-shadow 150ms ease-out, filter 150ms ease-out, transform 250ms cubic-bezier(.22,1,.36,1); }
-      .btfw-theme-admin .btfw-gradient-balance::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,.13), transparent 45%, rgba(0,0,0,.12)); }
-      .btfw-theme-admin .btfw-gradient-balance__active { position: absolute; z-index: 1; top: 2px; bottom: 2px; border: 2px solid rgba(255,255,255,.88); border-radius: 999px; pointer-events: none; box-shadow: 0 0 0 1px rgba(0,0,0,.2), 0 3px 12px rgba(0,0,0,.22); transition: left 150ms ease-out, width 150ms ease-out, box-shadow 150ms ease-out; }
-      .btfw-theme-admin .btfw-gradient-balance__handle { position: absolute; z-index: 4; top: 50%; width: 24px; height: 34px; margin: -17px 0 0 -12px; border: 0; padding: 0; background: transparent; cursor: ew-resize; touch-action: none; }
-      .btfw-theme-admin .btfw-gradient-balance__handle::before { content: ""; position: absolute; left: 10px; top: 8px; width: 4px; height: 18px; border-radius: 999px; background: white; box-shadow: 0 1px 4px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.12); transition: transform 150ms ease-out, box-shadow 150ms ease-out; }
-      .btfw-theme-admin .btfw-gradient-balance__handle:focus-visible { outline: 2px solid white; outline-offset: 1px; border-radius: 8px; }
-      .btfw-theme-admin .btfw-gradient-balance-hint { margin: 6px 2px 11px; color: var(--btfw-admin-text-soft); font-size: .68rem; }
-      .btfw-theme-admin .btfw-gradient-balance:hover,
-      .btfw-theme-admin .btfw-gradient-balance:focus-within { filter: brightness(1.04); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 3px color-mix(in srgb, var(--btfw-theme-accent, #7aa2f7) 20%, transparent), 0 10px 22px color-mix(in srgb, var(--btfw-theme-bg, #05060d) 32%, transparent); }
-      .btfw-theme-admin .btfw-gradient-balance.is-dragging { transform: scaleY(.97); transition-duration: 80ms; }
-      .btfw-theme-admin .btfw-gradient-balance.is-dragging .btfw-gradient-balance__active { box-shadow: 0 0 0 1px rgba(0,0,0,.24), 0 4px 16px rgba(0,0,0,.28); transition: none; }
-      .btfw-theme-admin .btfw-gradient-balance.is-dragging .btfw-gradient-balance__handle::before { transform: scaleY(1.12); box-shadow: 0 1px 5px rgba(0,0,0,.62), 0 0 0 1px rgba(0,0,0,.14); }
-      @media (prefers-reduced-motion: reduce) { .btfw-theme-admin .btfw-gradient-balance, .btfw-theme-admin .btfw-gradient-balance__active, .btfw-theme-admin .btfw-gradient-balance__handle::before { transition: none; } .btfw-theme-admin .btfw-gradient-balance.is-dragging { transform: none; } }
-      html[data-btfw-motion="reduced"] .btfw-theme-admin .btfw-gradient-balance, html[data-btfw-motion="reduced"] .btfw-theme-admin .btfw-gradient-balance__active, html[data-btfw-motion="reduced"] .btfw-theme-admin .btfw-gradient-balance__handle::before { transition: none; }
-
-      .btfw-theme-admin .btfw-gradient-stops { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-      .btfw-theme-admin .btfw-gradient-stop { display: grid; grid-template-columns: 32px minmax(0, 1fr); grid-template-areas: "color title" "color meta"; column-gap: 8px; align-items: center; min-width: 0; padding: 8px; border-radius: 9px; border: 1px solid var(--btfw-admin-border-soft); background: color-mix(in srgb, var(--btfw-admin-surface) 88%, transparent); cursor: pointer; transition: border-color 150ms ease, background 150ms ease; }
-      .btfw-theme-admin .btfw-gradient-stop.is-active { border-color: color-mix(in srgb, var(--btfw-color-accent) 66%, white 5%); background: color-mix(in srgb, var(--btfw-color-accent) 13%, var(--btfw-admin-surface)); }
-      .btfw-theme-admin .btfw-gradient-stop input[type="color"] { grid-area: color; width: 32px; height: 38px; }
-      .btfw-theme-admin .btfw-gradient-stop input[type="color"]:disabled { opacity: 1; cursor: default; }
-      .btfw-theme-admin .btfw-gradient-stop__title { grid-area: title; min-width: 0; font-size: .68rem; color: var(--btfw-admin-text); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .btfw-theme-admin .btfw-gradient-stop__meta { grid-area: meta; color: var(--btfw-admin-text-soft); font-size: .64rem; }
-      .btfw-theme-admin .btfw-gradient-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 11px; }
-      .btfw-theme-admin .btfw-gradient-controls--finish { padding-top: 10px; border-top: 1px solid var(--btfw-admin-border-soft); }
-      .btfw-theme-admin .btfw-gradient-controls .field { margin: 0; min-width: 0; }
-      .btfw-theme-admin .btfw-gradient-range { display: flex; align-items: center; gap: 8px; }
-      .btfw-theme-admin .btfw-gradient-range input { flex: 1 1 auto; min-width: 0; accent-color: var(--btfw-color-accent); }
-      .btfw-theme-admin .btfw-gradient-range output { flex: 0 0 38px; text-align: right; font-size: .7rem; color: var(--btfw-admin-text-soft); }
-      .btfw-theme-admin .btfw-gradient-targets { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
-      .btfw-theme-admin .btfw-gradient-target { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 5px 9px; border: 1px solid var(--btfw-admin-border-soft); border-radius: 999px; background: color-mix(in srgb, var(--btfw-admin-surface) 88%, transparent); color: var(--btfw-admin-text-soft); font-size: .72rem; cursor: pointer; }
-      .btfw-theme-admin .btfw-gradient-target:has(input:checked) { color: var(--btfw-admin-text); border-color: color-mix(in srgb, var(--btfw-color-accent) 58%, transparent); background: color-mix(in srgb, var(--btfw-color-accent) 17%, var(--btfw-admin-surface)); }
-      .btfw-theme-admin .btfw-gradient-target input { margin: 0; accent-color: var(--btfw-color-accent); }
-      @media (prefers-reduced-motion: reduce) { .btfw-theme-admin .btfw-gradient-stage__visual { animation: none !important; } }
-      @media (max-width: 760px) { .btfw-theme-admin .btfw-gradient-type-grid, .btfw-theme-admin .btfw-gradient-stops { grid-template-columns: repeat(2, minmax(0, 1fr)); } .btfw-theme-admin .btfw-gradient-controls { grid-template-columns: 1fr 1fr; } }
-      @media (max-width: 500px) { .btfw-theme-admin .btfw-gradient-controls { grid-template-columns: 1fr; } .btfw-theme-admin .btfw-gradient-lead { align-items: flex-start; } }
       /* Live preview — a real mini-mockup that renders the colors in context */
       .btfw-theme-admin .preview.btfw-tp {
         --btfw-tp-dither-image: none;
         --btfw-tp-dither-size: auto;
-        --btfw-tp-gradient-panel: none;
-        --btfw-tp-gradient-soft: none;
-        --btfw-tp-gradient-navbar: none;
-        --btfw-tp-panel-background-size: var(--btfw-tp-dither-size), auto, auto, auto, auto;
-        --btfw-tp-soft-background-size: var(--btfw-tp-dither-size), auto, auto, auto;
-        --btfw-tp-panel-gradient: var(--btfw-tp-dither-image), var(--btfw-tp-gradient-panel),
+        --btfw-tp-panel-gradient: var(--btfw-tp-dither-image),
           linear-gradient(135deg, color-mix(in srgb, var(--text, #e8ecf7) 6%, transparent), transparent 40%),
           radial-gradient(110% 100% at 0% 0%, color-mix(in srgb, var(--accent, #6d4df6) 18%, transparent), transparent 62%),
           linear-gradient(145deg, color-mix(in srgb, var(--panel, #141f36) 84%, var(--accent, #6d4df6) 16%), color-mix(in srgb, var(--surface, #0b111d) 94%, var(--accent, #6d4df6) 6%));
-        --btfw-tp-surface-gradient: var(--btfw-tp-dither-image), var(--btfw-tp-gradient-soft),
+        --btfw-tp-surface-gradient: var(--btfw-tp-dither-image),
           linear-gradient(135deg, color-mix(in srgb, var(--text, #e8ecf7) 4%, transparent), transparent 44%),
           linear-gradient(145deg, color-mix(in srgb, var(--surface, #0b111d) 90%, var(--accent, #6d4df6) 10%), color-mix(in srgb, var(--bg, #05060d) 95%, var(--accent, #6d4df6) 5%));
         --btfw-tp-border: color-mix(in srgb, var(--accent, #6d4df6) 36%, var(--panel, #141f36) 64%);
@@ -1614,25 +1217,25 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
       @supports (color: color-mix(in oklch, red, blue)) {
         .btfw-theme-admin .preview.btfw-tp {
-          --btfw-tp-panel-gradient: var(--btfw-tp-dither-image), var(--btfw-tp-gradient-panel),
+          --btfw-tp-panel-gradient: var(--btfw-tp-dither-image),
             linear-gradient(135deg, color-mix(in oklch, var(--text, #e8ecf7) 6%, transparent), transparent 40%),
             radial-gradient(110% 100% at 0% 0%, color-mix(in oklch, var(--accent, #6d4df6) 18%, transparent), transparent 62%),
             linear-gradient(145deg, color-mix(in oklch, var(--panel, #141f36) 84%, var(--accent, #6d4df6) 16%), color-mix(in oklch, var(--surface, #0b111d) 94%, var(--accent, #6d4df6) 6%));
-          --btfw-tp-surface-gradient: var(--btfw-tp-dither-image), var(--btfw-tp-gradient-soft),
+          --btfw-tp-surface-gradient: var(--btfw-tp-dither-image),
             linear-gradient(135deg, color-mix(in oklch, var(--text, #e8ecf7) 4%, transparent), transparent 44%),
             linear-gradient(145deg, color-mix(in oklch, var(--surface, #0b111d) 90%, var(--accent, #6d4df6) 10%), color-mix(in oklch, var(--bg, #05060d) 95%, var(--accent, #6d4df6) 5%));
           --btfw-tp-border: color-mix(in oklch, var(--accent, #6d4df6) 36%, var(--panel, #141f36) 64%);
         }
       }
-      .btfw-theme-admin .btfw-tp__bar { display: flex; align-items: center; gap: 6px; padding: 9px 13px; background-color: var(--surface, #0b111d); background-image: var(--btfw-tp-gradient-navbar), var(--btfw-tp-surface-gradient); background-size: var(--btfw-tp-navbar-background-size, auto); background-position: var(--btfw-tp-navbar-background-position, center); border-bottom: 1px solid color-mix(in srgb, var(--accent, #6d4df6) 20%, transparent); }
+      .btfw-theme-admin .btfw-tp__bar { display: flex; align-items: center; gap: 6px; padding: 9px 13px; background-color: var(--surface, #0b111d); background-image: var(--btfw-tp-surface-gradient); background-size: var(--btfw-tp-dither-size), auto, auto; background-position: 0 0, center, center; border-bottom: 1px solid color-mix(in srgb, var(--accent, #6d4df6) 20%, transparent); }
       .btfw-theme-admin .btfw-tp__dot { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, var(--text, #fff) 28%, transparent); }
       .btfw-theme-admin .btfw-tp__barlabel { margin-left: 7px; font-size: 0.72rem; color: color-mix(in srgb, var(--text, #fff) 62%, transparent); letter-spacing: 0.05em; text-transform: uppercase; }
       .btfw-theme-admin .btfw-tp__body { display: grid; grid-template-columns: 1.05fr 1fr; gap: 12px; padding: 14px; background: var(--bg, #05060d); }
-      .btfw-theme-admin .btfw-tp__panel { background-color: var(--panel, #141f36); background-image: var(--btfw-tp-panel-gradient); background-size: var(--btfw-tp-panel-background-size); background-position: var(--btfw-tp-panel-background-position, center); border: 1px solid var(--btfw-tp-border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 7px; box-shadow: 0 12px 28px color-mix(in srgb, var(--bg, #05060d) 42%, transparent), inset 0 1px 0 color-mix(in srgb, var(--text, #e8ecf7) 8%, transparent); }
+      .btfw-theme-admin .btfw-tp__panel { background-color: var(--panel, #141f36); background-image: var(--btfw-tp-panel-gradient); background-size: var(--btfw-tp-dither-size), auto, auto, auto; background-position: 0 0, center, center, center; border: 1px solid var(--btfw-tp-border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 7px; box-shadow: 0 12px 28px color-mix(in srgb, var(--bg, #05060d) 42%, transparent), inset 0 1px 0 color-mix(in srgb, var(--text, #e8ecf7) 8%, transparent); }
       .btfw-theme-admin .btfw-tp__heading { font-size: 0.95rem; font-weight: 700; color: var(--text, #e8ecf7); }
       .btfw-theme-admin .btfw-tp__sub { font-size: 0.77rem; line-height: 1.5; color: color-mix(in srgb, var(--text, #e8ecf7) 75%, transparent); }
       .btfw-theme-admin .btfw-tp__btn { align-self: flex-start; margin-top: 5px; padding: 7px 16px; border: 0; border-radius: 8px; background-color: var(--accent, #6d4df6); background-image: var(--btfw-tp-dither-image); background-size: var(--btfw-tp-dither-size); color: var(--on-accent, #fff); font-weight: 600; font-size: 0.8rem; cursor: default; }
-      .btfw-theme-admin .btfw-tp__chat { background-color: var(--surface, #0b111d); background-image: var(--btfw-tp-surface-gradient); background-size: var(--btfw-tp-soft-background-size); background-position: var(--btfw-tp-soft-background-position, center); border: 1px solid color-mix(in srgb, var(--accent, #6d4df6) 24%, var(--surface, #0b111d) 76%); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 9px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text, #e8ecf7) 6%, transparent); }
+      .btfw-theme-admin .btfw-tp__chat { background-color: var(--surface, #0b111d); background-image: var(--btfw-tp-surface-gradient); background-size: var(--btfw-tp-dither-size), auto, auto; background-position: 0 0, center, center; border: 1px solid color-mix(in srgb, var(--accent, #6d4df6) 24%, var(--surface, #0b111d) 76%); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 9px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text, #e8ecf7) 6%, transparent); }
       .btfw-theme-admin .btfw-tp__msg { font-size: 0.79rem; line-height: 1.45; color: var(--chat, #cfd6e6); }
       .btfw-theme-admin .btfw-tp__user { color: var(--accent, #6d4df6); font-weight: 700; margin-right: 5px; }
       @media (max-width: 600px){ .btfw-theme-admin .btfw-tp__body { grid-template-columns: 1fr; } }
@@ -1658,7 +1261,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         border-radius: 12px;
         border: 1px solid var(--btfw-panel-border-soft);
         background-color: color-mix(in srgb, var(--btfw-admin-surface-alt) 72%, transparent 28%);
-        background-image: none;
+        background-image: var(--btfw-panel-gradient-soft);
         background-size: var(--btfw-panel-background-size);
         background-position: var(--btfw-panel-background-position);
         box-shadow: inset 0 1px 0 color-mix(in srgb, var(--btfw-admin-text) 5%, transparent 95%);
@@ -2547,7 +2150,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     if (!DITHER_INTENSITIES.includes(normalized.material.ditherIntensity)) {
       normalized.material.ditherIntensity = "subtle";
     }
-    normalizeGradientConfig(normalized);
 
     if (!normalized.integrations || typeof normalized.integrations !== "object") {
       normalized.integrations = JSON.parse(JSON.stringify(defaults.integrations));
@@ -2854,54 +2456,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     return `${JS_BLOCK_START}\nwindow.BTFW_THEME_ADMIN = ${json};\n${JS_BLOCK_END}`;
   }
 
-  function buildGradientCssVariables(cfg){
-    const gradient = normalizeGradientConfig(cfg);
-    const active = gradient.enabled;
-    const noise = active ? gradientNoiseImage(gradient.noise) : "none";
-    const compose = (layer, targetEnabled) => {
-      if (!active || !targetEnabled) return { css: "none", count: 1 };
-      if (noise === "none") return layer;
-      return {
-        css: `var(--btfw-gradient-noise),${layer.css}`,
-        count: layer.count + 1,
-        sizes: ["160px 160px", ...gradientLayerSizes(layer)],
-        positions: ["0 0", ...gradientLayerPositions(layer)]
-      };
-    };
-    const staticCfg = staticGradientTheme(cfg);
-    // Channel CSS is shared by every viewer, so applied surfaces use the same
-    // lightweight native gradient as the live runtime. Detailed filtered SVG
-    // artwork remains confined to the toolkit preview.
-    const page = active && gradient.targets.page
-      ? renderRuntimeSurfaceGradient(staticCfg, 1)
-      : { css: "none", count: 1 };
-    const panel = active && gradient.targets.panels
-      ? renderRuntimeSurfaceGradient(staticCfg, 0.7)
-      : { css: "none", count: 1 };
-    const panelSoft = active && gradient.targets.panels
-      ? renderRuntimeSurfaceGradient(staticCfg, 0.42)
-      : { css: "none", count: 1 };
-    const navbar = active && gradient.targets.navbar
-      ? renderRuntimeSurfaceGradient(staticCfg, 0.78)
-      : { css: "none", count: 1 };
-    return [
-      `--btfw-gradient-noise:${noise}`,
-      `--btfw-gradient-page-layer:${page.css}`,
-      `--btfw-gradient-page-runtime-layer:${page.css}`,
-      `--btfw-gradient-panel-layer:${panel.css}`,
-      `--btfw-gradient-panel-runtime-layer:${panel.css}`,
-      `--btfw-gradient-panel-soft-runtime-layer:${panelSoft.css}`,
-      `--btfw-gradient-panel-soft-layer:${panelSoft.css}`,
-      `--btfw-gradient-navbar-layer:${navbar.css}`,
-      `--btfw-gradient-navbar-runtime-layer:${navbar.css}`,
-      `--btfw-panel-background-size:${["var(--btfw-dither-size)", ...gradientLayerSizes(panel), ...Array(3).fill("auto")].join(",")}`,
-      `--btfw-panel-background-position:${["0 0", ...gradientLayerPositions(panel), ...Array(3).fill("center")].join(",")}`,
-      `--btfw-page-background-size:${["var(--btfw-dither-size)", ...gradientLayerSizes(page), "auto"].join(",")}`,
-      `--btfw-page-background-position:${["0 0", ...gradientLayerPositions(page), "center top"].join(",")}`,
-      `--btfw-navbar-gradient-size:${gradientLayerSizes(navbar).join(",")}`,
-      `--btfw-navbar-gradient-position:${gradientLayerPositions(navbar).join(",")}`
-    ].join(";") + ";";
-  }
   function buildCssBlock(cfg){
     const colors = cfg.colors || {};
     const typography = resolveTypographyConfig(cfg.typography || {});
@@ -2912,7 +2466,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const chatText = colors.chatText || textColor;
     const accent = colors.accent || "#6d4df6";
     const fontFamily = typography.family || FONT_FALLBACK_FAMILY;
-    const gradientCss = buildGradientCssVariables(cfg);
 
     // Optional Hero Pattern backdrop. The image goes on <html>, not <body>:
     // in this layout body is only viewport-tall while the document scrolls
@@ -2930,7 +2483,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
     }
 
-    return `\n${CSS_BLOCK_START}\n:root {\n  --btfw-theme-bg: ${bg};\n  --btfw-theme-surface: ${surface};\n  --btfw-theme-panel: ${panel};\n  --btfw-theme-text: ${textColor};\n  --btfw-theme-chat-text: ${chatText};\n  --btfw-theme-accent: ${accent};\n  --btfw-theme-font-family: ${fontFamily};\n  ${gradientCss}\n}${patternCss}\n${CSS_BLOCK_END}`;
+    return `\n${CSS_BLOCK_START}\n:root {\n  --btfw-theme-bg: ${bg};\n  --btfw-theme-surface: ${surface};\n  --btfw-theme-panel: ${panel};\n  --btfw-theme-text: ${textColor};\n  --btfw-theme-chat-text: ${chatText};\n  --btfw-theme-accent: ${accent};\n  --btfw-theme-font-family: ${fontFamily};\n}${patternCss}\n${CSS_BLOCK_END}`;
   }
 
 // Replace this function in feature-channel-theme-admin.js
@@ -3230,47 +2783,17 @@ function replaceBlock(original, startMarker, endMarker, block){
         ? material.ditherIntensity
         : "subtle";
       preview.dataset.dither = material.dither ? ditherIntensity : "off";
-      const gradient = normalizeGradientConfig(cfg);
-      const staticCfg = staticGradientTheme(cfg);
-      const panelGradient = gradient.enabled && gradient.targets.panels ? renderRuntimeSurfaceGradient(staticCfg, 0.7) : { css: "none", count: 1 };
-      const softGradient = gradient.enabled && gradient.targets.panels ? renderRuntimeSurfaceGradient(staticCfg, 0.42) : { css: "none", count: 1 };
-      const navbarGradient = gradient.enabled && gradient.targets.navbar ? renderRuntimeSurfaceGradient(staticCfg, 0.78) : { css: "none", count: 1 };
-      const pageGradient = gradient.enabled && gradient.targets.page ? renderRuntimeSurfaceGradient(staticCfg, 1) : { css: "none", count: 1 };
-      preview.style.setProperty("--btfw-tp-gradient-panel", panelGradient.css);
-      preview.style.setProperty("--btfw-tp-gradient-soft", softGradient.css);
-      preview.style.setProperty("--btfw-tp-gradient-navbar", navbarGradient.css);
-      preview.style.setProperty("--btfw-tp-panel-background-size", ["var(--btfw-tp-dither-size)", ...gradientLayerSizes(panelGradient), ...Array(3).fill("auto")].join(", "));
-      preview.style.setProperty("--btfw-tp-panel-background-position", ["0 0", ...gradientLayerPositions(panelGradient), ...Array(3).fill("center")].join(", "));
-      preview.style.setProperty("--btfw-tp-soft-background-size", ["var(--btfw-tp-dither-size)", ...gradientLayerSizes(softGradient), ...Array(2).fill("auto")].join(", "));
-      preview.style.setProperty("--btfw-tp-soft-background-position", ["0 0", ...gradientLayerPositions(softGradient), ...Array(2).fill("center")].join(", "));
-      preview.style.setProperty("--btfw-tp-navbar-background-size", [...gradientLayerSizes(navbarGradient), "var(--btfw-tp-dither-size)", ...gradientLayerSizes(softGradient), ...Array(2).fill("auto")].join(", "));
-      preview.style.setProperty("--btfw-tp-navbar-background-position", [...gradientLayerPositions(navbarGradient), "0 0", ...gradientLayerPositions(softGradient), ...Array(2).fill("center")].join(", "));
       preview.style.background = "";
-      // Show the chosen page gradient and optional tiled pattern together.
+      // Show the chosen backdrop pattern behind the mockup body.
       const previewBody = preview.querySelector(".btfw-tp__body");
       if (previewBody) {
         const patternKey = cfg.background?.pattern || "none";
-        const layers = [];
-        const layerSizes = [];
-        const layerPositions = [];
-        if (gradient.enabled && gradient.targets.page) {
-          layers.push(pageGradient.css);
-          layerSizes.push(...gradientLayerSizes(pageGradient));
-          layerPositions.push(...gradientLayerPositions(pageGradient));
-        }
-        if (patternKey !== "none") {
-          layers.push(patternImageValue(patternKey, accent, cfg.background?.intensity || "medium"));
-          layerSizes.push("auto");
-          layerPositions.push("top center");
-        }
-        previewBody.style.backgroundColor = bg;
-        previewBody.style.backgroundImage = layers.join(", ");
-        previewBody.style.backgroundSize = layerSizes.join(", ");
-        previewBody.style.backgroundPosition = layerPositions.join(", ");
+        previewBody.style.backgroundImage = patternKey !== "none"
+          ? patternImageValue(patternKey, accent, cfg.background?.intensity || "medium")
+          : "";
       }
     }
     paintPatternPreviews(panel, cfg);
-    syncGradientEditor(panel, cfg);
     // Show each swatch's current hex, readably.
     panel.querySelectorAll(".btfw-swatch__hex[data-hex]").forEach(h => {
       const v = colors[h.dataset.hex];
@@ -3316,115 +2839,6 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (field) {
       field.classList.toggle('is-disabled', !isCustom);
     }
-  }
-
-  function setActiveGradientBand(panel, index){
-    const balance = panel?.querySelector("[data-role=gradient-balance]");
-    if (!balance) return;
-    const selected = Math.max(0, Math.min(3, Number(index) || 0));
-    balance.dataset.activeStop = String(selected);
-    panel.querySelectorAll(".btfw-gradient-stop").forEach((card, cardIndex) => {
-      card.classList.toggle("is-active", cardIndex === selected);
-    });
-  }
-
-  function syncGradientEditor(panel, cfg){
-    if (!panel || !cfg || typeof cfg !== "object") return;
-    const gradient = normalizeGradientConfig(cfg);
-    const button = panel.querySelector("#btfw-theme-gradient-toggle");
-    const input = panel.querySelector("#btfw-theme-gradient-enabled");
-    const editor = panel.querySelector("[data-role=gradient-editor-fields]");
-    const enabled = Boolean(gradient.enabled);
-    if (input) input.checked = enabled;
-    if (button) {
-      button.setAttribute("aria-pressed", enabled ? "true" : "false");
-      const state = button.querySelector("[data-role=state-label]");
-      if (state) state.textContent = enabled ? "On" : "Off";
-    }
-    if (editor) editor.hidden = !enabled;
-
-    const typeInput = panel.querySelector("#btfw-gradient-type");
-    if (typeInput) typeInput.value = gradient.type;
-    panel.querySelectorAll("[data-gradient-type]").forEach(typeButton => {
-      const type = typeButton.dataset.gradientType;
-      const selected = type === gradient.type;
-      typeButton.setAttribute("aria-selected", selected ? "true" : "false");
-      typeButton.tabIndex = selected ? 0 : -1;
-      const thumbnail = typeButton.querySelector(".btfw-gradient-type__preview");
-      if (thumbnail && GRADIENT_TYPES.includes(type)) {
-        const thumbConfig = { ...cfg, gradient: { ...gradient, type, motion: "off", balance: [...gradient.balance], stops: gradient.stops.map(stop => ({ ...stop })) } };
-        const thumbLayer = renderRuntimeSurfaceGradient(thumbConfig, 1.8);
-        thumbnail.style.backgroundImage = thumbLayer.css;
-        thumbnail.style.backgroundSize = (thumbLayer.sizes || Array(thumbLayer.count).fill("cover")).join(", ");
-        thumbnail.style.backgroundPosition = (thumbLayer.positions || Array(thumbLayer.count).fill("center")).join(", ");
-      }
-    });
-
-    const paletteMode = gradient.source === "palette";
-    const colors = cfg.colors && typeof cfg.colors === "object" ? cfg.colors : DEFAULT_CONFIG.colors;
-    const stops = getGradientStops(cfg);
-    const balance = panel.querySelector("[data-role=gradient-balance]");
-    const activeIndex = Math.max(0, Math.min(3, Number(balance?.dataset.activeStop) || 0));
-    panel.querySelectorAll(".btfw-gradient-stop").forEach((card, index) => {
-      const stop = stops[index];
-      if (!stop) return;
-      const colorInput = card.querySelector("[data-role=gradient-stop-color]");
-      const name = card.querySelector("[data-role=gradient-stop-name]");
-      if (colorInput) { colorInput.value = stop.color; colorInput.disabled = paletteMode; }
-      if (name) name.textContent = paletteMode ? stop.paletteKey.replace(/^./, char => char.toUpperCase()) : `Color ${index + 1}`;
-      card.classList.toggle("is-active", index === activeIndex);
-    });
-
-    const colorPath = stops.map(stop => `${stop.color} ${stop.position}%`).join(", ");
-    if (balance) {
-      balance.style.setProperty("--btfw-gradient-balance-fill", `linear-gradient(90deg in oklab, ${colorPath})`);
-      gradient.balance.forEach((value, index) => {
-        const handle = balance.querySelector(`[data-balance-index="${index}"]`);
-        if (!handle) return;
-        const lower = index === 0 ? 6 : gradient.balance[index - 1] + 6;
-        const upper = index === 2 ? 94 : gradient.balance[index + 1] - 6;
-        handle.style.left = `${value}%`;
-        handle.setAttribute("aria-valuemin", String(lower));
-        handle.setAttribute("aria-valuemax", String(upper));
-        handle.setAttribute("aria-valuenow", String(value));
-      });
-      const edges = [0, ...gradient.balance, 100];
-      const activeBand = balance.querySelector("[data-role=gradient-active-band]");
-      if (activeBand) {
-        activeBand.style.left = `${edges[activeIndex]}%`;
-        activeBand.style.width = `${edges[activeIndex + 1] - edges[activeIndex]}%`;
-      }
-    }
-
-    const stage = panel.querySelector("[data-role=gradient-stage]");
-    const visual = panel.querySelector("[data-role=gradient-stage-visual]");
-    if (stage && visual) {
-      const stageLayer = renderGradientLayer(cfg, 2.15);
-      stage.dataset.gradientType = gradient.type;
-      stage.dataset.gradientMotion = gradient.motion;
-      stage.style.setProperty("--btfw-gradient-stage-noise", gradientNoiseImage(gradient.noise));
-      visual.style.backgroundColor = colors.background || DEFAULT_CONFIG.colors.background;
-      visual.style.backgroundImage = stageLayer.css;
-      visual.style.backgroundSize = (stageLayer.sizes || Array(stageLayer.count).fill("cover")).join(", ");
-      visual.style.backgroundPosition = (stageLayer.positions || Array(stageLayer.count).fill("center")).join(", ");
-      const label = stage.querySelector("[data-role=gradient-stage-label]");
-      if (label) {
-        const animated = gradient.motion !== "off";
-        label.textContent = `${GRADIENT_TYPE_LABELS[gradient.type]} · ${animated ? "animated" : "static"}`;
-      }
-    }
-
-    const angleOutput = panel.querySelector("[data-role=gradient-angle-value]");
-    if (angleOutput) angleOutput.textContent = `${gradient.angle}°`;
-    const strengthOutput = panel.querySelector("[data-role=gradient-strength-value]");
-    if (strengthOutput) strengthOutput.textContent = `${gradient.strength}%`;
-    const softenOutput = panel.querySelector("[data-role=gradient-soften-value]");
-    if (softenOutput) softenOutput.textContent = `${gradient.soften}px`;
-    const noiseOutput = panel.querySelector("[data-role=gradient-noise-value]");
-    if (noiseOutput) noiseOutput.textContent = `${gradient.noise}%`;
-    const angleField = panel.querySelector("[data-role=gradient-angle-field]");
-    if (angleField) angleField.hidden = gradient.type !== "linear";
-    rangeSliders.syncAll(panel);
   }
 
   function syncDitherToggle(panel, cfg){
@@ -4180,107 +3594,6 @@ function replaceBlock(original, startMarker, endMarker, block){
               <label class="btfw-swatch"><input type="color" data-btfw-bind="colors.chatText"><span class="btfw-swatch__name">Chat text</span><span class="btfw-swatch__hex" data-hex="chatText"></span></label>
               <label class="btfw-swatch"><input type="color" data-btfw-bind="colors.accent"><span class="btfw-swatch__name">Accent</span><span class="btfw-swatch__hex" data-hex="accent"></span></label>
             </div>
-            <div class="btfw-gradient-studio">
-              <div class="field btfw-switch-field">
-                <button type="button" class="btfw-switch" id="btfw-theme-gradient-toggle" role="switch" aria-pressed="false" aria-controls="btfw-gradient-editor">
-                  <span class="btfw-switch__track" aria-hidden="true"><span class="btfw-switch__knob"></span></span>
-                  <span class="btfw-switch__meta">
-                    <span class="btfw-switch__title">Gradient Studio</span>
-                    <span class="btfw-switch__state" data-role="state-label">Off</span>
-                  </span>
-                </button>
-                <input type="checkbox" id="btfw-theme-gradient-enabled" data-btfw-bind="gradient.enabled" hidden>
-              </div>
-              <div class="btfw-gradient-editor" id="btfw-gradient-editor" data-role="gradient-editor-fields" hidden>
-                <div class="btfw-gradient-lead">
-                  <p class="help">Build a four-color path, then choose where it appears. Follow palette keeps the blend synced with every preset and swatch edit.</p>
-                  <button type="button" class="btfw-gradient-reset" id="btfw-gradient-reset">Reset path</button>
-                </div>
-                <div class="field">
-                  <label for="btfw-gradient-source">Colours</label>
-                  <select id="btfw-gradient-source" data-btfw-bind="gradient.source">
-                    <option value="palette">Follow palette</option>
-                    <option value="custom">Custom colours</option>
-                  </select>
-                </div>
-                <input type="hidden" id="btfw-gradient-type" data-btfw-bind="gradient.type">
-                <div class="btfw-gradient-type-grid" role="tablist" aria-label="Gradient style">
-                  <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="flow"><span class="btfw-gradient-type__preview"></span><span>Flow</span></button>
-                  <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="linear"><span class="btfw-gradient-type__preview"></span><span>Linear</span></button>
-                  <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="retro"><span class="btfw-gradient-type__preview"></span><span>Retro</span></button>
-                  <button type="button" class="btfw-gradient-type" role="tab" data-gradient-type="pixel"><span class="btfw-gradient-type__preview"></span><span>Pixel</span></button>
-                </div>
-                <div class="btfw-gradient-stage" data-role="gradient-stage" aria-label="Live gradient preview">
-                  <div class="btfw-gradient-stage__visual" data-role="gradient-stage-visual"></div>
-                  <span class="btfw-gradient-stage__badge" data-role="gradient-stage-label">Flow · animated</span>
-                </div>
-                <div class="btfw-gradient-balance-label"><strong>Colour balance</strong><span class="help">Four bands</span></div>
-                <div class="btfw-gradient-balance" data-role="gradient-balance" role="group" aria-label="Colour balance">
-                  <span class="btfw-gradient-balance__active" data-role="gradient-active-band"></span>
-                  <button type="button" class="btfw-gradient-balance__handle" data-balance-index="0" role="slider" aria-label="Balance between colour 1 and 2" aria-valuemin="6" aria-valuemax="82" aria-valuenow="25"></button>
-                  <button type="button" class="btfw-gradient-balance__handle" data-balance-index="1" role="slider" aria-label="Balance between colour 2 and 3" aria-valuemin="12" aria-valuemax="88" aria-valuenow="50"></button>
-                  <button type="button" class="btfw-gradient-balance__handle" data-balance-index="2" role="slider" aria-label="Balance between colour 3 and 4" aria-valuemin="18" aria-valuemax="94" aria-valuenow="75"></button>
-                </div>
-                <p class="btfw-gradient-balance-hint">Drag the grabbers to set how much each colour spreads · tap a band to pick it</p>
-                <div class="btfw-gradient-stops">
-                  <label class="btfw-gradient-stop" data-stop-index="0">
-                    <input type="color" data-btfw-bind="gradient.stops.0.color" data-role="gradient-stop-color">
-                    <span class="btfw-gradient-stop__title" data-role="gradient-stop-name">Background</span>
-                    <span class="btfw-gradient-stop__meta">Colour 1</span>
-                  </label>
-                  <label class="btfw-gradient-stop" data-stop-index="1">
-                    <input type="color" data-btfw-bind="gradient.stops.1.color" data-role="gradient-stop-color">
-                    <span class="btfw-gradient-stop__title" data-role="gradient-stop-name">Surface</span>
-                    <span class="btfw-gradient-stop__meta">Colour 2</span>
-                  </label>
-                  <label class="btfw-gradient-stop" data-stop-index="2">
-                    <input type="color" data-btfw-bind="gradient.stops.2.color" data-role="gradient-stop-color">
-                    <span class="btfw-gradient-stop__title" data-role="gradient-stop-name">Panel</span>
-                    <span class="btfw-gradient-stop__meta">Colour 3</span>
-                  </label>
-                  <label class="btfw-gradient-stop" data-stop-index="3">
-                    <input type="color" data-btfw-bind="gradient.stops.3.color" data-role="gradient-stop-color">
-                    <span class="btfw-gradient-stop__title" data-role="gradient-stop-name">Accent</span>
-                    <span class="btfw-gradient-stop__meta">Colour 4</span>
-                  </label>
-                </div>
-                <div class="btfw-gradient-controls">
-                  <div class="field" data-role="gradient-angle-field">
-                    <label for="btfw-gradient-angle">Angle</label>
-                    <div class="btfw-gradient-range"><input type="range" id="btfw-gradient-angle" min="0" max="360" step="1" data-btfw-bind="gradient.angle"><output data-role="gradient-angle-value">135°</output></div>
-                  </div>
-                  <div class="field">
-                    <label for="btfw-gradient-strength">Blend strength</label>
-                    <div class="btfw-gradient-range"><input type="range" id="btfw-gradient-strength" min="20" max="72" step="1" data-btfw-bind="gradient.strength"><output data-role="gradient-strength-value">34%</output></div>
-                  </div>
-                  <div class="field">
-                    <label for="btfw-gradient-motion">Motion</label>
-                    <select id="btfw-gradient-motion" data-btfw-bind="gradient.motion">
-                      <option value="off">Static</option>
-                      <option value="slow">Slow</option>
-                      <option value="medium">Medium</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="btfw-gradient-balance-label" style="margin-top:12px"><strong>Finish</strong><span class="help">Texture and diffusion</span></div>
-                <div class="btfw-gradient-controls btfw-gradient-controls--finish">
-                  <div class="field">
-                    <label for="btfw-gradient-soften">Soften</label>
-                    <div class="btfw-gradient-range"><input type="range" id="btfw-gradient-soften" min="0" max="80" step="1" data-btfw-bind="gradient.soften"><output data-role="gradient-soften-value">18px</output></div>
-                  </div>
-                  <div class="field">
-                    <label for="btfw-gradient-noise">Noise</label>
-                    <div class="btfw-gradient-range"><input type="range" id="btfw-gradient-noise" min="0" max="100" step="1" data-btfw-bind="gradient.noise"><output data-role="gradient-noise-value">8%</output></div>
-                  </div>
-                </div>
-                <div class="btfw-gradient-targets" role="group" aria-label="Gradient targets">
-                  <label class="btfw-gradient-target"><input type="checkbox" data-btfw-bind="gradient.targets.page"> Page wash</label>
-                  <label class="btfw-gradient-target"><input type="checkbox" data-btfw-bind="gradient.targets.panels"> Panels &amp; stacks</label>
-                  <label class="btfw-gradient-target"><input type="checkbox" data-btfw-bind="gradient.targets.navbar"> Navbar</label>
-                </div>
-                <p class="help" style="margin-top:9px">Flow, Retro, Pixel, and iOS animate when motion is enabled. Reduced-motion preferences are always respected.</p>
-              </div>
-            </div>
             <div class="field">
               <label>Background pattern</label>
               <input type="hidden" data-btfw-bind="background.pattern" data-role="pattern-input">
@@ -4661,112 +3974,6 @@ function replaceBlock(original, startMarker, endMarker, block){
     });
   }
 
-  function wireGradientStudio(panel, cfg, onChange){
-    const typeInput = panel.querySelector("#btfw-gradient-type");
-    const typeButtons = [...panel.querySelectorAll("[data-gradient-type]")];
-    typeButtons.forEach((button, buttonIndex) => {
-      button.addEventListener("click", () => {
-        const type = button.dataset.gradientType;
-        if (!GRADIENT_TYPES.includes(type)) return;
-        normalizeGradientConfig(cfg).type = type;
-        if (typeInput) {
-          typeInput.value = type;
-          typeInput.dispatchEvent(new Event("input", { bubbles: true }));
-        } else {
-          syncGradientEditor(panel, cfg);
-          onChange();
-        }
-      });
-      button.addEventListener("keydown", event => {
-        if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
-        event.preventDefault();
-        const delta = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1;
-        const next = typeButtons[(buttonIndex + delta + typeButtons.length) % typeButtons.length];
-        next?.focus();
-        next?.click();
-      });
-    });
-
-    const balance = panel.querySelector("[data-role=gradient-balance]");
-    if (balance) {
-      let draggingIndex = null;
-      let renderFrame = 0;
-      const queueBalanceRender = () => {
-        if (renderFrame) return;
-        renderFrame = requestAnimationFrame(() => {
-          renderFrame = 0;
-          syncGradientEditor(panel, cfg);
-          onChange();
-        });
-      };
-      const updateBalance = (index, rawValue) => {
-        const gradient = normalizeGradientConfig(cfg);
-        const lower = index === 0 ? 6 : gradient.balance[index - 1] + 6;
-        const upper = index === gradient.balance.length - 1 ? 94 : gradient.balance[index + 1] - 6;
-        const value = Math.round(clampGradientNumber(rawValue, lower, upper, gradient.balance[index]));
-        if (value === gradient.balance[index]) return;
-        gradient.balance[index] = value;
-        queueBalanceRender();
-      };
-      const valueFromPointer = event => {
-        const rect = balance.getBoundingClientRect();
-        return ((event.clientX - rect.left) / Math.max(1, rect.width)) * 100;
-      };
-
-      balance.querySelectorAll("[data-balance-index]").forEach(handle => {
-        const index = Number(handle.dataset.balanceIndex);
-        handle.addEventListener("pointerdown", event => {
-          event.preventDefault();
-          draggingIndex = index;
-          setActiveGradientBand(panel, index);
-          syncGradientEditor(panel, cfg);
-          balance.classList.add("is-dragging");
-          handle.setPointerCapture?.(event.pointerId);
-        });
-        handle.addEventListener("pointermove", event => {
-          if (draggingIndex !== index) return;
-          updateBalance(index, valueFromPointer(event));
-        });
-        const stopDragging = event => {
-          if (draggingIndex !== index) return;
-          draggingIndex = null;
-          balance.classList.remove("is-dragging");
-          handle.releasePointerCapture?.(event.pointerId);
-        };
-        handle.addEventListener("pointerup", stopDragging);
-        handle.addEventListener("pointercancel", stopDragging);
-        handle.addEventListener("keydown", event => {
-          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-          event.preventDefault();
-          const gradient = normalizeGradientConfig(cfg);
-          const lower = index === 0 ? 6 : gradient.balance[index - 1] + 6;
-          const upper = index === gradient.balance.length - 1 ? 94 : gradient.balance[index + 1] - 6;
-          const step = event.shiftKey ? 5 : 1;
-          const next = event.key === "Home" ? lower
-            : event.key === "End" ? upper
-              : gradient.balance[index] + (event.key === "ArrowRight" ? step : -step);
-          setActiveGradientBand(panel, index);
-          updateBalance(index, next);
-        });
-      });
-
-      balance.addEventListener("click", event => {
-        if (event.target.closest("[data-balance-index]")) return;
-        const value = valueFromPointer(event);
-        const gradient = normalizeGradientConfig(cfg);
-        const index = gradient.balance.findIndex(edge => value < edge);
-        setActiveGradientBand(panel, index < 0 ? 3 : index);
-        syncGradientEditor(panel, cfg);
-      });
-    }
-
-    panel.querySelectorAll(".btfw-gradient-stop").forEach((card, index) => {
-      card.addEventListener("pointerdown", () => {
-        setActiveGradientBand(panel, index);
-        syncGradientEditor(panel, cfg);
-      });
-    });
-  }
   function watchInputs(panel, cfg, onChange){
     $$('[data-btfw-bind]', panel).forEach(input => {
       const handler = () => {
@@ -4810,32 +4017,6 @@ function replaceBlock(original, startMarker, endMarker, block){
     }
 
     bindModuleFieldWatcher(panel, onChange);
-
-    const gradientButton = panel.querySelector("#btfw-theme-gradient-toggle");
-    const gradientInput = panel.querySelector("#btfw-theme-gradient-enabled");
-    if (gradientButton && gradientInput) {
-      gradientButton.addEventListener("click", () => {
-        const next = !gradientInput.checked;
-        gradientInput.checked = next;
-        const gradient = normalizeGradientConfig(cfg);
-        gradient.enabled = next;
-        syncGradientEditor(panel, cfg);
-        onChange();
-      });
-    }
-
-    const gradientReset = panel.querySelector("#btfw-gradient-reset");
-    if (gradientReset) {
-      gradientReset.addEventListener("click", () => {
-        const enabled = normalizeGradientConfig(cfg).enabled;
-        cfg.gradient = JSON.parse(JSON.stringify(DEFAULT_CONFIG.gradient));
-        cfg.gradient.enabled = enabled;
-        updateInputs(panel, cfg);
-        onChange();
-      });
-    }
-
-    wireGradientStudio(panel, cfg, onChange);
 
     const ditherButton = panel.querySelector('#btfw-theme-dither-toggle');
     const ditherInput = panel.querySelector('#btfw-theme-dither-enabled');
@@ -5265,7 +4446,6 @@ function replaceBlock(original, startMarker, endMarker, block){
     updateTypographyFieldState(panel);
     updateSliderFieldState(panel);
     syncMovieInfoToggle(panel, cfg);
-    syncGradientEditor(panel, cfg);
     syncDitherToggle(panel, cfg);
     syncMoviePollToggle(panel, cfg);
     syncAutoSubsToggle(panel, cfg);
@@ -5324,7 +4504,6 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (!DITHER_INTENSITIES.includes(updated.material.ditherIntensity)) {
       updated.material.ditherIntensity = "subtle";
     }
-    normalizeGradientConfig(updated);
     if (!updated.integrations || typeof updated.integrations !== "object") {
       updated.integrations = cloneDefaults().integrations;
     }
@@ -5786,7 +4965,6 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (!DITHER_INTENSITIES.includes(cfg.material.ditherIntensity)) {
       cfg.material.ditherIntensity = "subtle";
     }
-    normalizeGradientConfig(cfg);
 
 let initializing = true;
 updateInputs(panel, cfg);
@@ -5919,24 +5097,7 @@ setTimeout(() => {
   function boot(){
     if (!canManageChannel()) return;
     const modal = document.querySelector(CHANNEL_MODAL_SELECTOR);
-    if (!modal) return;
-    // The channel-settings modal exists while hidden. Building the complete
-    // theme editor at page boot needlessly allocates every preview asset.
-    const initializeWhenVisible = () => {
-      const visible = modal.classList.contains("in") ||
-        modal.classList.contains("show") ||
-        modal.getAttribute("aria-hidden") === "false";
-      if (visible) ensureModalPanel(modal);
-    };
-    initializeWhenVisible();
-    if (!modal.dataset.btfwThemeAdminVisibilityObserved) {
-      modal.dataset.btfwThemeAdminVisibilityObserved = "1";
-      const visibilityObserver = new MutationObserver(initializeWhenVisible);
-      visibilityObserver.observe(modal, {
-        attributes: true,
-        attributeFilter: ["class", "style", "aria-hidden"]
-      });
-    }
+    ensureModalPanel(modal);
   }
 
   if (document.readyState === "loading") {

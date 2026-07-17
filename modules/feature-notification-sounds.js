@@ -1,7 +1,6 @@
 /* BTFW — feature:notification-sounds (theme modal tab with audio cues) */
 BTFW.define("feature:notification-sounds", [], async () => {
   const $ = (s, r=document) => r.querySelector(s);
-  const rangeSliders = await BTFW.init("util:rangeSliders");
 
   const STORAGE_KEY = "btfw:notify:sounds:v2";
 
@@ -575,7 +574,6 @@ const MP3_SOUND_PRESETS = [
     volumeValue.textContent = "100%";
     volumeRangeWrap.appendChild(volumeInput);
     volumeRangeWrap.appendChild(volumeValue);
-    rangeSliders.enhance(volumeInput);
     volumeWrap.appendChild(volumeLabel);
     volumeWrap.appendChild(volumeRangeWrap);
     controls.appendChild(volumeWrap);
@@ -650,7 +648,6 @@ const MP3_SOUND_PRESETS = [
       const vol = clamp01(state.volume != null ? state.volume : DEFAULTS[cfg.key].volume);
       refs.volumeInput.value = String(Math.round(vol * 100));
       refs.volumeValue.textContent = `${Math.round(vol * 100)}%`;
-      rangeSliders.sync(refs.volumeInput);
       refs.muteInput.checked = !!state.muted;
       refs.row.classList.toggle("is-muted", !!state.muted);
     });

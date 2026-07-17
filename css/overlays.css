@@ -525,7 +525,6 @@
   background-color: color-mix(in srgb, var(--btfw-color-bg) 42%, var(--btfw-color-panel) 58%) !important;
   background-image:
     var(--btfw-dither-image),
-    var(--btfw-gradient-panel-soft-runtime-layer),
     radial-gradient(
       130% 190% at 0% -45%,
       color-mix(in srgb, var(--btfw-color-accent) 14%, transparent 86%) 0%,
@@ -542,8 +541,8 @@
       color-mix(in srgb, var(--btfw-color-surface) 78%, var(--btfw-color-bg) 22%) 54%,
       color-mix(in srgb, var(--btfw-color-bg) 62%, var(--btfw-color-panel) 38%) 100%
     ) !important;
-  background-size: var(--btfw-panel-background-size);
-  background-position: var(--btfw-panel-background-position);
+  background-size: var(--btfw-dither-size), auto, auto, auto;
+  background-position: 0 0, center, center, center;
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 12%, var(--btfw-color-panel) 88%);
   border-radius: 14px;
   box-shadow:
@@ -552,21 +551,6 @@
     0 9px 24px color-mix(in srgb, var(--btfw-color-bg) 20%, transparent 80%);
   backdrop-filter: blur(16px) saturate(125%);
   -webkit-backdrop-filter: blur(16px) saturate(125%);
-}
-
-:root[data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar {
-  background-size: var(--btfw-dither-size), 180% 180%, auto, auto, auto;
-  background-position: 0 0, 0% 42%, center, center, center;
-}
-
-:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="slow"] #chatwrap .btfw-chat-topbar,
-:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="slow"] #btfw-chat-actions #btfw-chatactions-pill {
-  animation: btfw-gradient-panel-drift 28s ease-in-out infinite;
-}
-
-:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="medium"] #chatwrap .btfw-chat-topbar,
-:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="medium"] #btfw-chat-actions #btfw-chatactions-pill {
-  animation: btfw-gradient-panel-drift 18s ease-in-out infinite;
 }
 
 /* A hairline spectrum catches the channel accent at the top/left while the
@@ -716,46 +700,23 @@
   background-color: color-mix(in srgb, var(--btfw-color-panel) 62%, var(--btfw-color-bg) 38%);
   background-image:
     var(--btfw-dither-image),
-    var(--btfw-gradient-panel-soft-runtime-layer),
     radial-gradient(
       125% 160% at 0% 0%,
       color-mix(in srgb, var(--btfw-color-accent) 7%, transparent 93%) 0%,
       transparent 60%
-    ),
-    radial-gradient(
-      110% 130% at 100% 100%,
-      color-mix(in srgb, var(--btfw-color-surface) 10%, transparent 90%) 0%,
-      transparent 68%
     ),
     linear-gradient(
       145deg,
       color-mix(in srgb, var(--btfw-color-panel) 64%, var(--btfw-color-bg) 36%) 0%,
       color-mix(in srgb, var(--btfw-color-surface) 62%, var(--btfw-color-bg) 38%) 100%
     );
-  background-size: var(--btfw-panel-background-size);
-  background-position: var(--btfw-panel-background-position);
+  background-size: var(--btfw-dither-size), auto, auto;
+  background-position: 0 0, center, center;
   border-color: color-mix(in srgb, var(--btfw-color-accent) 10%, var(--btfw-color-surface) 90%);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 7%, transparent 93%),
     inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 46%, transparent 54%),
     0 4px 13px color-mix(in srgb, var(--btfw-color-bg) 15%, transparent 85%);
-}
-
-:root[data-btfw-gradient-panels="on"] #btfw-chat-actions #btfw-chatactions-pill {
-  background-size: var(--btfw-dither-size), 180% 180%, auto, auto, auto;
-  background-position: 0 0, 0% 42%, center, center, center;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  :root[data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar,
-  :root[data-btfw-gradient-panels="on"] #btfw-chat-actions #btfw-chatactions-pill {
-    animation: none !important;
-  }
-}
-
-:root[data-btfw-motion="reduced"][data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar,
-:root[data-btfw-motion="reduced"][data-btfw-gradient-panels="on"] #btfw-chat-actions #btfw-chatactions-pill {
-  animation: none !important;
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -1200,10 +1161,8 @@
 
 /* Card shell */
 .modal-card {
-  background-color: color-mix(in srgb, var(--btfw-overlay-elevated) 96%, transparent 4%);
-  background-image: var(--btfw-panel-gradient-soft);
-  background-size: var(--btfw-panel-background-size);
-  background-position: var(--btfw-panel-background-position);
+  background: var(--btfw-overlay-elevated);
+  background-image: var(--btfw-surface-glow);
   color: var(--btfw-color-text);
   border: 1px solid var(--btfw-overlay-border);
   border-radius: var(--btfw-radius);
@@ -1216,24 +1175,15 @@
    layers the glow image on top. */
 .modal.btfw-bulma-skin .modal-content,
 #btfw-emotes-pop,
-#btfw-gif-modal .btfw-gif-pop,
-#btfw-ct-modal .btfw-ct-card,
-#btfw-cmds-modal .btfw-cmds-card,
-#btfw-userlist-pop,
-#btfw-pl-help-pop {
-  background-color: color-mix(in srgb, var(--btfw-overlay-bg) 94%, transparent 6%) !important;
-  background-image: var(--btfw-panel-gradient-soft) !important;
-  background-size: var(--btfw-panel-background-size) !important;
-  background-position: var(--btfw-panel-background-position) !important;
+#btfw-gif-modal,
+#btfw-ct-modal {
+  background-image: var(--btfw-surface-glow) !important;
 }
 
 /* Header / footer */
 .modal-card-head,
 .modal-card-foot {
-  background-color: var(--btfw-nested-surface);
-  background-image: none;
-  background-size: var(--btfw-panel-background-size);
-  background-position: var(--btfw-panel-background-position);
+  background: color-mix(in srgb, var(--btfw-overlay-bg) 96%, transparent 4%);
   border-color: var(--btfw-border);
 }
 
@@ -1257,10 +1207,7 @@
 
 /* Body */
 .modal-card-body {
-  background-color: var(--btfw-nested-surface-soft) !important;
-  background-image: none !important;
-  background-size: var(--btfw-panel-background-size) !important;
-  background-position: var(--btfw-panel-background-position) !important;
+  background: var(--btfw-overlay-elevated)!important;
   color: var(--btfw-color-text)!important;
 }
 
@@ -1804,8 +1751,8 @@
    the title can actually breathe instead of being crammed next to the tabs. */
 .modal.btfw-bulma-skin .btfw-card-head,
 .modal.btfw-bulma-skin .modal-header {
-  background-color: var(--btfw-nested-surface);
-  background-image: none;
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+  background-image: var(--btfw-panel-gradient-soft);
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   border: 0;
@@ -1994,8 +1941,8 @@
 /* Footer — subtle separator, right-aligned actions. */
 .modal.btfw-bulma-skin .btfw-card-foot,
 .modal.btfw-bulma-skin .modal-footer {
-  background-color: var(--btfw-nested-surface);
-  background-image: none;
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
+  background-image: var(--btfw-panel-gradient-soft);
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   border: 0;
@@ -2013,8 +1960,8 @@
 .modal.btfw-bulma-skin .modal-body .card,
 .modal.btfw-bulma-skin .modal-body .panel,
 .modal.btfw-bulma-skin .modal-body .well {
-  background-color: var(--btfw-nested-surface-soft);
-  background-image: none;
+  background-color: color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%);
+  background-image: var(--btfw-panel-gradient-soft);
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   border: 1px solid var(--btfw-panel-border-soft);
