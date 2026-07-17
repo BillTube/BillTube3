@@ -1,7 +1,8 @@
-BTFW.define("feature:channelThemeAdmin", ["util:gradientCanvas"], async (gradientCanvas) => {
+BTFW.define("feature:channelThemeAdmin", [], async () => {
   const $  = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
   const rangeSliders = await BTFW.init("util:rangeSliders");
+  const gradientCanvas = await BTFW.init("util:gradientCanvas");
 
   const JS_BLOCK_START  = "// ==BTFW_THEME_ADMIN_START==";
   const JS_BLOCK_END    = "// ==BTFW_THEME_ADMIN_END==";
