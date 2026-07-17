@@ -446,8 +446,6 @@ BTFW.define("util:gradientCanvas", [], async () => {
     if (cached) return cached;
 
     const canvas = document.createElement("canvas");
-    canvas.style.width = "100%";
-    canvas.style.height = "100%";
     canvas.setAttribute("role", "img");
     canvas.setAttribute("aria-hidden", "true");
 
