@@ -4,7 +4,7 @@ BTFW.define("feature:ratings", [], async () => {
     (() => { try { return window.BTFW_CONFIG?.ratings?.endpoint || ""; } catch (_) { return ""; } })(),
     (() => { try { return document?.body?.dataset?.btfwRatingsEndpoint || ""; } catch (_) { return ""; } })(),
     (() => { try { return window.BTFW_RATINGS_ENDPOINT || ""; } catch (_) { return ""; } })()
-  ].map((value) => (typeof value === "string" ? value.trim() : ""))
+  ].map((value) => (typeof value === "string" ? value.trim().replace(/\/+$/, "") : ""))
    .find(Boolean) || "";
 
   const shouldLoad = configuredEndpoint.length > 0;
@@ -498,7 +498,7 @@ BTFW.define("feature:ratings", [], async () => {
     ];
     const endpoint = candidates.find((v) => typeof v === "string" && v.trim().length > 0);
     if (endpoint) {
-      state.endpoint = endpoint.trim().replace(/\/$/, "");
+      state.endpoint = endpoint.trim().replace(/\/+$/, "");
       return state.endpoint;
     }
     return null;
@@ -1466,17 +1466,27 @@ BTFW.define("feature:ratings", [], async () => {
     const channel = resolveChannelName();
     const media = state.currentMedia;
     if (!media) return;
+    const voteKey = state.currentKey;
+    const previousVote = state.lastVote;
+    let previousCachedVote = null;
+    try { previousCachedVote = localStorage.getItem(LS_SELF_PREFIX + voteKey); } catch {}
 
     setLoading(true); setError("");
 
     const payload = {
       channel,
-      mediaKey: state.currentKey,
+      mediaKey: voteKey,
       title: media.title || state.lookup?.canonical || state.lookup?.original || "",
       duration: media.duration || 0,
       userKey: buildUserKey(),
       score
     };
+
+    // Show the user's choice immediately while the API request is in flight.
+    state.lastVote = score;
+    try { localStorage.setItem(LS_SELF_PREFIX + voteKey, String(score)); } catch {}
+    highlightStars(score);
+    setSelfStatus(`Your rating: ${score}★`);
 
     try {
       const response = await fetch(`${endpoint}/rate`, {
@@ -1489,15 +1499,19 @@ BTFW.define("feature:ratings", [], async () => {
         const text = await response.text().catch(() => "");
         throw new Error(`HTTP ${response.status}: ${text}`);
       }
-      // optimistic update
-      state.lastVote = score;
-      try { localStorage.setItem(LS_SELF_PREFIX + state.currentKey, String(score)); } catch {}
-      highlightStars(score);
-      setSelfStatus(`Your rating: ${score}★`);
-      await refreshStats(true);
+      if (state.currentKey === voteKey) await refreshStats(true);
     } catch (error) {
       console.warn("[ratings] vote failed", error);
-      setError("Vote failed, try again");
+      try {
+        if (previousCachedVote == null) localStorage.removeItem(LS_SELF_PREFIX + voteKey);
+        else localStorage.setItem(LS_SELF_PREFIX + voteKey, previousCachedVote);
+      } catch {}
+      if (state.currentKey === voteKey) {
+        state.lastVote = previousVote;
+        highlightStarsRest();
+        setSelfStatus(previousVote ? `Your rating: ${previousVote}★` : "");
+        setError("Vote failed, try again");
+      }
     } finally {
       setLoading(false);
     }
