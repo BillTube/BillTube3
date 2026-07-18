@@ -1008,7 +1008,6 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
   }
 
   function renderPixelQuilt(stops, opacity, motion){
-    const animation = gradientSvgMotion(motion, "pixel");
     const columns = 17;
     const rows = 11;
     const cell = 80;
@@ -1025,24 +1024,31 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         paths[level].push(`M${(column - 1) * cell} ${(row - 1) * cell}h${cell}v${cell}h-${cell}z`);
       }
     }
-    const tiles = paths.map((parts, index) => parts.length ? `<path d="${parts.join("")}" fill="${levels[index]}"/>` : "").join("");
-    return gradientSvgLayer(`${animation.style}<defs><pattern id="q" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M0 80V0h80" fill="none" stroke="#fff" stroke-opacity=".12"/><path d="M0 80h80V0" fill="none" stroke="#000" stroke-opacity=".2"/></pattern></defs><g${animation.attribute} opacity="${opacity}">${tiles}<rect x="-80" y="-80" width="1360" height="880" fill="url(#q)"/></g>`);
-  }
 
-  function gradientSvgMotion(motion, kind){
+    const animated = motion && motion !== "off";
+    const duration = motion === "medium" ? 6 : 11;
+    const keyframes = animated ? levels.map((color, index) => {
+      const next = levels[(index + 2) % levels.length];
+      return `@keyframes pixelGlow${index}{0%,100%{fill:${color};opacity:.72}50%{fill:${next};opacity:1}}`;
+    }).join("") : "";
+    const animationCss = animated
+      ? `<style>${keyframes}.pixel-level{animation-duration:${duration}s;animation-timing-function:ease-in-out;animation-iteration-count:infinite}.pixel-level-0{animation-name:pixelGlow0;animation-delay:0s}${levels.slice(1).map((_, index) => `.pixel-level-${index + 1}{animation-name:pixelGlow${index + 1};animation-delay:-${(((index + 1) * duration) / levels.length).toFixed(2)}s}`).join("")}@media (prefers-reduced-motion:reduce){.pixel-level{animation:none!important}}</style>`
+      : "";
+    const tiles = paths.map((parts, index) => parts.length
+      ? `<path class="pixel-level pixel-level-${index}" d="${parts.join("")}" fill="${levels[index]}"/>`
+      : "").join("");
+    return gradientSvgLayer(`${animationCss}<defs><pattern id="q" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M0 80V0h80" fill="none" stroke="#fff" stroke-opacity=".12"/><path d="M0 80h80V0" fill="none" stroke="#000" stroke-opacity=".2"/></pattern></defs><g opacity="${opacity}">${tiles}<rect x="-80" y="-80" width="1360" height="880" fill="url(#q)"/></g>`);
+  }
+  function gradientSvgMotion(motion){
     if (!motion || motion === "off") return { style: "", attribute: "" };
-    const pixel = kind === "pixel";
-    const duration = pixel ? (motion === "medium" ? 8 : 14) : (motion === "medium" ? 10 : 18);
-    const timing = pixel ? "steps(8,end)" : "ease-in-out";
-    const frames = pixel
-      ? "0%{transform:translate(-80px,-80px)}50%{transform:translate(0,-80px)}100%{transform:translate(0,0)}"
-      : "0%,100%{transform:translate(-24px,-14px) scale(1.05)}50%{transform:translate(26px,16px) scale(1.08)}";
+    const duration = motion === "medium" ? 10 : 18;
+    const timing = "ease-in-out";
+    const frames = "0%,100%{transform:translate(-24px,-14px) scale(1.05)}50%{transform:translate(26px,16px) scale(1.08)}";
     return {
       style: `<style>@keyframes btfwGradientMotion{${frames}}.btfw-gradient-motion{transform-box:fill-box;transform-origin:center;animation:btfwGradientMotion ${duration}s ${timing} infinite alternate}@media (prefers-reduced-motion:reduce){.btfw-gradient-motion{animation:none}}</style>`,
       attribute: ` class="btfw-gradient-motion"`
     };
   }
-
   function renderGradientLayer(theme, strengthScale = 1, maxDpr = 2){
     const gradient = normalizeGradientConfig(theme);
     const stops = getGradientStops(theme);
@@ -1052,9 +1058,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     // Use the canvas pipeline when available for the four animated presets.
     // This avoids per-frame SVG filter re-rasterization and gives crisp, dithered
     // gradients that the CSS keyframes can animate on the compositor.
-    if (gradientCanvas && typeof gradientCanvas.supportsCanvas === "function" && gradientCanvas.supportsCanvas() && ["flow", "linear", "retro", "pixel"].includes(gradient.type)) {
+    const canvasPreset = ["flow", "linear", "retro"].includes(gradient.type) || (gradient.type === "pixel" && gradient.motion === "off");
+    if (gradientCanvas && typeof gradientCanvas.supportsCanvas === "function" && gradientCanvas.supportsCanvas() && canvasPreset) {
       const layer = gradientCanvas.renderGradientLayer(gradient.type, 1200, 720, {
         stops,
+        balance: gradient.balance,
         strength: gradient.strength,
         soften: gradient.soften,
         noise: gradient.noise,
@@ -1087,7 +1095,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
 
     if (gradient.type === "ios") {
-      const animation = gradientSvgMotion(gradient.motion, "ios");
+      const animation = gradientSvgMotion(gradient.motion);
       const svgStops = stops.map(stop => `<stop offset="${stop.position}%" stop-color="${stop.color}"/>`).join("");
       return gradientSvgLayer(`${animation.style}<defs><linearGradient id="i" gradientUnits="userSpaceOnUse" x1="-100" y1="-60" x2="1300" y2="780">${svgStops}</linearGradient><radialGradient id="g" cx="12%" cy="8%" r="72%" fx="12%" fy="8%"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><g${animation.attribute} opacity="${opacity}"><rect x="-100" y="-60" width="1400" height="840" fill="url(#i)"/><rect x="-100" y="-60" width="1400" height="840" fill="url(#g)"/></g>`);
     }
@@ -1177,9 +1185,15 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const width = Math.max(8, Math.round(target.width || 1200));
     const height = Math.max(8, Math.round(target.height || 720));
 
+    if (gradient.type === "pixel" && gradient.motion !== "off") {
+      const alpha = Math.round(clampGradientNumber(gradient.strength * strengthScale, 4, 72, 24));
+      return renderPixelQuilt(stops, (alpha / 100).toFixed(2), gradient.motion);
+    }
+
     if (gradientCanvas && typeof gradientCanvas.supportsCanvas === "function" && gradientCanvas.supportsCanvas() && ["flow", "linear", "retro", "pixel"].includes(gradient.type)) {
       const layer = gradientCanvas.renderGradientLayer(gradient.type, width, height, {
         stops,
+        balance: gradient.balance,
         strength: gradient.strength,
         soften: gradient.soften,
         noise: gradient.noise,
@@ -1216,22 +1230,22 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const pageActive = active && gradient.targets.page;
     const panelActive = active && gradient.targets.panels;
     const navbarActive = active && gradient.targets.navbar;
-    const staticTheme = staticGradientTheme(theme);
+    const runtimeTheme = gradient.type === "pixel" ? theme : staticGradientTheme(theme);
     const colors = theme.colors && typeof theme.colors === "object" ? theme.colors : DEFAULT_CONFIG.colors;
     const navbarEl = document.querySelector('.navbar');
     const navbarTarget = navbarEl
       ? { width: navbarEl.offsetWidth, height: navbarEl.offsetHeight }
       : { width: window.innerWidth, height: Math.max(30, parseInt(getComputedStyle(root).getPropertyValue('--btfw-navbar-height')) || 60) };
-    const page = pageActive ? renderRuntimeSurfaceGradient(staticTheme, 1, colors.background) : { css: "none", count: 1 };
-    const panel = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.7, colors.panel) : { css: "none", count: 1 };
-    const panelSoft = panelActive ? renderRuntimeSurfaceGradient(staticTheme, 0.42, colors.surface) : { css: "none", count: 1 };
-    const navbar = navbarActive ? renderRuntimeSurfaceGradient(staticTheme, 0.78, colors.panel, navbarTarget) : { css: "none", count: 1 };
+    const page = pageActive ? renderRuntimeSurfaceGradient(runtimeTheme, 1, colors.background) : { css: "none", count: 1 };
+    const panel = panelActive ? renderRuntimeSurfaceGradient(runtimeTheme, 0.7, colors.panel) : { css: "none", count: 1 };
+    const panelSoft = panelActive ? renderRuntimeSurfaceGradient(runtimeTheme, 0.42, colors.surface) : { css: "none", count: 1 };
+    const navbar = navbarActive ? renderRuntimeSurfaceGradient(runtimeTheme, 0.78, colors.panel, navbarTarget) : { css: "none", count: 1 };
     root.setAttribute("data-btfw-gradient", active ? "on" : "off");
     root.setAttribute("data-btfw-gradient-type", gradient.type);
     root.setAttribute("data-btfw-gradient-page", pageActive ? "on" : "off");
     root.setAttribute("data-btfw-gradient-panels", panelActive ? "on" : "off");
     root.setAttribute("data-btfw-gradient-navbar", navbarActive ? "on" : "off");
-    root.setAttribute("data-btfw-gradient-motion", (pageActive || panelActive || navbarActive) ? gradient.motion : "off");
+    root.setAttribute("data-btfw-gradient-motion", gradient.type === "pixel" ? "off" : ((pageActive || panelActive || navbarActive) ? gradient.motion : "off"));
     root.style.setProperty("--btfw-gradient-page-layer", page.css);
     root.style.setProperty("--btfw-gradient-page-runtime-layer", page.css);
     root.style.setProperty("--btfw-gradient-panel-layer", panel.css);

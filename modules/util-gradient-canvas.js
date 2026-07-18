@@ -1,7 +1,7 @@
 /* BTFW — util:gradientCanvas
    Canvas-based gradient renderer for the theme toolkit preview and runtime.
    Replaces the animated SVG filter pipeline with a single render pass:
-   - organic/value-noise blob shapes
+   - domain-warped OKLAB territory fields for Flow and Retro
    - OKLAB color mixing for clean, non-muddy fades
    - 8×8 Bayer dither baked into the pixels to kill banding
    - static image export (data URL) so the existing CSS keyframes can animate
@@ -178,6 +178,17 @@ BTFW.define("util:gradientCanvas", [], async () => {
     while (stops.length < 4) stops.push({ color: "#000000", position: 25 * stops.length });
     return {
       stops,
+      balance: (() => {
+        const incoming = Array.isArray(options.balance) ? options.balance : [25, 50, 75];
+        const values = [];
+        [25, 50, 75].forEach((fallback, index) => {
+          const lower = index === 0 ? 6 : values[index - 1] + 6;
+          const upper = 100 - ((3 - index) * 6);
+          const value = Number(incoming[index]);
+          values.push(Math.round(Math.min(upper, Math.max(lower, Number.isFinite(value) ? value : fallback))));
+        });
+        return values;
+      })(),
       strength: Number(options.strength) || 34,
       soften: Number(options.soften) || 18,
       noise: Number(options.noise) || 0,
@@ -193,73 +204,101 @@ BTFW.define("util:gradientCanvas", [], async () => {
   // --------------------------------------------------------------------------
   // Renderers
   // --------------------------------------------------------------------------
-  function renderFlow(canvas, w, h, opts) {
+  function renderTerritoryField(canvas, w, h, opts, mode) {
     const dpr = Math.min(window.devicePixelRatio || 1, opts.maxDpr);
     canvas.width = Math.max(1, Math.round(w * dpr));
     canvas.height = Math.max(1, Math.round(h * dpr));
     const ctx = canvas.getContext("2d", { alpha: false });
     const W = canvas.width;
     const H = canvas.height;
-    const S = Math.min(W, H);
+    const aspect = W / Math.max(1, H);
+    const fieldW = 132;
+    const fieldH = Math.max(24, Math.min(96, Math.round(fieldW / aspect)));
+    const field = document.createElement("canvas");
+    field.width = fieldW;
+    field.height = fieldH;
+    const fx = field.getContext("2d", { alpha: false });
+    const image = fx.createImageData(fieldW, fieldH);
+    const pixels = image.data;
 
     const alpha = Math.min(0.72, Math.max(0.04, (opts.strength * opts.strengthScale) / 100));
-    const blurPx = Math.max(0, Math.round((16 + opts.soften * 0.34) * (S / 720)));
-    const warp = fbmFactory(opts.seed);
-    const warp2 = fbmFactory(opts.seed + 101);
+    const surfaceLab = rgbToOklab(...hexRgb(opts.surface));
+    const colorLabs = opts.stops.map(stop => rgbToOklab(...hexRgb(stop.color)));
+    const edges = [0, ...opts.balance, 100];
+    const shares = colorLabs.map((_, index) => Math.max(0.06, (edges[index + 1] - edges[index]) / 100));
+    const seeds = mode === "retro"
+      ? [[0.08, 0.22], [0.28, 0.88], [0.72, 0.10], [0.94, 0.72]]
+      : [[0.08, 0.08], [0.16, 0.86], [0.76, 0.18], [0.92, 0.84]];
+    const warpX = fbmFactory(opts.seed + (mode === "retro" ? 211 : 0));
+    const warpY = fbmFactory(opts.seed + (mode === "retro" ? 419 : 101));
+    const warpAmount = mode === "retro" ? 0.18 : 0.115;
+    const power = mode === "retro"
+      ? 4.6
+      : 2.45 + ((80 - Math.min(80, opts.soften)) / 80) * 0.75;
 
-    // Offscreen field: draw the translucent blobs at full opacity, then composite once.
-    const field = document.createElement("canvas");
-    field.width = W;
-    field.height = H;
-    const fx = field.getContext("2d", { alpha: true });
+    for (let y = 0; y < fieldH; y++) {
+      for (let x = 0; x < fieldW; x++) {
+        let nx = x / Math.max(1, fieldW - 1);
+        let ny = y / Math.max(1, fieldH - 1);
+        const qx = nx * 1.65;
+        const qy = ny * 1.65;
+        nx += warpX(qx + 0.7, qy - 1.3) * warpAmount;
+        ny += warpY(qx - 2.1, qy + 0.4) * warpAmount;
 
-    // Blob recipe: same stacking order as the original SVG flow paths.
-    const blobs = [
-      { c: opts.stops[2].color, cx: 0.70 * W, cy: 0.34 * H, r: 0.56 * S, seed: 3.1 },
-      { c: opts.stops[1].color, cx: 0.14 * W, cy: 0.70 * H, r: 0.62 * S, seed: 7.7 },
-      { c: opts.stops[0].color, cx: 0.42 * W, cy: 0.12 * H, r: 0.50 * S, seed: 12.9 }
-    ];
+        if (mode === "retro") {
+          const dx = nx - 0.5;
+          const dy = ny - 0.5;
+          const radius = Math.sqrt(dx * dx + dy * dy);
+          const twist = (0.34 - radius * 0.22) + warpX(qx + 3.2, qy + 1.7) * 0.18;
+          const cos = Math.cos(twist);
+          const sin = Math.sin(twist);
+          nx = 0.5 + dx * cos - dy * sin;
+          ny = 0.5 + dx * sin + dy * cos;
+        }
 
-    const canFilter = typeof fx.filter === "string";
-    for (const b of blobs) {
-      const lab = rgbToOklab(...hexRgb(b.c));
-      const g = fx.createRadialGradient(b.cx, b.cy, b.r * 0.05, b.cx, b.cy, b.r * 1.02);
-      for (let i = 0; i <= 44; i++) {
-        const t = i / 44;
-        const ease = t < 0.55 ? 1 : Math.pow(1 - (t - 0.55) / 0.45, 1.8);
-        const [rr, gg, bb] = oklabToRgb(lab[0] * (1 - t * 0.12), lab[1] * (1 - t * 0.25), lab[2] * (1 - t * 0.25));
-        g.addColorStop(t, `rgba(${rr},${gg},${bb},${ease.toFixed(3)})`);
+        const weights = new Float32Array(4);
+        let total = 0;
+        for (let index = 0; index < 4; index++) {
+          const size = Math.sqrt(shares[index] / 0.25);
+          const dx = (nx - seeds[index][0]) / size;
+          const dy = (ny - seeds[index][1]) / size;
+          const distance = Math.sqrt(dx * dx + dy * dy) + 0.055;
+          const weight = 1 / Math.pow(distance, power);
+          weights[index] = weight;
+          total += weight;
+        }
+
+        let L = 0;
+        let a = 0;
+        let b = 0;
+        for (let index = 0; index < 4; index++) {
+          const weight = weights[index] / total;
+          L += colorLabs[index][0] * weight;
+          a += colorLabs[index][1] * weight;
+          b += colorLabs[index][2] * weight;
+        }
+        L = surfaceLab[0] + (L - surfaceLab[0]) * alpha;
+        a = surfaceLab[1] + (a - surfaceLab[1]) * alpha;
+        b = surfaceLab[2] + (b - surfaceLab[2]) * alpha;
+        const rgb = oklabToRgb(L, a, b);
+        const offset = (y * fieldW + x) << 2;
+        pixels[offset] = rgb[0];
+        pixels[offset + 1] = rgb[1];
+        pixels[offset + 2] = rgb[2];
+        pixels[offset + 3] = 255;
       }
-      fx.fillStyle = g;
-      if (canFilter) fx.filter = `blur(${blurPx}px)`;
-      fx.beginPath();
-      const N = 96;
-      for (let i = 0; i <= N; i++) {
-        const a = (i / N) * Math.PI * 2;
-        const ca = Math.cos(a);
-        const sa = Math.sin(a);
-        const n = warp(ca * 1.4 + b.seed, sa * 1.4 + b.seed) * 0.5 +
-                  warp2(ca * 3.1 + b.seed, sa * 3.1 + b.seed) * 0.22;
-        const r = b.r * (0.84 + n * (0.46 + opts.soften * 0.004));
-        const x = b.cx + ca * r * 1.28;
-        const y = b.cy + sa * r * 0.82;
-        if (i) fx.lineTo(x, y);
-        else fx.moveTo(x, y);
-      }
-      fx.closePath();
-      fx.fill();
-      if (canFilter) fx.filter = "none";
     }
 
-    // Composite the field over the surface color at the requested alpha.
-    ctx.fillStyle = opts.surface;
-    ctx.fillRect(0, 0, W, H);
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(field, 0, 0);
-    ctx.globalAlpha = 1;
+    fx.putImageData(image, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(field, 0, 0, W, H);
     applyDither(ctx, W, H, opts.dither);
   }
 
+  function renderFlow(canvas, w, h, opts) {
+    renderTerritoryField(canvas, w, h, opts, "flow");
+  }
   function renderLinear(canvas, w, h, opts) {
     const dpr = Math.min(window.devicePixelRatio || 1, opts.maxDpr);
     canvas.width = Math.max(1, Math.round(w * dpr));
@@ -295,56 +334,8 @@ BTFW.define("util:gradientCanvas", [], async () => {
   }
 
   function renderRetro(canvas, w, h, opts) {
-    const dpr = Math.min(window.devicePixelRatio || 1, opts.maxDpr);
-    canvas.width = Math.max(1, Math.round(w * dpr));
-    canvas.height = Math.max(1, Math.round(h * dpr));
-    const ctx = canvas.getContext("2d", { alpha: false });
-    const W = canvas.width;
-    const H = canvas.height;
-
-    const alpha = Math.min(0.72, Math.max(0.04, (opts.strength * opts.strengthScale) / 100));
-    const rgbLight = c => {
-      const [r, g, b] = hexRgb(c);
-      return r * 0.2126 + g * 0.7152 + b * 0.0722;
-    };
-    let brightest = 0;
-    for (let i = 1; i < opts.stops.length; i++) {
-      if (rgbLight(opts.stops[i].color) > rgbLight(opts.stops[brightest].color)) brightest = i;
-    }
-
-    const others = opts.stops.filter((_, i) => i !== brightest);
-    const centers = [
-      [0.156 * W, 0.812 * H],
-      [0.791 * W, 0.243 * H],
-      [0.875 * W, 0.840 * H]
-    ].slice(0, others.length);
-    const rx = 0.458 * W;
-    const ry = 0.562 * H;
-    const blur = Math.max(0, Math.round((24 + opts.soften * 0.42) * (Math.min(W, H) / 720)));
-
-    const canFilter = typeof ctx.filter === "string";
-
-    ctx.fillStyle = opts.surface;
-    ctx.fillRect(0, 0, W, H);
-
-    ctx.globalAlpha = alpha;
-    for (let i = 0; i < others.length; i++) {
-      const [cx, cy] = centers[i] || [W / 2, H / 2];
-      const g = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.05, cx, cy, Math.max(rx, ry) * 1.1);
-      g.addColorStop(0, others[i].color);
-      g.addColorStop(0.55, others[i].color);
-      g.addColorStop(1, opts.surface);
-      ctx.fillStyle = g;
-      if (canFilter) ctx.filter = `blur(${blur}px)`;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-      ctx.fill();
-      if (canFilter) ctx.filter = "none";
-    }
-    ctx.globalAlpha = 1;
-    applyDither(ctx, W, H, opts.dither);
+    renderTerritoryField(canvas, w, h, opts, "retro");
   }
-
   function renderPixel(canvas, w, h, opts) {
     const dpr = Math.min(window.devicePixelRatio || 1, opts.maxDpr);
     canvas.width = Math.max(1, Math.round(w * dpr));
