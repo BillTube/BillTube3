@@ -34,17 +34,10 @@
   z-index: -1;
   pointer-events: none;
   background-image: var(--btfw-gradient-navbar-runtime-layer);
-  background-size: 180% 180%;
-  background-position: 0% 42%;
+  background-size: var(--btfw-navbar-gradient-size, cover);
+  background-position: var(--btfw-navbar-gradient-position, center);
 }
 
-:root[data-btfw-gradient-navbar="on"][data-btfw-gradient-motion="slow"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before {
-  animation: btfw-gradient-single-drift 28s ease-in-out infinite;
-}
-
-:root[data-btfw-gradient-navbar="on"][data-btfw-gradient-motion="medium"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before {
-  animation: btfw-gradient-single-drift 18s ease-in-out infinite;
-}
 
 @media (prefers-reduced-motion: reduce) {
   :root[data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before {

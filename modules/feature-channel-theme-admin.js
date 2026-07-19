@@ -131,7 +131,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       soften: 18,
       noise: 8,
       motion: "slow",
-      targets: { page: true, panels: true, navbar: true }
+      targets: { page: true, panels: true, navbar: false }
     },
     // Channel-wide event countdown banner (feature:event-countdown).
     // startsAtMs is the UTC epoch; startsAtLocal only repopulates the
@@ -932,7 +932,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
     gradient.targets.page = gradient.targets.page !== false;
     gradient.targets.panels = gradient.targets.panels !== false;
-    gradient.targets.navbar = gradient.targets.navbar !== false;
+    gradient.targets.navbar = gradient.targets.navbar === true;
 
     const incomingBalance = Array.isArray(gradient.balance) ? gradient.balance : [];
     const balance = [];
@@ -1306,14 +1306,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const navbarActive = active && gradient.targets.navbar;
     const runtimeTheme = gradient.type === "pixel" ? theme : staticGradientTheme(theme);
     const colors = theme.colors && typeof theme.colors === "object" ? theme.colors : DEFAULT_CONFIG.colors;
-    const navbarEl = document.querySelector('.navbar');
-    const navbarTarget = navbarEl
-      ? { width: navbarEl.offsetWidth, height: navbarEl.offsetHeight }
-      : { width: window.innerWidth, height: Math.max(30, parseInt(getComputedStyle(root).getPropertyValue('--btfw-navbar-height')) || 60) };
     const page = pageActive ? renderRuntimeSurfaceGradient(runtimeTheme, 1, colors.background) : { css: "none", count: 1 };
     const panel = panelActive ? renderRuntimeSurfaceGradient(runtimeTheme, 0.7, colors.panel) : { css: "none", count: 1 };
     const panelSoft = panelActive ? renderRuntimeSurfaceGradient(runtimeTheme, 0.42, colors.surface) : { css: "none", count: 1 };
-    const navbar = navbarActive ? renderRuntimeSurfaceGradient(runtimeTheme, 0.78, colors.panel, navbarTarget) : { css: "none", count: 1 };
+    // Navbar uses the canonical 1200×720 field and CSS cover-cropping. Rendering
+    // directly at an ultra-wide navbar ratio stretches normalized territories.
+    const navbar = navbarActive ? renderRuntimeSurfaceGradient(runtimeTheme, 0.78, colors.panel) : { css: "none", count: 1 };
     root.setAttribute("data-btfw-gradient", active ? "on" : "off");
     root.setAttribute("data-btfw-gradient-type", gradient.type);
     root.setAttribute("data-btfw-gradient-page", pageActive ? "on" : "off");
