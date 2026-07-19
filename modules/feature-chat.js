@@ -630,6 +630,7 @@ function groupLeftChatButtons(actions){
     if (el.parentElement !== pill || el !== want){
       pill.insertBefore(el, prev ? prev.nextSibling : pill.firstChild);
     }
+    ensureChatBeamBloom(el);
     prev = el;
   });
 }
@@ -1416,13 +1417,30 @@ const scheduleNormalizeChatActions = (() => {
       top.style.setProperty("--btfw-chat-edge-strength", "0");
     }, { passive: true });
   }
+  function ensureChatBeamBloom(host){
+    if (!host) return null;
+    let bloom = Array.from(host.children).find(child => child.classList?.contains("btfw-chat-beam-bloom"));
+    if (!bloom) {
+      bloom = document.createElement("span");
+      bloom.className = "btfw-chat-beam-bloom";
+      bloom.setAttribute("aria-hidden", "true");
+      host.appendChild(bloom);
+    }
+    return bloom;
+  }
+
   function ensureChatlineBeamWrap(){
     const input = document.getElementById("chatline");
-    if (!input || input.parentElement?.classList.contains("btfw-chatline-beam-wrap")) return;
+    if (!input) return;
+    if (input.parentElement?.classList.contains("btfw-chatline-beam-wrap")) {
+      ensureChatBeamBloom(input.parentElement);
+      return;
+    }
     const wrap = document.createElement("div");
     wrap.className = "btfw-chatline-beam-wrap";
     input.parentElement.insertBefore(wrap, input);
     wrap.appendChild(input);
+    ensureChatBeamBloom(wrap);
   }
 
   function ensureBars(){
@@ -1589,7 +1607,8 @@ const scheduleNormalizeChatActions = (() => {
 
     // Buffer & controls layout
     const msg = $("#messagebuffer"); if (msg) msg.classList.add("btfw-messagebuffer");
-    const controls = $("#chatcontrols,#chat-controls") || ($("#chatline") && $("#chatline").parentElement);
+    const chatInput = $("#chatline");
+    const controls = $("#chatcontrols,#chat-controls") || chatInput?.closest("form") || chatInput?.parentElement;
     if (controls && controls.parentElement !== composerMain) {
       controls.classList.add("btfw-controls-row");
       composerMain.appendChild(controls);
