@@ -419,7 +419,8 @@ html { font-size: 16px; }
   height: 22px;
   border-radius: var(--btfw-radius-pill, 999px);
   background: color-mix(in srgb, var(--btfw-color-text, #e8eff4) 22%, transparent);
-  transition: background var(--btfw-motion-fast, 150ms) ease;
+  transition: background var(--btfw-motion-fast, 150ms) ease,
+              box-shadow var(--btfw-motion-fast, 150ms) ease;
 }
 .btfw-compact-stack-btn .btfw-compact-stack-status {
   color: transparent;
@@ -452,6 +453,25 @@ html { font-size: 16px; }
 .btfw-ct-switch input:checked + .btfw-ct-switchtrack .btfw-ct-switchknob,
 .btfw-compact-stack-btn[aria-pressed="true"] .btfw-compact-stack-status::after {
   transform: translate(18px, -50%);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btfw-switch:hover .btfw-switch__track,
+  .btfw-ct-switch:hover .btfw-ct-switchtrack,
+  .btfw-compact-stack-btn:hover .btfw-compact-stack-status {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 12%, transparent);
+  }
+}
+
+.btfw-switch:active .btfw-switch__knob,
+.btfw-ct-switch:active .btfw-ct-switchknob,
+.btfw-compact-stack-btn:active .btfw-compact-stack-status::after {
+  transform: translateY(-50%) scale(0.88);
+}
+.btfw-switch[aria-pressed="true"]:active .btfw-switch__knob,
+.btfw-ct-switch:active input:checked + .btfw-ct-switchtrack .btfw-ct-switchknob,
+.btfw-compact-stack-btn[aria-pressed="true"]:active .btfw-compact-stack-status::after {
+  transform: translate(18px, -50%) scale(0.88);
 }
 
 .btfw-switch:focus-visible,
@@ -491,14 +511,24 @@ html { font-size: 16px; }
   cursor: pointer;
   transition: background var(--btfw-motion-fast, 150ms) ease,
               border-color var(--btfw-motion-fast, 150ms) ease,
-              transform 60ms ease;
+              box-shadow var(--btfw-motion-base, 220ms) var(--btfw-ease-out, cubic-bezier(0.2, 0.9, 0.25, 1)),
+              transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-overshoot, cubic-bezier(0.34, 1.56, 0.64, 1));
 }
 .btfw-btn:not([disabled]):not([aria-disabled="true"]):hover {
   background-color: var(--btfw-btn-bg-hover);
   border-color: var(--btfw-btn-border-hover);
   color: var(--btfw-btn-text);
 }
-.btfw-btn:active { transform: translateY(1px); }
+@media (hover: hover) and (pointer: fine) {
+  .btfw-btn:not([disabled]):not([aria-disabled="true"]):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 18%, transparent);
+  }
+}
+.btfw-btn:not([disabled]):not([aria-disabled="true"]):active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 12%, transparent);
+}
 .btfw-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 24%, transparent);
@@ -526,6 +556,27 @@ html { font-size: 16px; }
 .btfw-btn--sm { padding: 4px 10px; font-size: 0.74rem; }
 .btfw-btn--icon { width: 32px; height: 32px; padding: 0; }
 .btfw-btn--pill { border-radius: var(--btfw-radius-pill, 999px); }
+
+/* A short, pointer-positioned ripple is installed by feature:styleCore only
+   on primary actions. Keeping it opt-in avoids motion noise on dense controls. */
+.btfw-button-ripple-host {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btfw-button-ripple {
+  position: absolute;
+  z-index: 1;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 28%, transparent);
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0);
+  animation: btfw-button-ripple 520ms var(--btfw-ease-out, cubic-bezier(0.2, 0.9, 0.25, 1)) forwards;
+}
+@keyframes btfw-button-ripple {
+  0% { opacity: 0.8; transform: translate(-50%, -50%) scale(0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
 
 /* ---- Text input (.btfw-field-input) --------------------------------- */
 .btfw-field-input {
@@ -598,6 +649,7 @@ html { font-size: 16px; }
   .btfw-field-input,
   .btfw-check,
   .btfw-check::before,
+  .btfw-button-ripple,
   .btfw-switch__track,
   .btfw-ct-switchtrack,
   .btfw-compact-stack-btn .btfw-compact-stack-status,
@@ -605,9 +657,23 @@ html { font-size: 16px; }
   .btfw-ct-switchknob,
   .btfw-compact-stack-btn .btfw-compact-stack-status::after {
     transition: none !important;
+    animation: none !important;
   }
+  .btfw-button-ripple { display: none !important; }
+  .btfw-btn:not([disabled]):not([aria-disabled="true"]):hover,
+  .btfw-btn:not([disabled]):not([aria-disabled="true"]):active,
   .button:not([disabled]):not([aria-disabled="true"]):active {
     transform: none !important;
+  }
+  .btfw-switch:active .btfw-switch__knob,
+  .btfw-ct-switch:active .btfw-ct-switchknob,
+  .btfw-compact-stack-btn:active .btfw-compact-stack-status::after {
+    transform: translateY(-50%) !important;
+  }
+  .btfw-switch[aria-pressed="true"]:active .btfw-switch__knob,
+  .btfw-ct-switch:active input:checked + .btfw-ct-switchtrack .btfw-ct-switchknob,
+  .btfw-compact-stack-btn[aria-pressed="true"]:active .btfw-compact-stack-status::after {
+    transform: translate(18px, -50%) !important;
   }
 }
 :root[data-btfw-motion="reduced"] .button:not([disabled]):not([aria-disabled="true"]):active {
