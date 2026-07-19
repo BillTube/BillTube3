@@ -4,11 +4,13 @@
    - domain-warped OKLAB territory fields for Flow and Retro
    - OKLAB color mixing for clean, non-muddy fades
    - 8×8 Bayer dither baked into the pixels to kill banding
-   - static image export (data URL) so the existing CSS keyframes can animate
-     the texture on the compositor instead of re-rasterizing filters every frame.
+   - cached static image export for CSS surfaces and theme exports
+   - one throttled low-resolution live canvas for true Flow/Retro motion and
+     pointer lighting, paused automatically whenever it is not visible.
 
    API:
      renderGradientLayer(type, width, height, options) -> { canvas, dataUrl, css, count, sizes, positions }
+     createAnimatedGradientLayer(type, width, height, options) -> controller
      supportsCanvas() -> boolean
 */
 BTFW.define("util:gradientCanvas", [], async () => {
@@ -204,6 +206,113 @@ BTFW.define("util:gradientCanvas", [], async () => {
   // --------------------------------------------------------------------------
   // Renderers
   // --------------------------------------------------------------------------
+  function createTerritoryPainter(canvas, fieldW, fieldH, opts, mode) {
+    canvas.width = fieldW;
+    canvas.height = fieldH;
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const image = ctx.createImageData(fieldW, fieldH);
+    const pixels = image.data;
+    const alpha = Math.min(0.72, Math.max(0.04, (opts.strength * opts.strengthScale) / 100));
+    const surfaceLab = rgbToOklab(...hexRgb(opts.surface));
+    const colorLabs = opts.stops.map(stop => rgbToOklab(...hexRgb(stop.color)));
+    const edges = [0, ...opts.balance, 100];
+    const shares = colorLabs.map((_, index) => Math.max(0.06, (edges[index + 1] - edges[index]) / 100));
+    const baseSeeds = mode === "retro"
+      ? [[0.08, 0.22], [0.28, 0.88], [0.72, 0.10], [0.94, 0.72]]
+      : [[0.08, 0.08], [0.16, 0.86], [0.76, 0.18], [0.92, 0.84]];
+    const warpX = fbmFactory(opts.seed + (mode === "retro" ? 211 : 0));
+    const warpY = fbmFactory(opts.seed + (mode === "retro" ? 419 : 101));
+    const warpAmount = mode === "retro" ? 0.18 : 0.115;
+    const power = mode === "retro"
+      ? 4.6
+      : 2.45 + ((80 - Math.min(80, opts.soften)) / 80) * 0.75;
+
+    return function paintTerritory(time = 0, pointer = null) {
+      const phase = time * (mode === "retro" ? 0.46 : 0.28);
+      const seedAmplitude = mode === "retro" ? 0.135 : 0.105;
+      const seeds = baseSeeds.map((seed, index) => {
+        const frequency = 0.72 + index * 0.17;
+        return [
+          seed[0] + (Math.sin(phase * frequency + index * 1.73) - Math.sin(index * 1.73)) * seedAmplitude,
+          seed[1] + (Math.cos(phase * (frequency + 0.19) + index * 1.31) - Math.cos(index * 1.31)) * seedAmplitude * 0.82
+        ];
+      });
+      const warpPhaseX = Math.sin(phase * 0.61) * 0.34;
+      const warpPhaseY = Math.cos(phase * 0.53) * 0.29;
+      const pointerStrength = pointer ? Math.max(0, Math.min(1, pointer.strength || 0)) : 0;
+      const pointerX = pointer ? pointer.x : 0.5;
+      const pointerY = pointer ? pointer.y : 0.5;
+
+      const weights = [0, 0, 0, 0];
+      for (let y = 0; y < fieldH; y++) {
+        for (let x = 0; x < fieldW; x++) {
+          let nx = x / Math.max(1, fieldW - 1);
+          let ny = y / Math.max(1, fieldH - 1);
+          const qx = nx * 1.65;
+          const qy = ny * 1.65;
+          nx += warpX(qx + 0.7 + warpPhaseX, qy - 1.3 + warpPhaseY) * warpAmount;
+          ny += warpY(qx - 2.1 - warpPhaseY, qy + 0.4 + warpPhaseX) * warpAmount;
+
+          if (mode === "retro") {
+            const dx = nx - 0.5;
+            const dy = ny - 0.5;
+            const radius = Math.sqrt(dx * dx + dy * dy);
+            const twist = (0.34 - radius * 0.22)
+              + warpX(qx + 3.2 + warpPhaseX, qy + 1.7 + warpPhaseY) * 0.18
+              + Math.sin(phase * 0.8) * 0.055;
+            const cos = Math.cos(twist);
+            const sin = Math.sin(twist);
+            nx = 0.5 + dx * cos - dy * sin;
+            ny = 0.5 + dx * sin + dy * cos;
+          }
+
+          let total = 0;
+          for (let index = 0; index < 4; index++) {
+            const size = Math.sqrt(shares[index] / 0.25);
+            const dx = (nx - seeds[index][0]) / size;
+            const dy = (ny - seeds[index][1]) / size;
+            const distance = Math.sqrt(dx * dx + dy * dy) + 0.055;
+            const weight = 1 / Math.pow(distance, power);
+            weights[index] = weight;
+            total += weight;
+          }
+
+          let L = 0;
+          let a = 0;
+          let b = 0;
+          for (let index = 0; index < 4; index++) {
+            const weight = weights[index] / total;
+            L += colorLabs[index][0] * weight;
+            a += colorLabs[index][1] * weight;
+            b += colorLabs[index][2] * weight;
+          }
+          L = surfaceLab[0] + (L - surfaceLab[0]) * alpha;
+          a = surfaceLab[1] + (a - surfaceLab[1]) * alpha;
+          b = surfaceLab[2] + (b - surfaceLab[2]) * alpha;
+
+          if (pointerStrength > 0.001) {
+            const pointerDx = (x / Math.max(1, fieldW - 1)) - pointerX;
+            const pointerDy = (y / Math.max(1, fieldH - 1)) - pointerY;
+            const distance = Math.sqrt(pointerDx * pointerDx + pointerDy * pointerDy);
+            let glow = Math.max(0, 1 - distance / 0.24);
+            glow = glow * glow * (3 - 2 * glow) * pointerStrength;
+            L += (1 - L) * glow * 0.28;
+            a *= 1 - glow * 0.16;
+            b *= 1 - glow * 0.16;
+          }
+
+          const rgb = oklabToRgb(L, a, b);
+          const offset = (y * fieldW + x) << 2;
+          pixels[offset] = rgb[0];
+          pixels[offset + 1] = rgb[1];
+          pixels[offset + 2] = rgb[2];
+          pixels[offset + 3] = 255;
+        }
+      }
+      ctx.putImageData(image, 0, 0);
+    };
+  }
+
   function renderTerritoryField(canvas, w, h, opts, mode) {
     const dpr = Math.min(window.devicePixelRatio || 1, opts.maxDpr);
     canvas.width = Math.max(1, Math.round(w * dpr));
@@ -215,87 +324,13 @@ BTFW.define("util:gradientCanvas", [], async () => {
     const fieldW = 132;
     const fieldH = Math.max(24, Math.min(96, Math.round(fieldW / aspect)));
     const field = document.createElement("canvas");
-    field.width = fieldW;
-    field.height = fieldH;
-    const fx = field.getContext("2d", { alpha: false });
-    const image = fx.createImageData(fieldW, fieldH);
-    const pixels = image.data;
-
-    const alpha = Math.min(0.72, Math.max(0.04, (opts.strength * opts.strengthScale) / 100));
-    const surfaceLab = rgbToOklab(...hexRgb(opts.surface));
-    const colorLabs = opts.stops.map(stop => rgbToOklab(...hexRgb(stop.color)));
-    const edges = [0, ...opts.balance, 100];
-    const shares = colorLabs.map((_, index) => Math.max(0.06, (edges[index + 1] - edges[index]) / 100));
-    const seeds = mode === "retro"
-      ? [[0.08, 0.22], [0.28, 0.88], [0.72, 0.10], [0.94, 0.72]]
-      : [[0.08, 0.08], [0.16, 0.86], [0.76, 0.18], [0.92, 0.84]];
-    const warpX = fbmFactory(opts.seed + (mode === "retro" ? 211 : 0));
-    const warpY = fbmFactory(opts.seed + (mode === "retro" ? 419 : 101));
-    const warpAmount = mode === "retro" ? 0.18 : 0.115;
-    const power = mode === "retro"
-      ? 4.6
-      : 2.45 + ((80 - Math.min(80, opts.soften)) / 80) * 0.75;
-
-    for (let y = 0; y < fieldH; y++) {
-      for (let x = 0; x < fieldW; x++) {
-        let nx = x / Math.max(1, fieldW - 1);
-        let ny = y / Math.max(1, fieldH - 1);
-        const qx = nx * 1.65;
-        const qy = ny * 1.65;
-        nx += warpX(qx + 0.7, qy - 1.3) * warpAmount;
-        ny += warpY(qx - 2.1, qy + 0.4) * warpAmount;
-
-        if (mode === "retro") {
-          const dx = nx - 0.5;
-          const dy = ny - 0.5;
-          const radius = Math.sqrt(dx * dx + dy * dy);
-          const twist = (0.34 - radius * 0.22) + warpX(qx + 3.2, qy + 1.7) * 0.18;
-          const cos = Math.cos(twist);
-          const sin = Math.sin(twist);
-          nx = 0.5 + dx * cos - dy * sin;
-          ny = 0.5 + dx * sin + dy * cos;
-        }
-
-        const weights = new Float32Array(4);
-        let total = 0;
-        for (let index = 0; index < 4; index++) {
-          const size = Math.sqrt(shares[index] / 0.25);
-          const dx = (nx - seeds[index][0]) / size;
-          const dy = (ny - seeds[index][1]) / size;
-          const distance = Math.sqrt(dx * dx + dy * dy) + 0.055;
-          const weight = 1 / Math.pow(distance, power);
-          weights[index] = weight;
-          total += weight;
-        }
-
-        let L = 0;
-        let a = 0;
-        let b = 0;
-        for (let index = 0; index < 4; index++) {
-          const weight = weights[index] / total;
-          L += colorLabs[index][0] * weight;
-          a += colorLabs[index][1] * weight;
-          b += colorLabs[index][2] * weight;
-        }
-        L = surfaceLab[0] + (L - surfaceLab[0]) * alpha;
-        a = surfaceLab[1] + (a - surfaceLab[1]) * alpha;
-        b = surfaceLab[2] + (b - surfaceLab[2]) * alpha;
-        const rgb = oklabToRgb(L, a, b);
-        const offset = (y * fieldW + x) << 2;
-        pixels[offset] = rgb[0];
-        pixels[offset + 1] = rgb[1];
-        pixels[offset + 2] = rgb[2];
-        pixels[offset + 3] = 255;
-      }
-    }
-
-    fx.putImageData(image, 0, 0);
+    const paintTerritory = createTerritoryPainter(field, fieldW, fieldH, opts, mode);
+    paintTerritory();
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(field, 0, 0, W, H);
     applyDither(ctx, W, H, opts.dither);
   }
-
   function renderFlow(canvas, w, h, opts) {
     renderTerritoryField(canvas, w, h, opts, "flow");
   }
@@ -381,6 +416,128 @@ BTFW.define("util:gradientCanvas", [], async () => {
     applyDither(ctx, W, H, opts.dither);
   }
 
+  function createAnimatedGradientLayer(type, width, height, options = {}) {
+    if (!supportsCanvas() || (type !== "flow" && type !== "retro")) return null;
+    const opts = normalizeOptions(options);
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("aria-hidden", "true");
+    canvas.dataset.btfwGradientLive = type;
+
+    let paintTerritory;
+    let cssWidth = Math.max(1, Number(width) || 1);
+    let cssHeight = Math.max(1, Number(height) || 1);
+    let rafId = 0;
+    let running = false;
+    let startedAt = 0;
+    let lastFrameAt = 0;
+    let visible = true;
+    let visibilityObserver = null;
+    const motion = String(options.motion || "slow");
+    const fps = motion === "medium" ? 20 : 14;
+    const frameInterval = 1000 / fps;
+    const pointer = {
+      x: 0.5, y: 0.5,
+      targetX: 0.5, targetY: 0.5,
+      strength: 0, targetStrength: 0
+    };
+    const pointerBindings = [];
+
+    function rebuildPainter() {
+      const aspect = cssWidth / Math.max(1, cssHeight);
+      const fieldW = 144;
+      const fieldH = Math.max(36, Math.min(102, Math.round(fieldW / aspect)));
+      paintTerritory = createTerritoryPainter(canvas, fieldW, fieldH, opts, type);
+    }
+
+    function draw(now) {
+      const elapsed = (now - startedAt) / 1000;
+      paintTerritory(elapsed, pointer);
+    }
+
+    function tick(now) {
+      if (!running) return;
+      rafId = requestAnimationFrame(tick);
+      if (document.hidden || !canvas.isConnected || !visible || now - lastFrameAt < frameInterval) return;
+      const dt = Math.min(0.12, Math.max(0.001, (now - (lastFrameAt || now - frameInterval)) / 1000));
+      lastFrameAt = now;
+      const ease = 1 - Math.exp(-dt * 8);
+      pointer.x += (pointer.targetX - pointer.x) * ease;
+      pointer.y += (pointer.targetY - pointer.y) * ease;
+      pointer.strength += (pointer.targetStrength - pointer.strength) * ease;
+      draw(now);
+    }
+
+    function setPointer(x, y, active = true) {
+      pointer.targetX = Math.max(0, Math.min(1, Number(x) || 0));
+      pointer.targetY = Math.max(0, Math.min(1, Number(y) || 0));
+      pointer.targetStrength = active ? 1 : 0;
+    }
+
+    function bindPointer(target) {
+      if (!target || !target.addEventListener) return () => {};
+      const move = event => {
+        const rect = target === window
+          ? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
+          : target.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        setPointer((event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height, true);
+      };
+      const leave = () => { pointer.targetStrength = 0; };
+      target.addEventListener("pointermove", move, { passive: true });
+      target.addEventListener("pointerleave", leave, { passive: true });
+      const cleanup = () => {
+        target.removeEventListener("pointermove", move);
+        target.removeEventListener("pointerleave", leave);
+      };
+      pointerBindings.push(cleanup);
+      return cleanup;
+    }
+
+    function start() {
+      if (running) return;
+      running = true;
+      startedAt = performance.now();
+      lastFrameAt = 0;
+      draw(startedAt);
+      if ("IntersectionObserver" in window) {
+        visibilityObserver = new IntersectionObserver(entries => { visible = entries[0]?.isIntersecting !== false; });
+        visibilityObserver.observe(canvas);
+      }
+      if (motion !== "off") rafId = requestAnimationFrame(tick);
+    }
+
+    function stop() {
+      running = false;
+      if (rafId) cancelAnimationFrame(rafId);
+      if (visibilityObserver) visibilityObserver.disconnect();
+      visibilityObserver = null;
+      rafId = 0;
+    }
+
+    function resize(nextWidth, nextHeight) {
+      cssWidth = Math.max(1, Number(nextWidth) || cssWidth);
+      cssHeight = Math.max(1, Number(nextHeight) || cssHeight);
+      rebuildPainter();
+      draw(performance.now());
+    }
+
+    function destroy() {
+      stop();
+      pointerBindings.splice(0).forEach(cleanup => cleanup());
+      canvas.remove();
+    }
+
+    rebuildPainter();
+    return {
+      canvas,
+      start,
+      stop,
+      resize,
+      destroy,
+      setPointer,
+      bindPointer
+    };
+  }
   // --------------------------------------------------------------------------
   // Public API
   // --------------------------------------------------------------------------
@@ -466,6 +623,7 @@ BTFW.define("util:gradientCanvas", [], async () => {
   return {
     supportsCanvas,
     renderGradientLayer,
+    createAnimatedGradientLayer,
     canvasToDataUrl
   };
 });

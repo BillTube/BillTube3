@@ -1221,6 +1221,80 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     };
   }
 
+  let runtimeGradientAnimation = null;
+  let runtimeGradientResizeTimer = 0;
+
+  function destroyRuntimeGradientAnimation(){
+    if (runtimeGradientAnimation) runtimeGradientAnimation.controller.destroy();
+    runtimeGradientAnimation = null;
+    if (runtimeGradientResizeTimer) clearTimeout(runtimeGradientResizeTimer);
+    runtimeGradientResizeTimer = 0;
+    window.removeEventListener("resize", resizeRuntimeGradientAnimation);
+    document.documentElement?.setAttribute("data-btfw-gradient-live", "off");
+  }
+
+  function resizeRuntimeGradientAnimation(){
+    if (!runtimeGradientAnimation) return;
+    if (runtimeGradientResizeTimer) clearTimeout(runtimeGradientResizeTimer);
+    runtimeGradientResizeTimer = setTimeout(() => {
+      runtimeGradientResizeTimer = 0;
+      runtimeGradientAnimation?.controller.resize(window.innerWidth, window.innerHeight);
+    }, 120);
+  }
+
+  function syncRuntimeGradientAnimation(theme, gradient, pageActive, surface){
+    const root = document.documentElement;
+    const reducedMotion = root?.dataset.btfwMotion === "reduced"
+      || window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    const canAnimate = gradientCanvas
+      && typeof gradientCanvas.createAnimatedGradientLayer === "function"
+      && ["flow", "retro"].includes(gradient.type)
+      && gradient.motion !== "off"
+      && !reducedMotion
+      && pageActive
+      && document.body;
+    if (!canAnimate) {
+      destroyRuntimeGradientAnimation();
+      return;
+    }
+
+    const signature = JSON.stringify({
+      type: gradient.type,
+      stops: getGradientStops(theme),
+      balance: gradient.balance,
+      strength: gradient.strength,
+      soften: gradient.soften,
+      noise: gradient.noise,
+      surface,
+      motion: gradient.motion
+    });
+    if (runtimeGradientAnimation?.signature === signature) return;
+    destroyRuntimeGradientAnimation();
+
+    const controller = gradientCanvas.createAnimatedGradientLayer(
+      gradient.type,
+      window.innerWidth,
+      window.innerHeight,
+      {
+        stops: getGradientStops(theme),
+        balance: gradient.balance,
+        strength: gradient.strength,
+        soften: gradient.soften,
+        noise: gradient.noise,
+        strengthScale: 1,
+        surface,
+        motion: gradient.motion
+      }
+    );
+    if (!controller) return;
+    controller.canvas.id = "btfw-gradient-live-canvas";
+    controller.bindPointer(window);
+    document.body.prepend(controller.canvas);
+    controller.start();
+    runtimeGradientAnimation = { signature, controller };
+    root.setAttribute("data-btfw-gradient-live", "on");
+    window.addEventListener("resize", resizeRuntimeGradientAnimation, { passive: true });
+  }
   function applyRuntimeGradient(theme){
     if (!theme || typeof theme !== "object" || typeof document === "undefined") return;
     const root = document.documentElement;
@@ -1245,7 +1319,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     root.setAttribute("data-btfw-gradient-page", pageActive ? "on" : "off");
     root.setAttribute("data-btfw-gradient-panels", panelActive ? "on" : "off");
     root.setAttribute("data-btfw-gradient-navbar", navbarActive ? "on" : "off");
-    root.setAttribute("data-btfw-gradient-motion", gradient.type === "pixel" ? "off" : ((pageActive || panelActive || navbarActive) ? gradient.motion : "off"));
+    root.setAttribute("data-btfw-gradient-motion", ["flow", "retro", "pixel"].includes(gradient.type) ? "off" : ((pageActive || panelActive || navbarActive) ? gradient.motion : "off"));
     root.style.setProperty("--btfw-gradient-page-layer", page.css);
     root.style.setProperty("--btfw-gradient-page-runtime-layer", page.css);
     root.style.setProperty("--btfw-gradient-panel-layer", panel.css);
@@ -1260,6 +1334,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     root.style.setProperty("--btfw-page-background-position", ["0 0", ...gradientLayerPositions(page), "center top"].join(", "));
     root.style.setProperty("--btfw-navbar-gradient-size", gradientLayerSizes(navbar).join(", "));
     root.style.setProperty("--btfw-navbar-gradient-position", gradientLayerPositions(navbar).join(", "));
+    syncRuntimeGradientAnimation(theme, gradient, pageActive, colors.background || DEFAULT_CONFIG.colors.background);
   }
 
   function applyRuntimeTypography(theme){
@@ -1605,6 +1680,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       .btfw-theme-admin .btfw-gradient-stage::after { content: ""; position: absolute; z-index: 3; inset: 0; pointer-events: none; background-image: var(--btfw-gradient-stage-noise, none); background-size: 160px 160px; mix-blend-mode: soft-light; }
       .btfw-theme-admin .btfw-gradient-stage__badge { position: absolute; z-index: 4; left: 10px; top: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(4,6,12,.48); color: rgba(255,255,255,.9); font-size: .64rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; backdrop-filter: blur(8px); }
       .btfw-theme-admin .btfw-gradient-stage__canvas { position: absolute; left: -20%; top: -20%; width: 140%; height: 140%; object-fit: cover; will-change: transform; animation: btfw-gradient-canvas-drift 16s ease-in-out infinite alternate; }
+      .btfw-theme-admin .btfw-gradient-stage__canvas[data-btfw-gradient-live] { left: 0; top: 0; width: 100%; height: 100%; animation: none; transform: none; will-change: auto; }
       .btfw-theme-admin .btfw-gradient-stage[data-gradient-motion="off"] .btfw-gradient-stage__canvas,
       html[data-btfw-motion="reduced"] .btfw-theme-admin .btfw-gradient-stage__canvas { animation: none; }
       @keyframes btfw-gradient-canvas-drift {
@@ -3523,21 +3599,55 @@ function replaceBlock(original, startMarker, endMarker, block){
     const stage = panel.querySelector("[data-role=gradient-stage]");
     const visual = panel.querySelector("[data-role=gradient-stage-visual]");
     if (stage && visual) {
-      const stageLayer = renderGradientLayer(cfg, 2.15, 1.5);
+      visual.__btfwGradientAnimation?.destroy();
+      visual.__btfwGradientAnimation = null;
       stage.dataset.gradientType = gradient.type;
       stage.dataset.gradientMotion = gradient.motion;
       stage.style.setProperty("--btfw-gradient-stage-noise", gradientNoiseImage(gradient.noise));
       visual.style.backgroundColor = colors.background || DEFAULT_CONFIG.colors.background;
-      visual.querySelectorAll("canvas[data-btfw-gradient-canvas]").forEach(c => c.remove());
-      if (stageLayer && stageLayer.canvas) {
+      visual.querySelectorAll("canvas[data-btfw-gradient-canvas], canvas[data-btfw-gradient-live]").forEach(c => c.remove());
+
+      const reducedMotion = document.documentElement?.dataset.btfwMotion === "reduced"
+        || window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      const useLiveStage = ["flow", "retro"].includes(gradient.type)
+        && gradient.motion !== "off"
+        && !reducedMotion
+        && gradientCanvas
+        && typeof gradientCanvas.createAnimatedGradientLayer === "function";
+      const liveStage = useLiveStage
+        ? gradientCanvas.createAnimatedGradientLayer(gradient.type, 1200, 720, {
+            stops,
+            balance: gradient.balance,
+            strength: gradient.strength,
+            soften: gradient.soften,
+            noise: gradient.noise,
+            angle: gradient.angle,
+            strengthScale: 2.15,
+            surface: colors.background || DEFAULT_CONFIG.colors.background,
+            motion: gradient.motion
+          })
+        : null;
+
+      if (liveStage) {
         visual.style.backgroundImage = "none";
-        stageLayer.canvas.classList.add("btfw-gradient-stage__canvas");
-        stageLayer.canvas.dataset.btfwGradientCanvas = gradient.type;
-        visual.appendChild(stageLayer.canvas);
+        liveStage.canvas.classList.add("btfw-gradient-stage__canvas");
+        liveStage.canvas.dataset.btfwGradientCanvas = gradient.type;
+        liveStage.bindPointer(visual);
+        visual.appendChild(liveStage.canvas);
+        liveStage.start();
+        visual.__btfwGradientAnimation = liveStage;
       } else {
-        visual.style.backgroundImage = stageLayer.css;
-        visual.style.backgroundSize = (stageLayer.sizes || Array(stageLayer.count).fill("cover")).join(", ");
-        visual.style.backgroundPosition = (stageLayer.positions || Array(stageLayer.count).fill("center")).join(", ");
+        const stageLayer = renderGradientLayer(cfg, 2.15, 1.5);
+        if (stageLayer && stageLayer.canvas) {
+          visual.style.backgroundImage = "none";
+          stageLayer.canvas.classList.add("btfw-gradient-stage__canvas");
+          stageLayer.canvas.dataset.btfwGradientCanvas = gradient.type;
+          visual.appendChild(stageLayer.canvas);
+        } else {
+          visual.style.backgroundImage = stageLayer.css;
+          visual.style.backgroundSize = (stageLayer.sizes || Array(stageLayer.count).fill("cover")).join(", ");
+          visual.style.backgroundPosition = (stageLayer.positions || Array(stageLayer.count).fill("center")).join(", ");
+        }
       }
       const label = stage.querySelector("[data-role=gradient-stage-label]");
       if (label) {

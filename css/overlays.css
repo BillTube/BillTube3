@@ -552,6 +552,9 @@
     0 9px 24px color-mix(in srgb, var(--btfw-color-bg) 20%, transparent 80%);
   backdrop-filter: blur(16px) saturate(125%);
   -webkit-backdrop-filter: blur(16px) saturate(125%);
+  --btfw-chat-edge-x: 50%;
+  --btfw-chat-edge-y: 50%;
+  --btfw-chat-edge-strength: 0;
 }
 
 :root[data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar {
@@ -569,9 +572,10 @@
   animation: btfw-gradient-panel-drift 18s ease-in-out infinite;
 }
 
-/* A hairline spectrum catches the channel accent at the top/left while the
-   lower/right edge recedes. This is the compact counterpart to the stack
-   cards' palette-derived border and shadow. */
+/* Cursor-localized spectrum. Pointer coordinates and edge proximity are
+   updated only for this topbar by feature:chat. The padding-box mask leaves
+   a one-pixel border, while the drop shadow gives that local segment a
+   restrained glow without adding another DOM layer. */
 .btfw-chat-topbar::after {
   content: "";
   position: absolute;
@@ -580,14 +584,17 @@
   padding: 1px;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, white 6%, transparent 94%) 0%,
-    color-mix(in srgb, var(--btfw-color-accent) 12%, transparent 88%) 28%,
-    transparent 54%,
-    color-mix(in srgb, var(--btfw-color-accent) 5%, transparent 95%) 78%,
-    color-mix(in srgb, white 2%, transparent 98%) 100%
+  background: radial-gradient(
+    150px 105px at var(--btfw-chat-edge-x) var(--btfw-chat-edge-y),
+    color-mix(in srgb, white 82%, var(--btfw-color-accent) 18%) 0%,
+    var(--btfw-color-accent) 25%,
+    #c084fc 46%,
+    #22d3ee 64%,
+    transparent 82%
   );
+  opacity: calc(var(--btfw-chat-edge-strength) * 0.92);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--btfw-color-accent) 66%, transparent 34%));
+  transition: opacity 180ms ease-out;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -747,6 +754,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .btfw-chat-topbar::after { transition: none; }
   :root[data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar,
   :root[data-btfw-gradient-panels="on"] #btfw-chat-actions #btfw-chatactions-pill {
     animation: none !important;

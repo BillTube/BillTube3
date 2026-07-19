@@ -42,6 +42,29 @@ body::before {
   background-position: var(--btfw-page-background-position);
 }
 
+:root[data-btfw-gradient-live="on"] body {
+  position: relative;
+  z-index: 0;
+  background: transparent;
+}
+
+#btfw-gradient-live-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  image-rendering: auto;
+}
+
+:root[data-btfw-gradient-live="on"] body::before {
+  background-image: var(--btfw-dither-image), var(--btfw-page-glow);
+  background-size: var(--btfw-dither-size), auto;
+  background-position: 0 0, center top;
+  animation: none;
+  transform: none;
+}
 @keyframes btfw-gradient-ambient-drift {
   0%, 100% { transform: scale(1.08) translate3d(-1.2%, -0.8%, 0); }
   50% { transform: scale(1.12) translate3d(1.1%, 1%, 0); }

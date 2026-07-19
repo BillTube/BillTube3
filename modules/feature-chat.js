@@ -1379,6 +1379,43 @@ const scheduleNormalizeChatActions = (() => {
   });
 
   /* ---------------- Chat bars & actions ---------------- */
+  function wireTopbarEdgeGlow(top){
+    if (!top || top.dataset.btfwEdgeGlowWired === "true") return;
+    top.dataset.btfwEdgeGlowWired = "true";
+
+    let pendingEvent = null;
+    let frame = 0;
+    let inside = false;
+
+    const render = () => {
+      frame = 0;
+      if (!inside || !pendingEvent) return;
+      const rect = top.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const x = Math.min(1, Math.max(0, (pendingEvent.clientX - rect.left) / rect.width));
+      const y = Math.min(1, Math.max(0, (pendingEvent.clientY - rect.top) / rect.height));
+      const edge = Math.min(1, Math.max(Math.abs(x - 0.5) * 2, Math.abs(y - 0.5) * 2));
+      const strength = Math.max(0, (edge - 0.12) / 0.88);
+      top.style.setProperty("--btfw-chat-edge-x", `${(x * 100).toFixed(2)}%`);
+      top.style.setProperty("--btfw-chat-edge-y", `${(y * 100).toFixed(2)}%`);
+      top.style.setProperty("--btfw-chat-edge-strength", strength.toFixed(3));
+    };
+
+    top.addEventListener("pointermove", event => {
+      if (event.pointerType && !["mouse", "pen"].includes(event.pointerType)) return;
+      inside = true;
+      pendingEvent = event;
+      if (!frame) frame = requestAnimationFrame(render);
+    }, { passive: true });
+
+    top.addEventListener("pointerleave", () => {
+      inside = false;
+      pendingEvent = null;
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+      top.style.setProperty("--btfw-chat-edge-strength", "0");
+    }, { passive: true });
+  }
   function ensureBars(){
     const cw = $("#chatwrap"); if (!cw) return;
     cw.classList.add("btfw-chatwrap");
@@ -1396,6 +1433,7 @@ const scheduleNormalizeChatActions = (() => {
       `;
       cw.prepend(top);
     }
+    wireTopbarEdgeGlow(top);
 
     let left = top.querySelector(".btfw-chat-topbar-left");
     if (!left) {
