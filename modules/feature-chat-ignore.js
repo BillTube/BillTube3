@@ -34,7 +34,7 @@ BTFW.define("feature:chat-ignore", [], async () => {
   // Initialize
   loadIgnoredUsers();
 
-  // Public API
+  // Ignore-list API
   function has(name) {
     return ignoredUsers.has((name || "").toLowerCase());
   }
@@ -172,6 +172,7 @@ BTFW.define("feature:chat-ignore", [], async () => {
     if (!socket || typeof socket.on !== "function") return false;
 
     socket.on("chatMsg", (data) => {
+      handleModerationChatResult(data);
       // Process the new message after a minimal delay to ensure DOM is ready
       setTimeout(() => {
         const buf = $("#messagebuffer");
@@ -183,6 +184,18 @@ BTFW.define("feature:chat-ignore", [], async () => {
           processMessage(lastMsg);
         }
       }, 10);
+    });
+
+    socket.on("errorMsg", handleModerationError);
+    socket.on("banlist", handleModerationBanlist);
+    socket.on("userlist", data => updateModerationPresence("userlist", data));
+    socket.on("addUser", data => updateModerationPresence("addUser", data));
+    socket.on("userLeave", data => updateModerationPresence("userLeave", data));
+    ["setPermissions", "rank", "setUserRank", "setUserMeta", "setLeader"].forEach(event => {
+      socket.on(event, () => window.setTimeout(() => {
+        refreshOpenUserMenu();
+        if (moderationDialog && MODERATION_ACTIONS[moderationDialog.dataset.action]) updateModerationDialogAvailability(moderationDialog);
+      }, 0));
     });
 
     return true;
@@ -297,7 +310,13 @@ BTFW.define("feature:chat-ignore", [], async () => {
   function isLoggedIn() { try { return !!(window.CLIENT && window.CLIENT.logged_in); } catch (_) { return false; } }
   function sameName(a, b) { return (a || "").toLowerCase() === (b || "").toLowerCase(); }
   function can(perm) { try { return typeof window.hasPermission === "function" && !!window.hasPermission(perm); } catch (_) { return false; } }
-  function chatCmd(msg) { try { if (window.socket) window.socket.emit("chatMsg", { msg, meta: {} }); } catch (_) {} }
+  function chatCmd(msg) {
+    try {
+      if (!window.socket || typeof window.socket.emit !== "function") return false;
+      window.socket.emit("chatMsg", { msg, meta: {} });
+      return true;
+    } catch (_) { return false; }
+  }
 
   // CyTube's own findUserlistItem matches children[1], but our theme inserts an
   // avatar + spacer span ahead of the name, so look the entry up by its
@@ -313,53 +332,382 @@ BTFW.define("feature:chat-ignore", [], async () => {
     return null;
   }
 
+  const MODERATION_ACTIONS = {
+    kick: { title: "Kick user", confirm: "Send kick", command: "/kick", permission: "kick", live: true, detail: "Disconnects this user once. They may reconnect unless they are also banned." },
+    nameban: { title: "Name ban user", confirm: "Send name ban", command: "/ban", permission: "ban", live: false, detail: "Prevents this username from joining, including after they disconnect." },
+    ipban: { title: "IP ban user", confirm: "Send IP ban", command: "/ipban", permission: "ban", live: false, strongConfirm: true, detail: "Blocks every known IP associated with this username and may affect other people on shared connections." }
+  };
+  const MOD_AUDIT_LIMIT = 50;
+  const MOD_COMMAND_TIMEOUT_MS = 8000;
+  const MOD_COMMAND_COOLDOWN_MS = 5000;
+  const KICK_RECONNECT_WINDOW_MS = 5 * 60 * 1000;
+  const moderationPresence = new Set();
+  const moderationCooldowns = new Map();
+  const recentConfirmedKicks = new Map();
+  let moderationPresenceKnown = false;
+  let moderationDialog = null;
+  let moderationRestoreFocus = null;
+  let pendingModeration = null;
+  let escalationNotice = null;
+
+  function lowerName(value) { return String(value || "").trim().toLowerCase(); }
+  function channelAuditKey() {
+    const channel = (window.CHANNEL && window.CHANNEL.name) || location.pathname.split("/").filter(Boolean).pop() || "channel";
+    return "btfw:moderation:audit:" + lowerName(channel);
+  }
+  function readModerationAudit() {
+    try {
+      const value = JSON.parse(localStorage.getItem(channelAuditKey()) || "[]");
+      if (!Array.isArray(value)) return [];
+      let changed = false;
+      const entries = value.slice(0, MOD_AUDIT_LIMIT).map(entry => {
+        if (entry && entry.status === "pending" && Date.now() - Number(entry.at || 0) > 30000) {
+          entry.status = "unconfirmed";
+          entry.result = "Page closed or reloaded before CyTube reported a result";
+          entry.updatedAt = Date.now();
+          changed = true;
+        }
+        return entry;
+      });
+      if (changed) localStorage.setItem(channelAuditKey(), JSON.stringify(entries));
+      return entries;
+    } catch (_) { return []; }
+  }
+  function writeModerationAudit(entries) {
+    try { localStorage.setItem(channelAuditKey(), JSON.stringify(entries.slice(0, MOD_AUDIT_LIMIT))); } catch (_) {}
+  }
+  function addModerationAudit(action, target, reason) {
+    const entries = readModerationAudit();
+    const entry = { id: Date.now() + "-" + Math.random().toString(36).slice(2, 8), action, target, reason, at: Date.now(), status: "pending", result: "Awaiting CyTube response" };
+    entries.unshift(entry);
+    writeModerationAudit(entries);
+    return entry.id;
+  }
+  function updateModerationAudit(id, status, result) {
+    const entries = readModerationAudit();
+    const entry = entries.find(item => item && item.id === id);
+    if (!entry) return;
+    entry.status = status;
+    entry.result = String(result || "").slice(0, 300);
+    entry.updatedAt = Date.now();
+    writeModerationAudit(entries);
+  }
+  function moderationFeedback(message, error) {
+    const notify = window.BTFW_notify;
+    const fn = notify && (error ? notify.error : notify.success);
+    try { if (typeof fn === "function") fn.call(notify, message); } catch (_) {}
+  }
+  function closeModerationDialog() {
+    if (!moderationDialog) return;
+    const dialog = moderationDialog;
+    if (dialog._btfwCooldownTimer) clearTimeout(dialog._btfwCooldownTimer);
+    moderationDialog = null;
+    dialog.remove();
+    if (moderationRestoreFocus && document.contains(moderationRestoreFocus)) try { moderationRestoreFocus.focus(); } catch (_) {}
+    moderationRestoreFocus = null;
+  }
+  function setModerationStatus(dialog, message, error) {
+    if (!dialog || !dialog.isConnected) return;
+    const status = dialog.querySelector(".btfw-moderation-status");
+    if (!status) return;
+    status.textContent = message || "";
+    status.classList.toggle("is-error", !!error);
+  }
+  function sanitizeReason(value) { return String(value || "").replace(/[\t\r\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 255); }
+  function validModerationTarget(name) { return !!name && !/[\s/\x00-\x1f\x7f]/.test(name); }
+  function isUserPresent(name) {
+    const lower = lowerName(name);
+    if (moderationPresenceKnown) return moderationPresence.has(lower);
+    return !!findUserEntry(name);
+  }
+  function seedModerationPresence() {
+    moderationPresence.clear();
+    document.querySelectorAll("#userlist .userlist_item").forEach(item => {
+      const name = nameFromUserlistEntry(item);
+      if (name) moderationPresence.add(lowerName(name));
+    });
+    moderationPresenceKnown = true;
+  }
+  function refreshOpenUserMenu() {
+    if (!umenu || umenu.hidden || !umenuName) return;
+    renderUserMenu(buildUserMenuModel(umenuName));
+  }
+  function updateModerationPresence(event, payload) {
+    if (event === "userlist") {
+      moderationPresence.clear();
+      if (Array.isArray(payload)) payload.forEach(user => { if (user && user.name) moderationPresence.add(lowerName(user.name)); });
+      moderationPresenceKnown = true;
+    } else if (payload && payload.name) {
+      moderationPresenceKnown = true;
+      if (event === "addUser") moderationPresence.add(lowerName(payload.name));
+      else if (event === "userLeave") moderationPresence.delete(lowerName(payload.name));
+    }
+    refreshOpenUserMenu();
+    if (moderationDialog && MODERATION_ACTIONS[moderationDialog.dataset.action]) updateModerationDialogAvailability(moderationDialog);
+    if (event === "addUser" && payload && payload.name) handleKickedUserReconnect(payload.name);
+  }
+  function cooldownRemaining(action, name) {
+    const until = moderationCooldowns.get(action + ":" + lowerName(name)) || 0;
+    return Math.max(0, until - Date.now());
+  }
+  function updateModerationDialogAvailability(dialog) {
+    if (!dialog || !dialog.isConnected) return;
+    const action = dialog.dataset.action;
+    const name = dialog.dataset.target;
+    const config = MODERATION_ACTIONS[action];
+    const submit = dialog.querySelector(".btfw-moderation-confirm");
+    if (!config || !submit || dialog.dataset.submitted === "true") return;
+    const context = userContext(name);
+    let message = "", blocked = false;
+    if (!can(config.permission)) { blocked = true; message = "You do not currently have permission for this action."; }
+    else if (sameName(name, myName())) { blocked = true; message = "You cannot use this action on yourself."; }
+    else if (context.present && !context.moderatable) { blocked = true; message = "This user is protected by an equal or higher rank."; }
+    else if (config.live && !isUserPresent(name)) { blocked = true; message = name + " is disconnected. Nothing can be kicked."; }
+    else if (pendingModeration) { blocked = true; message = "Wait for the current moderation command to finish."; }
+    else {
+      const remaining = cooldownRemaining(action, name);
+      if (remaining > 0) { blocked = true; message = "Please wait " + Math.ceil(remaining / 1000) + "s before repeating this action."; }
+    }
+    if (!blocked && config.strongConfirm) {
+      const verify = dialog.querySelector(".btfw-moderation-verify");
+      if (!verify || String(verify.value || "").trim() !== name) { blocked = true; message = "Type the username exactly to enable IP ban."; }
+    }
+    submit.disabled = blocked;
+    setModerationStatus(dialog, message, blocked);
+  }
+  function expectedModerationSuccess(pending, data) {
+    if (!pending || !data || lowerName(data.username) !== "[server]") return false;
+    if (!data.meta || data.meta.addClass !== "server-whisper") return false;
+    const text = String(data.msg || "").replace(/<[^>]*>/g, "").trim().toLowerCase();
+    const actor = lowerName(myName()), target = lowerName(pending.name);
+    if (pending.act === "kick") return text === actor + " kicked " + target;
+    if (pending.act === "nameban") return text === actor + " namebanned " + target;
+    if (pending.act === "ipban") return text === actor + " namebanned " + target || (text.startsWith(actor + " banned ") && text.endsWith("(" + target + ")"));
+    return false;
+  }
+  function finishModeration(status, message) {
+    const pending = pendingModeration;
+    if (!pending) return;
+    pendingModeration = null;
+    clearTimeout(pending.timer);
+    if (pending.verifyTimer) clearTimeout(pending.verifyTimer);
+    updateModerationAudit(pending.auditId, status, message);
+    const error = status !== "confirmed";
+    setModerationStatus(pending.dialog, message, error);
+    moderationFeedback(message, error);
+    if (pending.dialog && pending.dialog.isConnected) {
+      pending.dialog.dataset.submitted = "done";
+      const submit = pending.dialog.querySelector(".btfw-moderation-confirm");
+      if (submit) submit.disabled = true;
+      const cancel = pending.dialog.querySelector(".btfw-moderation-cancel");
+      if (cancel) { cancel.disabled = false; cancel.textContent = "Close"; }
+    }
+    if (status === "confirmed" && pending.act === "kick") {
+      recentConfirmedKicks.set(lowerName(pending.name), { name: pending.name, reason: pending.reason, at: Date.now(), auditId: pending.auditId });
+    }
+    window.setTimeout(() => { if (moderationDialog === pending.dialog) closeModerationDialog(); }, status === "confirmed" ? 1800 : 3500);
+  }
+  function handleModerationChatResult(data) {
+    if (!expectedModerationSuccess(pendingModeration, data)) return;
+    if (pendingModeration.act !== "ipban") {
+      finishModeration("confirmed", MODERATION_ACTIONS[pendingModeration.act].title + " confirmed by CyTube.");
+      return;
+    }
+    // /ipban may create several records asynchronously. A server whisper proves
+    // activity, not completion, so verify the resulting ban list before success.
+    pendingModeration.successSeen = true;
+    setModerationStatus(pendingModeration.dialog, "CyTube reported ban activity. Verifying the ban list…", false);
+    if (!pendingModeration.verifyTimer) {
+      pendingModeration.verifyTimer = window.setTimeout(() => {
+        if (pendingModeration && pendingModeration.act === "ipban") {
+          try { window.socket.emit("requestBanlist"); } catch (_) {}
+        }
+      }, 800);
+    }
+  }
+  function handleModerationBanlist(entries) {
+    if (!pendingModeration || pendingModeration.act !== "ipban" || !Array.isArray(entries)) return;
+    const matches = entries.filter(entry => entry && sameName(entry.name, pendingModeration.name));
+    const hasIPRecord = matches.some(entry => entry.ip && entry.ip !== "*");
+    if (hasIPRecord) finishModeration("confirmed", "IP ban confirmed in CyTube's ban list.");
+  }
+  function handleModerationError(data) {
+    if (!pendingModeration) return;
+    const message = data && data.msg ? String(data.msg).replace(/<[^>]*>/g, "").trim() : "";
+    const text = message.toLowerCase();
+    const target = lowerName(pendingModeration.name);
+    const relevant = text.includes(target) || (pendingModeration.act === "kick"
+      ? /kick|permission/.test(text)
+      : /ban|permission|invalid username|channel not live/.test(text));
+    if (!relevant) return;
+    finishModeration("failed", "CyTube rejected the command: " + (message || "Unknown moderation error"));
+  }
+  function timeoutModeration() {
+    if (!pendingModeration) return;
+    if (pendingModeration.act === "ipban" && pendingModeration.successSeen) {
+      finishModeration("unconfirmed", "CyTube reported ban activity, but no IP ban record appeared. Check the ban list before retrying.");
+    } else {
+      finishModeration("unconfirmed", "No CyTube confirmation arrived. Check chat or the user list before retrying.");
+    }
+  }
+  function submitModerationAction(dialog, act, name) {
+    const config = MODERATION_ACTIONS[act];
+    const submit = dialog.querySelector(".btfw-moderation-confirm");
+    updateModerationDialogAvailability(dialog);
+    if (!config || !submit || submit.disabled) return;
+    if (!validModerationTarget(name)) { setModerationStatus(dialog, "This username cannot be used in a moderation command.", true); return; }
+    const input = dialog.querySelector(".btfw-moderation-reason");
+    const reason = sanitizeReason(input ? input.value : "");
+    const command = config.command + " " + name + (reason ? " " + reason : "");
+    const auditId = addModerationAudit(act, name, reason);
+    dialog.dataset.submitted = "true";
+    submit.disabled = true;
+    const cancel = dialog.querySelector(".btfw-moderation-cancel");
+    if (cancel) cancel.disabled = true;
+    setModerationStatus(dialog, "Sent. Waiting for CyTube confirmation…", false);
+    if (!chatCmd(command)) {
+      dialog.dataset.submitted = "false";
+      if (cancel) cancel.disabled = false;
+      updateModerationAudit(auditId, "failed", "Socket was unavailable; command not sent");
+      updateModerationDialogAvailability(dialog);
+      setModerationStatus(dialog, "Could not send the command. Check your connection and try again.", true);
+      moderationFeedback("Moderation command could not be sent.", true);
+      return;
+    }
+    moderationCooldowns.set(act + ":" + lowerName(name), Date.now() + MOD_COMMAND_COOLDOWN_MS);
+    pendingModeration = { act, name, reason, auditId, dialog, sentAt: Date.now(), timer: window.setTimeout(timeoutModeration, MOD_COMMAND_TIMEOUT_MS) };
+  }
+  function showModerationDialog(act, name) {
+    const config = MODERATION_ACTIONS[act];
+    if (!config) return;
+    closeModerationDialog();
+    hideUserMenu();
+    moderationRestoreFocus = document.activeElement;
+    const dialog = document.createElement("div");
+    dialog.className = "btfw-moderation-dialog";
+    dialog.dataset.action = act;
+    dialog.dataset.target = name;
+    dialog.dataset.submitted = "false";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    const verify = config.strongConfirm ? '<label class="btfw-moderation-label btfw-moderation-verify-label">Type <strong></strong> to confirm<input class="btfw-moderation-verify" type="text" autocomplete="off" spellcheck="false"></label>' : "";
+    dialog.innerHTML = '<div class="btfw-moderation-card"><div class="btfw-moderation-title"></div><div class="btfw-moderation-target"></div><p class="btfw-moderation-detail"></p><label class="btfw-moderation-label">Reason <span>(optional)</span><input class="btfw-moderation-reason" type="text" maxlength="255" autocomplete="off"></label>' + verify + '<div class="btfw-moderation-status" aria-live="polite"></div><div class="btfw-moderation-actions"><button type="button" class="btfw-moderation-cancel">Cancel</button><button type="button" class="btfw-moderation-confirm"></button></div></div>';
+    dialog.querySelector(".btfw-moderation-title").textContent = config.title;
+    dialog.querySelector(".btfw-moderation-target").textContent = name;
+    dialog.querySelector(".btfw-moderation-detail").textContent = config.detail;
+    dialog.querySelector(".btfw-moderation-confirm").textContent = config.confirm;
+    const verifyStrong = dialog.querySelector(".btfw-moderation-verify-label strong");
+    if (verifyStrong) verifyStrong.textContent = name;
+    dialog.querySelector(".btfw-moderation-cancel").addEventListener("click", closeModerationDialog);
+    dialog.querySelector(".btfw-moderation-confirm").addEventListener("click", () => submitModerationAction(dialog, act, name));
+    dialog.querySelectorAll("input").forEach(input => input.addEventListener("input", () => updateModerationDialogAvailability(dialog)));
+    dialog.addEventListener("mousedown", event => { if (event.target === dialog && dialog.dataset.submitted !== "true") closeModerationDialog(); });
+    dialog.addEventListener("keydown", event => {
+      if (event.key === "Escape" && dialog.dataset.submitted !== "true") { event.preventDefault(); closeModerationDialog(); }
+      else if (event.key === "Enter") { event.preventDefault(); submitModerationAction(dialog, act, name); }
+      else if (event.key === "Tab") {
+        const focusable = Array.from(dialog.querySelectorAll("input, button:not([disabled])"));
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    });
+    moderationDialog = dialog;
+    document.body.appendChild(dialog);
+    updateModerationDialogAvailability(dialog);
+    const cooldown = cooldownRemaining(act, name);
+    if (cooldown > 0) dialog._btfwCooldownTimer = window.setTimeout(() => updateModerationDialogAvailability(dialog), cooldown + 30);
+    window.requestAnimationFrame(() => { dialog.classList.add("is-open"); dialog.querySelector(".btfw-moderation-reason").focus(); });
+  }
+  function showModerationHistory(name) {
+    closeModerationDialog();
+    hideUserMenu();
+    const entries = readModerationAudit().filter(item => sameName(item.target, name));
+    const dialog = document.createElement("div");
+    dialog.className = "btfw-moderation-dialog btfw-moderation-history";
+    dialog.setAttribute("role", "dialog"); dialog.setAttribute("aria-modal", "true");
+    dialog.innerHTML = '<div class="btfw-moderation-card"><div class="btfw-moderation-title">Moderation history</div><div class="btfw-moderation-target"></div><div class="btfw-moderation-history-list"></div><div class="btfw-moderation-actions"><button type="button" class="btfw-moderation-cancel">Close</button></div></div>';
+    dialog.querySelector(".btfw-moderation-target").textContent = name;
+    const list = dialog.querySelector(".btfw-moderation-history-list");
+    if (!entries.length) list.textContent = "No moderation actions recorded on this browser.";
+    entries.forEach(entry => {
+      const row = document.createElement("div"); row.className = "btfw-moderation-history-row is-" + entry.status;
+      const head = document.createElement("strong"); head.textContent = entry.action + " · " + new Date(entry.at).toLocaleString();
+      const result = document.createElement("span"); result.textContent = entry.result || entry.status;
+      row.append(head, result);
+      if (entry.reason) { const reason = document.createElement("span"); reason.textContent = "Reason: " + entry.reason; row.appendChild(reason); }
+      list.appendChild(row);
+    });
+    moderationDialog = dialog;
+    dialog.querySelector(".btfw-moderation-cancel").addEventListener("click", closeModerationDialog);
+    dialog.addEventListener("mousedown", event => { if (event.target === dialog) closeModerationDialog(); });
+    dialog.addEventListener("keydown", event => { if (event.key === "Escape") closeModerationDialog(); });
+    document.body.appendChild(dialog);
+    window.requestAnimationFrame(() => { dialog.classList.add("is-open"); dialog.querySelector("button").focus(); });
+  }
+  function closeEscalationNotice() { if (escalationNotice) escalationNotice.remove(); escalationNotice = null; }
+  function handleKickedUserReconnect(name) {
+    const kick = recentConfirmedKicks.get(lowerName(name));
+    if (!kick || Date.now() - kick.at > KICK_RECONNECT_WINDOW_MS || !can("ban")) return;
+    recentConfirmedKicks.delete(lowerName(name));
+    updateModerationAudit(kick.auditId, "reconnected", name + " reconnected after the confirmed kick");
+    closeEscalationNotice();
+    const notice = document.createElement("div");
+    notice.className = "btfw-moderation-escalation";
+    notice.innerHTML = '<div><strong></strong><span>reconnected after being kicked.</span></div><div class="btfw-moderation-escalation-actions"><button type="button" data-action="nameban">Name ban</button><button type="button" data-action="ipban">IP ban</button><button type="button" data-action="dismiss" aria-label="Dismiss">×</button></div>';
+    notice.querySelector("strong").textContent = name;
+    notice.addEventListener("click", event => {
+      const action = event.target.closest("button") && event.target.closest("button").dataset.action;
+      if (!action) return;
+      closeEscalationNotice();
+      if (action !== "dismiss") showModerationDialog(action, name);
+    });
+    escalationNotice = notice;
+    document.body.appendChild(notice);
+    window.setTimeout(() => { if (escalationNotice === notice) closeEscalationNotice(); }, 20000);
+  }
   function userContext(name) {
-    const $e = findUserEntry(name);
-    const present = !!($e && $e.length);
-    const meta = present ? ($e.data("meta") || {}) : {};
+    const present = isUserPresent(name);
+    const $e = present ? findUserEntry(name) : null;
+    const meta = $e ? ($e.data("meta") || {}) : {};
+    const actorRank = Number(window.CLIENT && window.CLIENT.rank);
+    const targetRank = Number($e && $e.data("rank"));
+    const rankKnown = present && Number.isFinite(actorRank) && Number.isFinite(targetRank);
     return {
-      self: sameName(name, myName()),
-      present,
-      loggedIn: isLoggedIn(),
-      leader: present ? !!$e.data("leader") : false,
-      muted: !!(meta.muted || meta.smuted),
-      ignored: has(name)
+      self: sameName(name, myName()), present, loggedIn: isLoggedIn(),
+      leader: !!($e && $e.data("leader")), muted: !!(meta.muted || meta.smuted), ignored: has(name),
+      moderatable: !rankKnown || actorRank > targetRank
     };
   }
 
-  // Build the action model for a name, honoring login state, presence and
-  // per-permission gating so users never see actions they can't perform.
+  // Recomputed when opened, on presence changes, and immediately before action.
   function buildUserMenuModel(name) {
     const c = userContext(name);
     const main = [], mod = [];
     if (c.self) {
-      // Self-targeting moderation actions are either meaningless (PM/ignore)
-      // or dangerous (kick/mute/ban). Leader control is intentionally kept:
-      // channel owners and moderators use it to claim or release leader.
-      if (c.present && can("leaderctl")) {
-        mod.push({ act: "leader", icon: "fa fa-star", label: c.leader ? "Remove leader" : "Give leader" });
-      }
+      if (c.present && can("leaderctl")) mod.push({ act: "leader", icon: "fa fa-star", label: c.leader ? "Remove leader" : "Give leader" });
     } else {
       if (c.loggedIn && c.present) main.push({ act: "pm", icon: "fa fa-comment", label: "Private message" });
       main.push({ act: "ignore", icon: c.ignored ? "fa fa-user-check" : "fa fa-user-slash", label: c.ignored ? "Unignore user" : "Ignore user", active: c.ignored });
-
+      if (!c.present) main.push({ act: "disconnected", icon: "fa fa-plug-circle-xmark", label: "Disconnected", disabled: true });
+      else if (!c.moderatable && (can("kick") || can("mute") || can("ban"))) main.push({ act: "protected", icon: "fa fa-shield", label: "Protected rank", disabled: true });
       if (c.present && can("leaderctl")) mod.push({ act: "leader", icon: "fa fa-star", label: c.leader ? "Remove leader" : "Give leader" });
-      if (c.present && can("kick")) mod.push({ act: "kick", icon: "fa fa-right-from-bracket", label: "Kick", danger: true });
-      if (c.present && can("mute")) {
+      if (c.present && c.moderatable && can("kick")) mod.push({ act: "kick", icon: "fa fa-right-from-bracket", label: "Kick", danger: true });
+      if (c.present && c.moderatable && can("mute")) {
         if (c.muted) mod.push({ act: "unmute", icon: "fa fa-volume-high", label: "Unmute" });
         else {
           mod.push({ act: "mute", icon: "fa fa-volume-xmark", label: "Mute" });
           mod.push({ act: "smute", icon: "fa fa-volume-off", label: "Shadow mute" });
         }
       }
-      if (can("ban")) {
+      if (can("ban") && (!c.present || c.moderatable)) {
         mod.push({ act: "nameban", icon: "fa fa-gavel", label: "Name ban", danger: true });
         mod.push({ act: "ipban", icon: "fa fa-ban", label: "IP ban", danger: true });
       }
+      if (can("kick") || can("ban")) mod.push({ act: "history", icon: "fa fa-clock-rotate-left", label: "Moderation history" });
     }
-    return { name, main, mod, hasAny: (main.length + mod.length) > 0 };
+    return { name, present: c.present, main, mod, hasAny: (main.length + mod.length) > 0 };
   }
-
   let umenu = null, umenuName = "", uDismissBound = false;
 
   function ensureUserMenu() {
@@ -377,15 +725,17 @@ BTFW.define("feature:chat-ignore", [], async () => {
   }
 
   function renderUserMenu(model) {
-    umenu.querySelector(".btfw-ctxmenu-title").textContent = model.name;
+    umenu.querySelector(".btfw-ctxmenu-title").textContent = model.name + (model.present ? "" : " · Disconnected");
     const body = umenu.querySelector(".btfw-ctxmenu-body");
     body.innerHTML = "";
     const addItem = (it) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "btfw-ctxmenu-item" + (it.active ? " is-active" : "") + (it.danger ? " is-danger" : "");
+      b.className = "btfw-ctxmenu-item" + (it.active ? " is-active" : "") + (it.danger ? " is-danger" : "") + (it.disabled ? " is-disabled" : "");
       b.dataset.act = it.act;
       b.setAttribute("role", "menuitem");
+      b.disabled = !!it.disabled;
+      if (it.disabled) b.setAttribute("aria-disabled", "true");
       const i = document.createElement("i"); i.className = it.icon; i.setAttribute("aria-hidden", "true");
       const s = document.createElement("span"); s.className = "btfw-ctxmenu-label"; s.textContent = it.label;
       b.appendChild(i); b.appendChild(s);
@@ -436,7 +786,14 @@ BTFW.define("feature:chat-ignore", [], async () => {
     e.preventDefault();
     const name = umenuName;
     const act = btn.dataset.act;
-    hideUserMenu(); // close before any blocking prompt()
+    const current = buildUserMenuModel(name);
+    const item = current.main.concat(current.mod).find(candidate => candidate.act === act);
+    if (!item || item.disabled) {
+      renderUserMenu(current);
+      moderationFeedback(name + " is disconnected or that action is no longer available.", true);
+      return;
+    }
+    hideUserMenu();
     if (name) runUserAction(act, name);
   }
 
@@ -455,27 +812,17 @@ BTFW.define("feature:chat-ignore", [], async () => {
         try { if (window.socket) window.socket.emit("assignLeader", { name: lead ? "" : name }); } catch (_) {}
         break;
       }
-      case "kick": {
-        const reason = prompt("Enter kick reason (optional)");
-        if (reason === null) return;
-        chatCmd("/kick " + name + " " + reason);
+      case "kick":
+      case "nameban":
+      case "ipban":
+        showModerationDialog(act, name);
         break;
-      }
+      case "history":
+        showModerationHistory(name);
+        break;
       case "mute":   chatCmd("/mute " + name); break;
       case "smute":  chatCmd("/smute " + name); break;
       case "unmute": chatCmd("/unmute " + name); break;
-      case "nameban": {
-        const reason = prompt("Enter ban reason (optional)");
-        if (reason === null) return;
-        chatCmd("/ban " + name + " " + reason);
-        break;
-      }
-      case "ipban": {
-        const reason = prompt("Enter ban reason (optional)");
-        if (reason === null) return;
-        chatCmd("/ipban " + name + " " + reason);
-        break;
-      }
     }
   }
 
@@ -568,6 +915,7 @@ BTFW.define("feature:chat-ignore", [], async () => {
   function boot() {
     // Observer is the reliable path; socket handler is an extra fast trigger
     // (both deduped via the processed WeakSet).
+    seedModerationPresence();
     wireMessageObserver();
     wireSocketEvents();
 
@@ -591,6 +939,7 @@ BTFW.define("feature:chat-ignore", [], async () => {
     add,
     remove,
     toggle,
-    list: () => Array.from(ignoredUsers)
+    list: () => Array.from(ignoredUsers),
+    moderationHistory: () => (can("kick") || can("ban")) ? readModerationAudit().map(entry => ({ ...entry })) : []
   };
 });
