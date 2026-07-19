@@ -1306,6 +1306,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const navbarActive = active && gradient.targets.navbar;
     const runtimeTheme = gradient.type === "pixel" ? theme : staticGradientTheme(theme);
     const colors = theme.colors && typeof theme.colors === "object" ? theme.colors : DEFAULT_CONFIG.colors;
+    const stops = getGradientStops(theme);
     const page = pageActive ? renderRuntimeSurfaceGradient(runtimeTheme, 1, colors.background) : { css: "none", count: 1 };
     const panel = panelActive ? renderRuntimeSurfaceGradient(runtimeTheme, 0.7, colors.panel) : { css: "none", count: 1 };
     const panelSoft = panelActive ? renderRuntimeSurfaceGradient(runtimeTheme, 0.42, colors.surface) : { css: "none", count: 1 };
@@ -1318,6 +1319,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     root.setAttribute("data-btfw-gradient-panels", panelActive ? "on" : "off");
     root.setAttribute("data-btfw-gradient-navbar", navbarActive ? "on" : "off");
     root.setAttribute("data-btfw-gradient-motion", ["flow", "retro", "pixel"].includes(gradient.type) ? "off" : ((pageActive || panelActive || navbarActive) ? gradient.motion : "off"));
+    root.setAttribute("data-btfw-gradient-field-motion", panelActive && ["flow", "retro"].includes(gradient.type) ? gradient.motion : "off");
+    stops.forEach((stop, index) => root.style.setProperty(`--btfw-gradient-field-${index}`, stop.color));
+    root.style.setProperty("--btfw-gradient-panel-field-opacity", Math.min(0.5, (gradient.strength * 0.7) / 100).toFixed(3));
     root.style.setProperty("--btfw-gradient-page-layer", page.css);
     root.style.setProperty("--btfw-gradient-page-runtime-layer", page.css);
     root.style.setProperty("--btfw-gradient-panel-layer", panel.css);

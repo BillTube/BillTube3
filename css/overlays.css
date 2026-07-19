@@ -558,8 +558,8 @@
 }
 
 :root[data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar {
-  background-size: var(--btfw-dither-size), 180% 180%, auto, auto, auto;
-  background-position: 0 0, 0% 42%, center, center, center;
+  background-size: var(--btfw-dither-size), cover, auto, auto, auto;
+  background-position: 0 0, center, center, center, center;
 }
 
 :root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="slow"] #chatwrap .btfw-chat-topbar,
@@ -749,8 +749,8 @@
 }
 
 :root[data-btfw-gradient-panels="on"] #btfw-chat-actions #btfw-chatactions-pill {
-  background-size: var(--btfw-dither-size), 180% 180%, auto, auto, auto;
-  background-position: 0 0, 0% 42%, center, center, center;
+  background-size: var(--btfw-dither-size), cover, auto, auto, auto;
+  background-position: 0 0, center, center, center, center;
 }
 
 @media (prefers-reduced-motion: reduce) {
