@@ -809,6 +809,100 @@
     color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%),
     color-mix(in srgb, var(--btfw-overlay-elevated) 70%, transparent 30%));
 }
+/* Theme-aware border beam. It only runs while the composer has focus, while a
+   tray action is hovered, or while that action's popover remains open. */
+@property --btfw-chat-beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes btfw-chat-border-beam {
+  to { --btfw-chat-beam-angle: 360deg; }
+}
+
+#chatline:focus {
+  border-color: transparent !important;
+  background-image:
+    var(--btfw-dither-image),
+    radial-gradient(
+      125% 160% at 0% 0%,
+      color-mix(in srgb, var(--btfw-color-accent) 10%, transparent 90%) 0%,
+      transparent 60%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--btfw-color-panel) 68%, var(--btfw-color-bg) 32%) 0%,
+      color-mix(in srgb, var(--btfw-color-surface) 66%, var(--btfw-color-bg) 34%) 100%
+    ),
+    conic-gradient(
+      from var(--btfw-chat-beam-angle),
+      transparent 0deg 218deg,
+      color-mix(in srgb, var(--btfw-gradient-field-0, var(--btfw-color-accent)) 72%, transparent) 240deg,
+      var(--btfw-gradient-field-1, var(--btfw-color-accent)) 270deg,
+      var(--btfw-gradient-field-2, var(--btfw-color-accent)) 300deg,
+      color-mix(in srgb, var(--btfw-gradient-field-3, var(--btfw-color-accent)) 76%, white 24%) 326deg,
+      transparent 360deg
+    ) !important;
+  background-size: var(--btfw-dither-size), auto, auto, auto !important;
+  background-position: 0 0, center, center, center !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, padding-box, padding-box, border-box !important;
+  animation: btfw-chat-border-beam 2.8s linear infinite;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 13%, transparent 87%),
+    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 28%, transparent),
+    0 0 14px color-mix(in srgb, var(--btfw-color-accent) 26%, transparent),
+    0 7px 20px color-mix(in srgb, var(--btfw-color-bg) 22%, transparent 78%) !important;
+}
+
+#btfw-chatactions-pill .btfw-chatbtn:hover,
+#btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
+  border: 1px solid transparent !important;
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--btfw-color-panel) 82%, var(--btfw-color-bg) 18%),
+      color-mix(in srgb, var(--btfw-color-surface) 74%, var(--btfw-color-bg) 26%)
+    ),
+    conic-gradient(
+      from var(--btfw-chat-beam-angle),
+      transparent 0deg 205deg,
+      var(--btfw-gradient-field-0, var(--btfw-color-accent)) 232deg,
+      var(--btfw-gradient-field-1, var(--btfw-color-accent)) 270deg,
+      var(--btfw-gradient-field-2, var(--btfw-color-accent)) 305deg,
+      var(--btfw-gradient-field-3, var(--btfw-color-accent)) 334deg,
+      transparent 360deg
+    ) !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  animation: btfw-chat-border-beam 2.4s linear infinite;
+  color: var(--btfw-color-text) !important;
+  box-shadow:
+    0 0 8px color-mix(in srgb, var(--btfw-color-accent) 24%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--btfw-color-accent) 9%, transparent) !important;
+}
+
+#btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 30%, transparent),
+    0 0 15px color-mix(in srgb, var(--btfw-color-accent) 46%, transparent),
+    0 0 28px color-mix(in srgb, var(--btfw-gradient-field-2, var(--btfw-color-accent)) 22%, transparent),
+    inset 0 0 10px color-mix(in srgb, var(--btfw-color-accent) 18%, transparent) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #chatline:focus,
+  #btfw-chatactions-pill .btfw-chatbtn:hover,
+  #btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
+    animation: none !important;
+  }
+}
+
+:root[data-btfw-motion="reduced"] #chatline:focus,
+:root[data-btfw-motion="reduced"] #btfw-chatactions-pill .btfw-chatbtn:hover,
+:root[data-btfw-motion="reduced"] #btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
+  animation: none !important;
+}
 #chatwrap {
     margin-bottom: 0px!important;
 }

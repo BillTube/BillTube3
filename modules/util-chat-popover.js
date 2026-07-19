@@ -49,6 +49,15 @@ BTFW.define("util:chat-popover", ["util:motion"], async () => {
     const sel = "#" + cfg.id + " ." + cfg.cardClass;
     let backdropEl = null;
 
+    function syncToggleState(active){
+      if (!cfg.toggleSelector) return;
+      document.querySelectorAll(cfg.toggleSelector).forEach((toggle) => {
+        toggle.toggleAttribute("data-btfw-popover-active", active);
+        toggle.setAttribute("aria-expanded", active ? "true" : "false");
+        if (!toggle.hasAttribute("aria-controls")) toggle.setAttribute("aria-controls", cfg.id);
+      });
+    }
+
     function ensureBackdrop(){
       if (!cfg.backdrop) return null;
       if (backdropEl && document.body.contains(backdropEl)) return backdropEl;
@@ -88,6 +97,7 @@ BTFW.define("util:chat-popover", ["util:motion"], async () => {
         card.setAttribute("hidden", "");
         card.setAttribute("aria-hidden", "true");
       }
+      if (card && card.dataset.btfwPopoverState === "closed") syncToggleState(false);
       return { modal, card };
     }
     function getCard(){ return document.querySelector(sel); }
@@ -102,6 +112,7 @@ BTFW.define("util:chat-popover", ["util:motion"], async () => {
       modal.removeAttribute("hidden");
       modal.removeAttribute("aria-hidden");
       REG.set(card, { opts: cfg.opts, modalId: cfg.id, toggleSelector: cfg.toggleSelector, close, backdrop: bd });
+      syncToggleState(true);
       installChatColumnWatch(); // ensure the live re-fit observer is attached
       // onOpen first (it may inject/adopt content that changes the card size),
       // then position so the fit reflects the final content.
@@ -112,11 +123,16 @@ BTFW.define("util:chat-popover", ["util:motion"], async () => {
     function close(){
       const modal = document.getElementById(cfg.id);
       const card = modal && modal.querySelector("." + cfg.cardClass);
-      if (!card) { if (modal) { modal.setAttribute("hidden", ""); modal.setAttribute("aria-hidden", "true"); } return; }
+      if (!card) {
+        syncToggleState(false);
+        if (modal) { modal.setAttribute("hidden", ""); modal.setAttribute("aria-hidden", "true"); }
+        return;
+      }
       if (typeof cfg.onClose === "function") { try { cfg.onClose(card); } catch(_){} }
       const bd = backdropEl;
       motion.closePopover(card, bd ? { backdrop: bd } : {}).then(() => {
         if (card.dataset.btfwPopoverState === "open") return; // reopened mid-close
+        syncToggleState(false);
         modal.setAttribute("hidden", "");
         modal.setAttribute("aria-hidden", "true");
         REG.delete(card);
