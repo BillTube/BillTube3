@@ -1416,6 +1416,15 @@ const scheduleNormalizeChatActions = (() => {
       top.style.setProperty("--btfw-chat-edge-strength", "0");
     }, { passive: true });
   }
+  function ensureChatlineBeamWrap(){
+    const input = document.getElementById("chatline");
+    if (!input || input.parentElement?.classList.contains("btfw-chatline-beam-wrap")) return;
+    const wrap = document.createElement("div");
+    wrap.className = "btfw-chatline-beam-wrap";
+    input.parentElement.insertBefore(wrap, input);
+    wrap.appendChild(input);
+  }
+
   function ensureBars(){
     const cw = $("#chatwrap"); if (!cw) return;
     cw.classList.add("btfw-chatwrap");
@@ -1585,6 +1594,7 @@ const scheduleNormalizeChatActions = (() => {
       controls.classList.add("btfw-controls-row");
       composerMain.appendChild(controls);
     }
+    ensureChatlineBeamWrap();
     scheduleNormalizeChatActions();
     wireChatUsernameContextMenu();
     adoptNewMessageIndicator();

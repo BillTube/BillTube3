@@ -821,6 +821,85 @@
   to { --btfw-chat-beam-angle: 360deg; }
 }
 
+.btfw-chatline-beam-wrap {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  flex: 1 1 auto;
+  min-width: 0;
+  border-radius: 999px;
+}
+
+.btfw-chatline-beam-wrap > #chatline {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.btfw-chatline-beam-wrap::after,
+#btfw-chatactions-pill .btfw-chatbtn::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  background: conic-gradient(
+    from var(--btfw-chat-beam-angle),
+    transparent 0deg 210deg,
+    color-mix(in srgb, var(--btfw-gradient-field-0, var(--btfw-color-accent)) 72%, white 28%) 234deg,
+    color-mix(in srgb, var(--btfw-gradient-field-1, var(--btfw-color-accent)) 76%, white 24%) 268deg,
+    color-mix(in srgb, var(--btfw-gradient-field-2, var(--btfw-color-accent)) 78%, white 22%) 302deg,
+    color-mix(in srgb, var(--btfw-gradient-field-3, var(--btfw-color-accent)) 70%, white 30%) 330deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  will-change: opacity, filter;
+  transition: opacity var(--btfw-motion-fast, 150ms) ease-out;
+}
+
+.btfw-chatline-beam-wrap::after {
+  inset: -6px;
+  z-index: 0;
+  padding: 6px;
+  filter: blur(8px) saturate(1.18);
+}
+
+.btfw-chatline-beam-wrap:focus-within::after {
+  opacity: 0.92;
+  animation: btfw-chat-border-beam 2.8s linear infinite;
+}
+
+#btfw-chatactions-pill .btfw-chatbtn {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+
+#btfw-chatactions-pill .btfw-chatbtn::after {
+  inset: -5px;
+  z-index: 0;
+  padding: 5px;
+  filter: blur(6px) saturate(1.16);
+}
+
+#btfw-chatactions-pill .btfw-chatbtn:hover::after {
+  opacity: 0.68;
+  animation: btfw-chat-border-beam 2.4s linear infinite;
+}
+
+#btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active]::after {
+  opacity: 1;
+  filter: blur(8px) saturate(1.24);
+  animation: btfw-chat-border-beam 2.4s linear infinite;
+}
+
+@media (max-width: 768px) {
+  .btfw-chatline-beam-wrap { flex: 1 1 100%; }
+}
+
 #chatline:focus {
   border-color: transparent !important;
   background-image:
@@ -892,6 +971,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   #chatline:focus,
+  .btfw-chatline-beam-wrap::after,
+  #btfw-chatactions-pill .btfw-chatbtn::after,
   #btfw-chatactions-pill .btfw-chatbtn:hover,
   #btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
     animation: none !important;
@@ -899,6 +980,8 @@
 }
 
 :root[data-btfw-motion="reduced"] #chatline:focus,
+:root[data-btfw-motion="reduced"] .btfw-chatline-beam-wrap::after,
+:root[data-btfw-motion="reduced"] #btfw-chatactions-pill .btfw-chatbtn::after,
 :root[data-btfw-motion="reduced"] #btfw-chatactions-pill .btfw-chatbtn:hover,
 :root[data-btfw-motion="reduced"] #btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
   animation: none !important;
