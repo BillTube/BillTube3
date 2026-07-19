@@ -809,11 +809,11 @@
     color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%),
     color-mix(in srgb, var(--btfw-overlay-elevated) 70%, transparent 30%));
 }
-/* Theme-aware border beam. It only runs while the composer has focus, while a
-   tray action is hovered, or while that action's popover remains open. */
+/* Theme-aware border beam, adapted from the three-layer Border Beam recipe:
+   a crisp edge, a clipped inner field, and a restrained bloom. */
 @property --btfw-chat-beam-angle {
   syntax: "<angle>";
-  inherits: false;
+  inherits: true;
   initial-value: 0deg;
 }
 
@@ -824,7 +824,7 @@
 .btfw-chatline-beam-wrap {
   position: relative;
   isolation: isolate;
-  overflow: visible;
+  overflow: hidden;
   flex: 1 1 auto;
   min-width: 0;
   border-radius: 999px;
@@ -832,69 +832,181 @@
 
 .btfw-chatline-beam-wrap > #chatline {
   position: relative;
-  z-index: 1;
+  z-index: 0;
   width: 100%;
 }
 
+.btfw-chatline-beam-wrap::before,
 .btfw-chatline-beam-wrap::after,
-#btfw-chatactions-pill .btfw-chatbtn::after {
-  content: "";
+#btfw-chatactions-pill .btfw-chatbtn::before,
+#btfw-chatactions-pill .btfw-chatbtn::after,
+.btfw-chat-beam-bloom {
   position: absolute;
-  pointer-events: none;
+  inset: 0;
   border-radius: inherit;
+  clip-path: inset(0 round 999px);
+  pointer-events: none;
   opacity: 0;
-  background: conic-gradient(
-    from var(--btfw-chat-beam-angle),
-    transparent 0deg 210deg,
-    color-mix(in srgb, var(--btfw-gradient-field-0, var(--btfw-color-accent)) 72%, white 28%) 234deg,
-    color-mix(in srgb, var(--btfw-gradient-field-1, var(--btfw-color-accent)) 76%, white 24%) 268deg,
-    color-mix(in srgb, var(--btfw-gradient-field-2, var(--btfw-color-accent)) 78%, white 22%) 302deg,
-    color-mix(in srgb, var(--btfw-gradient-field-3, var(--btfw-color-accent)) 70%, white 30%) 330deg,
-    transparent 360deg
-  );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  will-change: opacity, filter;
   transition: opacity var(--btfw-motion-fast, 150ms) ease-out;
 }
 
-.btfw-chatline-beam-wrap::after {
-  inset: -6px;
-  z-index: 0;
-  padding: 6px;
-  filter: blur(8px) saturate(1.18);
+/* Crisp 1px edge. The colours stay in place while the mask travels around them. */
+.btfw-chatline-beam-wrap::after,
+#btfw-chatactions-pill .btfw-chatbtn::after {
+  content: "";
+  z-index: 2;
+  padding: 1px;
+  background:
+    conic-gradient(
+      from var(--btfw-chat-beam-angle),
+      transparent 0% 54%,
+      rgb(255 255 255 / 0.08) 57%,
+      rgb(255 255 255 / 0.22) 60%,
+      rgb(255 255 255 / 0.55) 64%,
+      rgb(255 255 255 / 0.68) 66%,
+      rgb(255 255 255 / 0.42) 69%,
+      rgb(255 255 255 / 0.14) 73%,
+      transparent 78% 100%
+    ),
+    radial-gradient(ellipse 24% 90% at 2% 68%, var(--btfw-gradient-field-0, var(--btfw-color-accent)), transparent 72%),
+    radial-gradient(ellipse 42% 72% at 74% 100%, var(--btfw-gradient-field-1, var(--btfw-color-accent)), transparent 72%),
+    radial-gradient(ellipse 24% 95% at 100% 27%, var(--btfw-gradient-field-2, var(--btfw-color-accent)), transparent 72%),
+    radial-gradient(ellipse 36% 76% at 18% -5%, var(--btfw-gradient-field-3, var(--btfw-color-accent)), transparent 72%);
+  -webkit-mask:
+    conic-gradient(
+      from var(--btfw-chat-beam-angle),
+      transparent 0% 30%,
+      rgb(255 255 255 / 0.10) 36%,
+      rgb(255 255 255 / 0.35) 44%,
+      white 52% 80%,
+      rgb(255 255 255 / 0.35) 86%,
+      rgb(255 255 255 / 0.10) 92%,
+      transparent 95% 100%
+    ),
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: source-in, xor;
+  mask:
+    conic-gradient(
+      from var(--btfw-chat-beam-angle),
+      transparent 0% 30%,
+      rgb(255 255 255 / 0.10) 36%,
+      rgb(255 255 255 / 0.35) 44%,
+      white 52% 80%,
+      rgb(255 255 255 / 0.35) 86%,
+      rgb(255 255 255 / 0.10) 92%,
+      transparent 95% 100%
+    ),
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: intersect, exclude;
 }
 
-.btfw-chatline-beam-wrap:focus-within::after {
-  opacity: 0.92;
-  animation: btfw-chat-border-beam 2.8s linear infinite;
+/* Low-opacity colour inside the edge: visible, but never a wash over the field. */
+.btfw-chatline-beam-wrap::before,
+#btfw-chatactions-pill .btfw-chatbtn::before {
+  content: "";
+  z-index: 1;
+  background:
+    radial-gradient(ellipse 22% 82% at 2% 68%, color-mix(in srgb, var(--btfw-gradient-field-0, var(--btfw-color-accent)) 42%, transparent), transparent 74%),
+    radial-gradient(ellipse 38% 64% at 74% 100%, color-mix(in srgb, var(--btfw-gradient-field-1, var(--btfw-color-accent)) 38%, transparent), transparent 74%),
+    radial-gradient(ellipse 22% 86% at 100% 27%, color-mix(in srgb, var(--btfw-gradient-field-2, var(--btfw-color-accent)) 40%, transparent), transparent 74%),
+    radial-gradient(ellipse 32% 68% at 18% -5%, color-mix(in srgb, var(--btfw-gradient-field-3, var(--btfw-color-accent)) 36%, transparent), transparent 74%);
+  box-shadow: inset 0 0 7px 1px rgb(255 255 255 / 0.12);
+  -webkit-mask-image: conic-gradient(
+    from var(--btfw-chat-beam-angle),
+    transparent 0% 30%,
+    rgb(255 255 255 / 0.10) 36%,
+    rgb(255 255 255 / 0.35) 44%,
+    white 52% 80%,
+    rgb(255 255 255 / 0.35) 86%,
+    rgb(255 255 255 / 0.10) 92%,
+    transparent 95% 100%
+  );
+  mask-image: conic-gradient(
+    from var(--btfw-chat-beam-angle),
+    transparent 0% 30%,
+    rgb(255 255 255 / 0.10) 36%,
+    rgb(255 255 255 / 0.35) 44%,
+    white 52% 80%,
+    rgb(255 255 255 / 0.35) 86%,
+    rgb(255 255 255 / 0.10) 92%,
+    transparent 95% 100%
+  );
 }
+
+/* Separate narrow bloom layer, clipped to the control like the reference. */
+.btfw-chat-beam-bloom {
+  z-index: 3;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--btfw-chat-beam-angle),
+    transparent 0% 59%,
+    color-mix(in srgb, var(--btfw-gradient-field-0, var(--btfw-color-accent)) 24%, transparent) 64%,
+    color-mix(in srgb, var(--btfw-gradient-field-1, var(--btfw-color-accent)) 62%, transparent) 68%,
+    rgb(255 255 255 / 0.72) 70%,
+    color-mix(in srgb, var(--btfw-gradient-field-2, var(--btfw-color-accent)) 58%, transparent) 72%,
+    color-mix(in srgb, var(--btfw-gradient-field-3, var(--btfw-color-accent)) 20%, transparent) 76%,
+    transparent 82% 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  filter: blur(6px) brightness(1.12) saturate(1.08);
+}
+
+.btfw-chatline-beam-wrap:focus-within {
+  animation: btfw-chat-border-beam 4s linear infinite;
+}
+
+.btfw-chatline-beam-wrap:focus-within::after { opacity: 0.24; }
+.btfw-chatline-beam-wrap:focus-within::before { opacity: 0.16; }
+.btfw-chatline-beam-wrap:focus-within > .btfw-chat-beam-bloom { opacity: 0.16; }
 
 #btfw-chatactions-pill .btfw-chatbtn {
   position: relative;
   isolation: isolate;
-  overflow: visible;
+  overflow: hidden;
 }
 
 #btfw-chatactions-pill .btfw-chatbtn::after {
-  inset: -5px;
-  z-index: 0;
-  padding: 5px;
-  filter: blur(6px) saturate(1.16);
+  background:
+    conic-gradient(
+      from var(--btfw-chat-beam-angle),
+      transparent 0% 54%,
+      rgb(255 255 255 / 0.08) 58%,
+      rgb(255 255 255 / 0.58) 65%,
+      rgb(255 255 255 / 0.16) 72%,
+      transparent 78% 100%
+    ),
+    radial-gradient(ellipse 20% 52% at 2% 68%, var(--btfw-gradient-field-0, var(--btfw-color-accent)), transparent 74%),
+    radial-gradient(ellipse 80% 24% at 72% -3%, var(--btfw-gradient-field-1, var(--btfw-color-accent)), transparent 74%),
+    radial-gradient(ellipse 56% 22% at 74% 100%, var(--btfw-gradient-field-2, var(--btfw-color-accent)), transparent 74%),
+    radial-gradient(ellipse 24% 54% at 100% 27%, var(--btfw-gradient-field-3, var(--btfw-color-accent)), transparent 74%);
 }
 
-#btfw-chatactions-pill .btfw-chatbtn:hover::after {
-  opacity: 0.68;
-  animation: btfw-chat-border-beam 2.4s linear infinite;
+#btfw-chatactions-pill .btfw-chatbtn::before {
+  background:
+    radial-gradient(ellipse 20% 52% at 2% 68%, color-mix(in srgb, var(--btfw-gradient-field-0, var(--btfw-color-accent)) 38%, transparent), transparent 76%),
+    radial-gradient(ellipse 80% 24% at 72% -3%, color-mix(in srgb, var(--btfw-gradient-field-1, var(--btfw-color-accent)) 34%, transparent), transparent 76%),
+    radial-gradient(ellipse 56% 22% at 74% 100%, color-mix(in srgb, var(--btfw-gradient-field-2, var(--btfw-color-accent)) 36%, transparent), transparent 76%),
+    radial-gradient(ellipse 24% 54% at 100% 27%, color-mix(in srgb, var(--btfw-gradient-field-3, var(--btfw-color-accent)) 32%, transparent), transparent 76%);
+  box-shadow: inset 0 0 5px 1px rgb(255 255 255 / 0.10);
 }
 
-#btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active]::after {
-  opacity: 1;
-  filter: blur(8px) saturate(1.24);
-  animation: btfw-chat-border-beam 2.4s linear infinite;
+#btfw-chatactions-pill .btfw-chatbtn:hover,
+#btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
+  animation: btfw-chat-border-beam 3.6s linear infinite;
 }
+
+#btfw-chatactions-pill .btfw-chatbtn:hover::after { opacity: 0.28; }
+#btfw-chatactions-pill .btfw-chatbtn:hover::before { opacity: 0.12; }
+#btfw-chatactions-pill .btfw-chatbtn:hover > .btfw-chat-beam-bloom { opacity: 0.16; }
+
+#btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active]::after { opacity: 0.38; }
+#btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active]::before { opacity: 0.18; }
+#btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] > .btfw-chat-beam-bloom { opacity: 0.22; }
 
 @media (max-width: 768px) {
   .btfw-chatline-beam-wrap { flex: 1 1 100%; }
@@ -913,75 +1025,46 @@
       145deg,
       color-mix(in srgb, var(--btfw-color-panel) 68%, var(--btfw-color-bg) 32%) 0%,
       color-mix(in srgb, var(--btfw-color-surface) 66%, var(--btfw-color-bg) 34%) 100%
-    ),
-    conic-gradient(
-      from var(--btfw-chat-beam-angle),
-      transparent 0deg 218deg,
-      color-mix(in srgb, var(--btfw-gradient-field-0, var(--btfw-color-accent)) 72%, transparent) 240deg,
-      var(--btfw-gradient-field-1, var(--btfw-color-accent)) 270deg,
-      var(--btfw-gradient-field-2, var(--btfw-color-accent)) 300deg,
-      color-mix(in srgb, var(--btfw-gradient-field-3, var(--btfw-color-accent)) 76%, white 24%) 326deg,
-      transparent 360deg
     ) !important;
-  background-size: var(--btfw-dither-size), auto, auto, auto !important;
-  background-position: 0 0, center, center, center !important;
+  background-size: var(--btfw-dither-size), auto, auto !important;
+  background-position: 0 0, center, center !important;
   background-origin: border-box !important;
-  background-clip: padding-box, padding-box, padding-box, border-box !important;
-  animation: btfw-chat-border-beam 2.8s linear infinite;
+  background-clip: padding-box, padding-box, padding-box !important;
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 13%, transparent 87%),
-    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 28%, transparent),
-    0 0 14px color-mix(in srgb, var(--btfw-color-accent) 26%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 10%, transparent 90%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 30%, transparent 70%),
+    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 12%, transparent),
     0 7px 20px color-mix(in srgb, var(--btfw-color-bg) 22%, transparent 78%) !important;
 }
 
 #btfw-chatactions-pill .btfw-chatbtn:hover,
 #btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
   border: 1px solid transparent !important;
-  background-image:
-    linear-gradient(
-      color-mix(in srgb, var(--btfw-color-panel) 82%, var(--btfw-color-bg) 18%),
-      color-mix(in srgb, var(--btfw-color-surface) 74%, var(--btfw-color-bg) 26%)
-    ),
-    conic-gradient(
-      from var(--btfw-chat-beam-angle),
-      transparent 0deg 205deg,
-      var(--btfw-gradient-field-0, var(--btfw-color-accent)) 232deg,
-      var(--btfw-gradient-field-1, var(--btfw-color-accent)) 270deg,
-      var(--btfw-gradient-field-2, var(--btfw-color-accent)) 305deg,
-      var(--btfw-gradient-field-3, var(--btfw-color-accent)) 334deg,
-      transparent 360deg
-    ) !important;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--btfw-color-panel) 82%, var(--btfw-color-bg) 18%),
+    color-mix(in srgb, var(--btfw-color-surface) 74%, var(--btfw-color-bg) 26%)
+  ) !important;
   background-origin: border-box !important;
-  background-clip: padding-box, border-box !important;
-  animation: btfw-chat-border-beam 2.4s linear infinite;
+  background-clip: padding-box !important;
   color: var(--btfw-color-text) !important;
-  box-shadow:
-    0 0 8px color-mix(in srgb, var(--btfw-color-accent) 24%, transparent),
-    inset 0 0 8px color-mix(in srgb, var(--btfw-color-accent) 9%, transparent) !important;
+  box-shadow: inset 0 0 7px color-mix(in srgb, var(--btfw-color-accent) 8%, transparent) !important;
 }
 
 #btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 30%, transparent),
-    0 0 15px color-mix(in srgb, var(--btfw-color-accent) 46%, transparent),
-    0 0 28px color-mix(in srgb, var(--btfw-gradient-field-2, var(--btfw-color-accent)) 22%, transparent),
-    inset 0 0 10px color-mix(in srgb, var(--btfw-color-accent) 18%, transparent) !important;
+    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 12%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--btfw-color-accent) 12%, transparent) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #chatline:focus,
-  .btfw-chatline-beam-wrap::after,
-  #btfw-chatactions-pill .btfw-chatbtn::after,
+  .btfw-chatline-beam-wrap:focus-within,
   #btfw-chatactions-pill .btfw-chatbtn:hover,
   #btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
     animation: none !important;
   }
 }
 
-:root[data-btfw-motion="reduced"] #chatline:focus,
-:root[data-btfw-motion="reduced"] .btfw-chatline-beam-wrap::after,
-:root[data-btfw-motion="reduced"] #btfw-chatactions-pill .btfw-chatbtn::after,
+:root[data-btfw-motion="reduced"] .btfw-chatline-beam-wrap:focus-within,
 :root[data-btfw-motion="reduced"] #btfw-chatactions-pill .btfw-chatbtn:hover,
 :root[data-btfw-motion="reduced"] #btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
   animation: none !important;
