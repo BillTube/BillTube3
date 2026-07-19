@@ -16,6 +16,11 @@ BTFW.define("feature:notify", [], async () => {
   const LS_JOIN_NOTICES= "btfw:chat:joinNotices"; // "1"|"0"
   const MAX_VISIBLE    = 3;
   const DEFAULT_TIMEOUT= 6000;
+  const JOIN_REJOIN_QUIET_MS = 10 * 60 * 1000;
+  const JOIN_USER_WINDOW_MS  = 60 * 60 * 1000;
+  const JOIN_USER_MAX        = 2;
+  const JOIN_GLOBAL_WINDOW_MS= 60 * 1000;
+  const JOIN_GLOBAL_MAX      = 4;
 
   let enabled = true;
   try { const v = localStorage.getItem(LS_ENABLED); if (v !== null) enabled = v === "1"; } catch(e){}
@@ -82,12 +87,54 @@ BTFW.define("feature:notify", [], async () => {
     return stack;
   }
 
-  // if CyTube re-renders chat, keep the stack around
+  const NATIVE_JOIN_LINE_RE = /^\s*.+?\s+joined\s+\(aliases:\s*[^)]*\)\s*$/i;
+  let joinMessageObserver = null;
+  let joinMessageBuffer = null;
+
+  function filterNativeJoinMessages(root){
+    const el = root?.nodeType === 1 ? root : root?.parentElement;
+    if (!el) return;
+
+    const whispers = [];
+    if (el.matches?.(".server-whisper")) whispers.push(el);
+    el.querySelectorAll?.(".server-whisper").forEach(node => whispers.push(node));
+
+    whispers.forEach(span => {
+      if (span.classList.contains("timestamp")) return;
+      if (!NATIVE_JOIN_LINE_RE.test(span.textContent || "")) return;
+      const row = span.parentElement;
+      if (!row || !row.closest("#messagebuffer")) return;
+      row.hidden = true;
+      row.setAttribute("aria-hidden", "true");
+      row.classList.add("btfw-native-join-hidden");
+    });
+  }
+
+  function ensureJoinMessageFilter(){
+    const buffer = $("#messagebuffer");
+    if (!buffer) return;
+    if (joinMessageBuffer === buffer && joinMessageObserver) return;
+
+    if (joinMessageObserver) joinMessageObserver.disconnect();
+    joinMessageBuffer = buffer;
+    filterNativeJoinMessages(buffer);
+    joinMessageObserver = new MutationObserver(records => {
+      records.forEach(record => {
+        record.addedNodes.forEach(filterNativeJoinMessages);
+      });
+    });
+    joinMessageObserver.observe(buffer, { childList:true, subtree:true });
+  }
+
+  // if CyTube re-renders chat, keep the stack and join filter around
   function observeChat(){
     const cw = $("#chatwrap");
     if (!cw || cw._btfw_notify_obs) return;
     cw._btfw_notify_obs = true;
-    new MutationObserver(() => ensureStack()).observe(cw, {childList:true, subtree:true});
+    new MutationObserver(() => {
+      ensureStack();
+      ensureJoinMessageFilter();
+    }).observe(cw, {childList:true, subtree:true});
   }
 
   // ---- queue + API -----------------------------------------------------------
@@ -351,6 +398,55 @@ function startAutoclose(o){
     builder();
   }
 
+  const joinUsers = new Map();
+  const globalJoinToasts = [];
+
+  function joinName(payload){
+    return (payload && (payload.name || payload.un))
+      ? String(payload.name || payload.un)
+      : "Someone";
+  }
+
+  function joinKey(name){
+    return String(name || "Someone").trim().toLowerCase();
+  }
+
+  function pruneTimes(times, cutoff){
+    while (times.length && times[0] <= cutoff) times.shift();
+  }
+
+  function markUserLeft(payload){
+    const key = joinKey(joinName(payload));
+    const state = joinUsers.get(key) || { lastJoinAt:0, lastLeftAt:0, toastTimes:[] };
+    state.lastLeftAt = Date.now();
+    joinUsers.set(key, state);
+  }
+
+  function allowJoinToast(name){
+    const now = Date.now();
+    const key = joinKey(name);
+    const state = joinUsers.get(key) || { lastJoinAt:0, lastLeftAt:0, toastTimes:[] };
+    const quickReconnect =
+      (state.lastLeftAt > 0 && now - state.lastLeftAt < JOIN_REJOIN_QUIET_MS) ||
+      (state.lastJoinAt > 0 && now - state.lastJoinAt < JOIN_REJOIN_QUIET_MS);
+
+    // Record every observed join so a reconnect loop keeps extending its quiet
+    // period even when a corresponding userLeave event was missed.
+    state.lastJoinAt = now;
+    state.lastLeftAt = 0;
+    pruneTimes(state.toastTimes, now - JOIN_USER_WINDOW_MS);
+    pruneTimes(globalJoinToasts, now - JOIN_GLOBAL_WINDOW_MS);
+    joinUsers.set(key, state);
+
+    if (quickReconnect) return false;
+    if (state.toastTimes.length >= JOIN_USER_MAX) return false;
+    if (globalJoinToasts.length >= JOIN_GLOBAL_MAX) return false;
+
+    state.toastTimes.push(now);
+    globalJoinToasts.push(now);
+    return true;
+  }
+
   // ---- CyTube hooks (wired once) ---------------------------------------------
   let socketWired = false;
   function wireSocketOnce(){
@@ -412,12 +508,12 @@ function startAutoclose(o){
 
     try {
       socket.on("addUser", (u)=>{
-        const name = (u && (u.name || u.un)) ? (u.name || u.un) : "Someone";
+        const name = joinName(u);
         if (!joinNoticesEnabled) return;
-        postOnce("join:"+name, 60000, ()=>{
-          api.success({ title: "Joined", html: `<b>${escapeHtml(decodeHtmlEntities(name))}</b> entered the channel`, icon:"👋", timeout: 3500 });
-        });
+        if (!allowJoinToast(name)) return;
+        api.success({ title: "Joined", html: `<b>${escapeHtml(decodeHtmlEntities(name))}</b> entered the channel`, icon:"👋", timeout: 3500 });
       });
+      socket.on("userLeave", markUserLeft);
     } catch(_){}
   }
 
@@ -483,6 +579,7 @@ function startAutoclose(o){
   // ---- boot ------------------------------------------------------------------
   function boot(){
     ensureStack();
+    ensureJoinMessageFilter();
     observeChat();
     wireSocketOnce();
   }

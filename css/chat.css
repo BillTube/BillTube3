@@ -18,6 +18,9 @@
   position: relative;
   min-height: 22px;
 }
+#messagebuffer > div.btfw-native-join-hidden {
+  display: none !important;
+}
 #messagebuffer > div:has(img.channel-emote) > span:last-child,
 #messagebuffer > div:has(img.chat-picture) > span:last-child {
   line-height: 0.8rem;
