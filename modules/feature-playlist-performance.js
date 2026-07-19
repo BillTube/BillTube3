@@ -3,12 +3,20 @@ BTFW.define("feature:playlistPerformance", [], function() {
   
   let isOptimized = false;
   let originalDisplay = new Map();
+  let originalContentVisibility = new Map();
+  let originalContainIntrinsicSize = new Map();
   let currentVisibleCount = Infinity;
   let scrollHandler = null;
+  let usesNativeVirtualization = false;
 
   const INITIAL_BATCH = 120;
   const BATCH_SIZE = 80;
   const SCROLL_THRESHOLD = 300;
+  const SUPPORTS_CONTENT_VISIBILITY = !!(
+    window.CSS
+    && typeof window.CSS.supports === 'function'
+    && window.CSS.supports('content-visibility', 'auto')
+  );
 
   function getQueue() {
     return $('#queue');
@@ -74,6 +82,28 @@ BTFW.define("feature:playlistPerformance", [], function() {
     ensurePollButtonsForVisibleItems(children);
   }
 
+  function applyNativeVirtualization(children) {
+    const measurableItem = children.find(item => item.style.display !== 'none' && !item.hidden);
+    const measuredHeight = measurableItem?.getBoundingClientRect().height;
+    const intrinsicHeight = Number.isFinite(measuredHeight) && measuredHeight > 0
+      ? Math.ceil(measuredHeight)
+      : 81;
+
+    children.forEach(item => {
+      if (!originalContentVisibility.has(item)) {
+        originalContentVisibility.set(item, item.style.contentVisibility || '');
+        originalContainIntrinsicSize.set(item, item.style.containIntrinsicSize || '');
+      }
+
+      item.style.contentVisibility = 'auto';
+      item.style.containIntrinsicSize = `auto ${intrinsicHeight}px`;
+    });
+
+    // Keep startup work bounded. Controls for other rows are added when a row
+    // becomes relevant instead of eagerly decorating the entire queue.
+    ensurePollButtonsForVisibleItems(children);
+  }
+
   function detachScrollWatcher(queue) {
     if (queue && scrollHandler) {
       queue.removeEventListener('scroll', scrollHandler);
@@ -92,7 +122,15 @@ BTFW.define("feature:playlistPerformance", [], function() {
 
     const hiddenCount = Math.max(totalCount - Math.min(currentVisibleCount, totalCount), 0);
     const shownCount = totalCount - hiddenCount;
+    const controls = indicator.querySelector('.btfw-perf-controls');
 
+    if (usesNativeVirtualization) {
+      status.textContent = `${totalCount} items · offscreen details render on demand`;
+      if (controls) controls.style.display = 'none';
+      return;
+    }
+
+    if (controls) controls.style.display = 'flex';
     if (hiddenCount > 0) {
       status.textContent = `Showing ${shownCount} of ${totalCount} items (${hiddenCount} hidden for performance)`;
     } else {
@@ -126,8 +164,13 @@ BTFW.define("feature:playlistPerformance", [], function() {
     }
 
     currentVisibleCount = Math.min(children.length, Math.max(currentVisibleCount, INITIAL_BATCH));
+    usesNativeVirtualization = SUPPORTS_CONTENT_VISIBILITY;
 
-    applyVisibility(children);
+    if (usesNativeVirtualization) {
+      applyNativeVirtualization(children);
+    } else {
+      applyVisibility(children);
+    }
 
     isOptimized = true;
 
@@ -135,17 +178,20 @@ BTFW.define("feature:playlistPerformance", [], function() {
     addPerformanceIndicator(children.length);
     updatePerformanceIndicator(children.length);
 
-    // Attach scroll watcher for progressive reveal
+    // Older browsers fall back to progressive batches. Chromium can keep the
+    // complete layout while skipping paint/layout work inside offscreen rows.
     detachScrollWatcher(queue);
-    scrollHandler = () => {
-      if (!isOptimized) return;
+    if (!usesNativeVirtualization) {
+      scrollHandler = () => {
+        if (!isOptimized) return;
 
-      if (queue.scrollTop + queue.clientHeight >= queue.scrollHeight - SCROLL_THRESHOLD) {
-        revealNextBatch();
-      }
-    };
+        if (queue.scrollTop + queue.clientHeight >= queue.scrollHeight - SCROLL_THRESHOLD) {
+          revealNextBatch();
+        }
+      };
 
-    queue.addEventListener('scroll', scrollHandler, { passive: true });
+      queue.addEventListener('scroll', scrollHandler, { passive: true });
+    }
   }
 
   function restorePlaylist() {
@@ -154,10 +200,17 @@ BTFW.define("feature:playlistPerformance", [], function() {
 
     children.forEach(item => {
       const display = originalDisplay.get(item);
-      item.style.display = display === undefined ? '' : display;
+      const contentVisibility = originalContentVisibility.get(item);
+      const intrinsicSize = originalContainIntrinsicSize.get(item);
+      item.style.display = display === undefined ? item.style.display : display;
+      item.style.contentVisibility = contentVisibility === undefined ? '' : contentVisibility;
+      item.style.containIntrinsicSize = intrinsicSize === undefined ? '' : intrinsicSize;
     });
     originalDisplay.clear();
+    originalContentVisibility.clear();
+    originalContainIntrinsicSize.clear();
     currentVisibleCount = Infinity;
+    usesNativeVirtualization = false;
     ensurePollButtonsForVisibleItems(children);
     isOptimized = false;
 
@@ -235,32 +288,53 @@ BTFW.define("feature:playlistPerformance", [], function() {
     updatePerformanceIndicator(children.length);
   }
 
-  // Auto-optimize when scrolling to current item
-  function scrollToCurrentOptimized() {
-    const queue = getQueue();
-    if (!queue) return;
-
-    const active = queue.querySelector('.queue_active');
-    if (!active) return;
+  function ensureItemVisible(item, buffer = 25) {
+    if (!item) return false;
 
     const children = getPlaylistItems();
-    const activeIndex = children.indexOf(active);
+    const itemIndex = children.indexOf(item);
+    if (itemIndex < 0) return false;
 
-    if (activeIndex > -1) {
-      // Show items around active item
-      const BUFFER = 25; // Show 25 items before and after
-
-      if (isOptimized) {
-        const targetVisible = Math.min(children.length, Math.max(currentVisibleCount, activeIndex + BUFFER + 1));
-        currentVisibleCount = Math.max(targetVisible, BUFFER * 2);
-        currentVisibleCount = Math.min(children.length, currentVisibleCount);
-        applyVisibility(children);
-        updatePerformanceIndicator(children.length);
-      }
-
-      // Scroll to active
-      active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (isOptimized && !usesNativeVirtualization) {
+      const safeBuffer = Math.max(0, Number(buffer) || 0);
+      currentVisibleCount = Math.min(
+        children.length,
+        Math.max(currentVisibleCount, itemIndex + safeBuffer + 1)
+      );
+      applyVisibility(children);
+      updatePerformanceIndicator(children.length);
     }
+
+    ensurePollButtonForItem(item);
+    return true;
+  }
+
+  function scrollItemIntoQueueView(queue, item) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const itemRect = item.getBoundingClientRect();
+        const queueRect = queue.getBoundingClientRect();
+        if (!itemRect.height || !queueRect.height) return;
+
+        const targetTop = queue.scrollTop
+          + (itemRect.top - queueRect.top)
+          - ((queueRect.height - itemRect.height) * 0.35);
+
+        queue.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+      });
+    });
+  }
+
+  // Reveal a lazy-hidden current item before trying to scroll to it.
+  function scrollToCurrentOptimized() {
+    const queue = getQueue();
+    if (!queue) return false;
+
+    const active = queue.querySelector('.queue_active');
+    if (!active || !ensureItemVisible(active)) return false;
+
+    scrollItemIntoQueueView(queue, active);
+    return true;
   }
   
   // Add toggle button to playlist toolbar
@@ -337,22 +411,7 @@ BTFW.define("feature:playlistPerformance", [], function() {
     }
   }
   
-  // Hook into scroll to current functionality
-  function enhanceScrollButton() {
-    const scrollBtn = $('#btfw-pl-scroll');
-    if (scrollBtn && !scrollBtn._perfEnhanced) {
-      scrollBtn._perfEnhanced = true;
-      
-      scrollBtn.addEventListener('click', (e) => {
-        if (isOptimized) {
-          e.preventDefault();
-          e.stopPropagation();
-          scrollToCurrentOptimized();
-        }
-      });
-    }
-  }
-  
+
   // Auto-enable for large playlists
   function checkAutoEnable() {
     const queue = getQueue();
@@ -419,7 +478,6 @@ BTFW.define("feature:playlistPerformance", [], function() {
   function boot() {
     addToggleButton();
     addStackToggle();
-    enhanceScrollButton();
     watchPlaylist();
     checkAutoEnable();
     
@@ -439,7 +497,10 @@ BTFW.define("feature:playlistPerformance", [], function() {
     optimize: optimizePlaylist,
     restore: restorePlaylist,
     toggle: () => isOptimized ? restorePlaylist() : optimizePlaylist(),
-    isOptimized: () => isOptimized
+    isOptimized: () => isOptimized,
+    usesNativeVirtualization: () => usesNativeVirtualization,
+    ensureItemVisible,
+    scrollToCurrent: scrollToCurrentOptimized
   };
   
   return {

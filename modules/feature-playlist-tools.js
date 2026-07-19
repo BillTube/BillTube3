@@ -527,18 +527,66 @@ BTFW.define("feature:playlist-tools", [], async () => {
   }
 
   /* ---------- Scroll to current ---------- */
+  function scrollItemIntoQueueView(queue, item){
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const r = item.getBoundingClientRect();
+        const qR = queue.getBoundingClientRect();
+        if (!r.height || !qR.height) {
+          toast("The current item could not be loaded.", "warn");
+          return;
+        }
+
+        const targetTop = queue.scrollTop
+          + (r.top - qR.top)
+          - ((qR.height - r.height) * 0.35);
+
+        queue.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+      });
+    });
+  }
+
+  function revealCurrentItemFallback(active){
+    // A cached/legacy performance module may still hide rows in batches. Use
+    // its controls until the current row participates in layout.
+    let attempts = 0;
+    while (getComputedStyle(active).display === "none" && attempts < 50) {
+      const showMore = $("#btfw-show-more-items");
+      if (!showMore || showMore.disabled) break;
+      showMore.click();
+      attempts += 1;
+    }
+    return getComputedStyle(active).display !== "none";
+  }
+
   function wireScrollToCurrent(){
     const btn = $("#btfw-pl-scroll");
     const queue = $("#queue");
     if (!btn || !queue) return;
     btn.addEventListener("click", (e)=>{
       e.preventDefault();
+      e.stopImmediatePropagation();
+
       const active = $("#queue .queue_active");
-      if (!active) return;
-      const r = active.getBoundingClientRect();
-      const qR = queue.getBoundingClientRect();
-      // Center-ish the active item in view
-      queue.scrollTop += (r.top - qR.top) - (qR.height * 0.3);
+      if (!active) {
+        toast("No current playlist item was found.", "warn");
+        return;
+      }
+
+      const performance = window.BTFW_PlaylistPerformance;
+      if (performance && typeof performance.scrollToCurrent === "function") {
+        if (!performance.scrollToCurrent()) {
+          toast("The current item could not be loaded.", "warn");
+        }
+        return;
+      }
+
+      if (!revealCurrentItemFallback(active)) {
+        toast("The current item is still hidden. Try “Show More” first.", "warn");
+        return;
+      }
+
+      scrollItemIntoQueueView(queue, active);
     });
   }
 
