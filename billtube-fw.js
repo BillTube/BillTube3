@@ -299,6 +299,8 @@ function resolveBranchToSHA(){
       "modules/util-chat-popover.js",
       "modules/util-anime.js",
       "modules/util-avatar-dither.js",
+      "modules/util-range-sliders.js",
+      "modules/util-gradient-canvas.js",
       "modules/feature-style-core.js",
       "modules/feature-bulma-layer.js"
     ];

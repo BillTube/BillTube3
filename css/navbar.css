@@ -12,8 +12,10 @@
   padding: 0 16px;
   border: 0;
   border-radius: 0 !important;
-  background: var(--btfw-navbar-bg, var(--btfw-color-panel)) !important;
-  background-image: none !important;
+  background-color: var(--btfw-navbar-bg, var(--btfw-color-panel)) !important;
+  background-image: var(--btfw-gradient-navbar-runtime-layer) !important;
+  background-size: var(--btfw-navbar-gradient-size, auto) !important;
+  background-position: var(--btfw-navbar-gradient-position, center);
   min-height: var(--btfw-navbar-height);
   box-sizing: border-box;
   display: flex;
@@ -22,6 +24,29 @@
   gap: 0;
   flex-wrap: nowrap;
   isolation: isolate;
+}
+
+:root[data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before {
+  content: "";
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--btfw-gradient-navbar-runtime-layer);
+  background-size: var(--btfw-navbar-gradient-size, cover);
+  background-position: var(--btfw-navbar-gradient-position, center);
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before {
+    animation: none !important;
+  }
+}
+
+:root[data-btfw-motion="reduced"][data-btfw-gradient-navbar="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top)::before {
+  animation: none !important;
 }
 
 /* Bootstrap stamps ::before/::after clearfix pseudo-elements on .navbar; in a

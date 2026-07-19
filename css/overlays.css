@@ -525,6 +525,7 @@
   background-color: color-mix(in srgb, var(--btfw-color-bg) 42%, var(--btfw-color-panel) 58%) !important;
   background-image:
     var(--btfw-dither-image),
+    var(--btfw-gradient-panel-soft-runtime-layer),
     radial-gradient(
       130% 190% at 0% -45%,
       color-mix(in srgb, var(--btfw-color-accent) 14%, transparent 86%) 0%,
@@ -541,8 +542,8 @@
       color-mix(in srgb, var(--btfw-color-surface) 78%, var(--btfw-color-bg) 22%) 54%,
       color-mix(in srgb, var(--btfw-color-bg) 62%, var(--btfw-color-panel) 38%) 100%
     ) !important;
-  background-size: var(--btfw-dither-size), auto, auto, auto;
-  background-position: 0 0, center, center, center;
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 12%, var(--btfw-color-panel) 88%);
   border-radius: 14px;
   box-shadow:
@@ -551,11 +552,30 @@
     0 9px 24px color-mix(in srgb, var(--btfw-color-bg) 20%, transparent 80%);
   backdrop-filter: blur(16px) saturate(125%);
   -webkit-backdrop-filter: blur(16px) saturate(125%);
+  --btfw-chat-edge-x: 50%;
+  --btfw-chat-edge-y: 50%;
+  --btfw-chat-edge-strength: 0;
 }
 
-/* A hairline spectrum catches the channel accent at the top/left while the
-   lower/right edge recedes. This is the compact counterpart to the stack
-   cards' palette-derived border and shadow. */
+:root[data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar {
+  background-size: var(--btfw-dither-size), cover, auto, auto, auto;
+  background-position: 0 0, center, center, center, center;
+}
+
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="slow"] #chatwrap .btfw-chat-topbar,
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="slow"] #btfw-chat-actions #btfw-chatactions-pill {
+  animation: btfw-gradient-panel-drift 28s ease-in-out infinite;
+}
+
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="medium"] #chatwrap .btfw-chat-topbar,
+:root[data-btfw-gradient-panels="on"][data-btfw-gradient-motion="medium"] #btfw-chat-actions #btfw-chatactions-pill {
+  animation: btfw-gradient-panel-drift 18s ease-in-out infinite;
+}
+
+/* Cursor-localized spectrum. Pointer coordinates and edge proximity are
+   updated only for this topbar by feature:chat. The padding-box mask leaves
+   a one-pixel border, while the drop shadow gives that local segment a
+   restrained glow without adding another DOM layer. */
 .btfw-chat-topbar::after {
   content: "";
   position: absolute;
@@ -564,14 +584,17 @@
   padding: 1px;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, white 6%, transparent 94%) 0%,
-    color-mix(in srgb, var(--btfw-color-accent) 12%, transparent 88%) 28%,
-    transparent 54%,
-    color-mix(in srgb, var(--btfw-color-accent) 5%, transparent 95%) 78%,
-    color-mix(in srgb, white 2%, transparent 98%) 100%
+  background: radial-gradient(
+    150px 105px at var(--btfw-chat-edge-x) var(--btfw-chat-edge-y),
+    color-mix(in srgb, white 82%, var(--btfw-color-accent) 18%) 0%,
+    var(--btfw-color-accent) 25%,
+    #c084fc 46%,
+    #22d3ee 64%,
+    transparent 82%
   );
+  opacity: calc(var(--btfw-chat-edge-strength) * 0.92);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--btfw-color-accent) 66%, transparent 34%));
+  transition: opacity 180ms ease-out;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -700,23 +723,47 @@
   background-color: color-mix(in srgb, var(--btfw-color-panel) 62%, var(--btfw-color-bg) 38%);
   background-image:
     var(--btfw-dither-image),
+    var(--btfw-gradient-panel-soft-runtime-layer),
     radial-gradient(
       125% 160% at 0% 0%,
       color-mix(in srgb, var(--btfw-color-accent) 7%, transparent 93%) 0%,
       transparent 60%
+    ),
+    radial-gradient(
+      110% 130% at 100% 100%,
+      color-mix(in srgb, var(--btfw-color-surface) 10%, transparent 90%) 0%,
+      transparent 68%
     ),
     linear-gradient(
       145deg,
       color-mix(in srgb, var(--btfw-color-panel) 64%, var(--btfw-color-bg) 36%) 0%,
       color-mix(in srgb, var(--btfw-color-surface) 62%, var(--btfw-color-bg) 38%) 100%
     );
-  background-size: var(--btfw-dither-size), auto, auto;
-  background-position: 0 0, center, center;
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border-color: color-mix(in srgb, var(--btfw-color-accent) 10%, var(--btfw-color-surface) 90%);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 7%, transparent 93%),
     inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 46%, transparent 54%),
     0 4px 13px color-mix(in srgb, var(--btfw-color-bg) 15%, transparent 85%);
+}
+
+:root[data-btfw-gradient-panels="on"] #btfw-chat-actions #btfw-chatactions-pill {
+  background-size: var(--btfw-dither-size), cover, auto, auto, auto;
+  background-position: 0 0, center, center, center, center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btfw-chat-topbar::after { transition: none; }
+  :root[data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar,
+  :root[data-btfw-gradient-panels="on"] #btfw-chat-actions #btfw-chatactions-pill {
+    animation: none !important;
+  }
+}
+
+:root[data-btfw-motion="reduced"][data-btfw-gradient-panels="on"] #chatwrap .btfw-chat-topbar,
+:root[data-btfw-motion="reduced"][data-btfw-gradient-panels="on"] #btfw-chat-actions #btfw-chatactions-pill {
+  animation: none !important;
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -761,6 +808,100 @@
     radial-gradient(130% 160% at 24% 28%,
     color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%),
     color-mix(in srgb, var(--btfw-overlay-elevated) 70%, transparent 30%));
+}
+/* Theme-aware border beam. It only runs while the composer has focus, while a
+   tray action is hovered, or while that action's popover remains open. */
+@property --btfw-chat-beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes btfw-chat-border-beam {
+  to { --btfw-chat-beam-angle: 360deg; }
+}
+
+#chatline:focus {
+  border-color: transparent !important;
+  background-image:
+    var(--btfw-dither-image),
+    radial-gradient(
+      125% 160% at 0% 0%,
+      color-mix(in srgb, var(--btfw-color-accent) 10%, transparent 90%) 0%,
+      transparent 60%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--btfw-color-panel) 68%, var(--btfw-color-bg) 32%) 0%,
+      color-mix(in srgb, var(--btfw-color-surface) 66%, var(--btfw-color-bg) 34%) 100%
+    ),
+    conic-gradient(
+      from var(--btfw-chat-beam-angle),
+      transparent 0deg 218deg,
+      color-mix(in srgb, var(--btfw-gradient-field-0, var(--btfw-color-accent)) 72%, transparent) 240deg,
+      var(--btfw-gradient-field-1, var(--btfw-color-accent)) 270deg,
+      var(--btfw-gradient-field-2, var(--btfw-color-accent)) 300deg,
+      color-mix(in srgb, var(--btfw-gradient-field-3, var(--btfw-color-accent)) 76%, white 24%) 326deg,
+      transparent 360deg
+    ) !important;
+  background-size: var(--btfw-dither-size), auto, auto, auto !important;
+  background-position: 0 0, center, center, center !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, padding-box, padding-box, border-box !important;
+  animation: btfw-chat-border-beam 2.8s linear infinite;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 13%, transparent 87%),
+    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 28%, transparent),
+    0 0 14px color-mix(in srgb, var(--btfw-color-accent) 26%, transparent),
+    0 7px 20px color-mix(in srgb, var(--btfw-color-bg) 22%, transparent 78%) !important;
+}
+
+#btfw-chatactions-pill .btfw-chatbtn:hover,
+#btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
+  border: 1px solid transparent !important;
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--btfw-color-panel) 82%, var(--btfw-color-bg) 18%),
+      color-mix(in srgb, var(--btfw-color-surface) 74%, var(--btfw-color-bg) 26%)
+    ),
+    conic-gradient(
+      from var(--btfw-chat-beam-angle),
+      transparent 0deg 205deg,
+      var(--btfw-gradient-field-0, var(--btfw-color-accent)) 232deg,
+      var(--btfw-gradient-field-1, var(--btfw-color-accent)) 270deg,
+      var(--btfw-gradient-field-2, var(--btfw-color-accent)) 305deg,
+      var(--btfw-gradient-field-3, var(--btfw-color-accent)) 334deg,
+      transparent 360deg
+    ) !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  animation: btfw-chat-border-beam 2.4s linear infinite;
+  color: var(--btfw-color-text) !important;
+  box-shadow:
+    0 0 8px color-mix(in srgb, var(--btfw-color-accent) 24%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--btfw-color-accent) 9%, transparent) !important;
+}
+
+#btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 30%, transparent),
+    0 0 15px color-mix(in srgb, var(--btfw-color-accent) 46%, transparent),
+    0 0 28px color-mix(in srgb, var(--btfw-gradient-field-2, var(--btfw-color-accent)) 22%, transparent),
+    inset 0 0 10px color-mix(in srgb, var(--btfw-color-accent) 18%, transparent) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #chatline:focus,
+  #btfw-chatactions-pill .btfw-chatbtn:hover,
+  #btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
+    animation: none !important;
+  }
+}
+
+:root[data-btfw-motion="reduced"] #chatline:focus,
+:root[data-btfw-motion="reduced"] #btfw-chatactions-pill .btfw-chatbtn:hover,
+:root[data-btfw-motion="reduced"] #btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
+  animation: none !important;
 }
 #chatwrap {
     margin-bottom: 0px!important;
@@ -1161,8 +1302,10 @@
 
 /* Card shell */
 .modal-card {
-  background: var(--btfw-overlay-elevated);
-  background-image: var(--btfw-surface-glow);
+  background-color: color-mix(in srgb, var(--btfw-overlay-elevated) 96%, transparent 4%);
+  background-image: var(--btfw-panel-gradient-soft);
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   color: var(--btfw-color-text);
   border: 1px solid var(--btfw-overlay-border);
   border-radius: var(--btfw-radius);
@@ -1175,15 +1318,24 @@
    layers the glow image on top. */
 .modal.btfw-bulma-skin .modal-content,
 #btfw-emotes-pop,
-#btfw-gif-modal,
-#btfw-ct-modal {
-  background-image: var(--btfw-surface-glow) !important;
+#btfw-gif-modal .btfw-gif-pop,
+#btfw-ct-modal .btfw-ct-card,
+#btfw-cmds-modal .btfw-cmds-card,
+#btfw-userlist-pop,
+#btfw-pl-help-pop {
+  background-color: color-mix(in srgb, var(--btfw-overlay-bg) 94%, transparent 6%) !important;
+  background-image: var(--btfw-panel-gradient-soft) !important;
+  background-size: var(--btfw-panel-background-size) !important;
+  background-position: var(--btfw-panel-background-position) !important;
 }
 
 /* Header / footer */
 .modal-card-head,
 .modal-card-foot {
-  background: color-mix(in srgb, var(--btfw-overlay-bg) 96%, transparent 4%);
+  background-color: var(--btfw-nested-surface);
+  background-image: none;
+  background-size: var(--btfw-panel-background-size);
+  background-position: var(--btfw-panel-background-position);
   border-color: var(--btfw-border);
 }
 
@@ -1207,7 +1359,10 @@
 
 /* Body */
 .modal-card-body {
-  background: var(--btfw-overlay-elevated)!important;
+  background-color: var(--btfw-nested-surface-soft) !important;
+  background-image: none !important;
+  background-size: var(--btfw-panel-background-size) !important;
+  background-position: var(--btfw-panel-background-position) !important;
   color: var(--btfw-color-text)!important;
 }
 
@@ -1751,8 +1906,8 @@
    the title can actually breathe instead of being crammed next to the tabs. */
 .modal.btfw-bulma-skin .btfw-card-head,
 .modal.btfw-bulma-skin .modal-header {
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
-  background-image: var(--btfw-panel-gradient-soft);
+  background-color: var(--btfw-nested-surface);
+  background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   border: 0;
@@ -1941,8 +2096,8 @@
 /* Footer — subtle separator, right-aligned actions. */
 .modal.btfw-bulma-skin .btfw-card-foot,
 .modal.btfw-bulma-skin .modal-footer {
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 90%, transparent 10%);
-  background-image: var(--btfw-panel-gradient-soft);
+  background-color: var(--btfw-nested-surface);
+  background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   border: 0;
@@ -1960,8 +2115,8 @@
 .modal.btfw-bulma-skin .modal-body .card,
 .modal.btfw-bulma-skin .modal-body .panel,
 .modal.btfw-bulma-skin .modal-body .well {
-  background-color: color-mix(in srgb, var(--btfw-color-bg) 45%, transparent 55%);
-  background-image: var(--btfw-panel-gradient-soft);
+  background-color: var(--btfw-nested-surface-soft);
+  background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
   border: 1px solid var(--btfw-panel-border-soft);
