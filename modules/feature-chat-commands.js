@@ -385,6 +385,12 @@ function sanitizeTitleForSearch(t){
     aliases.forEach(a => REG.set(a, REG.get(name)));
   }
   function listPrimary(){ return Array.from(new Set(Array.from(REG.values()).map(c=>c.name))).sort(); }
+  window.BTFW_CHAT_COMMANDS = {
+    list: () => listPrimary().map(name => {
+      const command = REG.get(name);
+      return { name, desc: command?.desc || "", token: name.startsWith("/") ? name : "!" + name };
+    })
+  };
   function parseCommand(text){
     if (!text || text.length<2) return null;
     if (text.startsWith("/me ")) return { name:"/me", args:[text.slice(4)] };

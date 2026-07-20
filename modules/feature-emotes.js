@@ -58,11 +58,33 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
   }
 
   /* ------------------------ data -------------------------- */
+  function channelEmoteEntries(){
+    const src = window.CHANNEL?.emotes;
+    if (Array.isArray(src)) {
+      return src.filter(Boolean).map(item => {
+        if (typeof item === "string") return { name: item, image: "" };
+        return { name: item.name || item.code || "", image: item.image || item.url || "" };
+      }).filter(item => item.name);
+    }
+    if (src && typeof src === "object") {
+      return Object.entries(src).map(([key, value]) => {
+        if (typeof value === "string") return { name: key, image: value };
+        return { name: value?.name || key, image: value?.image || value?.url || "" };
+      }).filter(item => item.name);
+    }
+    return [];
+  }
+
+  function channelEmoteSignature(){
+    return channelEmoteEntries().map(item => item.name + "|" + item.image).join("\u0001");
+  }
+
+  function channelEmoteToken(name){
+    return String(name || "").trim();
+  }
+
   function loadChannelEmotes(){
-    const src = Array.isArray(window.CHANNEL?.emotes) ? window.CHANNEL.emotes : [];
-    state.list.emotes = src
-      .filter(x => x && x.name)
-      .map(x => ({ name: x.name, image: x.image || "" }));
+    state.list.emotes = channelEmoteEntries();
   }
 
   // The Emoji tab uses Google's Noto Animated Emoji (Apache-2.0): animated WebP
@@ -578,16 +600,16 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
     getPopover().isOpen() ? close() : open();
   }
 
-  /* ---------------- inline :emote autocomplete ----------------
-     Type ":xx" (2+ chars after a colon at a word start) in the chat line to
-     get a completion popup: channel emotes first, then marketplace pack
-     emotes, then animated emoji (only if their list is already loaded — the
-     autocomplete never triggers a network fetch). Up/Down navigate,
+  /* ---------------- dynamic emote/command autocomplete ----------------
+     Type a channel-defined token prefix plus a partial name (for example
+     /bo for /bob). The prefix is learned from the loaded channel data;
+     commands use the same lightweight index and are suggested after ! or other
+     command prefixes. Up/Down navigate,
      Tab/Enter accept, Escape closes. The keydown handler runs in the CAPTURE
      phase on document so it beats CyTube's own Enter-to-send handler while
      the popup is open. */
   const AC_MAX = 8;
-  const ac = { box: null, items: [], index: 0, start: -1, open: false, dirty: true, lastChannelCount: -1, suppress: false, index_: null };
+  const ac = { box: null, items: [], index: 0, start: -1, open: false, dirty: true, lastChannelSignature: "", suppress: false, index_: null };
 
   function acBuildIndex(){
     const out = [];
@@ -597,25 +619,31 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
       const key = name.toLowerCase() + "|" + insert;
       if (seen.has(key)) return;
       seen.add(key);
-      out.push({ name, lower: name.toLowerCase(), image: image || "", insert, hint });
+      const prefix = (/^[^A-Za-z0-9_]/.exec(String(name)) || [""])[0];
+      out.push({ name, lower: name.slice(prefix.length).toLowerCase(), prefix, image: image || "", insert, hint });
     };
     loadChannelEmotes();
-    state.list.emotes.forEach(e => push(e.name, e.image, e.name, "channel"));
+    state.list.emotes.forEach(e => {
+      const token = channelEmoteToken(e.name);
+      push(token, e.image, token, "channel");
+    });
     (Array.isArray(window.BTFW_EMOTE_PACKS) ? window.BTFW_EMOTE_PACKS : []).forEach(p => {
       (p.emotes || []).forEach(e => { if (e && e.name && e.token) push(e.name, e.image, e.token, p.label || "pack"); });
     });
     if (state.emojiReady) {
       state.list.emoji.forEach(e => { if (e.token) push(e.name, e.image, normalizeAnimatedEmojiToken(e.token), "emoji"); });
     }
-    ac.lastChannelCount = Array.isArray(window.CHANNEL?.emotes) ? window.CHANNEL.emotes.length : 0;
+    const commands = window.BTFW_CHAT_COMMANDS?.list?.() || [];
+    commands.forEach(command => push(command.token, "", command.token, "command"));
+    ac.lastChannelSignature = channelEmoteSignature();
     ac.dirty = false;
     ac.index_ = out;
     return out;
   }
 
   function acIndex(){
-    const channelCount = Array.isArray(window.CHANNEL?.emotes) ? window.CHANNEL.emotes.length : 0;
-    if (!ac.index_ || ac.dirty || channelCount !== ac.lastChannelCount) return acBuildIndex();
+    const channelSignature = channelEmoteSignature();
+    if (!ac.index_ || ac.dirty || channelSignature !== ac.lastChannelSignature) return acBuildIndex();
     return ac.index_;
   }
 
@@ -637,12 +665,16 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
     return box;
   }
 
-  function acQueryAt(input){
+  function acQueryAt(input, index){
     const pos = input.selectionStart ?? input.value.length;
     const before = input.value.slice(0, pos);
-    const m = /(^|\s):([A-Za-z0-9_+\-]{2,30})$/.exec(before);
-    if (!m) return null;
-    return { start: pos - m[2].length - 1, query: m[2].toLowerCase(), pos };
+    const match = /(^|\s)([^\s]{1,30})$/.exec(before);
+    if (!match) return null;
+    const typed = match[2];
+    const prefix = (/^[^A-Za-z0-9_]/.exec(typed) || [""])[0];
+    const query = typed.slice(prefix.length).toLowerCase();
+    if (!query || !prefix || !index.some(item => item.prefix === prefix)) return null;
+    return { start: pos - typed.length, query, prefix, pos };
   }
 
   function acRender(){
@@ -724,12 +756,13 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
     if (ac.suppress) return;
     const input = $("#chatline");
     if (!input) return acClose();
-    const q = acQueryAt(input);
-    if (!q) return acClose();
     const idx = acIndex();
+    const q = acQueryAt(input, idx);
+    if (!q) return acClose();
+    const matches = idx.filter(item => item.prefix === q.prefix);
     const starts = [];
     const contains = [];
-    for (const item of idx) {
+    for (const item of matches) {
       if (item.lower.startsWith(q.query)) starts.push(item);
       else if (item.lower.includes(q.query)) contains.push(item);
       if (starts.length >= AC_MAX) break;
@@ -756,12 +789,26 @@ BTFW.define("feature:emotes", ["util:chat-popover"], async () => {
     }, true);
   }
 
+  function watchChatline(){
+    const root = document.getElementById("chatwrap") || document.body;
+    if (!root || root._btfwEmoteAcWatch) return;
+    root._btfwEmoteAcWatch = true;
+    new MutationObserver(mutations => {
+      const inputChanged = mutations.some(mutation =>
+        Array.from(mutation.addedNodes || []).concat(Array.from(mutation.removedNodes || []))
+          .some(node => node.id === "chatline" || node.querySelector?.("#chatline"))
+      );
+      if (inputChanged) acBind();
+    }).observe(root, { childList: true, subtree: true });
+  }
+
   function boot(){
     removeLegacyButtons();
     ensureOurButton();
     bindAnyExistingOpeners();
     ensurePopover();   // build + wire up front
-    acBind();          // inline :emote autocomplete on the chat line
+    acBind();          // inline emote/command autocomplete on the chat line
+    watchChatline();   // CyTube can recreate the input after layout changes
     // NO warm-up emoji fetch; loads on first Emoji tab open
 
     // Live updates: when the marketplace loads/changes packs, rebuild the pack
