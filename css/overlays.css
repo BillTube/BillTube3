@@ -2548,8 +2548,9 @@ html[data-btfw-theme="dark"] .panel {
   right: 12px;
   left: auto;
   top: calc(100% + 12px);
-  width: min(360px, 100%);
-  max-width: calc(100vw - 32px);
+  width: min(360px, calc(100% - 24px));
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
 }
 
 #btfw-notify-stack.btfw-notify-stack--buffer{
@@ -2574,6 +2575,9 @@ html[data-btfw-theme="dark"] .panel {
 .btfw-notice{
   pointer-events: auto;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   /* Keep the glass effect, but give text a reliably dark surface underneath. */
   background-color: color-mix(in srgb,
     var(--btfw-notice-bg, var(--btfw-overlay-bg)) 88%, transparent 12%);
@@ -2694,6 +2698,23 @@ html[data-btfw-theme="dark"] .panel {
   font-size: 13px;
   line-height: 1.45;
   color: inherit;
+  overflow-wrap: anywhere;
+}
+
+@container (max-width: 420px){
+  #btfw-notify-stack{
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-width: none;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .btfw-notice-shell{
+    gap: 10px;
+    padding-inline: 10px;
+  }
 }
 
 .btfw-notice-actions{
