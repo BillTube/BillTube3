@@ -666,6 +666,12 @@
 #videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu-item.vjs-selected .vjs-icon-placeholder::before{
   color: var(--btfw-vjs-accent) !important;
 }
+
+#videowrap .video-js.btfw-videojs-themed .vjs-subs-caps-button .vjs-menu {
+  width: 17em !important;
+  left: -6.5em !important;
+}
+
 #videowrap .video-js.btfw-videojs-themed .btfw-caption-menu-sync {
   display: flex !important;
   align-items: center;
@@ -685,6 +691,7 @@
   display: inline-grid;
   width: 30px;
   height: 28px;
+  flex: 0 0 30px;
   padding: 0;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
@@ -704,6 +711,7 @@
 
 #videowrap .video-js.btfw-videojs-themed .btfw-caption-menu-sync .btfw-caption-sync__value {
   min-width: 58px;
+  flex: 0 0 58px;
   padding: 6px 7px;
   border-radius: 7px;
   background: color-mix(in srgb, var(--btfw-color-bg) 62%, transparent 38%);
