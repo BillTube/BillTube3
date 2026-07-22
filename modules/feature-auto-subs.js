@@ -700,7 +700,9 @@ BTFW.define("feature:auto-subs", [], async () => {
     vtt += String(srt)
       .replace(/\r\n/g, "\n")
       .replace(/\r/g, "\n")
-      .replace(/(\d{2}):(\d{2}):(\d{2}),(\d{3})/g, "$1:$2:$3.$4")
+      .replace(/(\d{2}):(\d{2}):(\d{2}),(\d{1,3})/g,
+        (_, hours, minutes, seconds, millis) =>
+          `${hours}:${minutes}:${seconds}.${millis.padEnd(3, "0")}`)
       .replace(/^\d+\n/gm, "")
       .trim();
     return vtt;
