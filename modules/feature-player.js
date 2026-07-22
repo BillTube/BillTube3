@@ -206,19 +206,23 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
 
   function updateCaptionSyncUi(playerEl) {
     const state = captionSyncState(playerEl);
+    const formattedOffset = formatCaptionOffset(state.offset);
     playerEl.querySelectorAll(".btfw-caption-sync__value").forEach((output) => {
-      output.value = formatCaptionOffset(state.offset);
-      output.textContent = output.value;
+      if (output.value !== formattedOffset) output.value = formattedOffset;
+      if (output.textContent !== formattedOffset) output.textContent = formattedOffset;
       output.classList.toggle("is-adjusted", Math.abs(state.offset) >= 0.001);
     });
     playerEl.querySelectorAll(".btfw-caption-sync__reset").forEach((reset) => {
-      reset.disabled = Math.abs(state.offset) < 0.001;
+      const shouldDisable = Math.abs(state.offset) < 0.001;
+      if (reset.disabled !== shouldDisable) reset.disabled = shouldDisable;
     });
 
     const player = getVideojsPlayer(playerEl);
     const menuSync = playerEl.querySelector(".btfw-caption-menu-sync");
     const captionsActive = captionTracks(player).some((track) => track.mode === "showing");
-    if (menuSync) menuSync.hidden = !captionsActive;
+    if (menuSync && menuSync.hidden === captionsActive) {
+      menuSync.hidden = !captionsActive;
+    }
   }
 
   function setCaptionOffset(playerEl, nextOffset) {
