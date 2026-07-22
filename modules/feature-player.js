@@ -24,6 +24,13 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     "https://cdn.jsdelivr.net/npm/@videojs/themes@1/dist/city/index.css",
     "https://unpkg.com/@videojs/themes@1/dist/city/index.css"
   ];
+  // Caption timing is intentionally kept here so the experiment is simple to
+  // tune. Channels can also override the step before boot with
+  // BTFW.captionSyncStepSeconds (for example, 1 for one-second jumps).
+  const CAPTION_SYNC_STEP_SECONDS = 0.5;
+  const CAPTION_SYNC_MIN_SECONDS = -30;
+  const CAPTION_SYNC_MAX_SECONDS = 30;
+  const captionSyncStates = new WeakMap();
 
   function ensureStylesheet(id, urls) {
     const doc = document;
@@ -107,6 +114,183 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
       if (!player.classList.contains("btfw-videojs-themed")) {
         player.classList.add("btfw-videojs-themed");
       }
+    });
+  }
+
+  function getVideojsPlayer(playerEl) {
+    if (!playerEl || typeof window === "undefined" || !window.videojs) return null;
+    try {
+      return playerEl.player || playerEl.player_ ||
+        window.videojs.players?.[playerEl.id] || window.videojs(playerEl.id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function captionSyncStep() {
+    const configured = Number(window.BTFW?.captionSyncStepSeconds);
+    return Number.isFinite(configured) && configured > 0
+      ? configured
+      : CAPTION_SYNC_STEP_SECONDS;
+  }
+
+  function captionSyncState(playerEl) {
+    let state = captionSyncStates.get(playerEl);
+    if (!state) {
+      state = {
+        offset: 0,
+        cueTimes: new WeakMap(),
+        retryTimers: [],
+        eventsBound: false
+      };
+      captionSyncStates.set(playerEl, state);
+    }
+    return state;
+  }
+
+  function captionTracks(player) {
+    if (!player || typeof player.textTracks !== "function") return [];
+    const tracks = player.textTracks();
+    const result = [];
+    for (let index = 0; index < tracks.length; index += 1) {
+      const track = tracks[index];
+      if (track && (track.kind === "captions" || track.kind === "subtitles")) {
+        result.push(track);
+      }
+    }
+    return result;
+  }
+
+  function shiftTrackCues(track, state) {
+    if (!track?.cues) return;
+    for (let index = 0; index < track.cues.length; index += 1) {
+      const cue = track.cues[index];
+      if (!cue) continue;
+
+      let original = state.cueTimes.get(cue);
+      if (!original) {
+        original = { startTime: cue.startTime, endTime: cue.endTime };
+        state.cueTimes.set(cue, original);
+      }
+
+      const startTime = Math.max(0, original.startTime + state.offset);
+      const endTime = Math.max(startTime + 0.001, original.endTime + state.offset);
+      try {
+        cue.startTime = startTime;
+        cue.endTime = endTime;
+      } catch (_) {
+        // Some embedded playback technologies expose immutable cues. They are
+        // left untouched while native Video.js tracks continue to sync.
+      }
+    }
+  }
+
+  function applyCaptionOffset(playerEl) {
+    const state = captionSyncState(playerEl);
+    const player = getVideojsPlayer(playerEl);
+    captionTracks(player).forEach((track) => shiftTrackCues(track, state));
+  }
+
+  function scheduleCaptionOffset(playerEl) {
+    const state = captionSyncState(playerEl);
+    state.retryTimers.forEach(clearTimeout);
+    state.retryTimers = [0, 250, 1000, 2500].map((delay) => setTimeout(() => {
+      applyCaptionOffset(playerEl);
+    }, delay));
+  }
+
+  function formatCaptionOffset(value) {
+    if (Math.abs(value) < 0.001) return "0.0s";
+    return `${value > 0 ? "+" : ""}${value.toFixed(1)}s`;
+  }
+
+  function updateCaptionSyncUi(playerEl) {
+    const state = captionSyncState(playerEl);
+    const output = playerEl.querySelector(".btfw-caption-sync__value");
+    const reset = playerEl.querySelector(".btfw-caption-sync__reset");
+    if (output) {
+      output.value = formatCaptionOffset(state.offset);
+      output.textContent = output.value;
+      output.classList.toggle("is-adjusted", Math.abs(state.offset) >= 0.001);
+    }
+    if (reset) reset.disabled = Math.abs(state.offset) < 0.001;
+  }
+
+  function setCaptionOffset(playerEl, nextOffset) {
+    const state = captionSyncState(playerEl);
+    const clamped = Math.min(CAPTION_SYNC_MAX_SECONDS,
+      Math.max(CAPTION_SYNC_MIN_SECONDS, nextOffset));
+    state.offset = Math.round(clamped * 10) / 10;
+    updateCaptionSyncUi(playerEl);
+    scheduleCaptionOffset(playerEl);
+  }
+
+  function bindCaptionSyncEvents(playerEl) {
+    const state = captionSyncState(playerEl);
+    if (state.eventsBound) return;
+    const player = getVideojsPlayer(playerEl);
+    if (!player) return;
+    state.eventsBound = true;
+
+    const reapply = () => scheduleCaptionOffset(playerEl);
+    if (typeof player.on === "function") {
+      player.on("texttrackchange", reapply);
+      player.on("loadeddata", reapply);
+    }
+    const tracks = typeof player.textTracks === "function" ? player.textTracks() : null;
+    tracks?.addEventListener?.("addtrack", reapply);
+    tracks?.addEventListener?.("change", reapply);
+  }
+
+  function ensureCaptionSyncControls() {
+    document.querySelectorAll(`${PLAYER_SELECTOR} .vjs-text-track-settings`).forEach((modal) => {
+      if (modal.querySelector(".btfw-caption-sync")) return;
+      const playerEl = modal.closest(".video-js");
+      const content = modal.querySelector(".vjs-modal-dialog-content");
+      if (!playerEl || !content) return;
+
+      const heading = document.createElement("header");
+      heading.className = "btfw-caption-settings__header";
+      heading.innerHTML = `<h2>Caption settings</h2><p>Customize how subtitles look and line them up with the video.</p>`;
+      content.prepend(heading);
+
+      const sync = document.createElement("section");
+      sync.className = "btfw-caption-sync";
+      sync.setAttribute("aria-labelledby", "btfw-caption-sync-title");
+      const step = captionSyncStep();
+      sync.innerHTML = `
+        <div class="btfw-caption-sync__copy">
+          <h3 id="btfw-caption-sync-title">Subtitle timing</h3>
+          <p>Negative shows captions earlier; positive shows them later.</p>
+        </div>
+        <div class="btfw-caption-sync__controls">
+          <button type="button" class="btfw-caption-sync__step" data-caption-sync-delta="-1" aria-label="Show subtitles ${step} seconds earlier" title="Subtitles earlier">
+            <span aria-hidden="true">←</span>
+          </button>
+          <output class="btfw-caption-sync__value" aria-live="polite">0.0s</output>
+          <button type="button" class="btfw-caption-sync__step" data-caption-sync-delta="1" aria-label="Show subtitles ${step} seconds later" title="Subtitles later">
+            <span aria-hidden="true">→</span>
+          </button>
+          <button type="button" class="btfw-caption-sync__reset" disabled>Reset</button>
+        </div>`;
+
+      const controls = content.querySelector(".vjs-track-settings-controls");
+      content.insertBefore(sync, controls || null);
+      sync.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        if (button.classList.contains("btfw-caption-sync__reset")) {
+          setCaptionOffset(playerEl, 0);
+          return;
+        }
+        const direction = Number(button.dataset.captionSyncDelta);
+        if (!direction) return;
+        const state = captionSyncState(playerEl);
+        setCaptionOffset(playerEl, state.offset + (direction * captionSyncStep()));
+      });
+
+      bindCaptionSyncEvents(playerEl);
+      updateCaptionSyncUi(playerEl);
     });
   }
 
@@ -316,6 +500,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
         applyPosterUrl();
         togglePosterVisibility();
       }
+      ensureCaptionSyncControls();
     });
     
     mo.observe(target, { 
@@ -339,6 +524,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     attachGuards();
     ensureInlinePlayback();
     ensureTextContentPatch();
+    ensureCaptionSyncControls();
     applyPosterUrl();
     togglePosterVisibility();
     watchPlayerMount();

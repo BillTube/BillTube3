@@ -658,8 +658,13 @@
 #videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu-item.vjs-selected,
 #videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu-item:focus,
 #videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu-item:hover{
-  background: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
-  color: var(--btfw-vjs-text-strong);
+  background: color-mix(in srgb, var(--btfw-color-accent) 24%, var(--btfw-color-panel) 76%) !important;
+  color: var(--btfw-vjs-text-strong) !important;
+}
+
+#videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu-item.vjs-selected::before,
+#videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu-item.vjs-selected .vjs-icon-placeholder::before{
+  color: var(--btfw-vjs-accent) !important;
 }
 
 #videowrap .video-js.btfw-videojs-themed .vjs-menu li.vjs-menu-title{
@@ -1264,9 +1269,11 @@
   top: 50% !important;
   left: 50% !important;
   transform: translate(-50%, -50%) !important;
-  width: min(680px, 92vw) !important;
-  max-height: 85vh !important;
-  overflow-y: auto !important;
+  width: min(760px, calc(100% - 32px)) !important;
+  height: min(620px, calc(100% - 32px)) !important;
+  max-height: none !important;
+  overflow: hidden !important;
+  background: transparent !important;
   z-index: 5000 !important;
   pointer-events: auto !important;
 }
@@ -1275,20 +1282,42 @@
 #videowrap .video-js .vjs-text-track-settings .vjs-modal-dialog-content {
   background: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%) !important;
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%) !important;
-  border-radius: 18px !important;
-  padding: 24px !important;
+  border-radius: 16px !important;
+  padding: 22px !important;
+  overflow: auto !important;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--btfw-color-accent) 55%, transparent 45%) transparent;
   box-shadow: 0 20px 48px color-mix(in srgb, var(--btfw-color-bg) 64%, transparent 36%),
               0 8px 24px color-mix(in srgb, black 32%, transparent 68%) !important;
   color: var(--btfw-color-text) !important;
 }
+#videowrap .video-js .vjs-text-track-settings .btfw-caption-settings__header {
+  padding: 0 44px 16px 2px;
+}
+
+#videowrap .video-js .vjs-text-track-settings .btfw-caption-settings__header h2 {
+  margin: 0 0 5px;
+  color: var(--btfw-color-text);
+  font-size: 20px;
+  font-weight: 750;
+  line-height: 1.15;
+}
+
+#videowrap .video-js .vjs-text-track-settings .btfw-caption-settings__header p {
+  margin: 0;
+  color: color-mix(in srgb, var(--btfw-color-text) 66%, transparent 34%);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 
 /* Section layouts */
 #videowrap .video-js .vjs-text-track-settings .vjs-track-settings-colors,
 #videowrap .video-js .vjs-text-track-settings .vjs-track-settings-font {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
-  gap: 18px !important;
-  margin-bottom: 20px !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  margin-bottom: 12px !important;
 }
 
 /* Fieldsets */
@@ -1296,7 +1325,7 @@
   background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%) !important;
   border: 1px solid color-mix(in srgb, var(--btfw-border) 72%, transparent 28%) !important;
   border-radius: 12px !important;
-  padding: 16px !important;
+  padding: 13px !important;
   margin: 0 !important;
 }
 
@@ -1308,7 +1337,7 @@
   letter-spacing: 0.06em !important;
   color: var(--btfw-color-text) !important;
   padding: 0 8px !important;
-  margin-bottom: 12px !important;
+  margin-bottom: 8px !important;
 }
 
 /* Labels */
@@ -1345,7 +1374,7 @@
 
 /* Opacity spans */
 #videowrap .video-js .vjs-text-track-settings .vjs-opacity {
-  margin-top: 12px !important;
+  margin-top: 10px !important;
   display: block !important;
 }
 
@@ -1354,9 +1383,12 @@
   display: flex !important;
   justify-content: flex-end !important;
   gap: 10px !important;
-  margin-top: 24px !important;
-  padding-top: 20px !important;
+  position: sticky !important;
+  bottom: -22px !important;
+  margin: 14px -22px -22px !important;
+  padding: 14px 22px !important;
   border-top: 1px solid color-mix(in srgb, var(--btfw-border) 62%, transparent 38%) !important;
+  background: color-mix(in srgb, var(--btfw-color-surface) 97%, transparent 3%) !important;
 }
 
 /* Buttons */
@@ -1411,6 +1443,81 @@
 #videowrap .video-js .vjs-text-track-settings .vjs-close-button:hover {
   background: color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%) !important;
 }
+/* Local subtitle offset control. This adjusts cue times only for this viewer;
+   it never seeks or changes the shared room playback position. */
+#videowrap .video-js .vjs-text-track-settings .btfw-caption-sync {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 4px;
+  padding: 14px 15px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 25%, var(--btfw-border) 75%);
+  border-radius: 12px;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--btfw-color-accent) 10%, var(--btfw-color-panel) 90%),
+    color-mix(in srgb, var(--btfw-color-panel) 94%, transparent 6%));
+}
+
+#videowrap .video-js .vjs-text-track-settings .btfw-caption-sync h3 {
+  margin: 0 0 3px;
+  color: var(--btfw-color-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+#videowrap .video-js .vjs-text-track-settings .btfw-caption-sync p {
+  margin: 0;
+  color: color-mix(in srgb, var(--btfw-color-text) 63%, transparent 37%);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+#videowrap .video-js .vjs-text-track-settings .btfw-caption-sync__controls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+#videowrap .video-js .vjs-text-track-settings .btfw-caption-sync button {
+  min-width: 36px;
+  min-height: 34px;
+  padding: 7px 10px !important;
+  border-radius: 8px !important;
+}
+
+#videowrap .video-js .vjs-text-track-settings .btfw-caption-sync__step {
+  color: var(--btfw-vjs-accent) !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+}
+
+#videowrap .video-js .vjs-text-track-settings .btfw-caption-sync__value {
+  min-width: 66px;
+  padding: 8px 9px;
+  border: 1px solid color-mix(in srgb, var(--btfw-border) 72%, transparent 28%);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--btfw-color-bg) 64%, transparent 36%);
+  color: color-mix(in srgb, var(--btfw-color-text) 78%, transparent 22%);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: center;
+}
+
+#videowrap .video-js .vjs-text-track-settings .btfw-caption-sync__value.is-adjusted {
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 55%, transparent 45%);
+  color: var(--btfw-vjs-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btfw-color-accent) 12%, transparent 88%);
+}
+
+#videowrap .video-js .vjs-text-track-settings .btfw-caption-sync__reset:disabled {
+  opacity: 0.42;
+  cursor: default !important;
+  transform: none !important;
+}
+
 
 /* Modal description text */
 #videowrap .video-js .vjs-text-track-settings .vjs-modal-dialog-description {
@@ -1426,8 +1533,8 @@
 /* Mobile adjustments */
 @media (max-width: 768px) {
   #videowrap .video-js .vjs-text-track-settings {
-    width: 94vw !important;
-    max-height: 92vh !important;
+    width: calc(100% - 16px) !important;
+    height: calc(100% - 16px) !important;
   }
 
   #videowrap .video-js .vjs-text-track-settings .vjs-modal-dialog-content {
@@ -1437,6 +1544,15 @@
   #videowrap .video-js .vjs-text-track-settings .vjs-track-settings-colors,
   #videowrap .video-js .vjs-text-track-settings .vjs-track-settings-font {
     grid-template-columns: 1fr !important;
+  }
+
+  #videowrap .video-js .vjs-text-track-settings .btfw-caption-sync {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  #videowrap .video-js .vjs-text-track-settings .btfw-caption-sync__controls {
+    justify-content: center;
   }
 }
 /* Legacy ordering block removed — modern rules live near line 451
