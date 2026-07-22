@@ -1284,6 +1284,8 @@
   border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%) !important;
   border-radius: 16px !important;
   padding: 22px !important;
+  display: block !important;
+  box-sizing: border-box !important;
   overflow: auto !important;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--btfw-color-accent) 55%, transparent 45%) transparent;
