@@ -666,6 +666,57 @@
 #videowrap .video-js.btfw-videojs-themed .vjs-menu-button-popup .vjs-menu-item.vjs-selected .vjs-icon-placeholder::before{
   color: var(--btfw-vjs-accent) !important;
 }
+#videowrap .video-js.btfw-videojs-themed .btfw-caption-menu-sync {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 6px 5px;
+  padding: 7px 6px 9px;
+  list-style: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%);
+}
+
+#videowrap .video-js.btfw-videojs-themed .btfw-caption-menu-sync[hidden] {
+  display: none !important;
+}
+
+#videowrap .video-js.btfw-videojs-themed .btfw-caption-menu-sync__step {
+  display: inline-grid;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--btfw-color-panel) 88%, transparent 12%);
+  color: var(--btfw-vjs-accent);
+  font: 700 15px/1 var(--btfw-font-body);
+  cursor: pointer;
+}
+
+#videowrap .video-js.btfw-videojs-themed .btfw-caption-menu-sync__step:hover,
+#videowrap .video-js.btfw-videojs-themed .btfw-caption-menu-sync__step:focus-visible {
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 58%, transparent 42%);
+  background: color-mix(in srgb, var(--btfw-color-accent) 20%, var(--btfw-color-panel) 80%);
+  outline: none;
+}
+
+#videowrap .video-js.btfw-videojs-themed .btfw-caption-menu-sync .btfw-caption-sync__value {
+  min-width: 58px;
+  padding: 6px 7px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--btfw-color-bg) 62%, transparent 38%);
+  color: var(--btfw-vjs-text-strong);
+  font: 700 12px/16px var(--btfw-font-body);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+#videowrap .video-js.btfw-videojs-themed .btfw-caption-menu-sync .btfw-caption-sync__value.is-adjusted {
+  color: var(--btfw-vjs-accent);
+}
+
 
 #videowrap .video-js.btfw-videojs-themed .vjs-menu li.vjs-menu-title{
   font-size: 11px;

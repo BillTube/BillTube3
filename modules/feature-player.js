@@ -206,14 +206,19 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
 
   function updateCaptionSyncUi(playerEl) {
     const state = captionSyncState(playerEl);
-    const output = playerEl.querySelector(".btfw-caption-sync__value");
-    const reset = playerEl.querySelector(".btfw-caption-sync__reset");
-    if (output) {
+    playerEl.querySelectorAll(".btfw-caption-sync__value").forEach((output) => {
       output.value = formatCaptionOffset(state.offset);
       output.textContent = output.value;
       output.classList.toggle("is-adjusted", Math.abs(state.offset) >= 0.001);
-    }
-    if (reset) reset.disabled = Math.abs(state.offset) < 0.001;
+    });
+    playerEl.querySelectorAll(".btfw-caption-sync__reset").forEach((reset) => {
+      reset.disabled = Math.abs(state.offset) < 0.001;
+    });
+
+    const player = getVideojsPlayer(playerEl);
+    const menuSync = playerEl.querySelector(".btfw-caption-menu-sync");
+    const captionsActive = captionTracks(player).some((track) => track.mode === "showing");
+    if (menuSync) menuSync.hidden = !captionsActive;
   }
 
   function setCaptionOffset(playerEl, nextOffset) {
@@ -232,7 +237,11 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     if (!player) return;
     state.eventsBound = true;
 
-    const reapply = () => scheduleCaptionOffset(playerEl);
+    const reapply = () => {
+      ensureCaptionMenuSyncControls(playerEl);
+      updateCaptionSyncUi(playerEl);
+      scheduleCaptionOffset(playerEl);
+    };
     if (typeof player.on === "function") {
       player.on("texttrackchange", reapply);
       player.on("loadeddata", reapply);
@@ -242,7 +251,41 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     tracks?.addEventListener?.("change", reapply);
   }
 
+  function ensureCaptionMenuSyncControls(playerEl) {
+    if (!playerEl) return;
+    const menuContent = playerEl.querySelector(".vjs-subs-caps-button .vjs-menu-content");
+    if (!menuContent) return;
+
+    let sync = menuContent.querySelector(".btfw-caption-menu-sync");
+    if (!sync) {
+      const step = captionSyncStep();
+      sync = document.createElement("li");
+      sync.className = "btfw-caption-menu-sync";
+      sync.setAttribute("role", "none");
+      sync.hidden = true;
+      sync.innerHTML = `
+        <button type="button" class="btfw-caption-menu-sync__step" data-caption-sync-delta="-1" aria-label="Show subtitles ${step} seconds earlier" title="Show subtitles ${step} seconds earlier">←</button>
+        <output class="btfw-caption-sync__value" aria-live="polite" title="Current subtitle timing offset">0.0s</output>
+        <button type="button" class="btfw-caption-menu-sync__step" data-caption-sync-delta="1" aria-label="Show subtitles ${step} seconds later" title="Show subtitles ${step} seconds later">→</button>`;
+      sync.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const direction = Number(button.dataset.captionSyncDelta);
+        if (!direction) return;
+        const state = captionSyncState(playerEl);
+        setCaptionOffset(playerEl, state.offset + (direction * captionSyncStep()));
+      });
+      menuContent.prepend(sync);
+    }
+
+    bindCaptionSyncEvents(playerEl);
+    updateCaptionSyncUi(playerEl);
+  }
+
   function ensureCaptionSyncControls() {
+    document.querySelectorAll(PLAYER_SELECTOR).forEach(ensureCaptionMenuSyncControls);
     document.querySelectorAll(`${PLAYER_SELECTOR} .vjs-text-track-settings`).forEach((modal) => {
       if (modal.querySelector(".btfw-caption-sync")) return;
       const playerEl = modal.closest(".video-js");
