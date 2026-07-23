@@ -224,8 +224,18 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       html[data-btfw-atmosphere="on"] #chatwrap {
         box-shadow: inset 0 0 90px rgba(var(--btfw-atmo-rgb), var(--btfw-atmo-panel-opacity)) !important;
       }
+      /* Navbar — painted by its own 88%-opaque colour with !important
+         (navbar.css), so token mixing alone barely reaches it. Layer a tint
+         of the TOP zone colour over its existing background (the bar lives
+         at the top of the page, so it carries the frame's upper-half tone,
+         same as the gradient wash behind it). Additive first layer keeps
+         the channel gradient-navbar feature intact underneath. */
       html[data-btfw-atmosphere="on"] #btfw-navhost > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top) {
-        box-shadow: inset 0 0 48px rgba(var(--btfw-atmo-rgb), var(--btfw-atmo-panel-opacity));
+        background-image:
+          linear-gradient(
+            rgba(var(--btfw-atmo-rgb-top), var(--btfw-atmo-panel-opacity)),
+            rgba(var(--btfw-atmo-rgb-top), var(--btfw-atmo-panel-opacity))),
+          var(--btfw-gradient-navbar-runtime-layer) !important;
       }
       /* Debug overlay — localStorage btfw:atmo:debug = "1" only. */
       #btfw-atmo-debug {
@@ -1015,7 +1025,9 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     const bgOpacity = clamp(state.intensity * (0.35 + 0.65 * bN), 0, 0.45) * motionTrim;
     const glowBase = state.intensity * (0.55 + 0.55 * bN) + (state.reducedMotion ? 0 : raw.motion * 0.05);
     const glowOpacity = clamp(glowBase, 0, 0.5) * motionTrim;
-    const panelOpacity = clamp(state.intensity * 0.35, 0, 0.15) * motionTrim;
+    // Shared by the navbar tint overlay and the chat inset whisper — a real
+    // surface tint needs more presence than the old shadow-only whisper.
+    const panelOpacity = clamp(state.intensity * 0.45, 0, 0.2) * motionTrim;
     // Token mix — how far the theme's own bg/panel/surface colours shift
     // toward the atmosphere colour. Kept steady across scenes; the lightness
     // swing of the tint colour carries the dark/bright response.
