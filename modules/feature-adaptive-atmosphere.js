@@ -55,11 +55,12 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   // Theme-anchored fallbacks. NEUTRAL is the resting state; BASE_AMBIENT is
   // what detected video colours get biased toward so the result always stays
   // in BillTube's dark palette family.
-  const NEUTRAL = { r: 18, g: 22, b: 30, brightness: 0.15, saturation: 0.15, warmth: 0, contrast: 0.25, bg: 0, glow: 0, panel: 0 };
+  const NEUTRAL = { r: 18, g: 22, b: 30, brightness: 0.15, saturation: 0.15, warmth: 0, contrast: 0.25, bg: 0, glow: 0, panel: 0, mix: 0 };
   const BASE_AMBIENT = { r: 18, g: 22, b: 30 };
-  const MAX_SATURATION = 0.4;   // ambient colours never exceed this
-  const MIN_LIGHTNESS  = 0.08;  // ... and stay inside this lightness band
-  const MAX_LIGHTNESS  = 0.26;
+  const MAX_SATURATION = 0.5;   // ambient colours never exceed this
+  const MIN_LIGHTNESS  = 0.14;  // keep a readable hue even for near-black
+  const MAX_LIGHTNESS  = 0.34;  // scenes — darkness is expressed via opacity,
+                                // not by sinking the colour to black
 
   /* ---------- state ------------------------------------------------------ */
   const state = {
@@ -68,6 +69,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     sampling: false,       // actively reading frames
     halted: false,         // manual stop() via the public API
     unsupported: false,    // current media tainted the canvas / not HTML5
+    mediaCapable: false,   // current media is HTML5 and canvas-readable
     reducedMotion: false,
     video: null,
     quality: "normal",
@@ -160,6 +162,25 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
         --btfw-atmo-opacity: 0;
         --btfw-atmo-glow-opacity: 0;
         --btfw-atmo-panel-opacity: 0;
+        --btfw-atmo-mix: 0;
+      }
+      /* The real atmosphere carrier: re-tint the theme's own base tokens.
+         Every main surface (#wrap, #chatwrap, #videowrap, playlist, cards,
+         overlays) derives from these three, so the whole page chrome — chat
+         background included — shifts with the video instead of whispering
+         behind a 92%-opaque #wrap. Channel themes still flow through via
+         --btfw-theme-*. Panel/surface mix less than bg to protect text
+         contrast on cards and overlays. */
+      html[data-btfw-atmosphere="on"] {
+        --btfw-color-bg: color-mix(in srgb,
+          rgb(var(--btfw-atmo-rgb)) calc(var(--btfw-atmo-mix) * 100%),
+          var(--btfw-theme-bg, #0b0f12));
+        --btfw-color-panel: color-mix(in srgb,
+          rgb(var(--btfw-atmo-rgb)) calc(var(--btfw-atmo-mix) * 60%),
+          var(--btfw-theme-panel, #171d27));
+        --btfw-color-surface: color-mix(in srgb,
+          rgb(var(--btfw-atmo-rgb)) calc(var(--btfw-atmo-mix) * 45%),
+          var(--btfw-theme-surface, #11161d));
       }
       /* Fixed page layer — sits with body::before (z-index:-1) above the page
          background but below all content. Pure gradients; no canvas, no
@@ -249,6 +270,68 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     return t ? HTML5_MEDIA_TYPES.has(t) : true;
   }
 
+  /* ---------- media capability --------------------------------------------
+     Whether the CURRENT media can actually be analysed: iframe providers
+     (YouTube/Vimeo/Twitch) never can; HTML5 video can when the canvas read
+     succeeds directly, or when the origin passed the CORS probe (a one-time
+     reload then makes it readable). The poller re-assesses on every media
+     signature change. Incapable media pauses the effect — the stored mode
+     is kept, so it resumes by itself when a capable video plays. */
+  let lastAssessSig = null;
+
+  function mediaSignature(video) {
+    const t = (window.PLAYER && window.PLAYER.mediaType) || "";
+    const src = video ? (video.currentSrc || video.src || "") : "";
+    return t + "|" + src;
+  }
+
+  // Actual read test on a small disposable canvas. Returns true/false, or
+  // null when the video has no decodable frame yet (retry next poll).
+  function probeCanvasReadable(video) {
+    try {
+      if (!video || !video.isConnected) return null;
+      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth) return null;
+      const c = document.createElement("canvas");
+      c.width = 8; c.height = 8;
+      const x = c.getContext("2d", { alpha: false, willReadFrequently: true });
+      x.drawImage(video, 0, 0, 8, 8);
+      x.getImageData(0, 0, 8, 8);
+      return true;
+    } catch (_) { return false; }
+  }
+
+  function setMediaCapable(capable) {
+    const changed = state.mediaCapable !== capable;
+    state.mediaCapable = capable;
+    if (!capable) {
+      state.unsupported = true; // blocks sampling
+      if (changed) fadeToNeutral();
+    } else {
+      state.unsupported = false;
+      if (changed && state.intensity > 0 && state.video && !state.video.paused) startLoop();
+    }
+    updateButton();
+  }
+
+  function assessMediaCapability(force) {
+    const video = state.video || findVideoElement();
+    const sig = mediaSignature(video);
+    if (!force && sig === lastAssessSig) return;
+    if (!isHtml5Media() || !video) { lastAssessSig = sig; setMediaCapable(false); return; }
+    const direct = probeCanvasReadable(video);
+    if (direct === true) { lastAssessSig = sig; setMediaCapable(true); return; }
+    if (direct === false) {
+      // Tainted right now — still capable if the origin allows a CORS reload.
+      maybeUpgradeCors(video); // starts the one-time fetch probe if needed
+      lastAssessSig = sig;
+      try {
+        const origin = new URL(video.currentSrc || video.src, location.href).origin;
+        setMediaCapable(corsProbedOrigins.get(origin) === true);
+      } catch (_) { setMediaCapable(false); }
+    }
+    // null (no frame yet): keep the current state, decide on the next poll.
+  }
+
   function updateButton() {
     if (!atmoButton) return;
     const active = state.mode !== "off";
@@ -259,7 +342,9 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     atmoButton.style.boxShadow = active ? `0 0 12px ${ATMO_ACTIVE_PALETTE.color}` : "";
     atmoButton.setAttribute("aria-pressed", active ? "true" : "false");
     atmoButton.title = `Toggle Adaptive Atmosphere (${MODES[state.mode].label})`;
-    atmoButton.style.display = isHtml5Media() ? "" : "none";
+    // The button only exists where the effect can actually run — iframe
+    // providers and CORS-blocked sources hide it entirely.
+    atmoButton.style.display = state.mediaCapable ? "" : "none";
   }
 
   function buildButton() {
@@ -396,9 +481,12 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     safetyInterval = setInterval(() => {
       if (destroyed) return;
       addButtonToOverlay();
-      // Cheap safety net: re-verify video attachment too (covers player
-      // rebuilds the MutationObserver missed).
-      if (state.video && !state.video.isConnected) attachToVideo();
+      // Cheap safety net: re-verify video attachment (covers player rebuilds
+      // the MutationObserver missed) and re-assess capability when the media
+      // signature changed under the same element.
+      const el = findVideoElement();
+      if (el !== state.video) attachToVideo();
+      else assessMediaCapability();
     }, 2500);
   }
 
@@ -468,8 +556,8 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   }
 
   const videoEvents = {
-    play:    () => { state.unsupported = false; startLoop(); },
-    playing: () => { state.unsupported = false; startLoop(); },
+    play:    () => { if (state.mediaCapable) { state.unsupported = false; startLoop(); } },
+    playing: () => { if (state.mediaCapable) { state.unsupported = false; startLoop(); } },
     pause:   () => { stopSamplingKeepAtmosphere(); },
     seeking: () => { stopSamplingKeepAtmosphere(); },
     seeked:  () => {
@@ -497,12 +585,14 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     state.video = el;
     prevLuma = null;
     prevRaw = null;
+    corsRetriedSrc = null;
     state.unsupported = false;
     if (!el) { scheduleAttachRetry(); return; }
     for (const [ev, fn] of Object.entries(videoEvents)) {
       try { el.addEventListener(ev, fn, { passive: true }); } catch (_) {}
     }
     maybeUpgradeCors(el);
+    assessMediaCapability(true);
     if (!el.paused && !el.ended) startLoop();
   }
 
@@ -517,7 +607,6 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   function maybeUpgradeCors(video) {
     try {
       if (!video || video.crossOrigin) return;
-      if (state.intensity <= 0) return; // feature off — nothing to gain
       const src = video.currentSrc || video.src;
       if (!src) return;
       const url = new URL(src, location.href);
@@ -539,7 +628,36 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
           try { video.crossOrigin = "anonymous"; } catch (_) {}
           debugLog("CORS upgrade enabled for", url.origin);
         }
+        // The probe settled capability for this origin — re-assess so the
+        // button/effect reflect it (a CORS reload makes the current source
+        // readable on the next sample attempt).
+        assessMediaCapability(true);
       }).catch(() => {});
+    } catch (_) {}
+  }
+
+  /* The attribute above only helps FUTURE loads — the currently playing
+     resource was already fetched without CORS and stays tainted. When the
+     probe proved the origin allows CORS, do ONE controlled reload of the
+     current resource in CORS mode, preserving position/playback state.
+     CyTube's own sync would correct any residual drift. Guarded per-src so
+     a server that still taints after reload can never loop. */
+  let corsRetriedSrc = null;
+  function attemptCorsReload(video) {
+    try {
+      if (!video || state.intensity <= 0) return;
+      if (video.crossOrigin !== "anonymous") return; // probe didn't allow CORS
+      const src = video.currentSrc || video.src;
+      if (!src || corsRetriedSrc === src) return;
+      corsRetriedSrc = src;
+      const t = video.currentTime;
+      const wasPlaying = !video.paused && !video.ended;
+      video.addEventListener("loadeddata", () => {
+        try { video.currentTime = t; } catch (_) {}
+        if (wasPlaying) { try { video.play().catch(() => {}); } catch (_) {} }
+      }, { once: true });
+      video.load();
+      debugLog("reloaded media in CORS mode");
     } catch (_) {}
   }
 
@@ -554,7 +672,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     fadeToNeutral();
     detachVideo();
     state.unsupported = false;
-    updateButton();
+    assessMediaCapability(true); // hides the button fast on iframe providers
     clearTimeout(attachRetryTimer);
     attachRetryTimer = setTimeout(() => { if (!destroyed) attachToVideo(); }, 600);
   }
@@ -619,6 +737,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     return !!(
       state.intensity > 0 &&
       !state.halted &&
+      state.mediaCapable &&
       !state.unsupported &&
       !document.hidden &&
       v && v.isConnected &&
@@ -701,6 +820,10 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       state.unsupported = true;
       debugLog("frame read failed, disabling for this media:", err && err.name);
       fadeToNeutral();
+      attemptCorsReload(v);
+      // If no CORS reload is possible the origin simply doesn't allow pixel
+      // reads — treat the media as incapable (button hides, setting kept).
+      if (v && v.crossOrigin !== "anonymous") setMediaCapable(false);
       return;
     }
 
@@ -827,7 +950,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     // video colour survives the mix (spec §12, §28).
     let src = mixRgb(raw.avgColor, raw.dominantColor, 0.6);
     src = restrainColor(src);
-    const mixFactor = clamp(state.intensity * 0.9, 0, 0.85);
+    const mixFactor = clamp(state.intensity * 1.6, 0, 1);
     const color = mixRgb(BASE_AMBIENT, src, raw.flash ? mixFactor * 0.3 : mixFactor);
 
     // Asymmetric brightness response: dark scenes may dim the ambience a bit
@@ -836,10 +959,13 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     const ambientBrightness = lerp(0.12, 0.22, clamp(b, 0, 1));
 
     const motionTrim = state.reducedMotion ? 0.6 : 1;
-    const bgOpacity = clamp(state.intensity * (0.45 + 0.5 * b), 0, 0.35) * motionTrim;
-    const glowBase = state.intensity * 0.65 + (state.reducedMotion ? 0 : raw.motion * 0.05);
-    const glowOpacity = clamp(glowBase, 0, 0.28) * motionTrim;
-    const panelOpacity = clamp(state.intensity * 0.3, 0, 0.12) * motionTrim;
+    const bgOpacity = clamp(state.intensity * (0.55 + 0.5 * b), 0, 0.4) * motionTrim;
+    const glowBase = state.intensity * 0.9 + (state.reducedMotion ? 0 : raw.motion * 0.05);
+    const glowOpacity = clamp(glowBase, 0, 0.45) * motionTrim;
+    const panelOpacity = clamp(state.intensity * 0.35, 0, 0.15) * motionTrim;
+    // Token mix — how far the theme's own bg/panel/surface colours shift
+    // toward the atmosphere colour. Primary visible carrier of the effect.
+    const tokenMix = clamp(state.intensity * 0.7, 0, 0.4) * motionTrim;
 
     const t = state.target;
     t.r = deadZone(t.r, color.r, DEAD_ZONE.rgb);
@@ -852,6 +978,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     t.bg = bgOpacity;
     t.glow = glowOpacity;
     t.panel = panelOpacity;
+    t.mix = tokenMix;
 
     stepSmoothing();
     render();
@@ -860,7 +987,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   function stepSmoothing() {
     const factor = performance.now() < sceneBoostUntil ? SCENE_SMOOTHING : NORMAL_SMOOTHING;
     const s = state.smooth, t = state.target;
-    for (const key of ["r", "g", "b", "brightness", "saturation", "warmth", "contrast", "bg", "glow", "panel"]) {
+    for (const key of ["r", "g", "b", "brightness", "saturation", "warmth", "contrast", "bg", "glow", "panel", "mix"]) {
       s[key] += (t[key] - s[key]) * factor;
     }
   }
@@ -869,7 +996,8 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     const s = state.smooth, t = state.target;
     return Math.abs(t.r - s.r) < 1 && Math.abs(t.g - s.g) < 1 && Math.abs(t.b - s.b) < 1 &&
       Math.abs(t.bg - s.bg) < 0.004 && Math.abs(t.glow - s.glow) < 0.004 &&
-      Math.abs(t.panel - s.panel) < 0.004 && Math.abs(t.brightness - s.brightness) < 0.004;
+      Math.abs(t.panel - s.panel) < 0.004 && Math.abs(t.mix - s.mix) < 0.004 &&
+      Math.abs(t.brightness - s.brightness) < 0.004;
   }
 
   function fadeToNeutral() {
@@ -888,6 +1016,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     rootStyle.setProperty("--btfw-atmo-opacity", s.bg.toFixed(3));
     rootStyle.setProperty("--btfw-atmo-glow-opacity", s.glow.toFixed(3));
     rootStyle.setProperty("--btfw-atmo-panel-opacity", s.panel.toFixed(3));
+    rootStyle.setProperty("--btfw-atmo-mix", s.mix.toFixed(3));
     if (debugEl) updateDebug();
   }
 
@@ -968,7 +1097,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     const styleEl = document.getElementById(STYLE_ID);
     if (styleEl) styleEl.remove();
     for (const prop of ["--btfw-atmo-rgb", "--btfw-atmo-brightness", "--btfw-atmo-opacity",
-                        "--btfw-atmo-glow-opacity", "--btfw-atmo-panel-opacity"]) {
+                        "--btfw-atmo-glow-opacity", "--btfw-atmo-panel-opacity", "--btfw-atmo-mix"]) {
       rootStyle.removeProperty(prop);
     }
     delete document.documentElement.dataset.btfwAtmosphere;
@@ -995,6 +1124,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       intensity: state.intensity,
       sampling: state.sampling,
       unsupported: state.unsupported,
+      mediaCapable: state.mediaCapable,
       reducedMotion: state.reducedMotion,
       quality: state.quality,
       atmosphere: { ...state.smooth }
