@@ -55,7 +55,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   // Theme-anchored fallbacks. NEUTRAL is the resting state; BASE_AMBIENT is
   // what detected video colours get biased toward so the result always stays
   // in BillTube's dark palette family.
-  const NEUTRAL = { r: 18, g: 22, b: 30, brightness: 0.15, saturation: 0.15, warmth: 0, contrast: 0.25, bg: 0, glow: 0, panel: 0, mix: 0 };
+  const NEUTRAL = { r: 18, g: 22, b: 30, brightness: 0.15, saturation: 0.15, warmth: 0, contrast: 0.25, bg: 0, glow: 0, panel: 0, mix: 0, rTop: 18, gTop: 22, bTop: 30, rBot: 18, gBot: 22, bBot: 30 };
   const BASE_AMBIENT = { r: 18, g: 22, b: 30 };
   const MAX_SATURATION = 0.5;   // ambient colours never exceed this
   // Lightness band for the restrained SOURCE colour. The final tint's
@@ -161,6 +161,8 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     style.textContent = `
       :root {
         --btfw-atmo-rgb: 18, 22, 30;
+        --btfw-atmo-rgb-top: 18, 22, 30;
+        --btfw-atmo-rgb-bottom: 18, 22, 30;
         --btfw-atmo-brightness: 0.15;
         --btfw-atmo-opacity: 0;
         --btfw-atmo-glow-opacity: 0;
@@ -186,8 +188,11 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
           var(--btfw-theme-surface, #11161d));
       }
       /* Fixed page layer — sits with body::before (z-index:-1) above the page
-         background but below all content. Pure gradients; no canvas, no
-         filters, and JS smoothing does the transitioning. */
+         background but below all content. Vertical two-zone gradient: the
+         top wash follows the frame's upper half (sky), the bottom wash its
+         lower half (ground/foreground), so the page surrounds the video
+         with the same tonal split. Pure gradients; no canvas, no filters,
+         and JS smoothing does the transitioning. */
       #btfw-adaptive-atmosphere {
         position: fixed;
         inset: 0;
@@ -195,15 +200,15 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
         pointer-events: none;
         contain: strict;
         background:
-          radial-gradient(90% 60% at 50% 18%,
-            rgba(var(--btfw-atmo-rgb), calc(var(--btfw-atmo-opacity) * 0.9)) 0%,
+          radial-gradient(90% 55% at 50% 16%,
+            rgba(var(--btfw-atmo-rgb-top), calc(var(--btfw-atmo-opacity) * 0.85)) 0%,
             transparent 62%),
-          radial-gradient(70% 55% at 50% 100%,
-            rgba(var(--btfw-atmo-rgb), calc(var(--btfw-atmo-opacity) * 0.55)) 0%,
-            transparent 65%),
           linear-gradient(180deg,
-            rgba(var(--btfw-atmo-rgb), calc(var(--btfw-atmo-opacity) * 0.35)) 0%,
-            transparent 70%);
+            rgba(var(--btfw-atmo-rgb-top), calc(var(--btfw-atmo-opacity) * 0.55)) 0%,
+            transparent 48%),
+          linear-gradient(0deg,
+            rgba(var(--btfw-atmo-rgb-bottom), calc(var(--btfw-atmo-opacity) * 0.6)) 0%,
+            transparent 55%);
       }
       /* Player glow — #videowrap has overflow:hidden (pseudo-elements would be
          clipped), but an element's own box-shadow still paints outside it.
@@ -856,6 +861,12 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
 
     let sumR = 0, sumG = 0, sumB = 0, colorSamples = 0;
     let sumL = 0, sumL2 = 0, sumSat = 0;
+    // Vertical zones (top/bottom halves of the cropped frame) — lets the
+    // background gradient follow sky vs ground tones separately. Same pixel
+    // loop, just extra accumulators; no additional canvas work.
+    const halfH = h >> 1;
+    let sumRt = 0, sumGt = 0, sumBt = 0, sumLt = 0, countT = 0;
+    let sumRb = 0, sumGb = 0, sumBb = 0, sumLb = 0, countB = 0;
 
     for (let p = 0, i = 0; p < pixelCount; p++, i += 4) {
       const r = data[i], g = data[i + 1], b = data[i + 2];
@@ -867,6 +878,11 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       if (p % pixelStep !== 0) continue;
       colorSamples++;
       sumR += r; sumG += g; sumB += b;
+      if (((p / w) | 0) < halfH) {
+        countT++; sumRt += r; sumGt += g; sumBt += b; sumLt += L;
+      } else {
+        countB++; sumRb += r; sumGb += g; sumBb += b; sumLb += L;
+      }
       const max = Math.max(r, g, b), min = Math.min(r, g, b);
       const sat = max === 0 ? 0 : (max - min) / max;
       sumSat += sat;
@@ -919,6 +935,16 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       warmth: clamp((avgR - avgB) / 255, -1, 1),
       contrast,
       motion: motionLevel,
+      zones: {
+        top: {
+          color: { r: sumRt / countT, g: sumGt / countT, b: sumBt / countT },
+          brightness: clamp(sumLt / countT / 255, 0, 1)
+        },
+        bottom: {
+          color: { r: sumRb / countB, g: sumGb / countB, b: sumBb / countB },
+          brightness: clamp(sumLb / countB / 255, 0, 1)
+        }
+      },
       flash: false,
       sceneChange: false
     };
@@ -930,6 +956,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       if (bJump > FLASH_BRIGHTNESS_JUMP && raw.motion > FLASH_MOTION) {
         raw.flash = true;
         raw.brightness = prevRaw.brightness;
+        raw.zones = prevRaw.zones; // flash must not reach the zone gradient either
       }
       // Confident scene change: big simultaneous brightness + content shift.
       if (Math.abs(raw.brightness - prevRaw.brightness) > 0.12 && raw.motion > 0.25) {
@@ -998,6 +1025,29 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     t.r = deadZone(t.r, color.r, DEAD_ZONE.rgb);
     t.g = deadZone(t.g, color.g, DEAD_ZONE.rgb);
     t.b = deadZone(t.b, color.b, DEAD_ZONE.rgb);
+
+    // Vertical zones — same restraint pipeline per zone, each following its
+    // own region brightness, so the page gradient can wash top (sky) and
+    // bottom (ground/foreground) tones independently.
+    const zoneColor = (zone) => {
+      let zc = mixRgb(zone.color, raw.dominantColor, 0.35);
+      zc = restrainColor(zc);
+      zc = mixRgb(BASE_AMBIENT, zc, raw.flash ? mixFactor * 0.3 : mixFactor);
+      const zbN = clamp((clamp(zone.brightness, 0, 1) - 0.05) / 0.55, 0, 1);
+      const zl = lerp(0.1, 0.32, Math.pow(zbN, 1.2));
+      const zhsl = rgbToHsl(zc.r, zc.g, zc.b);
+      zhsl.l = clamp(lerp(zhsl.l, zl, 0.75), 0.08, MAX_LIGHTNESS);
+      return hslToRgb(zhsl.h, zhsl.s, zhsl.l);
+    };
+    const zTop = zoneColor(raw.zones.top);
+    const zBot = zoneColor(raw.zones.bottom);
+    t.rTop = deadZone(t.rTop, zTop.r, DEAD_ZONE.rgb);
+    t.gTop = deadZone(t.gTop, zTop.g, DEAD_ZONE.rgb);
+    t.bTop = deadZone(t.bTop, zTop.b, DEAD_ZONE.rgb);
+    t.rBot = deadZone(t.rBot, zBot.r, DEAD_ZONE.rgb);
+    t.gBot = deadZone(t.gBot, zBot.g, DEAD_ZONE.rgb);
+    t.bBot = deadZone(t.bBot, zBot.b, DEAD_ZONE.rgb);
+
     t.brightness = deadZone(t.brightness, ambientBrightness, DEAD_ZONE.brightness);
     t.saturation = deadZone(t.saturation, Math.min(raw.saturation, MAX_SATURATION), DEAD_ZONE.saturation);
     t.warmth = deadZone(t.warmth, raw.warmth, DEAD_ZONE.warmth);
@@ -1014,7 +1064,8 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   function stepSmoothing() {
     const factor = performance.now() < sceneBoostUntil ? SCENE_SMOOTHING : NORMAL_SMOOTHING;
     const s = state.smooth, t = state.target;
-    for (const key of ["r", "g", "b", "brightness", "saturation", "warmth", "contrast", "bg", "glow", "panel", "mix"]) {
+    for (const key of ["r", "g", "b", "brightness", "saturation", "warmth", "contrast", "bg", "glow", "panel", "mix",
+                       "rTop", "gTop", "bTop", "rBot", "gBot", "bBot"]) {
       s[key] += (t[key] - s[key]) * factor;
     }
   }
@@ -1022,6 +1073,8 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   function isConverged() {
     const s = state.smooth, t = state.target;
     return Math.abs(t.r - s.r) < 1 && Math.abs(t.g - s.g) < 1 && Math.abs(t.b - s.b) < 1 &&
+      Math.abs(t.rTop - s.rTop) < 1 && Math.abs(t.gTop - s.gTop) < 1 && Math.abs(t.bTop - s.bTop) < 1 &&
+      Math.abs(t.rBot - s.rBot) < 1 && Math.abs(t.gBot - s.gBot) < 1 && Math.abs(t.bBot - s.bBot) < 1 &&
       Math.abs(t.bg - s.bg) < 0.004 && Math.abs(t.glow - s.glow) < 0.004 &&
       Math.abs(t.panel - s.panel) < 0.004 && Math.abs(t.mix - s.mix) < 0.004 &&
       Math.abs(t.brightness - s.brightness) < 0.004;
@@ -1039,6 +1092,10 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     const s = state.smooth;
     rootStyle.setProperty("--btfw-atmo-rgb",
       `${Math.round(s.r)}, ${Math.round(s.g)}, ${Math.round(s.b)}`);
+    rootStyle.setProperty("--btfw-atmo-rgb-top",
+      `${Math.round(s.rTop)}, ${Math.round(s.gTop)}, ${Math.round(s.bTop)}`);
+    rootStyle.setProperty("--btfw-atmo-rgb-bottom",
+      `${Math.round(s.rBot)}, ${Math.round(s.gBot)}, ${Math.round(s.bBot)}`);
     rootStyle.setProperty("--btfw-atmo-brightness", s.brightness.toFixed(3));
     rootStyle.setProperty("--btfw-atmo-opacity", s.bg.toFixed(3));
     rootStyle.setProperty("--btfw-atmo-glow-opacity", s.glow.toFixed(3));
@@ -1123,7 +1180,8 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     if (debugEl) { debugEl.remove(); debugEl = null; }
     const styleEl = document.getElementById(STYLE_ID);
     if (styleEl) styleEl.remove();
-    for (const prop of ["--btfw-atmo-rgb", "--btfw-atmo-brightness", "--btfw-atmo-opacity",
+    for (const prop of ["--btfw-atmo-rgb", "--btfw-atmo-rgb-top", "--btfw-atmo-rgb-bottom",
+                        "--btfw-atmo-brightness", "--btfw-atmo-opacity",
                         "--btfw-atmo-glow-opacity", "--btfw-atmo-panel-opacity", "--btfw-atmo-mix"]) {
       rootStyle.removeProperty(prop);
     }
