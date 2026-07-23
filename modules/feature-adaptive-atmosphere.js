@@ -42,11 +42,11 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   const SLOW_ANALYSIS_MS = 10;   // downgrade quality when the rolling average exceeds this
   // Ignore subtitle band and frame edges (spec §9): bottom 15% + 5% edges.
   const CROP = { left: 0.05, top: 0.05, right: 0.95, bottom: 0.85 };
-  const NORMAL_SMOOTHING = 0.06;
-  const SCENE_SMOOTHING  = 0.12;
+  const NORMAL_SMOOTHING = 0.09;
+  const SCENE_SMOOTHING  = 0.22;
   const FADE_STEP_MS     = 120;  // fade-ticker cadence when not sampling
   // Dead zones: below these deltas the target is treated as unchanged.
-  const DEAD_ZONE = { brightness: 0.025, saturation: 0.03, warmth: 0.03, contrast: 0.03, rgb: 6 };
+  const DEAD_ZONE = { brightness: 0.02, saturation: 0.03, warmth: 0.03, contrast: 0.03, rgb: 4 };
   // A single-sample brightness spike this large (with heavy frame motion)
   // is treated as a transient flash and not followed (spec §19).
   const FLASH_BRIGHTNESS_JUMP = 0.3;
@@ -58,9 +58,12 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   const NEUTRAL = { r: 18, g: 22, b: 30, brightness: 0.15, saturation: 0.15, warmth: 0, contrast: 0.25, bg: 0, glow: 0, panel: 0, mix: 0 };
   const BASE_AMBIENT = { r: 18, g: 22, b: 30 };
   const MAX_SATURATION = 0.5;   // ambient colours never exceed this
-  const MIN_LIGHTNESS  = 0.14;  // keep a readable hue even for near-black
-  const MAX_LIGHTNESS  = 0.34;  // scenes — darkness is expressed via opacity,
-                                // not by sinking the colour to black
+  // Lightness band for the restrained SOURCE colour. The final tint's
+  // lightness is driven by scene brightness afterwards (see
+  // handleRawAnalysis), which is what makes the chrome dim and lift with
+  // the movie; this band just keeps the raw colour inside sane bounds.
+  const MIN_LIGHTNESS  = 0.12;
+  const MAX_LIGHTNESS  = 0.34;
 
   /* ---------- state ------------------------------------------------------ */
   const state = {
@@ -932,6 +935,14 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       if (Math.abs(raw.brightness - prevRaw.brightness) > 0.12 && raw.motion > 0.25) {
         raw.sceneChange = true;
       }
+      // Colour-driven cuts (stable brightness, big palette swap) count too —
+      // otherwise a brightness-matched cut never gets the faster smoothing.
+      const colorJump = (Math.abs(raw.avgColor.r - prevRaw.avgColor.r) +
+                         Math.abs(raw.avgColor.g - prevRaw.avgColor.g) +
+                         Math.abs(raw.avgColor.b - prevRaw.avgColor.b)) / 765;
+      if (colorJump > 0.15 && raw.motion > 0.2) {
+        raw.sceneChange = true;
+      }
     }
     prevRaw = raw;
     return raw;
@@ -943,7 +954,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   }
 
   function handleRawAnalysis(raw) {
-    if (raw.sceneChange) sceneBoostUntil = performance.now() + 2000;
+    if (raw.sceneChange) sceneBoostUntil = performance.now() + 3500;
 
     // Blend average + dominant, restrain into the ambient band, then bias
     // toward the BillTube base colour. Intensity controls how much of the
@@ -951,21 +962,37 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     let src = mixRgb(raw.avgColor, raw.dominantColor, 0.6);
     src = restrainColor(src);
     const mixFactor = clamp(state.intensity * 1.6, 0, 1);
-    const color = mixRgb(BASE_AMBIENT, src, raw.flash ? mixFactor * 0.3 : mixFactor);
+    let color = mixRgb(BASE_AMBIENT, src, raw.flash ? mixFactor * 0.3 : mixFactor);
 
-    // Asymmetric brightness response: dark scenes may dim the ambience a bit
-    // more than bright scenes may lift it (spec §18).
-    const b = raw.brightness;
-    const ambientBrightness = lerp(0.12, 0.22, clamp(b, 0, 1));
+    // Scene-driven lightness — the main "breathes with the movie" lever.
+    // The tint itself darkens in dark scenes and lifts in bright ones
+    // (YouTube-ambient-style), instead of sitting at a fixed band level.
+    // pow() compresses the bright end: dark cuts may dim more than bright
+    // cuts may lift (asymmetric response, spec §18). raw.brightness is
+    // already flash-damped by the analyser, so spikes can't reach this.
+    const b = clamp(raw.brightness, 0, 1);
+    // Films spend nearly all their runtime under ~0.5 average luminance, so
+    // stretch that practical range across the full response — otherwise only
+    // explosion-bright scenes would ever lift the ambience.
+    const bN = clamp((b - 0.05) / 0.55, 0, 1);
+    const sceneL = lerp(0.1, 0.32, Math.pow(bN, 1.2));
+    const hsl = rgbToHsl(color.r, color.g, color.b);
+    hsl.l = clamp(lerp(hsl.l, sceneL, 0.75), 0.08, MAX_LIGHTNESS);
+    color = hslToRgb(hsl.h, hsl.s, hsl.l);
+
+    const ambientBrightness = lerp(0.08, 0.3, bN);
 
     const motionTrim = state.reducedMotion ? 0.6 : 1;
-    const bgOpacity = clamp(state.intensity * (0.55 + 0.5 * b), 0, 0.4) * motionTrim;
-    const glowBase = state.intensity * 0.9 + (state.reducedMotion ? 0 : raw.motion * 0.05);
-    const glowOpacity = clamp(glowBase, 0, 0.45) * motionTrim;
+    // Opacity/glow track scene brightness too: bright scenes push more
+    // visible ambience, dark scenes pull it back toward the base theme.
+    const bgOpacity = clamp(state.intensity * (0.35 + 0.65 * bN), 0, 0.45) * motionTrim;
+    const glowBase = state.intensity * (0.55 + 0.55 * bN) + (state.reducedMotion ? 0 : raw.motion * 0.05);
+    const glowOpacity = clamp(glowBase, 0, 0.5) * motionTrim;
     const panelOpacity = clamp(state.intensity * 0.35, 0, 0.15) * motionTrim;
     // Token mix — how far the theme's own bg/panel/surface colours shift
-    // toward the atmosphere colour. Primary visible carrier of the effect.
-    const tokenMix = clamp(state.intensity * 0.7, 0, 0.4) * motionTrim;
+    // toward the atmosphere colour. Kept steady across scenes; the lightness
+    // swing of the tint colour carries the dark/bright response.
+    const tokenMix = clamp(state.intensity * 0.75, 0, 0.42) * motionTrim;
 
     const t = state.target;
     t.r = deadZone(t.r, color.r, DEAD_ZONE.rgb);
