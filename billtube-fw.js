@@ -356,7 +356,8 @@ function resolveBranchToSHA(){
       "modules/feature-emotes-admin.js",
       "modules/feature-theme-settings.js",
       "modules/feature-ratings.js",
-      "modules/feature-theater.js"
+      "modules/feature-theater.js",
+      "modules/feature-adaptive-atmosphere.js"
     ];
     return loadAll(coreMods)
       .then(function(){
@@ -437,7 +438,8 @@ function resolveBranchToSHA(){
       "feature:emotes-admin",
       "feature:themeSettings",
       "feature:ratings",
-      "feature:theater"
+      "feature:theater",
+      "feature:adaptiveAtmosphere"
     ];
     return Promise.all(FEATURES.map(function(name){
       return BTFW.init(name).then(function(){ return null; }, function(err){
