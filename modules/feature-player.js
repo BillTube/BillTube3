@@ -633,9 +633,17 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     return li;
   }
 
+  function desiredMenuSignature(sources, currentRes) {
+    return sources.map((s) => `${s.res}:${String(s.res) === String(currentRes)}`).join("|");
+  }
+
   function updateQualityButtonState(button, sources, currentRes) {
     const menuContent = button.querySelector(".vjs-menu-content");
     if (!menuContent) return;
+
+    const nextSig = desiredMenuSignature(sources, currentRes);
+    if (menuContent.dataset.btfwQualitySig === nextSig) return;
+    menuContent.dataset.btfwQualitySig = nextSig;
 
     menuContent.innerHTML = "";
     sources.forEach((source) => {
