@@ -629,12 +629,16 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     });
   }
 
+  function formatQualityLabel(source) {
+    return `${source.res}p`;
+  }
+
   function buildQualityMenuItem(source, isSelected) {
     const li = document.createElement("li");
     li.className = `vjs-menu-item ${isSelected ? "vjs-selected" : ""}`;
     li.setAttribute("role", "menuitemradio");
     li.setAttribute("aria-checked", isSelected ? "true" : "false");
-    li.textContent = source.label || `${source.res}p`;
+    li.textContent = formatQualityLabel(source);
     li.dataset.res = String(source.res);
     return li;
   }
@@ -660,7 +664,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     const labelSpan = button.querySelector(".btfw-quality-label");
     if (labelSpan) {
       const current = sources.find((s) => String(s.res) === String(currentRes));
-      labelSpan.textContent = current ? (current.label || `${current.res}p`) : "";
+      labelSpan.textContent = current ? formatQualityLabel(current) : "";
     }
   }
 
