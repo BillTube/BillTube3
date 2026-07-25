@@ -568,6 +568,24 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     boundPlayer: null
   };
 
+  function ensureQualitySelectorStyles() {
+    if (document.getElementById("btfw-quality-selector-style")) return;
+    const style = document.createElement("style");
+    style.id = "btfw-quality-selector-style";
+    style.textContent = `
+      /* Hide the broken Video.js resolution-switcher button for good. */
+      .vjs-resolution-button,
+      .video-js .vjs-resolution-button {
+        display: none !important;
+      }
+      /* Keep our custom button aligned with the rest of the control bar. */
+      .vjs-control-bar .${QUALITY_BUTTON_CLASS} {
+        order: 98;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function getVideojsPlayerSafe() {
     if (typeof window === "undefined" || !window.videojs) return null;
     try {
@@ -767,6 +785,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
   }
 
   function ensureQualitySelector() {
+    ensureQualitySelectorStyles();
     const controlBar = document.querySelector("#ytapiplayer .vjs-control-bar");
     if (!controlBar) return;
 
