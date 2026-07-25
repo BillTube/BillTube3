@@ -582,6 +582,12 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
       .vjs-control-bar .${QUALITY_BUTTON_CLASS} {
         order: 98;
       }
+      /* Show the menu on explicit open state so clicks are stable and
+         touch devices get a toggle instead of relying solely on hover. */
+      .${QUALITY_BUTTON_CLASS}.btfw-quality-open .vjs-menu,
+      .${QUALITY_BUTTON_CLASS}.vjs-hover .vjs-menu {
+        display: block;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -742,14 +748,20 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     `;
 
     button.addEventListener("mouseenter", () => button.classList.add("vjs-hover"));
-    button.addEventListener("mouseleave", () => button.classList.remove("vjs-hover"));
+    button.addEventListener("mouseleave", () => {
+      button.classList.remove("vjs-hover");
+      button.classList.remove("btfw-quality-open");
+    });
     button.addEventListener("focus", () => button.classList.add("vjs-hover"));
-    button.addEventListener("blur", () => button.classList.remove("vjs-hover"));
+    button.addEventListener("blur", () => {
+      button.classList.remove("vjs-hover");
+      button.classList.remove("btfw-quality-open");
+    });
 
     button.addEventListener("click", (event) => {
       const item = event.target.closest(".vjs-menu-item");
       if (!item) {
-        button.classList.toggle("vjs-hover");
+        button.classList.toggle("btfw-quality-open");
         return;
       }
 
@@ -765,7 +777,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
 
       switchQualitySource(source);
       updateQualityButtonState(button, sources, source.res);
-      button.classList.remove("vjs-hover");
+      button.classList.remove("btfw-quality-open");
     });
 
     return button;
