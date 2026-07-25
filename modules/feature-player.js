@@ -823,12 +823,14 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
   }
 
   function handleVideoChange() {
-    setTimeout(() => {
-      ensureInlinePlayback();
-      applyPosterUrl();
-      togglePosterVisibility();
-      ensureQualitySelector();
-    }, 100);
+    [100, 500, 1000, 2500].forEach((delay) => {
+      setTimeout(() => {
+        ensureInlinePlayback();
+        applyPosterUrl();
+        togglePosterVisibility();
+        ensureQualitySelector();
+      }, delay);
+    });
   }
 
   function boot() {
@@ -845,6 +847,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     // Periodic check like billtube2.js
     setInterval(() => {
       togglePosterVisibility();
+      ensureQualitySelector();
     }, 1000);
 
     if (typeof window !== "undefined" && window.socket && typeof socket.on === "function") {
