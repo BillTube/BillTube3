@@ -92,6 +92,9 @@ BTFW.define("feature:videoEnhancements", [], async () => {
 
           if (title) {
             titleInput.value = title;
+            titleInput.dispatchEvent(new CustomEvent("btfw:title-autofilled", {
+              bubbles: true
+            }));
           }
         } catch (err) {
           console.warn("[video-enhancements] Title extraction failed:", err);

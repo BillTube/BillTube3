@@ -902,8 +902,15 @@ BTFW.define("feature:playlist-tools", [], async () => {
           }
         };
 
-        input.addEventListener("input", apply);
-        input.addEventListener("change", apply);
+        // Native input/change events come from the moderator typing. Preserve
+        // that text exactly; only synthetic events represent an auto-fill.
+        const applyAutoFill = (event) => {
+          if (!event.isTrusted) apply();
+        };
+
+        input.addEventListener("input", applyAutoFill);
+        input.addEventListener("change", applyAutoFill);
+        input.addEventListener("btfw:title-autofilled", apply);
         input.addEventListener("paste", () => requestAnimationFrame(apply));
         input._btfwTitleFilterBound = true;
 
