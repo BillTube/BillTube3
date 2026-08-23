@@ -1174,30 +1174,12 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   transform: none !important;
   will-change: auto !important;
 }
-/* Subtle accent stripe at the left edge of every header (modern tab cue). */
-.btfw-stack-item__header::before{
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 18px;
-  background: var(--btfw-color-accent);
-  border-radius: 0 3px 3px 0;
-  opacity: 0.55;
-  transition: opacity 0.2s ease, height 0.2s ease;
-}
-.btfw-stack-item:hover .btfw-stack-item__header::before{
-  opacity: 1;
-  height: 22px;
-}
 .btfw-stack-item__title{
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: color-mix(in srgb, var(--btfw-color-text) 92%, transparent 8%);
-  margin-left: 14px;
+  margin-left: 0;
   line-height: 1.2;
   text-transform: none;
 }
