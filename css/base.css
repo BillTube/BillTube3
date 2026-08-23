@@ -1110,31 +1110,76 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   border-bottom: 1px solid color-mix(in srgb, var(--btfw-color-accent) 6%, transparent 94%);
   border-radius: 0;
   position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
-/* Subtle accent stripe at the left edge of every header (modern tab cue). */
-.btfw-stack-item__header::before{
+
+/* Panel artwork is composed for large cards; on a shallow header it can read
+   like a flat horizontal strip. Flow and Retro get a header-scale light field
+   built from the same four Toolkit colours and strength token. The oversized
+   pseudo-element moves only with transform, keeping motion on the compositor. */
+:root[data-btfw-gradient-panels="on"]:is([data-btfw-gradient-type="flow"], [data-btfw-gradient-type="retro"]) .btfw-stack-item__header::after {
   content: "";
   position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 18px;
-  background: var(--btfw-color-accent);
-  border-radius: 0 3px 3px 0;
-  opacity: 0.55;
-  transition: opacity 0.2s ease, height 0.2s ease;
+  inset: -85% -12%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: clamp(0.2, calc(var(--btfw-gradient-panel-field-opacity, 0.24) + 0.08), 0.56);
+  transform: translate3d(-1.5%, -1%, 0) scale(1.04);
+  transform-origin: 52% 48%;
+  background:
+    radial-gradient(ellipse 34% 74% at 5% 18%,
+      color-mix(in oklab, var(--btfw-gradient-field-0) 78%, var(--btfw-gradient-field-3) 22%) 0%, transparent 72%),
+    radial-gradient(ellipse 42% 88% at 38% 112%,
+      color-mix(in oklab, var(--btfw-gradient-field-1) 72%, var(--btfw-gradient-field-3) 28%) 0%, transparent 70%),
+    radial-gradient(ellipse 38% 82% at 72% -8%,
+      color-mix(in oklab, var(--btfw-gradient-field-2) 74%, white 26%) 0%, transparent 68%),
+    conic-gradient(from 218deg at 94% 50%,
+      transparent 0 20%,
+      color-mix(in oklab, var(--btfw-gradient-field-3) 82%, white 18%) 32%,
+      transparent 49% 100%);
 }
-.btfw-stack-item:hover .btfw-stack-item__header::before{
-  opacity: 1;
-  height: 22px;
+
+.btfw-stack-item__header > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes btfw-gradient-header-drift {
+  0%, 100% { transform: translate3d(-1.5%, -1%, 0) scale(1.04) rotate(-0.35deg); }
+  34% { transform: translate3d(1.8%, 1.4%, 0) scale(1.075) rotate(0.45deg); }
+  68% { transform: translate3d(-0.3%, 2.1%, 0) scale(1.055) rotate(-0.15deg); }
+}
+
+:root[data-btfw-gradient-field-motion="slow"]:is([data-btfw-gradient-type="flow"], [data-btfw-gradient-type="retro"]) .btfw-stack-item__header::after {
+  animation: btfw-gradient-header-drift 26s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform;
+}
+
+:root[data-btfw-gradient-field-motion="medium"]:is([data-btfw-gradient-type="flow"], [data-btfw-gradient-type="retro"]) .btfw-stack-item__header::after {
+  animation: btfw-gradient-header-drift 15s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-btfw-gradient-panels="on"] .btfw-stack-item__header::after {
+    animation: none !important;
+    transform: none !important;
+    will-change: auto !important;
+  }
+}
+
+:root[data-btfw-motion="reduced"][data-btfw-gradient-panels="on"] .btfw-stack-item__header::after {
+  animation: none !important;
+  transform: none !important;
+  will-change: auto !important;
 }
 .btfw-stack-item__title{
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: color-mix(in srgb, var(--btfw-color-text) 92%, transparent 8%);
-  margin-left: 14px;
+  margin-left: 0;
   line-height: 1.2;
   text-transform: none;
 }

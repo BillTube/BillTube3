@@ -2,7 +2,7 @@
 
 # BillTube 3
 
-### Version 1 for CyTube channels
+### Version 3 for CyTube channels
 
 BillTube adds player controls, chat tools, movie information, mobile layouts, and a settings panel. It is installed through Channel JavaScript.
 

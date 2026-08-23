@@ -57,6 +57,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     notifyMovieVoting: "btfw:notify:movieVoting", // "1" | "0"
     stackCompact: "btfw:stack:compact",       // "1" | "0"
     localSubs   : "btfw:video:localsubs",     // "1" | "0"
+    atmosphere  : "btfw:video:adaptiveAtmosphere", // "off" | "min" | "med" | "max"
     billcastEnabled: "btfw:billcast:enabled", // "1" | "0"
     layoutSide  : "btfw:layout:chatSide",     // "left" | "right"
     layoutChatWidth: "btfw:layout:chatWidth", // preset width in px
@@ -435,6 +436,17 @@ BTFW.define("feature:themeSettings", [], async () => {
                       <input type="checkbox" id="btfw-localsubs-toggle"> <span>Show the “Local Subtitles” button</span>
                       <button type="button" class="btfw-ts-info" aria-label="More info" data-tip="Adds a button to the player so you can load your own subtitle file (.srt or .vtt) from your device for the current video. Your subtitles stay local to you and aren't shared with the room."><i class="fa fa-circle-info" aria-hidden="true"></i></button>
                     </label>
+                    <div class="btfw-ts-control">
+                      <label class="btfw-input__label" for="btfw-atmosphere-mode">Adaptive atmosphere <button type="button" class="btfw-ts-info" aria-label="More info" data-tip="Subtly adjusts the glow and tint around the player to match the current video. Only works with directly playable video files — embedded players like YouTube keep the normal theme."><i class="fa fa-circle-info" aria-hidden="true"></i></button></label>
+                      <div class="select is-small">
+                        <select id="btfw-atmosphere-mode">
+                          <option value="off">Off</option>
+                          <option value="min">Minimal</option>
+                          <option value="med">Medium</option>
+                          <option value="max">Strong</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
                 </section>
               </div>
@@ -667,6 +679,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     const localSubsOn = $("#btfw-localsubs-toggle", m)?.checked;
     const billcastOn  = $("#btfw-billcast-toggle", m)?.checked;
     const chatSide    = $("#btfw-chat-side", m)?.value || "right";
+    const atmosphereMode = $("#btfw-atmosphere-mode", m)?.value || "off";
 
     // persist
     set(TS_KEYS.avatarsMode, avatarsMode);
@@ -682,6 +695,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     set(TS_KEYS.surfaceTexture, surfaceTexture);
     set(TS_KEYS.navbarCompact, navbarCompactOn ? "1":"0");
     set(TS_KEYS.localSubs,   localSubsOn ? "1":"0");
+    set(TS_KEYS.atmosphere,  ["off","min","med","max"].includes(atmosphereMode) ? atmosphereMode : "off");
     set(TS_KEYS.billcastEnabled, billcastOn ? "1":"0");
     set(TS_KEYS.layoutSide, chatSide);
 
@@ -701,6 +715,7 @@ BTFW.define("feature:themeSettings", [], async () => {
     document.dispatchEvent(new CustomEvent("btfw:chat:joinNoticesChanged", { detail:{ enabled: !!joinNoticesOn } }));
     document.dispatchEvent(new CustomEvent("btfw:stack:compactChanged",    { detail:{ enabled : !!compactOn } }));
     document.dispatchEvent(new CustomEvent("btfw:video:localsubs:changed", { detail:{ enabled : !!localSubsOn } }));
+    document.dispatchEvent(new CustomEvent("btfw:adaptiveAtmosphere:changed", { detail:{ mode: atmosphereMode } }));
     document.dispatchEvent(new CustomEvent("btfw:layout:chatSideChanged",   { detail:{ side    : chatSide } }));
     document.dispatchEvent(new CustomEvent("btfw:themeSettings:apply",     { detail:{
       values: {
@@ -746,6 +761,8 @@ BTFW.define("feature:themeSettings", [], async () => {
     { const c = $("#btfw-notify-polls");       if (c) c.checked = get(TS_KEYS.notifyPolls,       "1") === "1"; }
     { const c = $("#btfw-notify-movievoting"); if (c) c.checked = get(TS_KEYS.notifyMovieVoting,  "1") === "1"; }
     $("#btfw-localsubs-toggle").checked = get(TS_KEYS.localSubs, "1") === "1";
+    { const a = $("#btfw-atmosphere-mode", m);
+      if (a) { const v = get(TS_KEYS.atmosphere, "off"); a.value = ["off","min","med","max"].includes(v) ? v : "off"; } }
     const bc = $("#btfw-billcast-toggle"); if (bc) bc.checked = get(TS_KEYS.billcastEnabled, "0") === "1";
     const compactStored = get(TS_KEYS.stackCompact, "1") === "1";
     const compactBtn = $("#btfw-compact-stack-toggle", m);

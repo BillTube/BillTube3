@@ -1365,6 +1365,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const global = window.BTFW = window.BTFW || {};
     window.BTFW_THEME_ADMIN = normalized;
     global.channelTheme = normalized;
+    try {
+      document.dispatchEvent(new CustomEvent("btfw:event-countdown:configChanged"));
+    } catch (_) {}
     applyRuntimeResources(normalized);
     applyRuntimeSlider(normalized);
     applyRuntimeBranding(normalized);
@@ -4179,7 +4182,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                 <input type="checkbox" id="btfw-theme-event-enabled" data-btfw-bind="event.enabled">
                 <span>Show countdown banner</span>
               </label>
-              <p class="help">A banner under the video counts down to the event and switches to LIVE at start time (it hides six hours after).</p>
+              <p class="help">A banner at the top of chat counts down to the event and switches to LIVE at start time (it hides six hours after).</p>
             </div>
             <div class="field">
               <label for="btfw-theme-event-title">Event title</label>
@@ -4522,7 +4525,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                   <label class="btfw-gradient-target"><input type="checkbox" data-btfw-bind="gradient.targets.panels"> Panels &amp; stacks</label>
                   <label class="btfw-gradient-target"><input type="checkbox" data-btfw-bind="gradient.targets.navbar"> Navbar</label>
                 </div>
-                <p class="help" style="margin-top:9px">Flow, Retro, Pixel, and iOS animate when motion is enabled. Reduced-motion preferences are always respected.</p>
+                <p class="help" style="margin-top:9px">Flow and Retro add layered, drifting light to panel headers; Pixel uses stepped motion. Follow palette preserves your channel colours, while Custom colours can create a more vivid blend. Reduced-motion preferences are always respected.</p>
               </div>
             </div>
             <div class="field">

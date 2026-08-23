@@ -672,6 +672,15 @@
   left: -6.5em !important;
 }
 
+/* Video.js defaults menu contents to 15em (150px). The captions menu also
+   contains its settings row and optional sync controls, so that cap can make
+   Video.js scroll the list on open and leave the first row visibly clipped.
+   Give captions enough room for the normal controls while retaining overflow
+   scrolling for channels with a longer subtitle list. */
+#videowrap .video-js.btfw-videojs-themed .vjs-subs-caps-button .vjs-menu-content {
+  max-height: min(24em, calc(100vh - 8rem)) !important;
+}
+
 #videowrap .video-js.btfw-videojs-themed .btfw-caption-menu-sync {
   display: flex !important;
   align-items: center;
@@ -1620,7 +1629,6 @@
    under .btfw-videojs-themed and supersede these older .vjs-theme-city
    variants. The orphan custom-property line below also has no parent
    block so it was inert. */
-
 
 
 

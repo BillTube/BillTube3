@@ -9,7 +9,7 @@ BTFW.define("feature:footer", [], async () => {
           <span class="btfw-footer-branding__mark" aria-hidden="true">BT</span>
           <div>
             <strong>BillTube Framework</strong>
-            <span class="btfw-footer-branding__version">Version 1</span>
+            <span class="btfw-footer-branding__version">Version 3</span>
           </div>
         </div>
         <nav class="btfw-footer-branding__actions" aria-label="BillTube links">

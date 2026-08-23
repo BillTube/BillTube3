@@ -87,10 +87,13 @@
   /* Motion scale — promoted from overlays.css so every surface shares one
      vocabulary. The old modal-motion names are kept as aliases below so the
      existing consumers need no edits. */
+  --btfw-motion-instant: 80ms;
   --btfw-motion-fast: 150ms;
   --btfw-motion-base: 220ms;
   --btfw-motion-slow: 320ms;
+  --btfw-motion-exit: 110ms;
   --btfw-ease-out: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --btfw-ease-fluid: cubic-bezier(0.22, 1, 0.36, 1);
   --btfw-ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
   --btfw-modal-motion-duration: var(--btfw-motion-base); /* alias, legacy name */
   --btfw-modal-motion-ease: var(--btfw-ease-out);        /* alias, legacy name */

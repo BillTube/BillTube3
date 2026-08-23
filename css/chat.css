@@ -278,11 +278,12 @@
     align-items: center;
     gap: 5px;
     width: 100%;
-    padding: 4px 6px;
+    min-height: 32px;
+    padding: 5px 10px;
     margin: 0;
     background: color-mix(in srgb, var(--btfw-color-surface) 74%, transparent 26%);
     border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
-    border-radius: 999px;
+    border-radius: var(--btfw-chat-row-radius, 999px);
     box-shadow: none;
     font-size: 12px;
 }

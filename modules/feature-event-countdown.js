@@ -7,6 +7,7 @@
 BTFW.define("feature:event-countdown", [], async () => {
   const LIVE_WINDOW_MS = 6 * 60 * 60 * 1000;
   const STYLE_ID = "btfw-event-countdown-css";
+  const CONFIG_EVENT = "btfw:event-countdown:configChanged";
 
   let el = null;
   let timer = null;
@@ -22,10 +23,25 @@ BTFW.define("feature:event-countdown", [], async () => {
         align-items: center;
         gap: 10px;
         margin: 8px 0 2px;
-        padding: 7px 12px;
-        border-radius: var(--btfw-radius-sm, 10px);
-        border: 1px solid color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 40%, transparent 60%);
-        background: color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 12%, var(--btfw-color-panel, #171d27) 88%);
+        min-height: 32px;
+        padding: 5px 10px;
+        border-radius: var(--btfw-chat-row-radius, 999px);
+        border: 1px solid var(--btfw-chat-row-border,
+          color-mix(in srgb, var(--btfw-color-text, #e8eff4) 14%, var(--btfw-color-surface, #111722) 86%));
+        background-color: var(--btfw-chat-row-bg,
+          color-mix(in srgb, var(--btfw-color-bg, #080b12) 58%, var(--btfw-color-panel, #171d27) 42%));
+        background-image:
+          var(--btfw-dither-image, none),
+          radial-gradient(120% 150% at 0% 0%,
+            color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 6%, transparent 94%) 0%,
+            transparent 58%),
+          linear-gradient(145deg,
+            color-mix(in srgb, var(--btfw-color-panel, #171d27) 48%, var(--btfw-color-bg, #080b12) 52%) 0%,
+            color-mix(in srgb, var(--btfw-color-bg, #080b12) 72%, var(--btfw-color-surface, #111722) 28%) 100%);
+        background-size: var(--btfw-dither-size, 4px 4px), auto, auto;
+        background-position: 0 0, center, center;
+        box-shadow: var(--btfw-chat-row-shadow,
+          inset 0 1px 0 color-mix(in srgb, white 6%, transparent 94%));
         color: var(--btfw-color-text, #e8eff4);
         font-size: 0.8rem;
       }
@@ -166,9 +182,13 @@ BTFW.define("feature:event-countdown", [], async () => {
 
   function boot(){
     sync();
+    // Toolkit changes are applied to the runtime config before CyTube finishes
+    // saving Channel JS. React immediately instead of making the owner wait
+    // for the fallback poll (or assume the feature requires a page reload).
+    document.addEventListener(CONFIG_EVENT, sync);
     // The admin can change the event without a page reload (Apply updates the
-    // runtime config); a cheap re-sync poll picks that up for the admin, and
-    // is a no-op for everyone else.
+    // runtime config); retain a cheap re-sync poll as a fallback for external
+    // Channel JS changes that do not emit the toolkit event.
     setInterval(sync, 15000);
   }
 

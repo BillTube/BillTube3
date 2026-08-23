@@ -546,6 +546,7 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
         ensureInlinePlayback();
         applyPosterUrl();
         togglePosterVisibility();
+        ensureQualitySelector();
       }
       ensureCaptionSyncControls();
     });
@@ -558,12 +559,302 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     watchPlayerMount._mo = mo;
   }
 
-  function handleVideoChange() {
+  /* ===== Custom quality selector (replaces broken vjs-resolution-switcher) ===== */
+  const QUALITY_BUTTON_CLASS = "btfw-quality-button";
+  const BROKEN_RES_BUTTON_CLASS = "vjs-resolution-button";
+  const qualityState = {
+    byMediaId: new Map(),
+    lastMediaId: null,
+    boundPlayer: null
+  };
+
+  function ensureQualitySelectorStyles() {
+    if (document.getElementById("btfw-quality-selector-style")) return;
+    const style = document.createElement("style");
+    style.id = "btfw-quality-selector-style";
+    style.textContent = `
+      /* Hide the broken Video.js resolution-switcher button for good. */
+      .vjs-resolution-button,
+      .video-js .vjs-resolution-button {
+        display: none !important;
+      }
+      /* Keep our custom button aligned with the rest of the control bar. */
+      .vjs-control-bar .${QUALITY_BUTTON_CLASS} {
+        order: 98;
+      }
+      /* Show the menu on explicit open state so clicks are stable and
+         touch devices get a toggle instead of relying solely on hover. */
+      .${QUALITY_BUTTON_CLASS}.btfw-quality-open .vjs-menu,
+      .${QUALITY_BUTTON_CLASS}.vjs-hover .vjs-menu {
+        display: block;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function getVideojsPlayerSafe() {
+    if (typeof window === "undefined" || !window.videojs) return null;
+    try {
+      return window.videojs.players?.ytapiplayer || window.videojs("ytapiplayer");
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getMediaId() {
+    return window.PLAYER && window.PLAYER.mediaId ? window.PLAYER.mediaId : null;
+  }
+
+  function getPlayerSources() {
+    const player = window.PLAYER;
+    if (player && Array.isArray(player.sources) && player.sources.length > 1) {
+      return player.sources;
+    }
+    return null;
+  }
+
+  function normalizeUrl(url) {
+    if (!url) return "";
+    try {
+      const u = new URL(url, window.location.href);
+      return `${u.origin}${u.pathname}`;
+    } catch (_) {
+      return url.split("?")[0];
+    }
+  }
+
+  function removeBrokenResolutionButton() {
+    document.querySelectorAll(`.${BROKEN_RES_BUTTON_CLASS}`).forEach((btn) => {
+      btn.remove();
+    });
+  }
+
+  function formatQualityLabel(source) {
+    return `${source.res}p`;
+  }
+
+  function buildQualityMenuItem(source, isSelected) {
+    const li = document.createElement("li");
+    li.className = `vjs-menu-item ${isSelected ? "vjs-selected" : ""}`;
+    li.setAttribute("role", "menuitemradio");
+    li.setAttribute("aria-checked", isSelected ? "true" : "false");
+    li.textContent = formatQualityLabel(source);
+    li.dataset.res = String(source.res);
+    return li;
+  }
+
+  function desiredMenuSignature(sources, currentRes) {
+    return sources.map((s) => `${s.res}:${String(s.res) === String(currentRes)}`).join("|");
+  }
+
+  function updateQualityButtonState(button, sources, currentRes) {
+    const menuContent = button.querySelector(".vjs-menu-content");
+    if (!menuContent) return;
+
+    const nextSig = desiredMenuSignature(sources, currentRes);
+    if (menuContent.dataset.btfwQualitySig === nextSig) return;
+    menuContent.dataset.btfwQualitySig = nextSig;
+
+    menuContent.innerHTML = "";
+    sources.forEach((source) => {
+      const isSelected = String(source.res) === String(currentRes);
+      menuContent.appendChild(buildQualityMenuItem(source, isSelected));
+    });
+
+    const labelSpan = button.querySelector(".btfw-quality-label");
+    if (labelSpan) {
+      const current = sources.find((s) => String(s.res) === String(currentRes));
+      labelSpan.textContent = current ? formatQualityLabel(current) : "";
+    }
+  }
+
+  function getCurrentResFromSrc(sources) {
+    const player = getVideojsPlayerSafe();
+    if (!player) return null;
+    const currentSrc = normalizeUrl(player.currentSrc());
+    if (!currentSrc) return null;
+    const match = sources.find((s) => normalizeUrl(s.src) === currentSrc);
+    return match ? match.res : null;
+  }
+
+  function resolveCurrentRes(sources) {
+    const mediaId = getMediaId();
+    if (mediaId && qualityState.byMediaId.has(mediaId)) {
+      const stored = qualityState.byMediaId.get(mediaId);
+      if (sources.some((s) => String(s.res) === String(stored))) {
+        return stored;
+      }
+    }
+    const fromSrc = getCurrentResFromSrc(sources);
+    if (fromSrc != null) return fromSrc;
+    return sources[0] ? sources[0].res : null;
+  }
+
+  function switchQualitySource(source) {
+    const player = getVideojsPlayerSafe();
+    if (!player) return;
+
+    const mediaId = getMediaId();
+    if (mediaId) {
+      qualityState.byMediaId.set(mediaId, source.res);
+    }
+    qualityState.lastMediaId = mediaId;
+
+    // Keep CyTube's error-fallback index in sync with the chosen source
+    if (window.PLAYER && Array.isArray(window.PLAYER.sources)) {
+      const idx = window.PLAYER.sources.findIndex((s) => String(s.res) === String(source.res));
+      if (idx >= 0) window.PLAYER.sourceIdx = idx;
+    }
+
+    const currentTime = player.currentTime() || 0;
+    const wasPlaying = !player.paused();
+
+    try {
+      player.pause();
+    } catch (_) {}
+
+    player.src({ src: source.src, type: source.type, res: source.res });
+
+    const resume = () => {
+      try {
+        player.currentTime(currentTime);
+        if (wasPlaying) player.play().catch(() => {});
+      } catch (_) {}
+    };
+
+    player.one("loadeddata", resume);
+    player.one("loadedmetadata", resume);
     setTimeout(() => {
-      ensureInlinePlayback();
-      applyPosterUrl();
-      togglePosterVisibility();
-    }, 100);
+      try {
+        if (Math.abs(player.currentTime() - currentTime) > 0.5) {
+          player.currentTime(currentTime);
+        }
+      } catch (_) {}
+    }, 500);
+  }
+
+  function buildQualityButton() {
+    const button = document.createElement("button");
+    button.className = `vjs-menu-button vjs-menu-button-popup vjs-button ${QUALITY_BUTTON_CLASS}`;
+    button.type = "button";
+    button.title = "Quality";
+    button.setAttribute("aria-disabled", "false");
+    button.setAttribute("aria-haspopup", "true");
+    button.setAttribute("aria-expanded", "false");
+
+    button.innerHTML = `
+      <span class="vjs-icon-placeholder" aria-hidden="true"></span>
+      <span class="vjs-control-text" aria-live="polite">Quality</span>
+      <span class="btfw-quality-label"></span>
+      <div class="vjs-menu">
+        <ul class="vjs-menu-content" role="menu"></ul>
+      </div>
+    `;
+
+    button.addEventListener("mouseenter", () => button.classList.add("vjs-hover"));
+    button.addEventListener("mouseleave", () => {
+      button.classList.remove("vjs-hover");
+      button.classList.remove("btfw-quality-open");
+    });
+    button.addEventListener("focus", () => button.classList.add("vjs-hover"));
+    button.addEventListener("blur", () => {
+      button.classList.remove("vjs-hover");
+      button.classList.remove("btfw-quality-open");
+    });
+
+    button.addEventListener("click", (event) => {
+      const item = event.target.closest(".vjs-menu-item");
+      if (!item) {
+        button.classList.toggle("btfw-quality-open");
+        return;
+      }
+
+      const res = item.dataset.res;
+      const sources = getPlayerSources();
+      if (!sources) return;
+
+      const source = sources.find((s) => String(s.res) === res);
+      if (!source) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      switchQualitySource(source);
+      updateQualityButtonState(button, sources, source.res);
+      button.classList.remove("btfw-quality-open");
+    });
+
+    return button;
+  }
+
+  function bindQualityPlayerEvents() {
+    const player = getVideojsPlayerSafe();
+    if (!player || typeof player.on !== "function") return;
+    if (qualityState.boundPlayer === player) return;
+
+    qualityState.boundPlayer = player;
+    // Update button label when the source is swapped out by other code
+    // (e.g. the audio enhancer proxying through a CORS worker).
+    ["sourceset", "loadstart", "loadedmetadata", "resolutionchange"].forEach((event) => {
+      try {
+        player.on(event, () => {
+          if (!document.body) return;
+          const button = document.querySelector(`#ytapiplayer .${QUALITY_BUTTON_CLASS}`);
+          const sources = getPlayerSources();
+          if (!button || !sources) return;
+          updateQualityButtonState(button, sources, resolveCurrentRes(sources));
+        });
+      } catch (_) {}
+    });
+  }
+
+  function ensureQualitySelector() {
+    ensureQualitySelectorStyles();
+    const controlBar = document.querySelector("#ytapiplayer .vjs-control-bar");
+    if (!controlBar) return;
+
+    removeBrokenResolutionButton();
+
+    let button = controlBar.querySelector(`.${QUALITY_BUTTON_CLASS}`);
+    const sources = getPlayerSources();
+
+    if (!sources) {
+      if (button) button.remove();
+      return;
+    }
+
+    bindQualityPlayerEvents();
+
+    const mediaId = getMediaId();
+    if (mediaId && qualityState.lastMediaId && mediaId !== qualityState.lastMediaId) {
+      qualityState.byMediaId.delete(qualityState.lastMediaId);
+    }
+    qualityState.lastMediaId = mediaId;
+
+    const currentRes = resolveCurrentRes(sources);
+
+    if (!button) {
+      button = buildQualityButton();
+      const fullscreenBtn = controlBar.querySelector(".vjs-fullscreen-control");
+      if (fullscreenBtn) {
+        controlBar.insertBefore(button, fullscreenBtn);
+      } else {
+        controlBar.appendChild(button);
+      }
+    }
+
+    updateQualityButtonState(button, sources, currentRes);
+  }
+
+  function handleVideoChange() {
+    [100, 500, 1000, 2500].forEach((delay) => {
+      setTimeout(() => {
+        ensureInlinePlayback();
+        applyPosterUrl();
+        togglePosterVisibility();
+        ensureQualitySelector();
+      }, delay);
+    });
   }
 
   function boot() {
@@ -574,11 +865,13 @@ BTFW.define("feature:player", ["feature:layout"], async ({}) => {
     ensureCaptionSyncControls();
     applyPosterUrl();
     togglePosterVisibility();
+    ensureQualitySelector();
     watchPlayerMount();
 
     // Periodic check like billtube2.js
     setInterval(() => {
       togglePosterVisibility();
+      ensureQualitySelector();
     }, 1000);
 
     if (typeof window !== "undefined" && window.socket && typeof socket.on === "function") {
