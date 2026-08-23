@@ -7,6 +7,7 @@
 BTFW.define("feature:event-countdown", [], async () => {
   const LIVE_WINDOW_MS = 6 * 60 * 60 * 1000;
   const STYLE_ID = "btfw-event-countdown-css";
+  const CONFIG_EVENT = "btfw:event-countdown:configChanged";
 
   let el = null;
   let timer = null;
@@ -166,9 +167,13 @@ BTFW.define("feature:event-countdown", [], async () => {
 
   function boot(){
     sync();
+    // Toolkit changes are applied to the runtime config before CyTube finishes
+    // saving Channel JS. React immediately instead of making the owner wait
+    // for the fallback poll (or assume the feature requires a page reload).
+    document.addEventListener(CONFIG_EVENT, sync);
     // The admin can change the event without a page reload (Apply updates the
-    // runtime config); a cheap re-sync poll picks that up for the admin, and
-    // is a no-op for everyone else.
+    // runtime config); retain a cheap re-sync poll as a fallback for external
+    // Channel JS changes that do not emit the toolkit event.
     setInterval(sync, 15000);
   }
 
