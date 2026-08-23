@@ -1674,7 +1674,9 @@
   background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
   border:1px solid var(--btfw-border);
   color: var(--btfw-color-text-soft);
+  cursor:pointer;
   text-decoration:none;
+  user-select:none;
   transition: background .14s ease, color .14s ease, border-color .14s ease;
 }
 #btfw-gif-modal .btfw-gif-tabs li a:hover,
