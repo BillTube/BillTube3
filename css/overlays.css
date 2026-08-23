@@ -702,7 +702,7 @@
 }
 
 #chatline {
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 48%, var(--btfw-color-bg) 52%) !important;
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 48%, black 52%) !important;
   background-image:
     var(--btfw-dither-image),
     radial-gradient(
@@ -742,7 +742,7 @@
    remain individually inset, while the shared shell carries the shiny edge. */
 #btfw-chat-actions #btfw-chatactions-pill,
 #btfw-chatactions-burger {
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 44%, var(--btfw-color-bg) 56%);
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 44%, black 56%);
   background-image:
     var(--btfw-dither-image),
     var(--btfw-gradient-panel-soft-runtime-layer),
@@ -758,8 +758,8 @@
     ),
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--btfw-color-panel) 48%, var(--btfw-color-bg) 52%) 0%,
-      color-mix(in srgb, var(--btfw-color-surface) 42%, var(--btfw-color-bg) 58%) 100%
+      color-mix(in srgb, var(--btfw-color-panel) 48%, black 52%) 0%,
+      color-mix(in srgb, var(--btfw-color-surface) 42%, black 58%) 100%
     );
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
