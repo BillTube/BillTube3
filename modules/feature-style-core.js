@@ -111,12 +111,122 @@ BTFW.define("feature:styleCore", [], async () => {
     });
   }
 
+  function installFluidInteractions() {
+    const root = document.documentElement;
+    if (!root || root.dataset.btfwFluidInteractions === "1") return;
+    root.dataset.btfwFluidInteractions = "1";
+
+    const finePointer = window.matchMedia
+      ? window.matchMedia("(hover: hover) and (pointer: fine)")
+      : { matches: true };
+    const reducedMotion = window.matchMedia
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : { matches: false };
+    const containerSelector = [
+      "#btfw-navhost .dropdown-menu",
+      ".user-dropdown",
+      ".btfw-emotes-tabs",
+      ".btfw-gif-tabs",
+      ".btfw-ct-tabs",
+      ".tabs > ul",
+      "[role='menu']",
+      "[role='tablist']"
+    ].join(",");
+    const itemSelector = [
+      "a",
+      "button",
+      "[role='menuitem']",
+      "[role='menuitemradio']",
+      "[role='tab']",
+      ".btfw-tab"
+    ].join(",");
+
+    function motionAllowed() {
+      return finePointer.matches &&
+        !reducedMotion.matches &&
+        root.dataset.btfwMotion !== "reduced";
+    }
+
+    function resolveTarget(eventTarget) {
+      if (!(eventTarget instanceof Element)) return null;
+      const item = eventTarget.closest(itemSelector);
+      if (!item || item.matches(":disabled, [aria-disabled='true']")) return null;
+      const container = item.closest(containerSelector);
+      if (!container || !container.contains(item)) return null;
+      return { container, item };
+    }
+
+    function clearTarget(container) {
+      if (!container) return;
+      container.dataset.btfwFluidActive = "false";
+      const active = container.querySelector("[data-btfw-fluid-target='true']");
+      if (active) active.removeAttribute("data-btfw-fluid-target");
+    }
+
+    function activate(container, item) {
+      if (!motionAllowed()) { clearTarget(container); return; }
+      if (item.dataset.btfwFluidTarget === "true" &&
+          container.dataset.btfwFluidActive === "true") return;
+      const containerRect = container.getBoundingClientRect();
+      const itemRect = item.getBoundingClientRect();
+      if (!itemRect.width || !itemRect.height) return;
+
+      const previous = container.querySelector("[data-btfw-fluid-target='true']");
+      if (previous && previous !== item) previous.removeAttribute("data-btfw-fluid-target");
+
+      container.classList.add("btfw-fluid-menu");
+      if (getComputedStyle(container).position === "static") {
+        container.classList.add("btfw-fluid-menu--relative");
+      }
+      container.dataset.btfwFluidAxis = container.matches("[role='tablist'], .tabs > ul, .btfw-emotes-tabs, .btfw-gif-tabs, .btfw-ct-tabs")
+        ? "tabs"
+        : "menu";
+      container.style.setProperty("--btfw-fluid-hover-x", `${itemRect.left - containerRect.left}px`);
+      container.style.setProperty("--btfw-fluid-hover-y", `${itemRect.top - containerRect.top}px`);
+      container.style.setProperty("--btfw-fluid-hover-w", `${itemRect.width}px`);
+      container.style.setProperty("--btfw-fluid-hover-h", `${itemRect.height}px`);
+      item.dataset.btfwFluidTarget = "true";
+      container.dataset.btfwFluidActive = "true";
+    }
+
+    document.addEventListener("pointerover", (event) => {
+      const target = resolveTarget(event.target);
+      if (target) activate(target.container, target.item);
+    }, { passive: true });
+
+    document.addEventListener("pointerout", (event) => {
+      if (!(event.target instanceof Element)) return;
+      const container = event.target.closest(containerSelector);
+      if (!container) return;
+      if (event.relatedTarget instanceof Node && container.contains(event.relatedTarget)) return;
+      clearTarget(container);
+    }, { passive: true });
+
+    document.addEventListener("focusin", (event) => {
+      const target = resolveTarget(event.target);
+      if (target) activate(target.container, target.item);
+    });
+
+    document.addEventListener("focusout", (event) => {
+      const target = resolveTarget(event.target);
+      if (!target) return;
+      if (event.relatedTarget instanceof Node && target.container.contains(event.relatedTarget)) return;
+      clearTarget(target.container);
+    });
+
+    document.addEventListener("btfw:motion:preferenceApplied", () => {
+      if (motionAllowed()) return;
+      document.querySelectorAll(".btfw-fluid-menu").forEach(clearTarget);
+    });
+  }
+
   ensureSlate();
   setTimeout(ensureSlate, 400);
 
   ensureUiDepsAndZ();
   setTimeout(ensureUiDepsAndZ, 300);
   installPrimaryButtonRipple();
+  installFluidInteractions();
 
   // Persist "fluid" layout so CyTube renders consistently for all users
   try {
