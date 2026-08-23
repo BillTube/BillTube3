@@ -377,6 +377,61 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         chatText: "#ffb8a3",
         accent: "#ff4d2e"
       }
+    },
+    halloweenNight: {
+      name: "Halloween Night",
+      colors: {
+        background: "#09070d",
+        surface: "#140d18",
+        panel: "#24142b",
+        text: "#fff2df",
+        chatText: "#e8d3c0",
+        accent: "#ff8a1f"
+      }
+    },
+    winterFrost: {
+      name: "Polar Night",
+      colors: {
+        background: "#050a16",
+        surface: "#0a1430",
+        panel: "#11234a",
+        text: "#edf7ff",
+        chatText: "#bddbf2",
+        accent: "#63e6ff"
+      }
+    },
+    sakuraNight: {
+      name: "Sakura Night",
+      colors: {
+        background: "#080a17",
+        surface: "#10152a",
+        panel: "#1a2140",
+        text: "#fbf0ff",
+        chatText: "#dbcbe9",
+        accent: "#ff86b7"
+      }
+    },
+    oceanAbyss: {
+      name: "Ocean Abyss",
+      colors: {
+        background: "#030e13",
+        surface: "#07191f",
+        panel: "#0d2930",
+        text: "#e5fbf8",
+        chatText: "#bce1dc",
+        accent: "#38d6c5"
+      }
+    },
+    yuletide: {
+      name: "Yuletide",
+      colors: {
+        background: "#07100c",
+        surface: "#0d1b14",
+        panel: "#16291f",
+        text: "#f8f3e8",
+        chatText: "#d9ddcf",
+        accent: "#ef6262"
+      }
     }
   };
 
@@ -4409,6 +4464,11 @@ function replaceBlock(original, startMarker, endMarker, block){
                   <option value="bloodMoon">Blood Moon</option>
                   <option value="crimsonNoir">Crimson Noir</option>
                   <option value="forestGold">Forest &amp; Gold</option>
+                  <option value="halloweenNight">Halloween Night</option>
+                  <option value="winterFrost">Polar Night</option>
+                  <option value="sakuraNight">Sakura Night</option>
+                  <option value="oceanAbyss">Ocean Abyss</option>
+                  <option value="yuletide">Yuletide</option>
                 </optgroup>
                 <optgroup label="Editor">
                   <option value="dracula">Dracula</option>
