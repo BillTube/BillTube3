@@ -153,6 +153,11 @@ BTFW.define("feature:styleCore", [], async () => {
       if (!item || item.matches(":disabled, [aria-disabled='true']")) return null;
       const container = item.closest(containerSelector);
       if (!container || !container.contains(item)) return null;
+      // Video.js owns the geometry, pseudo-elements and keyboard state of its
+      // captions/settings menus. Treat those as a third-party interaction
+      // island instead of layering the travelling BTFW highlight over them.
+      if (container.matches(".vjs-menu, .vjs-menu-content") ||
+          container.closest(".video-js, .vjs-player")) return null;
       return { container, item };
     }
 

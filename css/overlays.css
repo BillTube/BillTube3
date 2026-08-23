@@ -447,11 +447,12 @@
   pointer-events: auto;
   font: 600 14px/1.05 "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   letter-spacing: 0.01em;
+  filter: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  transition: background var(--btfw-motion-fast, 150ms) ease,
-              color var(--btfw-motion-fast, 150ms) ease,
-              box-shadow var(--btfw-motion-fast, 150ms) ease,
-              transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-out, ease-out);
+  transition: background var(--btfw-motion-instant, 80ms) ease-out,
+              color var(--btfw-motion-instant, 80ms) ease-out,
+              box-shadow var(--btfw-motion-fast, 150ms) var(--btfw-ease-fluid, ease-out),
+              transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-fluid, ease-out);
   text-decoration: none;
 }
 
@@ -460,38 +461,51 @@
 #videowrap .btfw-video-overlay .btfw-vo-adopted i,
 #videowrap .btfw-video-overlay .btfw-vo-adopted .glyphicon {
   font-size: 16px;
-  transition: transform 0.2s ease;
   /* Bootstrap nudges .glyphicon with top:1px;position:relative which throws
      off the grid-centering we use on the button itself — neutralize it. */
   top: 0;
   position: static;
 }
 
-#videowrap .btfw-video-overlay .btfw-vo-btn:hover,
-#videowrap .btfw-video-overlay .btfw-vo-adopted:hover {
-  background: rgba(0, 0, 0, 0.55);
-  transform: translateY(-1px);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 60%, transparent 40%),
-    0 4px 16px color-mix(in srgb, var(--btfw-color-accent) 32%, transparent 68%);
-}
-
-#videowrap .btfw-video-overlay .btfw-vo-btn:hover i,
-#videowrap .btfw-video-overlay .btfw-vo-btn:hover .glyphicon,
-#videowrap .btfw-video-overlay .btfw-vo-adopted:hover i,
-#videowrap .btfw-video-overlay .btfw-vo-adopted:hover .glyphicon {
-  transform: scale(1.08);
+@media (hover: hover) and (pointer: fine) {
+  #videowrap .btfw-video-overlay .btfw-vo-btn:hover,
+  #videowrap .btfw-video-overlay .btfw-vo-adopted:hover {
+    background: rgba(0, 0, 0, 0.55);
+    filter: none;
+    transform: translateY(-1px) scale(1.01);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%),
+      0 8px 20px color-mix(in srgb, var(--btfw-color-bg) 42%, transparent 58%);
+  }
 }
 
 #videowrap .btfw-video-overlay .btfw-vo-btn:active,
 #videowrap .btfw-video-overlay .btfw-vo-adopted:active {
-  transform: translateY(0);
+  filter: none;
+  transform: translateY(0) scale(0.97);
+  transition-duration: var(--btfw-motion-instant, 80ms);
 }
 
 #videowrap .btfw-video-overlay .btfw-vo-btn:focus-visible,
 #videowrap .btfw-video-overlay .btfw-vo-adopted:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--btfw-color-accent) 95%, transparent 5%);
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #videowrap .btfw-video-overlay .btfw-vo-btn,
+  #videowrap .btfw-video-overlay .btfw-vo-adopted {
+    transform: none !important;
+    transition: background var(--btfw-motion-instant, 80ms) ease-out,
+                color var(--btfw-motion-instant, 80ms) ease-out !important;
+  }
+}
+
+:root[data-btfw-motion="reduced"] #videowrap .btfw-video-overlay .btfw-vo-btn,
+:root[data-btfw-motion="reduced"] #videowrap .btfw-video-overlay .btfw-vo-adopted {
+  transform: none !important;
+  transition: background var(--btfw-motion-instant, 80ms) ease-out,
+              color var(--btfw-motion-instant, 80ms) ease-out !important;
 }
 
 /* ======================================================================
