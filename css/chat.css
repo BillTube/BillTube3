@@ -609,7 +609,7 @@
 .btfw-chat-composer {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     width: 100%;
     padding: 0 10px 12px;
     border-radius: 0;
@@ -728,9 +728,9 @@
   flex-wrap:nowrap;            /* icons stay on one line — never wrap the cog off */
   gap:6px;                     /* tightened so more fits inline before the burger */
   width:100%;
-  padding-top:6px;
+  padding-top:0;
   border-top:0;
-  margin-top:4px;
+  margin-top:0;
   position:relative;          /* anchor for the collapsed pill flyout */
 }
 .btfw-chat-actions #usercount{
