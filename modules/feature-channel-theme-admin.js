@@ -4525,7 +4525,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                   <label class="btfw-gradient-target"><input type="checkbox" data-btfw-bind="gradient.targets.panels"> Panels &amp; stacks</label>
                   <label class="btfw-gradient-target"><input type="checkbox" data-btfw-bind="gradient.targets.navbar"> Navbar</label>
                 </div>
-                <p class="help" style="margin-top:9px">Flow, Retro, Pixel, and iOS animate when motion is enabled. Reduced-motion preferences are always respected.</p>
+                <p class="help" style="margin-top:9px">Flow and Retro add layered, drifting light to panel headers; Pixel uses stepped motion. Follow palette preserves your channel colours, while Custom colours can create a more vivid blend. Reduced-motion preferences are always respected.</p>
               </div>
             </div>
             <div class="field">
