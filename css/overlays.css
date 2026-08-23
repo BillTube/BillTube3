@@ -702,26 +702,21 @@
 }
 
 #chatline {
-  background-color: color-mix(in srgb, var(--btfw-color-panel) 66%, var(--btfw-color-bg) 34%) !important;
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 76%, var(--btfw-color-bg) 24%) !important;
   background-image:
     var(--btfw-dither-image),
     radial-gradient(
-      125% 160% at 0% 0%,
-      color-mix(in srgb, var(--btfw-color-accent) 7%, transparent 93%) 0%,
-      transparent 60%
-    ),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--btfw-color-panel) 68%, var(--btfw-color-bg) 32%) 0%,
-      color-mix(in srgb, var(--btfw-color-surface) 66%, var(--btfw-color-bg) 34%) 100%
+      110% 170% at 0% 0%,
+      color-mix(in srgb, var(--btfw-color-accent) 4%, transparent 96%) 0%,
+      transparent 66%
     ) !important;
-  background-size: var(--btfw-dither-size), auto, auto !important;
-  background-position: 0 0, center, center !important;
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 10%, var(--btfw-color-surface) 90%) !important;
+  background-size: var(--btfw-dither-size), auto !important;
+  background-position: 0 0, center !important;
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 16%, var(--btfw-color-surface) 84%) !important;
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 7%, transparent 93%),
-    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 44%, transparent 56%),
-    0 5px 16px color-mix(in srgb, var(--btfw-color-bg) 15%, transparent 85%) !important;
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent 95%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 36%, transparent 64%),
+    0 3px 10px color-mix(in srgb, var(--btfw-color-bg) 12%, transparent 88%) !important;
   transition:
     background-color var(--btfw-motion-fast, 150ms) ease,
     border-color var(--btfw-motion-fast, 150ms) ease,
@@ -729,6 +724,10 @@
 }
 #chatline:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--btfw-color-accent) 24%, var(--btfw-color-surface) 76%) !important;
+}
+#chatline::placeholder {
+  color: color-mix(in srgb, var(--btfw-color-chat-text) 58%, transparent 42%);
+  opacity: 1;
 }
 #chatline:focus {
   border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, var(--btfw-color-surface) 52%) !important;
@@ -764,7 +763,7 @@
     );
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 10%, var(--btfw-color-surface) 90%);
+  border-color: color-mix(in srgb, var(--btfw-color-accent) 18%, var(--btfw-color-surface) 82%);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 7%, transparent 93%),
     inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 46%, transparent 54%),
@@ -1040,19 +1039,14 @@
   background-image:
     var(--btfw-dither-image),
     radial-gradient(
-      125% 160% at 0% 0%,
-      color-mix(in srgb, var(--btfw-color-accent) 10%, transparent 90%) 0%,
-      transparent 60%
-    ),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--btfw-color-panel) 68%, var(--btfw-color-bg) 32%) 0%,
-      color-mix(in srgb, var(--btfw-color-surface) 66%, var(--btfw-color-bg) 34%) 100%
+      110% 170% at 0% 0%,
+      color-mix(in srgb, var(--btfw-color-accent) 7%, transparent 93%) 0%,
+      transparent 66%
     ) !important;
-  background-size: var(--btfw-dither-size), auto, auto !important;
-  background-position: 0 0, center, center !important;
+  background-size: var(--btfw-dither-size), auto !important;
+  background-position: 0 0, center !important;
   background-origin: border-box !important;
-  background-clip: padding-box, padding-box, padding-box !important;
+  background-clip: padding-box, padding-box !important;
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 10%, transparent 90%),
     inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 30%, transparent 70%),
