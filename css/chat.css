@@ -436,24 +436,6 @@
   text-align: center;
 }
 
-/* Pulsing live-dot in channel accent before the title — signals 'now playing' */
-#btfw-nowplaying-slot::before {
-  content: "";
-  display: inline-block;
-  flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--btfw-color-accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--btfw-color-accent) 65%, transparent);
-  animation: btfwNowPlayingPulse 1.6s ease-in-out infinite;
-}
-
-@keyframes btfwNowPlayingPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
 #btfw-nowplaying-slot > .btfw-nowplaying,
 #btfw-nowplaying-slot > .btfw-chat-title{
   font-weight: inherit;

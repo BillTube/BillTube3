@@ -53,16 +53,6 @@ BTFW.define("feature:event-countdown", [], async () => {
         width: 100%;
         margin: 0;
       }
-      #btfw-event-countdown .btfw-event__dot {
-        width: 8px; height: 8px; border-radius: 50%;
-        background: var(--btfw-color-accent, #6d4df6);
-        flex: 0 0 auto;
-      }
-      #btfw-event-countdown.is-live .btfw-event__dot {
-        background: var(--btfw-color-error, #ff6f96);
-        animation: btfwEventPulse 1.2s ease-in-out infinite;
-      }
-      @keyframes btfwEventPulse { 50% { opacity: 0.35; } }
       #btfw-event-countdown .btfw-event__title {
         flex: 1 1 auto;
         min-width: 0;
@@ -81,9 +71,6 @@ BTFW.define("feature:event-countdown", [], async () => {
       #btfw-event-countdown.is-live .btfw-event__time {
         color: var(--btfw-color-error, #ff6f96);
         text-transform: uppercase;
-      }
-      @media (prefers-reduced-motion: reduce) {
-        #btfw-event-countdown.is-live .btfw-event__dot { animation: none; }
       }
     `;
     document.head.appendChild(style);
@@ -122,7 +109,6 @@ BTFW.define("feature:event-countdown", [], async () => {
     el = document.createElement("div");
     el.id = "btfw-event-countdown";
     el.innerHTML = `
-      <span class="btfw-event__dot" aria-hidden="true"></span>
       <span class="btfw-event__title"></span>
       <span class="btfw-event__time" role="timer"></span>`;
     // Preferred home: a slim row inside the chat topbar, right under the
