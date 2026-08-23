@@ -1674,11 +1674,14 @@
   background: color-mix(in srgb, var(--btfw-color-panel) 78%, transparent 22%);
   border:1px solid var(--btfw-border);
   color: var(--btfw-color-text-soft);
+  text-decoration:none;
   transition: background .14s ease, color .14s ease, border-color .14s ease;
 }
-#btfw-gif-modal .btfw-gif-tabs li a:hover{
+#btfw-gif-modal .btfw-gif-tabs li a:hover,
+#btfw-gif-modal .btfw-gif-tabs li a:focus{
   background: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%);
   color: var(--btfw-color-text);
+  text-decoration:none;
 }
 #btfw-gif-modal .btfw-gif-tabs li.is-active a{
   background: color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);
