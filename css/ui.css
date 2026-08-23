@@ -149,7 +149,7 @@ html { font-size: 16px; }
     transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-overshoot, ease-out);
 }
 .button:not([disabled]):not([aria-disabled="true"]):active {
-  transform: translateY(1px) scale(0.97);
+  transform: translateY(1px) scale(0.98);
 }
 .button > .fa,
 .button > .glyphicon {
@@ -526,7 +526,7 @@ html { font-size: 16px; }
   }
 }
 .btfw-btn:not([disabled]):not([aria-disabled="true"]):active {
-  transform: translateY(1px) scale(0.97);
+  transform: translateY(1px) scale(0.98);
   box-shadow: 0 2px 6px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 12%, transparent);
 }
 .btfw-btn:focus-visible {
@@ -576,103 +576,6 @@ html { font-size: 16px; }
 @keyframes btfw-button-ripple {
   0% { opacity: 0.8; transform: translate(-50%, -50%) scale(0); }
   100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
-}
-
-/* ---- Fluid interaction layer ---------------------------------------
-   Inspired by Fluid Functionalism's functional-motion approach. The menu
-   highlight is one pseudo-element per active menu; JS only updates its target
-   when the hovered/focused item changes, so there is no pointermove loop. */
-@media (hover: hover) and (pointer: fine) {
-  .button:not([disabled]):not([aria-disabled="true"]):hover {
-    transform: translateY(-1px) scale(1.01);
-    box-shadow:
-      0 8px 20px color-mix(in srgb, var(--btfw-color-bg, #0a0e15) 24%, transparent),
-      0 0 0 1px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 14%, transparent);
-  }
-}
-
-.btfw-fluid-menu {
-  --btfw-fluid-hover-x: 0px;
-  --btfw-fluid-hover-y: 0px;
-  --btfw-fluid-hover-w: 0px;
-  --btfw-fluid-hover-h: 0px;
-  isolation: isolate;
-}
-
-.btfw-fluid-menu--relative {
-  position: relative;
-}
-
-.btfw-fluid-menu::before {
-  content: "";
-  position: absolute;
-  z-index: 0;
-  top: 0;
-  left: 0;
-  width: var(--btfw-fluid-hover-w);
-  height: var(--btfw-fluid-hover-h);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent, #4ade80) 25%, transparent);
-  border-radius: var(--btfw-radius-xs, 8px);
-  background: color-mix(in srgb, var(--btfw-color-accent, #4ade80) 15%, transparent);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--btfw-color-text, #e8eff4) 6%, transparent),
-    0 6px 18px color-mix(in srgb, var(--btfw-color-accent, #4ade80) 9%, transparent);
-  opacity: 0;
-  pointer-events: none;
-  transform: translate3d(var(--btfw-fluid-hover-x), var(--btfw-fluid-hover-y), 0);
-  transform-origin: 0 0;
-  transition:
-    opacity var(--btfw-motion-instant, 80ms) ease-out,
-    transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-fluid, cubic-bezier(0.22, 1, 0.36, 1)),
-    width var(--btfw-motion-fast, 150ms) var(--btfw-ease-fluid, cubic-bezier(0.22, 1, 0.36, 1)),
-    height var(--btfw-motion-fast, 150ms) var(--btfw-ease-fluid, cubic-bezier(0.22, 1, 0.36, 1));
-}
-
-.btfw-fluid-menu[data-btfw-fluid-active="true"]::before {
-  opacity: 1;
-}
-
-.btfw-fluid-menu > :is(a, button, [role="menuitem"], [role="menuitemradio"], [role="tab"], .btfw-tab),
-.btfw-fluid-menu > li > :is(a, button, [role="menuitem"], [role="menuitemradio"], [role="tab"]) {
-  position: relative;
-  z-index: 1;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .btfw-fluid-menu > :is(a, button, [role="menuitem"], [role="menuitemradio"], [role="tab"], .btfw-tab),
-  .btfw-fluid-menu > li > :is(a, button, [role="menuitem"], [role="menuitemradio"], [role="tab"]) {
-    transition:
-      color var(--btfw-motion-instant, 80ms) ease-out,
-      transform var(--btfw-motion-fast, 150ms) var(--btfw-ease-fluid, cubic-bezier(0.22, 1, 0.36, 1));
-  }
-
-  .btfw-fluid-menu[data-btfw-fluid-axis="menu"] [data-btfw-fluid-target="true"] {
-    transform: translateX(2px);
-  }
-
-  .btfw-fluid-menu[data-btfw-fluid-axis="tabs"] [data-btfw-fluid-target="true"] {
-    transform: translateY(-1px);
-  }
-}
-
-/* Let the shared travelling highlight own the active hover fill. Existing
-   selected/current states remain untouched when the pointer leaves. */
-.btfw-fluid-menu[data-btfw-fluid-active="true"] > :is(a, button, [role="menuitem"], [role="menuitemradio"], [role="tab"], .btfw-tab):hover,
-.btfw-fluid-menu[data-btfw-fluid-active="true"] > li > :is(a, button, [role="menuitem"], [role="menuitemradio"], [role="tab"]):hover {
-  background-color: transparent !important;
-  background-image: none !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .btfw-fluid-menu::before { display: none !important; }
-  .btfw-fluid-menu [data-btfw-fluid-target="true"] { transform: none !important; }
-}
-
-:root[data-btfw-motion="reduced"] .btfw-fluid-menu::before {
-  display: none !important;
-}
-:root[data-btfw-motion="reduced"] .btfw-fluid-menu [data-btfw-fluid-target="true"] {
-  transform: none !important;
 }
 
 /* ---- Text input (.btfw-field-input) --------------------------------- */
