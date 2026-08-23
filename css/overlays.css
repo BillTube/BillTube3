@@ -532,6 +532,16 @@
    ====================================================================== */
 
 .btfw-chat-topbar {
+  /* The shell is a soft card; compact status/control rows inside it use the
+     existing ratings-pill silhouette as their shared component language. */
+  --btfw-chat-shell-radius: 14px;
+  --btfw-chat-row-radius: 999px;
+  --btfw-chat-row-bg: color-mix(in srgb, var(--btfw-color-bg) 58%, var(--btfw-color-panel) 42%);
+  --btfw-chat-row-border: color-mix(in srgb, var(--btfw-color-text) 14%, var(--btfw-color-surface) 86%);
+  --btfw-chat-row-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent 94%),
+    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 50%, transparent 50%),
+    0 3px 10px color-mix(in srgb, var(--btfw-color-bg) 16%, transparent 84%);
   /* The blur creates a stacking context. Lift that context above the later
      paint-contained message buffer so child toasts can cover chat media. */
   position: relative;
@@ -558,8 +568,8 @@
     ) !important;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
-  border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 12%, var(--btfw-color-panel) 88%);
-  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--btfw-color-text) 12%, var(--btfw-color-panel) 88%);
+  border-radius: var(--btfw-chat-shell-radius);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 7%, transparent 93%),
     inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 52%, transparent 48%),
@@ -639,28 +649,27 @@
    The rating row is intentionally the darker inset surface; the input is the
    lighter, interactive layer. Both remain fully palette-driven. */
 #chatwrap .btfw-chat-topbar #btfw-ratings {
-  padding: 6px 9px;
+  min-height: 32px;
+  padding: 5px 10px;
   gap: 7px;
-  background-color: color-mix(in srgb, var(--btfw-color-bg) 62%, var(--btfw-color-panel) 38%);
+  border-radius: var(--btfw-chat-row-radius);
+  background-color: var(--btfw-chat-row-bg);
   background-image:
     var(--btfw-dither-image),
     radial-gradient(
       120% 150% at 0% 0%,
-      color-mix(in srgb, var(--btfw-color-accent) 8%, transparent 92%) 0%,
+      color-mix(in srgb, var(--btfw-color-accent) 6%, transparent 94%) 0%,
       transparent 58%
     ),
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--btfw-color-panel) 42%, var(--btfw-color-bg) 58%) 0%,
-      color-mix(in srgb, var(--btfw-color-bg) 78%, var(--btfw-color-surface) 22%) 100%
+      color-mix(in srgb, var(--btfw-color-panel) 48%, var(--btfw-color-bg) 52%) 0%,
+      color-mix(in srgb, var(--btfw-color-bg) 72%, var(--btfw-color-surface) 28%) 100%
     );
   background-size: var(--btfw-dither-size), auto, auto;
   background-position: 0 0, center, center;
-  border-color: color-mix(in srgb, var(--btfw-color-accent) 12%, var(--btfw-color-surface) 88%);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 6%, transparent 94%),
-    inset 0 -1px 0 color-mix(in srgb, var(--btfw-color-bg) 56%, transparent 44%),
-    0 4px 12px color-mix(in srgb, var(--btfw-color-bg) 18%, transparent 82%);
+  border-color: var(--btfw-chat-row-border);
+  box-shadow: var(--btfw-chat-row-shadow);
 }
 
 #chatwrap .btfw-chat-topbar #btfw-ratings .btfw-ratings__actions button {

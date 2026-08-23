@@ -23,10 +23,25 @@ BTFW.define("feature:event-countdown", [], async () => {
         align-items: center;
         gap: 10px;
         margin: 8px 0 2px;
-        padding: 7px 12px;
-        border-radius: var(--btfw-radius-sm, 10px);
-        border: 1px solid color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 40%, transparent 60%);
-        background: color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 12%, var(--btfw-color-panel, #171d27) 88%);
+        min-height: 32px;
+        padding: 5px 10px;
+        border-radius: var(--btfw-chat-row-radius, 999px);
+        border: 1px solid var(--btfw-chat-row-border,
+          color-mix(in srgb, var(--btfw-color-text, #e8eff4) 14%, var(--btfw-color-surface, #111722) 86%));
+        background-color: var(--btfw-chat-row-bg,
+          color-mix(in srgb, var(--btfw-color-bg, #080b12) 58%, var(--btfw-color-panel, #171d27) 42%));
+        background-image:
+          var(--btfw-dither-image, none),
+          radial-gradient(120% 150% at 0% 0%,
+            color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 6%, transparent 94%) 0%,
+            transparent 58%),
+          linear-gradient(145deg,
+            color-mix(in srgb, var(--btfw-color-panel, #171d27) 48%, var(--btfw-color-bg, #080b12) 52%) 0%,
+            color-mix(in srgb, var(--btfw-color-bg, #080b12) 72%, var(--btfw-color-surface, #111722) 28%) 100%);
+        background-size: var(--btfw-dither-size, 4px 4px), auto, auto;
+        background-position: 0 0, center, center;
+        box-shadow: var(--btfw-chat-row-shadow,
+          inset 0 1px 0 color-mix(in srgb, white 6%, transparent 94%));
         color: var(--btfw-color-text, #e8eff4);
         font-size: 0.8rem;
       }
