@@ -1012,6 +1012,7 @@
   color: var(--btfw-color-text);
   transition: background .14s ease, border-color .14s ease, transform .06s ease;
 }
+#btfw-ct-modal .btfw-ct-action[hidden]{ display:none !important; }
 #btfw-ct-modal .btfw-ct-action:hover{
   background: color-mix(in srgb, var(--btfw-color-accent) 20%, transparent 80%);
   border-color: color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);

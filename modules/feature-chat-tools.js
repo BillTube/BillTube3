@@ -2,9 +2,10 @@
    Mini panel above chat input: BBCode buttons, AFK/Clear, and Color tools.
    Color uses BillTube2 format: prefix 'col:#RRGGBB:' at the start of the message.
 */
-BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async ({ init }) => {
+BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover", "feature:notify"], async ({ init }) => {
   const motion = await init("util:motion");
   const chatPopover = await init("util:chat-popover");
+  const notify = await init("feature:notify");
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
@@ -132,6 +133,43 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
     markSelectedSwatch(stored || (hexEl && hexEl.value) || "");
   }
 
+  function canClearChat(){
+    try {
+      return typeof window.hasPermission === "function"
+        && window.hasPermission("chatclear");
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function syncClearChatUI(){
+    const clear = document.querySelector('#btfw-ct-modal [data-act="clear"]');
+    if (!clear) return;
+    clear.hidden = !canClearChat();
+  }
+
+  function showClearPermissionError(){
+    notify.error({
+      title: "Clear chat unavailable",
+      html: "You do not have permission to clear chat for everyone.",
+      icon: "⚠️",
+      timeout: 5200
+    });
+  }
+
+  function blockUnauthorizedClearCommand(event){
+    if (event.key !== "Enter" || event.shiftKey) return;
+    const input = event.currentTarget;
+    if (!/^\/clear(?:\s|$)/i.test((input?.value || "").trim())) return;
+    if (canClearChat()) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    input.value = "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    showClearPermissionError();
+  }
+
   function buildSwatchesOnce(){
     const sw = document.querySelector("#btfw-ct-swatch");
     if (sw && !sw.hasChildNodes()) {
@@ -201,12 +239,15 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
               <div class="btfw-ct-seclabel">Actions</div>
               <div class="btfw-ct-actions">
                 <button class="btfw-ct-action" data-act="afk" type="button"><i class="fa fa-mug-hot" aria-hidden="true"></i><span>AFK</span></button>
-                <button class="btfw-ct-action" data-act="clear" type="button"><i class="fa fa-eraser" aria-hidden="true"></i><span>Clear chat</span></button>
+                <button class="btfw-ct-action" data-act="clear" type="button" hidden><i class="fa fa-eraser" aria-hidden="true"></i><span>Clear chat</span></button>
               </div>
             </section>
           </div>
         </div>`,
-      onOpen: () => syncKeepColorUI()
+      onOpen: () => {
+        syncKeepColorUI();
+        syncClearChatUI();
+      }
     });
     return _ctPop;
   }
@@ -269,6 +310,17 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
 
     ensureActionsButton();
     ensureMiniModal();
+    syncClearChatUI();
+
+    // CyTube owns the chatclear permission. Keep this moderation action in
+    // sync when either the permission table or the current user's rank changes.
+    const sock = window.socket;
+    if (sock && typeof sock.on === "function" && !sock._btfwClearChatPermissionWired) {
+      sock._btfwClearChatPermissionWired = true;
+      ["setPermissions", "setUserRank", "rank", "login"].forEach(eventName => {
+        sock.on(eventName, () => window.setTimeout(syncClearChatUI, 0));
+      });
+    }
 
     // Toggle Chat Tools (open/close) on its own button
     const toolsBtn = $("#btfw-chattools-btn") || $("#btfw-ct-open");
@@ -307,7 +359,12 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
       const clr = e.target.closest && e.target.closest('[data-act="clear"]');
       if (clr && inCard) {
         e.preventDefault();
-        const mb = $("#messagebuffer"); if (mb) mb.innerHTML = "";
+        if (!canClearChat()) {
+          syncClearChatUI();
+          showClearPermissionError();
+          return;
+        }
+        if (window.socket?.emit) window.socket.emit("chatMsg", { msg: "/clear" });
         closeMiniModal();
         return;
       }
@@ -376,6 +433,7 @@ BTFW.define("feature:chat-tools", ["feature:chat", "util:chat-popover"], async (
 
     // Chatline helpers: history + sticky color before send
     const l = chatline(); if (l) {
+      l.addEventListener("keydown", blockUnauthorizedClearCommand, true);
       l.addEventListener("keydown", (ev)=>{
         if (ev.key === "Enter" && !ev.shiftKey) {
           applyStickyColorBeforeSend();  // prefix if needed
