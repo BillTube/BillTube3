@@ -42,9 +42,14 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   const SLOW_ANALYSIS_MS = 10;   // downgrade quality when the rolling average exceeds this
   // Ignore subtitle band and frame edges (spec §9): bottom 15% + 5% edges.
   const CROP = { left: 0.05, top: 0.05, right: 0.95, bottom: 0.85 };
-  const NORMAL_SMOOTHING = 0.09;
-  const SCENE_SMOOTHING  = 0.22;
-  const FADE_STEP_MS     = 120;  // fade-ticker cadence when not sampling
+  // Colour should drift cinematically even through rapid cuts. Luminance and
+  // opacity may respond sooner, but hue never uses the old aggressive scene
+  // boost that made flash-heavy sequences visibly chase every frame.
+  const COLOR_SMOOTHING       = 0.035;
+  const COLOR_SCENE_SMOOTHING = 0.07;
+  const EFFECT_SMOOTHING      = 0.065;
+  const EFFECT_SCENE_SMOOTHING = 0.11;
+  const SMOOTH_STEP_MS   = 60;   // cheap CSS interpolation between canvas samples
   // Dead zones: below these deltas the target is treated as unchanged.
   const DEAD_ZONE = { brightness: 0.02, saturation: 0.03, warmth: 0.03, contrast: 0.03, rgb: 4 };
   // A single-sample brightness spike this large (with heavy frame motion)
@@ -55,9 +60,9 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   // Theme-anchored fallbacks. NEUTRAL is the resting state; BASE_AMBIENT is
   // what detected video colours get biased toward so the result always stays
   // in BillTube's dark palette family.
-  const NEUTRAL = { r: 18, g: 22, b: 30, brightness: 0.15, saturation: 0.15, warmth: 0, contrast: 0.25, bg: 0, glow: 0, panel: 0, mix: 0, rTop: 18, gTop: 22, bTop: 30, rBot: 18, gBot: 22, bBot: 30 };
+  const NEUTRAL = { r: 18, g: 22, b: 30, brightness: 0.15, saturation: 0.15, warmth: 0, contrast: 0.25, bg: 0, glow: 0, panel: 0, mix: 0, darken: 0, rTop: 18, gTop: 22, bTop: 30, rBot: 18, gBot: 22, bBot: 30 };
   const BASE_AMBIENT = { r: 18, g: 22, b: 30 };
-  const MAX_SATURATION = 0.5;   // ambient colours never exceed this
+  const MAX_SATURATION = 0.58;  // enough chroma to identify a scene, still safely subdued
   // Lightness band for the restrained SOURCE colour. The final tint's
   // lightness is driven by scene brightness afterwards (see
   // handleRawAnalysis), which is what makes the chrome dim and lift with
@@ -168,6 +173,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
         --btfw-atmo-glow-opacity: 0;
         --btfw-atmo-panel-opacity: 0;
         --btfw-atmo-mix: 0;
+        --btfw-atmo-darken: 0;
       }
       /* The real atmosphere carrier: re-tint the theme's own base tokens.
          Every main surface (#wrap, #chatwrap, #videowrap, playlist, cards,
@@ -179,13 +185,13 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       html[data-btfw-atmosphere="on"] {
         --btfw-color-bg: color-mix(in srgb,
           rgb(var(--btfw-atmo-rgb)) calc(var(--btfw-atmo-mix) * 100%),
-          var(--btfw-theme-bg, #0b0f12));
+          color-mix(in srgb, #020304 calc(var(--btfw-atmo-darken) * 100%), var(--btfw-theme-bg, #0b0f12)));
         --btfw-color-panel: color-mix(in srgb,
           rgb(var(--btfw-atmo-rgb)) calc(var(--btfw-atmo-mix) * 60%),
-          var(--btfw-theme-panel, #171d27));
+          color-mix(in srgb, #030405 calc(var(--btfw-atmo-darken) * 72%), var(--btfw-theme-panel, #171d27)));
         --btfw-color-surface: color-mix(in srgb,
           rgb(var(--btfw-atmo-rgb)) calc(var(--btfw-atmo-mix) * 45%),
-          var(--btfw-theme-surface, #11161d));
+          color-mix(in srgb, #020304 calc(var(--btfw-atmo-darken) * 82%), var(--btfw-theme-surface, #11161d)));
       }
       /* Fixed page layer — sits with body::before (z-index:-1) above the page
          background but below all content. Vertical two-zone gradient: the
@@ -537,6 +543,10 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       maybeUpgradeCors(state.video);
       if (state.video && !state.video.paused) startLoop();
     }
+    document.documentElement.dataset.btfwAtmosphereInteractive = mode === "off" ? "off" : "on";
+    document.dispatchEvent(new CustomEvent("btfw:adaptiveAtmosphere:state", {
+      detail: { enabled: mode !== "off", mode }
+    }));
     updateButton();
     updateAtmoMenuSelection();
     debugLog("mode:", mode);
@@ -795,13 +805,21 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
         lastSampleTime = ts;
         sampleFrame();
       }
+      // Canvas analysis stays deliberately infrequent, but easing the last
+      // computed target must continue between samples. This removes visible
+      // luminance steps without adding any video reads or pixel analysis.
+      if (!isConverged() && ts - lastFadeTime >= SMOOTH_STEP_MS) {
+        lastFadeTime = ts;
+        stepSmoothing();
+        render();
+      }
       needMore = true;
     } else {
       state.sampling = false;
       // Not sampling — keep easing toward the current target (neutral fade
       // on pause/end/disable/CORS) until converged, then stop the loop.
       if (!isConverged()) {
-        if (ts - lastFadeTime >= FADE_STEP_MS) {
+        if (ts - lastFadeTime >= SMOOTH_STEP_MS) {
           lastFadeTime = ts;
           stepSmoothing();
           render();
@@ -870,6 +888,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     }
 
     let sumR = 0, sumG = 0, sumB = 0, colorSamples = 0;
+    let chromaR = 0, chromaG = 0, chromaB = 0, chromaWeight = 0;
     let sumL = 0, sumL2 = 0, sumSat = 0;
     // Vertical zones (top/bottom halves of the cropped frame) — lets the
     // background gradient follow sky vs ground tones separately. Same pixel
@@ -877,6 +896,8 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     const halfH = h >> 1;
     let sumRt = 0, sumGt = 0, sumBt = 0, sumLt = 0, countT = 0;
     let sumRb = 0, sumGb = 0, sumBb = 0, sumLb = 0, countB = 0;
+    let chromaRt = 0, chromaGt = 0, chromaBt = 0, chromaWeightT = 0;
+    let chromaRb = 0, chromaGb = 0, chromaBb = 0, chromaWeightB = 0;
 
     for (let p = 0, i = 0; p < pixelCount; p++, i += 4) {
       const r = data[i], g = data[i + 1], b = data[i + 2];
@@ -896,6 +917,22 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       const max = Math.max(r, g, b), min = Math.min(r, g, b);
       const sat = max === 0 ? 0 : (max - min) / max;
       sumSat += sat;
+      // Midtone/chroma weighting keeps black bars, shadows and near-white
+      // highlights from washing the scene palette toward grey. This reuses
+      // the existing sample loop and costs no extra canvas reads.
+      const midtone = clamp(1 - Math.abs(L - 128) / 128, 0, 1);
+      const weight = sat * sat * (0.3 + 0.7 * midtone);
+      if (weight > 0.004) {
+        chromaR += r * weight; chromaG += g * weight; chromaB += b * weight;
+        chromaWeight += weight;
+        if (((p / w) | 0) < halfH) {
+          chromaRt += r * weight; chromaGt += g * weight; chromaBt += b * weight;
+          chromaWeightT += weight;
+        } else {
+          chromaRb += r * weight; chromaGb += g * weight; chromaBb += b * weight;
+          chromaWeightB += weight;
+        }
+      }
       // Dominant-colour histogram: skip near-black / near-white / greyish.
       if (sat > 0.15 && L > 20 && L < 235) {
         const bi = ((r >> 5) << 6) | ((g >> 5) << 3) | (b >> 5);
@@ -907,6 +944,9 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     const avgR = sumR / colorSamples;
     const avgG = sumG / colorSamples;
     const avgB = sumB / colorSamples;
+    const chromaColor = chromaWeight > 0.01
+      ? { r: chromaR / chromaWeight, g: chromaG / chromaWeight, b: chromaB / chromaWeight }
+      : { r: avgR, g: avgG, b: avgB };
     const meanL = sumL / pixelCount;
     const variance = Math.max(0, sumL2 / pixelCount - meanL * meanL);
     const contrast = clamp(Math.sqrt(variance) / 255 / 0.35, 0, 1);
@@ -925,6 +965,15 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
         b: bucketB[bestBucket] / bestCount
       };
     }
+    const dominantShare = bestCount / Math.max(1, colorSamples);
+    const chromaCoverage = clamp(chromaWeight / Math.max(1, colorSamples) / 0.12, 0, 1);
+    const colorConfidence = clamp(chromaCoverage * 0.75 + dominantShare * 2.5, 0, 1);
+
+    const zoneColor = (fallback, cr, cg, cb, cw) => cw > 0.01
+      ? { r: cr / cw, g: cg / cw, b: cb / cw }
+      : fallback;
+    const avgTop = { r: sumRt / countT, g: sumGt / countT, b: sumBt / countT };
+    const avgBottom = { r: sumRb / countB, g: sumGb / countB, b: sumBb / countB };
 
     // Motion: mean absolute luminance delta vs previous sample.
     let motionLevel = 0;
@@ -939,7 +988,9 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
 
     const raw = {
       avgColor: { r: avgR, g: avgG, b: avgB },
+      chromaColor,
       dominantColor: dom,
+      colorConfidence,
       brightness: clamp(meanL / 255, 0, 1),
       saturation: clamp(sumSat / colorSamples, 0, 1),
       warmth: clamp((avgR - avgB) / 255, -1, 1),
@@ -947,11 +998,11 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       motion: motionLevel,
       zones: {
         top: {
-          color: { r: sumRt / countT, g: sumGt / countT, b: sumBt / countT },
+          color: zoneColor(avgTop, chromaRt, chromaGt, chromaBt, chromaWeightT),
           brightness: clamp(sumLt / countT / 255, 0, 1)
         },
         bottom: {
-          color: { r: sumRb / countB, g: sumGb / countB, b: sumBb / countB },
+          color: zoneColor(avgBottom, chromaRb, chromaGb, chromaBb, chromaWeightB),
           brightness: clamp(sumLb / countB / 255, 0, 1)
         }
       },
@@ -993,12 +1044,16 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   function handleRawAnalysis(raw) {
     if (raw.sceneChange) sceneBoostUntil = performance.now() + 3500;
 
-    // Blend average + dominant, restrain into the ambient band, then bias
-    // toward the BillTube base colour. Intensity controls how much of the
-    // video colour survives the mix (spec §12, §28).
-    let src = mixRgb(raw.avgColor, raw.dominantColor, 0.6);
+    // Start from a chroma-weighted midtone average, then admit the dominant
+    // bucket only when the frame supports it. Neutral/uncertain scenes stay
+    // near their plain average instead of latching onto a stray colour.
+    let src = mixRgb(raw.avgColor, raw.chromaColor, 0.45 + raw.colorConfidence * 0.4);
+    src = mixRgb(src, raw.dominantColor, 0.15 + raw.colorConfidence * 0.3);
     src = restrainColor(src);
-    const mixFactor = clamp(state.intensity * 1.6, 0, 1);
+    // Confidence, rather than a blanket opacity increase, makes colourful
+    // scenes more immersive while keeping monochrome/noisy scenes quiet.
+    const presence = 0.72 + raw.colorConfidence * 0.28;
+    const mixFactor = clamp(state.intensity * (1.85 + raw.colorConfidence * 0.3), 0, 1);
     let color = mixRgb(BASE_AMBIENT, src, raw.flash ? mixFactor * 0.3 : mixFactor);
 
     // Scene-driven lightness — the main "breathes with the movie" lever.
@@ -1012,9 +1067,9 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     // stretch that practical range across the full response — otherwise only
     // explosion-bright scenes would ever lift the ambience.
     const bN = clamp((b - 0.05) / 0.55, 0, 1);
-    const sceneL = lerp(0.1, 0.32, Math.pow(bN, 1.2));
+    const sceneL = lerp(0.075, 0.37, Math.pow(bN, 1.15));
     const hsl = rgbToHsl(color.r, color.g, color.b);
-    hsl.l = clamp(lerp(hsl.l, sceneL, 0.75), 0.08, MAX_LIGHTNESS);
+    hsl.l = clamp(lerp(hsl.l, sceneL, 0.82), 0.065, 0.37);
     color = hslToRgb(hsl.h, hsl.s, hsl.l);
 
     const ambientBrightness = lerp(0.08, 0.3, bN);
@@ -1022,16 +1077,21 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     const motionTrim = state.reducedMotion ? 0.6 : 1;
     // Opacity/glow track scene brightness too: bright scenes push more
     // visible ambience, dark scenes pull it back toward the base theme.
-    const bgOpacity = clamp(state.intensity * (0.35 + 0.65 * bN), 0, 0.45) * motionTrim;
-    const glowBase = state.intensity * (0.55 + 0.55 * bN) + (state.reducedMotion ? 0 : raw.motion * 0.05);
+    const bgOpacity = clamp(state.intensity * presence * (0.38 + 0.62 * bN), 0, 0.46) * motionTrim;
+    const glowBase = state.intensity * presence * (0.62 + 0.5 * bN) + (state.reducedMotion ? 0 : raw.motion * 0.035);
     const glowOpacity = clamp(glowBase, 0, 0.5) * motionTrim;
     // Shared by the navbar tint overlay and the chat inset whisper — a real
     // surface tint needs more presence than the old shadow-only whisper.
-    const panelOpacity = clamp(state.intensity * 0.45, 0, 0.2) * motionTrim;
+    const panelOpacity = clamp(state.intensity * presence * 0.42, 0, 0.2) * motionTrim;
     // Token mix — how far the theme's own bg/panel/surface colours shift
     // toward the atmosphere colour. Kept steady across scenes; the lightness
     // swing of the tint colour carries the dark/bright response.
-    const tokenMix = clamp(state.intensity * 0.75, 0, 0.42) * motionTrim;
+    const tokenMix = clamp(state.intensity * presence * (0.76 + bN * 0.18), 0, 0.44) * motionTrim;
+    // Dark scenes need a luminance response as well as a hue response. A
+    // restrained near-black mix deepens the room without crushing panels;
+    // bright scenes lift through the bounded atmosphere colour above rather
+    // than mixing toward white, preserving text contrast.
+    const darken = clamp(state.intensity * Math.pow(1 - bN, 1.45) * 0.42, 0, 0.22) * motionTrim;
 
     const t = state.target;
     t.r = deadZone(t.r, color.r, DEAD_ZONE.rgb);
@@ -1042,13 +1102,13 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     // own region brightness, so the page gradient can wash top (sky) and
     // bottom (ground/foreground) tones independently.
     const zoneColor = (zone) => {
-      let zc = mixRgb(zone.color, raw.dominantColor, 0.35);
+      let zc = mixRgb(zone.color, raw.dominantColor, 0.12 + raw.colorConfidence * 0.22);
       zc = restrainColor(zc);
       zc = mixRgb(BASE_AMBIENT, zc, raw.flash ? mixFactor * 0.3 : mixFactor);
       const zbN = clamp((clamp(zone.brightness, 0, 1) - 0.05) / 0.55, 0, 1);
-      const zl = lerp(0.1, 0.32, Math.pow(zbN, 1.2));
+      const zl = lerp(0.075, 0.37, Math.pow(zbN, 1.15));
       const zhsl = rgbToHsl(zc.r, zc.g, zc.b);
-      zhsl.l = clamp(lerp(zhsl.l, zl, 0.75), 0.08, MAX_LIGHTNESS);
+      zhsl.l = clamp(lerp(zhsl.l, zl, 0.82), 0.065, 0.37);
       return hslToRgb(zhsl.h, zhsl.s, zhsl.l);
     };
     const zTop = zoneColor(raw.zones.top);
@@ -1068,17 +1128,22 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     t.glow = glowOpacity;
     t.panel = panelOpacity;
     t.mix = tokenMix;
+    t.darken = darken;
 
-    stepSmoothing();
-    render();
+    // The animation loop eases toward this target on its lightweight cadence;
+    // frame analysis only computes targets and never drives visual stepping.
   }
 
   function stepSmoothing() {
-    const factor = performance.now() < sceneBoostUntil ? SCENE_SMOOTHING : NORMAL_SMOOTHING;
+    const scene = performance.now() < sceneBoostUntil;
+    const colorFactor = scene ? COLOR_SCENE_SMOOTHING : COLOR_SMOOTHING;
+    const effectFactor = scene ? EFFECT_SCENE_SMOOTHING : EFFECT_SMOOTHING;
     const s = state.smooth, t = state.target;
-    for (const key of ["r", "g", "b", "brightness", "saturation", "warmth", "contrast", "bg", "glow", "panel", "mix",
-                       "rTop", "gTop", "bTop", "rBot", "gBot", "bBot"]) {
-      s[key] += (t[key] - s[key]) * factor;
+    for (const key of ["r", "g", "b", "rTop", "gTop", "bTop", "rBot", "gBot", "bBot"]) {
+      s[key] += (t[key] - s[key]) * colorFactor;
+    }
+    for (const key of ["brightness", "saturation", "warmth", "contrast", "bg", "glow", "panel", "mix", "darken"]) {
+      s[key] += (t[key] - s[key]) * effectFactor;
     }
   }
 
@@ -1089,6 +1154,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       Math.abs(t.rBot - s.rBot) < 1 && Math.abs(t.gBot - s.gBot) < 1 && Math.abs(t.bBot - s.bBot) < 1 &&
       Math.abs(t.bg - s.bg) < 0.004 && Math.abs(t.glow - s.glow) < 0.004 &&
       Math.abs(t.panel - s.panel) < 0.004 && Math.abs(t.mix - s.mix) < 0.004 &&
+      Math.abs(t.darken - s.darken) < 0.004 &&
       Math.abs(t.brightness - s.brightness) < 0.004;
   }
 
@@ -1113,6 +1179,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     rootStyle.setProperty("--btfw-atmo-glow-opacity", s.glow.toFixed(3));
     rootStyle.setProperty("--btfw-atmo-panel-opacity", s.panel.toFixed(3));
     rootStyle.setProperty("--btfw-atmo-mix", s.mix.toFixed(3));
+    rootStyle.setProperty("--btfw-atmo-darken", s.darken.toFixed(3));
     if (debugEl) updateDebug();
   }
 
@@ -1194,10 +1261,12 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     if (styleEl) styleEl.remove();
     for (const prop of ["--btfw-atmo-rgb", "--btfw-atmo-rgb-top", "--btfw-atmo-rgb-bottom",
                         "--btfw-atmo-brightness", "--btfw-atmo-opacity",
-                        "--btfw-atmo-glow-opacity", "--btfw-atmo-panel-opacity", "--btfw-atmo-mix"]) {
+                        "--btfw-atmo-glow-opacity", "--btfw-atmo-panel-opacity", "--btfw-atmo-mix",
+                        "--btfw-atmo-darken"]) {
       rootStyle.removeProperty(prop);
     }
     delete document.documentElement.dataset.btfwAtmosphere;
+    delete document.documentElement.dataset.btfwAtmosphereInteractive;
   }
 
   if (document.readyState === "loading") {

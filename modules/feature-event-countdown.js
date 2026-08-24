@@ -33,13 +33,10 @@ BTFW.define("feature:event-countdown", [], async () => {
         background-image:
           var(--btfw-dither-image, none),
           radial-gradient(120% 150% at 0% 0%,
-            color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 6%, transparent 94%) 0%,
-            transparent 58%),
-          linear-gradient(145deg,
-            color-mix(in srgb, var(--btfw-color-panel, #171d27) 48%, var(--btfw-color-bg, #080b12) 52%) 0%,
-            color-mix(in srgb, var(--btfw-color-bg, #080b12) 72%, var(--btfw-color-surface, #111722) 28%) 100%);
-        background-size: var(--btfw-dither-size, 4px 4px), auto, auto;
-        background-position: 0 0, center, center;
+            color-mix(in srgb, var(--btfw-color-accent, #6d4df6) 3%, transparent 97%) 0%,
+            transparent 62%);
+        background-size: var(--btfw-dither-size, 4px 4px), auto;
+        background-position: 0 0, center;
         box-shadow: var(--btfw-chat-row-shadow,
           inset 0 1px 0 color-mix(in srgb, white 6%, transparent 94%));
         color: var(--btfw-color-text, #e8eff4);

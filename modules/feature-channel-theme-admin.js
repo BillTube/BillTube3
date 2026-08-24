@@ -1278,8 +1278,20 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
 
   let runtimeGradientAnimation = null;
   let runtimeGradientResizeTimer = 0;
+  let runtimeGradientPointerCleanup = null;
+
+  function syncRuntimeGradientPointer(enabled){
+    if (runtimeGradientPointerCleanup) {
+      runtimeGradientPointerCleanup();
+      runtimeGradientPointerCleanup = null;
+    }
+    const controller = runtimeGradientAnimation?.controller;
+    if (controller) controller.setPointer(0.5, 0.5, false);
+    if (enabled && controller) runtimeGradientPointerCleanup = controller.bindPointer(window);
+  }
 
   function destroyRuntimeGradientAnimation(){
+    syncRuntimeGradientPointer(false);
     if (runtimeGradientAnimation) runtimeGradientAnimation.controller.destroy();
     runtimeGradientAnimation = null;
     if (runtimeGradientResizeTimer) clearTimeout(runtimeGradientResizeTimer);
@@ -1343,13 +1355,17 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     );
     if (!controller) return;
     controller.canvas.id = "btfw-gradient-live-canvas";
-    controller.bindPointer(window);
     document.body.prepend(controller.canvas);
     controller.start();
     runtimeGradientAnimation = { signature, controller };
+    syncRuntimeGradientPointer(root.dataset.btfwAtmosphereInteractive === "on");
     root.setAttribute("data-btfw-gradient-live", "on");
     window.addEventListener("resize", resizeRuntimeGradientAnimation, { passive: true });
   }
+
+  document.addEventListener("btfw:adaptiveAtmosphere:state", event => {
+    syncRuntimeGradientPointer(event?.detail?.enabled === true);
+  });
   function applyRuntimeGradient(theme){
     if (!theme || typeof theme !== "object" || typeof document === "undefined") return;
     const root = document.documentElement;
