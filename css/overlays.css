@@ -1073,6 +1073,37 @@
     inset 0 0 8px color-mix(in srgb, var(--btfw-color-accent) 12%, transparent) !important;
 }
 
+/* The always-visible chat tool tray is intentionally quieter than a panel.
+   A single dark shell groups the controls; accent belongs to interaction. */
+#btfw-chat-actions #btfw-chatactions-pill {
+  background-color: color-mix(in srgb, var(--btfw-color-panel) 36%, black 64%);
+  background-image: var(--btfw-dither-image);
+  background-size: var(--btfw-dither-size);
+  background-position: 0 0;
+  border-color: color-mix(in srgb, var(--btfw-color-text) 10%, var(--btfw-color-surface) 90%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 3%, transparent 97%);
+  animation: none !important;
+}
+
+#btfw-chatactions-pill .btfw-chatbtn::before,
+#btfw-chatactions-pill .btfw-chatbtn::after,
+#btfw-chatactions-pill .btfw-chatbtn > .btfw-chat-beam-bloom {
+  display: none;
+}
+
+#btfw-chatactions-pill .btfw-chatbtn:hover,
+#btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
+  animation: none !important;
+  border: 0 !important;
+  background-color: color-mix(in srgb, var(--btfw-color-accent) 18%, transparent 82%) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+#btfw-chatactions-pill .btfw-chatbtn[data-btfw-popover-active] {
+  background-color: color-mix(in srgb, var(--btfw-color-accent) 28%, transparent 72%) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .btfw-chatline-beam-wrap:focus-within,
   #btfw-chatactions-pill .btfw-chatbtn:hover,
