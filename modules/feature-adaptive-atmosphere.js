@@ -36,14 +36,19 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   /* ---------- sampling / analysis tuning -------------------------------- */
   const QUALITY_MODES = {
     high:   { width: 96, height: 54, interval: 400,  pixelStep: 2 },
-    normal: { width: 80, height: 45, interval: 500,  pixelStep: 4 },
-    low:    { width: 64, height: 36, interval: 850, pixelStep: 6 }
+    normal: { width: 80, height: 45, interval: 600,  pixelStep: 4 },
+    low:    { width: 64, height: 36, interval: 1000, pixelStep: 6 }
   };
   const SLOW_ANALYSIS_MS = 10;   // downgrade quality when the rolling average exceeds this
   // Ignore subtitle band and frame edges (spec §9): bottom 15% + 5% edges.
   const CROP = { left: 0.05, top: 0.05, right: 0.95, bottom: 0.85 };
-  const NORMAL_SMOOTHING = 0.09;
-  const SCENE_SMOOTHING  = 0.22;
+  // Colour should drift cinematically even through rapid cuts. Luminance and
+  // opacity may respond sooner, but hue never uses the old aggressive scene
+  // boost that made flash-heavy sequences visibly chase every frame.
+  const COLOR_SMOOTHING       = 0.035;
+  const COLOR_SCENE_SMOOTHING = 0.07;
+  const EFFECT_SMOOTHING      = 0.065;
+  const EFFECT_SCENE_SMOOTHING = 0.11;
   const SMOOTH_STEP_MS   = 60;   // cheap CSS interpolation between canvas samples
   // Dead zones: below these deltas the target is treated as unchanged.
   const DEAD_ZONE = { brightness: 0.02, saturation: 0.03, warmth: 0.03, contrast: 0.03, rgb: 4 };
@@ -1130,11 +1135,15 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   }
 
   function stepSmoothing() {
-    const factor = performance.now() < sceneBoostUntil ? SCENE_SMOOTHING : NORMAL_SMOOTHING;
+    const scene = performance.now() < sceneBoostUntil;
+    const colorFactor = scene ? COLOR_SCENE_SMOOTHING : COLOR_SMOOTHING;
+    const effectFactor = scene ? EFFECT_SCENE_SMOOTHING : EFFECT_SMOOTHING;
     const s = state.smooth, t = state.target;
-    for (const key of ["r", "g", "b", "brightness", "saturation", "warmth", "contrast", "bg", "glow", "panel", "mix", "darken",
-                       "rTop", "gTop", "bTop", "rBot", "gBot", "bBot"]) {
-      s[key] += (t[key] - s[key]) * factor;
+    for (const key of ["r", "g", "b", "rTop", "gTop", "bTop", "rBot", "gBot", "bBot"]) {
+      s[key] += (t[key] - s[key]) * colorFactor;
+    }
+    for (const key of ["brightness", "saturation", "warmth", "contrast", "bg", "glow", "panel", "mix", "darken"]) {
+      s[key] += (t[key] - s[key]) * effectFactor;
     }
   }
 
