@@ -36,15 +36,15 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   /* ---------- sampling / analysis tuning -------------------------------- */
   const QUALITY_MODES = {
     high:   { width: 96, height: 54, interval: 400,  pixelStep: 2 },
-    normal: { width: 80, height: 45, interval: 600,  pixelStep: 4 },
-    low:    { width: 64, height: 36, interval: 1000, pixelStep: 6 }
+    normal: { width: 80, height: 45, interval: 500,  pixelStep: 4 },
+    low:    { width: 64, height: 36, interval: 850, pixelStep: 6 }
   };
   const SLOW_ANALYSIS_MS = 10;   // downgrade quality when the rolling average exceeds this
   // Ignore subtitle band and frame edges (spec §9): bottom 15% + 5% edges.
   const CROP = { left: 0.05, top: 0.05, right: 0.95, bottom: 0.85 };
   const NORMAL_SMOOTHING = 0.09;
   const SCENE_SMOOTHING  = 0.22;
-  const FADE_STEP_MS     = 120;  // fade-ticker cadence when not sampling
+  const SMOOTH_STEP_MS   = 60;   // cheap CSS interpolation between canvas samples
   // Dead zones: below these deltas the target is treated as unchanged.
   const DEAD_ZONE = { brightness: 0.02, saturation: 0.03, warmth: 0.03, contrast: 0.03, rgb: 4 };
   // A single-sample brightness spike this large (with heavy frame motion)
@@ -800,13 +800,21 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
         lastSampleTime = ts;
         sampleFrame();
       }
+      // Canvas analysis stays deliberately infrequent, but easing the last
+      // computed target must continue between samples. This removes visible
+      // luminance steps without adding any video reads or pixel analysis.
+      if (!isConverged() && ts - lastFadeTime >= SMOOTH_STEP_MS) {
+        lastFadeTime = ts;
+        stepSmoothing();
+        render();
+      }
       needMore = true;
     } else {
       state.sampling = false;
       // Not sampling — keep easing toward the current target (neutral fade
       // on pause/end/disable/CORS) until converged, then stop the loop.
       if (!isConverged()) {
-        if (ts - lastFadeTime >= FADE_STEP_MS) {
+        if (ts - lastFadeTime >= SMOOTH_STEP_MS) {
           lastFadeTime = ts;
           stepSmoothing();
           render();
@@ -1117,8 +1125,8 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     t.mix = tokenMix;
     t.darken = darken;
 
-    stepSmoothing();
-    render();
+    // The animation loop eases toward this target on its lightweight cadence;
+    // frame analysis only computes targets and never drives visual stepping.
   }
 
   function stepSmoothing() {
