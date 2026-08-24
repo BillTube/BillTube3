@@ -55,7 +55,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   // Theme-anchored fallbacks. NEUTRAL is the resting state; BASE_AMBIENT is
   // what detected video colours get biased toward so the result always stays
   // in BillTube's dark palette family.
-  const NEUTRAL = { r: 18, g: 22, b: 30, brightness: 0.15, saturation: 0.15, warmth: 0, contrast: 0.25, bg: 0, glow: 0, panel: 0, mix: 0, rTop: 18, gTop: 22, bTop: 30, rBot: 18, gBot: 22, bBot: 30 };
+  const NEUTRAL = { r: 18, g: 22, b: 30, brightness: 0.15, saturation: 0.15, warmth: 0, contrast: 0.25, bg: 0, glow: 0, panel: 0, mix: 0, darken: 0, rTop: 18, gTop: 22, bTop: 30, rBot: 18, gBot: 22, bBot: 30 };
   const BASE_AMBIENT = { r: 18, g: 22, b: 30 };
   const MAX_SATURATION = 0.58;  // enough chroma to identify a scene, still safely subdued
   // Lightness band for the restrained SOURCE colour. The final tint's
@@ -168,6 +168,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
         --btfw-atmo-glow-opacity: 0;
         --btfw-atmo-panel-opacity: 0;
         --btfw-atmo-mix: 0;
+        --btfw-atmo-darken: 0;
       }
       /* The real atmosphere carrier: re-tint the theme's own base tokens.
          Every main surface (#wrap, #chatwrap, #videowrap, playlist, cards,
@@ -179,13 +180,13 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       html[data-btfw-atmosphere="on"] {
         --btfw-color-bg: color-mix(in srgb,
           rgb(var(--btfw-atmo-rgb)) calc(var(--btfw-atmo-mix) * 100%),
-          var(--btfw-theme-bg, #0b0f12));
+          color-mix(in srgb, #020304 calc(var(--btfw-atmo-darken) * 100%), var(--btfw-theme-bg, #0b0f12)));
         --btfw-color-panel: color-mix(in srgb,
           rgb(var(--btfw-atmo-rgb)) calc(var(--btfw-atmo-mix) * 60%),
-          var(--btfw-theme-panel, #171d27));
+          color-mix(in srgb, #030405 calc(var(--btfw-atmo-darken) * 72%), var(--btfw-theme-panel, #171d27)));
         --btfw-color-surface: color-mix(in srgb,
           rgb(var(--btfw-atmo-rgb)) calc(var(--btfw-atmo-mix) * 45%),
-          var(--btfw-theme-surface, #11161d));
+          color-mix(in srgb, #020304 calc(var(--btfw-atmo-darken) * 82%), var(--btfw-theme-surface, #11161d)));
       }
       /* Fixed page layer — sits with body::before (z-index:-1) above the page
          background but below all content. Vertical two-zone gradient: the
@@ -537,6 +538,10 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       maybeUpgradeCors(state.video);
       if (state.video && !state.video.paused) startLoop();
     }
+    document.documentElement.dataset.btfwAtmosphereInteractive = mode === "off" ? "off" : "on";
+    document.dispatchEvent(new CustomEvent("btfw:adaptiveAtmosphere:state", {
+      detail: { enabled: mode !== "off", mode }
+    }));
     updateButton();
     updateAtmoMenuSelection();
     debugLog("mode:", mode);
@@ -1049,9 +1054,9 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     // stretch that practical range across the full response — otherwise only
     // explosion-bright scenes would ever lift the ambience.
     const bN = clamp((b - 0.05) / 0.55, 0, 1);
-    const sceneL = lerp(0.1, 0.32, Math.pow(bN, 1.2));
+    const sceneL = lerp(0.075, 0.37, Math.pow(bN, 1.15));
     const hsl = rgbToHsl(color.r, color.g, color.b);
-    hsl.l = clamp(lerp(hsl.l, sceneL, 0.75), 0.08, MAX_LIGHTNESS);
+    hsl.l = clamp(lerp(hsl.l, sceneL, 0.82), 0.065, 0.37);
     color = hslToRgb(hsl.h, hsl.s, hsl.l);
 
     const ambientBrightness = lerp(0.08, 0.3, bN);
@@ -1068,7 +1073,12 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     // Token mix — how far the theme's own bg/panel/surface colours shift
     // toward the atmosphere colour. Kept steady across scenes; the lightness
     // swing of the tint colour carries the dark/bright response.
-    const tokenMix = clamp(state.intensity * presence * 0.82, 0, 0.43) * motionTrim;
+    const tokenMix = clamp(state.intensity * presence * (0.76 + bN * 0.18), 0, 0.44) * motionTrim;
+    // Dark scenes need a luminance response as well as a hue response. A
+    // restrained near-black mix deepens the room without crushing panels;
+    // bright scenes lift through the bounded atmosphere colour above rather
+    // than mixing toward white, preserving text contrast.
+    const darken = clamp(state.intensity * Math.pow(1 - bN, 1.45) * 0.42, 0, 0.22) * motionTrim;
 
     const t = state.target;
     t.r = deadZone(t.r, color.r, DEAD_ZONE.rgb);
@@ -1083,9 +1093,9 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       zc = restrainColor(zc);
       zc = mixRgb(BASE_AMBIENT, zc, raw.flash ? mixFactor * 0.3 : mixFactor);
       const zbN = clamp((clamp(zone.brightness, 0, 1) - 0.05) / 0.55, 0, 1);
-      const zl = lerp(0.1, 0.32, Math.pow(zbN, 1.2));
+      const zl = lerp(0.075, 0.37, Math.pow(zbN, 1.15));
       const zhsl = rgbToHsl(zc.r, zc.g, zc.b);
-      zhsl.l = clamp(lerp(zhsl.l, zl, 0.75), 0.08, MAX_LIGHTNESS);
+      zhsl.l = clamp(lerp(zhsl.l, zl, 0.82), 0.065, 0.37);
       return hslToRgb(zhsl.h, zhsl.s, zhsl.l);
     };
     const zTop = zoneColor(raw.zones.top);
@@ -1105,6 +1115,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     t.glow = glowOpacity;
     t.panel = panelOpacity;
     t.mix = tokenMix;
+    t.darken = darken;
 
     stepSmoothing();
     render();
@@ -1113,7 +1124,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
   function stepSmoothing() {
     const factor = performance.now() < sceneBoostUntil ? SCENE_SMOOTHING : NORMAL_SMOOTHING;
     const s = state.smooth, t = state.target;
-    for (const key of ["r", "g", "b", "brightness", "saturation", "warmth", "contrast", "bg", "glow", "panel", "mix",
+    for (const key of ["r", "g", "b", "brightness", "saturation", "warmth", "contrast", "bg", "glow", "panel", "mix", "darken",
                        "rTop", "gTop", "bTop", "rBot", "gBot", "bBot"]) {
       s[key] += (t[key] - s[key]) * factor;
     }
@@ -1126,6 +1137,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
       Math.abs(t.rBot - s.rBot) < 1 && Math.abs(t.gBot - s.gBot) < 1 && Math.abs(t.bBot - s.bBot) < 1 &&
       Math.abs(t.bg - s.bg) < 0.004 && Math.abs(t.glow - s.glow) < 0.004 &&
       Math.abs(t.panel - s.panel) < 0.004 && Math.abs(t.mix - s.mix) < 0.004 &&
+      Math.abs(t.darken - s.darken) < 0.004 &&
       Math.abs(t.brightness - s.brightness) < 0.004;
   }
 
@@ -1150,6 +1162,7 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     rootStyle.setProperty("--btfw-atmo-glow-opacity", s.glow.toFixed(3));
     rootStyle.setProperty("--btfw-atmo-panel-opacity", s.panel.toFixed(3));
     rootStyle.setProperty("--btfw-atmo-mix", s.mix.toFixed(3));
+    rootStyle.setProperty("--btfw-atmo-darken", s.darken.toFixed(3));
     if (debugEl) updateDebug();
   }
 
@@ -1231,10 +1244,12 @@ BTFW.define("feature:adaptiveAtmosphere", ["util:motion"], async () => {
     if (styleEl) styleEl.remove();
     for (const prop of ["--btfw-atmo-rgb", "--btfw-atmo-rgb-top", "--btfw-atmo-rgb-bottom",
                         "--btfw-atmo-brightness", "--btfw-atmo-opacity",
-                        "--btfw-atmo-glow-opacity", "--btfw-atmo-panel-opacity", "--btfw-atmo-mix"]) {
+                        "--btfw-atmo-glow-opacity", "--btfw-atmo-panel-opacity", "--btfw-atmo-mix",
+                        "--btfw-atmo-darken"]) {
       rootStyle.removeProperty(prop);
     }
     delete document.documentElement.dataset.btfwAtmosphere;
+    delete document.documentElement.dataset.btfwAtmosphereInteractive;
   }
 
   if (document.readyState === "loading") {
