@@ -247,6 +247,8 @@
     width: calc(100% - 16px);
     height: 3px;
     justify-self: center;
+    margin-top: -1px;
+    margin-bottom: 2px;
     overflow: hidden;
     border-radius: 999px;
     background: color-mix(in srgb, var(--btfw-color-text) 11%, transparent 89%);

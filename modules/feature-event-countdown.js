@@ -84,12 +84,14 @@ BTFW.define("feature:event-countdown", [], async () => {
   function pad(n){ return String(n).padStart(2, "0"); }
 
   function formatRemaining(ms){
-    const total = Math.max(0, Math.floor(ms / 1000));
-    const d = Math.floor(total / 86400);
-    const h = Math.floor((total % 86400) / 3600);
-    const m = Math.floor((total % 3600) / 60);
-    const s = total % 60;
-    return d > 0 ? `${d}d ${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(h)}:${pad(m)}:${pad(s)}`;
+    // Minute precision is calmer in the compact header and avoids a wide,
+    // constantly-changing seconds field. Round up so the countdown never
+    // reads 00:00 before the event has actually started.
+    const totalMinutes = Math.max(0, Math.ceil(ms / 60000));
+    const d = Math.floor(totalMinutes / 1440);
+    const h = Math.floor((totalMinutes % 1440) / 60);
+    const m = totalMinutes % 60;
+    return d > 0 ? `${d}d ${pad(h)}:${pad(m)}` : `${pad(h)}:${pad(m)}`;
   }
 
   function localizedStart(ms){
@@ -160,7 +162,7 @@ BTFW.define("feature:event-countdown", [], async () => {
     }
     if (!ev) return;
     tick();
-    if (!timer) timer = setInterval(tick, 1000);
+    if (!timer) timer = setInterval(tick, 30000);
   }
 
   function boot(){
@@ -172,7 +174,7 @@ BTFW.define("feature:event-countdown", [], async () => {
     // The admin can change the event without a page reload (Apply updates the
     // runtime config); retain a cheap re-sync poll as a fallback for external
     // Channel JS changes that do not emit the toolkit event.
-    setInterval(sync, 15000);
+    setInterval(sync, 60000);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
