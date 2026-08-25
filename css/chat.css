@@ -231,11 +231,63 @@
    wide, which collapsed every toast to a tiny strip. Leaving it out of
    the grid lets it absolute-position against the topbar itself. */
 #chatwrap .btfw-chat-topbar .btfw-chat-topbar-left { grid-area: center; }
-/* Ratings row spans the FULL topbar width (column 1 → -1) on row 2 so the
+/* Ratings row spans the FULL topbar width (column 1 → -1) below the playback
+   progress row so the
    stars can spread out and read as a real interaction bar instead of a
    small cluster in the center. */
-#chatwrap .btfw-chat-topbar #btfw-ratings-wrapper { grid-column: 1 / -1; grid-row: 2; width: 100%; justify-self: stretch; }
+#chatwrap .btfw-chat-topbar #btfw-playback-progress { grid-column: 1 / -1; grid-row: 2; }
+#chatwrap .btfw-chat-topbar #btfw-ratings-wrapper { grid-column: 1 / -1; grid-row: 3; width: 100%; justify-self: stretch; }
 #chatwrap .btfw-chat-topbar #btfw-chat-topbar-actions { grid-area: right; justify-self: end; }
+
+/* A compositor-only playback line: JavaScript writes one scale transform per
+   second and CSS fills the time between updates. This looks continuous while
+   avoiding a requestAnimationFrame loop or layout-triggering width changes. */
+#chatwrap .btfw-chat-topbar #btfw-playback-progress {
+    display: block;
+    width: calc(100% - 16px);
+    height: 3px;
+    justify-self: center;
+    margin-top: -1px;
+    margin-bottom: 2px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--btfw-color-text) 11%, transparent 89%);
+    box-shadow: inset 0 1px 1px color-mix(in srgb, var(--btfw-color-bg) 30%, transparent 70%);
+}
+#chatwrap .btfw-chat-topbar #btfw-playback-progress[hidden] { display: none !important; }
+#chatwrap .btfw-chat-topbar .btfw-playback-progress__fill {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    transform: scaleX(0);
+    transform-origin: left center;
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--btfw-color-accent) 78%, white 22%),
+      var(--btfw-color-accent)
+    );
+    box-shadow: 0 0 5px color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%);
+    transition: transform 1050ms linear;
+    will-change: transform;
+}
+#chatwrap .btfw-chat-topbar #btfw-playback-progress.is-seeking .btfw-playback-progress__fill {
+    transition-duration: 250ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+#chatwrap .btfw-chat-topbar #btfw-playback-progress.is-initializing .btfw-playback-progress__fill {
+    transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #chatwrap .btfw-chat-topbar .btfw-playback-progress__fill {
+    transition: none !important;
+  }
+}
+
+:root[data-btfw-motion="reduced"] #chatwrap .btfw-chat-topbar .btfw-playback-progress__fill {
+    transition: none !important;
+}
 /* When ratings is open, stars stay tight on the LEFT of the row and the
    action icons (≣ list, ⟳ refresh) get pushed to the far right. The
    ratings header has display: contents so its action cluster behaves as
@@ -270,6 +322,9 @@
     background: transparent;
     padding: 0;
     margin: 0;
+}
+#chatwrap .btfw-chat-topbar #btfw-ratings-wrapper:has(#btfw-ratings[hidden]) {
+    display: none;
 }
 #chatwrap .btfw-chat-topbar #btfw-ratings[hidden] { display: none !important; }
 #chatwrap .btfw-chat-topbar #btfw-ratings {

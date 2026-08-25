@@ -192,7 +192,11 @@ BTFW.define("feature:movie-info", [], async () => {
     container.id = CONFIG.CONTAINER_ID;
     container.className = "btfw-movie-header";
     container.dataset.module = MODULE_ID;
-    topbar.insertAdjacentElement("afterend", container);
+    // Desktop: make the card a true anchored popover so its width and origin
+    // are owned by the header pill. Mobile keeps the sibling placement because
+    // its fixed bottom sheet must not inherit the topbar's containing block.
+    if (window.innerWidth > 768) topbar.appendChild(container);
+    else topbar.insertAdjacentElement("afterend", container);
     state.header = container;
   }
 
@@ -376,6 +380,13 @@ BTFW.define("feature:movie-info", [], async () => {
     if (!state.header) return;
     const isMobile = window.innerWidth <= 768;
     state.header.classList.toggle("btfw-mobile", isMobile);
+    const topbar = document.querySelector(CONFIG.TOPBAR_SELECTOR);
+    if (!topbar) return;
+    if (isMobile && state.header.parentElement === topbar) {
+      topbar.insertAdjacentElement("afterend", state.header);
+    } else if (!isMobile && state.header.parentElement !== topbar) {
+      topbar.appendChild(state.header);
+    }
   }
 
   async function handleMediaChange() {
@@ -640,35 +651,36 @@ BTFW.define("feature:movie-info", [], async () => {
     const css = `
       .btfw-movie-header {
         position: absolute;
-        top: 44px;
+        top: calc(100% + 8px);
+        left: 0;
         right: 0;
         height: auto;
         width: 100%;
-        max-width: 90vw;
+        max-width: none;
+        box-sizing: border-box;
         background: rgba(20, 20, 20, 0.95);
-        border-radius: var(--btfw-radius, 12px);
+        border-radius: var(--btfw-chat-shell-radius, var(--btfw-radius, 12px));
         border: 1px solid rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(10px);
         z-index: 1000;
         overflow: hidden;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         opacity: 0;
-        transform: translateY(-14px) scale(0.96);
-        transform-origin: top right;
+        transform: translateY(-6px) scale(0.98);
+        transform-origin: top center;
         pointer-events: none;
-        /* quick ease-out when hiding */
+        /* A frequently-used popover should feel immediate, not performative. */
         transition:
-          opacity 0.2s ease,
-          transform 0.26s cubic-bezier(0.4, 0, 0.6, 1);
+          opacity 140ms ease-out,
+          transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
       }
       .btfw-movie-header.show {
         opacity: 1;
         transform: translateY(0) scale(1);
         pointer-events: auto;
-        /* springy bounce on pop-in (overshoot curve) */
         transition:
-          opacity 0.26s ease,
-          transform 0.46s cubic-bezier(0.34, 1.56, 0.64, 1);
+          opacity 180ms ease-out,
+          transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
       }
       @media (prefers-reduced-motion: reduce) {
         .btfw-movie-header,

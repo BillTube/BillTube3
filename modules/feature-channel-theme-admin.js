@@ -1544,6 +1544,32 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         cursor: grabbing;
         scroll-snap-type: none;
       }
+      .btfw-theme-admin .btfw-pattern-field.is-disabled .btfw-pattern-grid {
+        opacity: 0.38;
+        filter: saturate(0.3);
+        cursor: not-allowed;
+        scroll-snap-type: none;
+      }
+      .btfw-theme-admin .btfw-pattern-field.is-disabled .btfw-pattern-tile,
+      .btfw-theme-admin .btfw-pattern-field.is-disabled .btfw-pattern-tile:hover {
+        cursor: not-allowed;
+        border-color: var(--btfw-admin-border-soft);
+        box-shadow: none;
+      }
+      .btfw-theme-admin .btfw-pattern-lock {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 7px;
+        padding: 2px 6px;
+        border: 1px solid color-mix(in srgb, var(--btfw-admin-text) 10%, transparent);
+        border-radius: 999px;
+        color: var(--btfw-admin-text-soft);
+        font-size: 0.64rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        vertical-align: middle;
+      }
+      .btfw-theme-admin .btfw-pattern-lock[hidden] { display: none; }
       .btfw-theme-admin .btfw-pattern-grid::-webkit-scrollbar { height: 7px; }
       .btfw-theme-admin .btfw-pattern-grid::-webkit-scrollbar-track {
         border-radius: 999px;
@@ -3189,7 +3215,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     const fontFamily = typography.family || FONT_FALLBACK_FAMILY;
     const gradientCss = buildGradientCssVariables(cfg);
 
-    // Optional Hero Pattern backdrop. The image goes on <html>, not <body>:
+    // Optional Hero Pattern backdrop. Gradient Studio and patterns are
+    // intentionally mutually exclusive: the page wash covers the tiled image,
+    // so emitting both creates a control that appears broken to the owner.
+    // Keep the configured pattern in cfg so it returns when gradients are off.
+    // The image goes on <html>, not <body>:
     // in this layout body is only viewport-tall while the document scrolls
     // well past it, so a body background stops at the first screen. The root
     // element's background paints the whole scroll canvas, so it tiles the
@@ -3198,7 +3228,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     // dark-mode bridge's `background:` shorthand that repaints these later.
     let patternCss = "";
     const bgCfg = cfg.background || {};
-    if (bgCfg.pattern && bgCfg.pattern !== "none" && BG_PATTERNS[bgCfg.pattern]) {
+    if (!normalizeGradientConfig(cfg).enabled && bgCfg.pattern && bgCfg.pattern !== "none" && BG_PATTERNS[bgCfg.pattern]) {
       const image = patternImageValue(bgCfg.pattern, accent, bgCfg.intensity);
       if (image) {
         patternCss = `\nhtml {\n  background-color: ${bg} !important;\n  background-image: ${image} !important;\n  background-repeat: repeat !important;\n  background-attachment: scroll !important;\n  background-position: top center !important;\n}\nbody {\n  background-color: transparent !important;\n  background-image: none !important;\n}`;
@@ -3362,7 +3392,37 @@ function replaceBlock(original, startMarker, endMarker, block){
       tile.style.backgroundImage = patternImageValue(key, accent, "bold");
     });
     const intensityRow = panel.querySelector('[data-role="pattern-intensity-row"]');
-    if (intensityRow) intensityRow.hidden = selected === "none";
+    if (intensityRow) intensityRow.hidden = selected === "none" || Boolean(normalizeGradientConfig(cfg).enabled);
+    syncPatternAvailability(panel, cfg);
+  }
+
+  function syncPatternAvailability(panel, cfg){
+    const field = panel?.querySelector('[data-role="pattern-field"]');
+    const grid = panel?.querySelector('[data-role="pattern-grid"]');
+    if (!field || !grid) return;
+    const disabled = Boolean(normalizeGradientConfig(cfg).enabled);
+    const selected = cfg.background?.pattern || "none";
+    field.classList.toggle("is-disabled", disabled);
+    field.setAttribute("aria-disabled", disabled ? "true" : "false");
+    grid.dataset.disabled = disabled ? "true" : "false";
+    grid.setAttribute("aria-disabled", disabled ? "true" : "false");
+    grid.querySelectorAll(".btfw-pattern-tile").forEach(tile => {
+      tile.disabled = disabled;
+      tile.setAttribute("aria-disabled", disabled ? "true" : "false");
+      tile.tabIndex = disabled ? -1 : (tile.dataset.pattern === selected ? 0 : -1);
+    });
+    const intensity = panel.querySelector("#btfw-theme-pattern-intensity");
+    if (intensity) intensity.disabled = disabled;
+    const intensityRow = panel.querySelector('[data-role="pattern-intensity-row"]');
+    if (intensityRow) intensityRow.hidden = disabled || selected === "none";
+    const lock = panel.querySelector('[data-role="pattern-lock"]');
+    if (lock) lock.hidden = !disabled;
+    const help = panel.querySelector("#btfw-pattern-help");
+    if (help) {
+      help.textContent = disabled
+        ? "Unavailable while Gradient Studio is on. Turn gradients off to restore your saved pattern."
+        : "Drag horizontally or use the arrow keys. Patterns use your Background and Accent colors (Hero Patterns); choose None for a flat background.";
+    }
   }
 
   function wirePatternPicker(panel, cfg){
@@ -3372,7 +3432,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     grid.dataset.wired = "1";
     const entries = [["none", { label: "None" }]].concat(Object.entries(BG_PATTERNS));
     const selectTile = (tile, options = {}) => {
-      if (!tile) return;
+      if (!tile || grid.dataset.disabled === "true") return;
       const key = tile.dataset.pattern;
       input.value = key;
       // route through the standard bind flow so collectConfig/markDirty see it
@@ -3404,6 +3464,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     });
 
     grid.addEventListener("keydown", (event) => {
+      if (grid.dataset.disabled === "true") return;
       const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
       if (!keys.includes(event.key)) return;
       const tiles = Array.from(grid.querySelectorAll(".btfw-pattern-tile"));
@@ -3422,6 +3483,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     let suppressClick = false;
     grid.addEventListener("dragstart", (event) => event.preventDefault());
     grid.addEventListener("pointerdown", (event) => {
+      if (grid.dataset.disabled === "true") return;
       if (event.pointerType === "mouse" && event.button !== 0) return;
       dragState = {
         id: event.pointerId,
@@ -3521,7 +3583,7 @@ function replaceBlock(original, startMarker, endMarker, block){
       preview.style.setProperty("--btfw-tp-navbar-background-size", [...gradientLayerSizes(navbarGradient), "var(--btfw-tp-dither-size)", ...gradientLayerSizes(softGradient), ...Array(2).fill("auto")].join(", "));
       preview.style.setProperty("--btfw-tp-navbar-background-position", [...gradientLayerPositions(navbarGradient), "0 0", ...gradientLayerPositions(softGradient), ...Array(2).fill("center")].join(", "));
       preview.style.background = "";
-      // Show the chosen page gradient and optional tiled pattern together.
+      // Gradient Studio and background patterns are mutually exclusive.
       const previewBody = preview.querySelector(".btfw-tp__body");
       if (previewBody) {
         const patternKey = cfg.background?.pattern || "none";
@@ -3533,7 +3595,7 @@ function replaceBlock(original, startMarker, endMarker, block){
           layerSizes.push(...gradientLayerSizes(pageGradient));
           layerPositions.push(...gradientLayerPositions(pageGradient));
         }
-        if (patternKey !== "none") {
+        if (!gradient.enabled && patternKey !== "none") {
           layers.push(patternImageValue(patternKey, accent, cfg.background?.intensity || "medium"));
           layerSizes.push("auto");
           layerPositions.push("top center");
@@ -3617,6 +3679,7 @@ function replaceBlock(original, startMarker, endMarker, block){
       if (state) state.textContent = enabled ? "On" : "Off";
     }
     if (editor) editor.hidden = !enabled;
+    syncPatternAvailability(panel, cfg);
 
     const typeInput = panel.querySelector("#btfw-gradient-type");
     if (typeInput) typeInput.value = gradient.type;
@@ -4604,8 +4667,8 @@ function replaceBlock(original, startMarker, endMarker, block){
                 <p class="help" style="margin-top:9px">Flow and Retro add layered, drifting light to panel headers; Pixel uses stepped motion. Follow palette preserves your channel colours, while Custom colours can create a more vivid blend. Reduced-motion preferences are always respected.</p>
               </div>
             </div>
-            <div class="field">
-              <label>Background pattern</label>
+            <div class="field btfw-pattern-field" data-role="pattern-field">
+              <label>Background pattern <span class="btfw-pattern-lock" data-role="pattern-lock" hidden>Gradient active</span></label>
               <input type="hidden" data-btfw-bind="background.pattern" data-role="pattern-input">
               <div class="btfw-pattern-grid" data-role="pattern-grid" role="radiogroup" aria-label="Background pattern" aria-orientation="horizontal" aria-describedby="btfw-pattern-help"></div>
               <div class="btfw-pattern-intensity" data-role="pattern-intensity-row" hidden>
