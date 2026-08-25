@@ -244,8 +244,9 @@
    avoiding a requestAnimationFrame loop or layout-triggering width changes. */
 #chatwrap .btfw-chat-topbar #btfw-playback-progress {
     display: block;
-    width: 100%;
+    width: calc(100% - 16px);
     height: 3px;
+    justify-self: center;
     overflow: hidden;
     border-radius: 999px;
     background: color-mix(in srgb, var(--btfw-color-text) 11%, transparent 89%);
@@ -264,7 +265,7 @@
       color-mix(in srgb, var(--btfw-color-accent) 78%, white 22%),
       var(--btfw-color-accent)
     );
-    box-shadow: 0 0 7px color-mix(in srgb, var(--btfw-color-accent) 42%, transparent 58%);
+    box-shadow: 0 0 5px color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%);
     transition: transform 1050ms linear;
     will-change: transform;
 }
