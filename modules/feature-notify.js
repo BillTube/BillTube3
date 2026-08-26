@@ -35,6 +35,10 @@ BTFW.define("feature:notify", [], async () => {
   let joinNoticesEnabled  = loadBool(LS_JOIN_NOTICES, true);
   let nowPlayingNoticesEnabled = loadBool(LS_NP_NOTICES, true);
   let pollNoticesEnabled  = loadBool(LS_POLL_NOTICES, true);
+  let anchorTopbar = null;
+  let anchorFrame = 0;
+  let anchorMutationObserver = null;
+  let anchorResizeObserver = null;
 
   document.addEventListener("btfw:chat:joinNoticesChanged", (ev)=>{
     if (!ev || !ev.detail) return;
@@ -49,7 +53,59 @@ BTFW.define("feature:notify", [], async () => {
     if (v.notifyPolls != null)      pollNoticesEnabled = !!v.notifyPolls;
   });
 
-  // ---- container (absolute overlay) ------------------------------------------
+  function syncStackAnchor(){
+    anchorFrame = 0;
+    const stack = $("#btfw-notify-stack");
+    const topbar = stack?.closest(".btfw-chat-topbar");
+    if (!stack || !topbar) return;
+
+    const movie = topbar.querySelector("#btfw-movie-header.show");
+    const movieHeight = movie && window.innerWidth > 768
+      ? Math.ceil(movie.getBoundingClientRect().height)
+      : 0;
+
+    // Both overlays share the same 8px rhythm. When the movie card is open,
+    // its measured height becomes part of the toast anchor so the two layers
+    // can never occupy the same space, even when movie metadata wraps.
+    stack.style.setProperty("--btfw-notify-anchor-offset", `${movieHeight ? movieHeight + 16 : 8}px`);
+
+    if (anchorResizeObserver && movie && !movie._btfwNotifyAnchorObserved) {
+      movie._btfwNotifyAnchorObserved = true;
+      anchorResizeObserver.observe(movie);
+    }
+  }
+
+  function scheduleStackAnchorSync(){
+    if (anchorFrame) return;
+    anchorFrame = requestAnimationFrame(syncStackAnchor);
+  }
+
+  function watchStackAnchor(topbar){
+    if (!topbar || anchorTopbar === topbar) {
+      scheduleStackAnchorSync();
+      return;
+    }
+
+    anchorMutationObserver?.disconnect();
+    anchorResizeObserver?.disconnect();
+    anchorTopbar = topbar;
+
+    anchorMutationObserver = new MutationObserver(scheduleStackAnchorSync);
+    anchorMutationObserver.observe(topbar, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "hidden"]
+    });
+
+    if ("ResizeObserver" in window) {
+      anchorResizeObserver = new ResizeObserver(scheduleStackAnchorSync);
+      anchorResizeObserver.observe(topbar);
+    }
+    scheduleStackAnchorSync();
+  }
+
+  // ---- container (header-anchored overlay) -----------------------------------
   function ensureStack(){
     const buf = $("#messagebuffer");
     if (!buf) return null;
@@ -76,6 +132,7 @@ BTFW.define("feature:notify", [], async () => {
         topbar.style.position = "relative";
       }
       if (stack.parentElement !== topbar) topbar.appendChild(stack);
+      watchStackAnchor(topbar);
     } else {
       const cs = getComputedStyle(buf);
       if (cs.position === "static") buf.style.position = "relative";
@@ -172,6 +229,10 @@ BTFW.define("feature:notify", [], async () => {
     if (!stack) { queued.push(o); return; }
     visible.push(o);
     stack.appendChild(o.el);
+    // Force the initial style to commit, then let an interruptible transition
+    // carry the card into place. Toast bursts can now retarget cleanly.
+    o.el.getBoundingClientRect();
+    o.el.classList.add("is-mounted");
     if (o.timeout > 0) {
       o.el.classList.add('btfw-notice--timed');
       startAutoclose(o);
@@ -367,6 +428,7 @@ function startAutoclose(o){
     o._state = null;
     if (o.el && o.el.parentNode) {
       o.el.classList.add("btfw-notice--leaving");
+      o.el.classList.remove("is-mounted");
       setTimeout(()=>{ try { o.el.remove(); } catch(_){}; }, 230);
     }
     const i = visible.indexOf(o);
