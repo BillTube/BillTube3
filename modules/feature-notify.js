@@ -212,6 +212,7 @@ BTFW.define("feature:notify", [], async () => {
       title: "",
       html: "",
       icon: "",
+      iconClass: "",
       kind: "info",           // info|success|warn|error
       timeout: DEFAULT_TIMEOUT,
       onClick: null,
@@ -256,6 +257,7 @@ BTFW.define("feature:notify", [], async () => {
 
     const iconWrap = document.createElement("div");
     iconWrap.className = "btfw-notice-iconwrap";
+    if (o.iconClass) iconWrap.classList.add(o.iconClass);
     if (o.icon) {
       const icon = document.createElement("span");
       icon.className = "btfw-notice-icon";
@@ -631,7 +633,8 @@ function startAutoclose(o){
       api.info({
         title: "Now playing",
         html: `<div class="np-title">${escapeHtml(display)}</div>`,
-        icon: "▶️"
+        iconClass: "btfw-notice-iconwrap--now-playing",
+        icon: `<svg class="btfw-notice-nowplaying-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="5" width="17" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.15 9.15 15.6 12l-5.45 2.85Z" fill="currentColor"/></svg>`
       });
     });
   }
