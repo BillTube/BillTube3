@@ -2600,6 +2600,9 @@ html[data-btfw-theme="dark"] .panel {
 }
 
 .btfw-notice{
+  --btfw-toast-open-duration: 220ms;
+  --btfw-toast-close-duration: 140ms;
+  --btfw-toast-ease: cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: auto;
   width: 100%;
   min-width: 0;
@@ -2626,11 +2629,14 @@ html[data-btfw-theme="dark"] .panel {
   -webkit-backdrop-filter: blur(10px) saturate(110%);
   overflow: hidden;
   opacity: 0;
-  transform: translateY(-6px) scale(.98);
+  filter: blur(2px);
+  transform: translateY(-8px) scale(.985);
   transform-origin: top center;
   transition:
-    opacity 180ms ease-out,
-    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+    transform var(--btfw-toast-close-duration) var(--btfw-toast-ease),
+    opacity var(--btfw-toast-close-duration) var(--btfw-toast-ease),
+    filter var(--btfw-toast-close-duration) var(--btfw-toast-ease);
+  will-change: transform, opacity, filter;
   --btfw-notice-accent: color-mix(in srgb, var(--btfw-color-accent) 70%, #4a9eff 30%);
   --btfw-notice-icon-bg: color-mix(in srgb, var(--btfw-color-accent) 26%, transparent 74%);
   --btfw-notice-icon-color: color-mix(in srgb, var(--btfw-color-on-accent) 88%, white 12%);
@@ -2639,7 +2645,46 @@ html[data-btfw-theme="dark"] .panel {
 
 .btfw-notice.is-mounted{
   opacity: 1;
+  filter: blur(0);
   transform: translateY(0) scale(1);
+  transition-duration: var(--btfw-toast-open-duration);
+}
+
+/* A single restrained light pass gives the card a polished material reveal.
+   It is state-driven (not looping), so repeated notices remain quiet. */
+.btfw-notice::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    112deg,
+    transparent 34%,
+    color-mix(in srgb, white 10%, var(--btfw-notice-accent) 4%) 48%,
+    transparent 62%
+  );
+  opacity: 0;
+  transform: translateX(-120%);
+  transition:
+    transform 360ms var(--btfw-toast-ease),
+    opacity 180ms ease-out;
+}
+.btfw-notice.is-mounted::after{
+  opacity: .52;
+  transform: translateX(120%);
+}
+
+/* Toast bursts settle as a group without making any notice wait noticeably. */
+.btfw-notice.is-mounted:nth-child(2){ transition-delay: 32ms; }
+.btfw-notice.is-mounted:nth-child(3){ transition-delay: 64ms; }
+.btfw-notice.is-mounted:nth-child(2)::after{ transition-delay: 32ms; }
+.btfw-notice.is-mounted:nth-child(3)::after{ transition-delay: 64ms; }
+
+.btfw-notice--leaving{
+  pointer-events: none;
+  transition-delay: 0ms !important;
+  will-change: auto;
 }
 
 .btfw-notice--info{
@@ -2846,11 +2891,6 @@ html[data-btfw-theme="dark"] .panel {
 
 /* Exit retargets the same transform/opacity transition so bursts remain
    interruptible instead of restarting a keyframe timeline. */
-.btfw-notice--leaving{
-  pointer-events:none;
-  transition-duration: 140ms;
-}
-
 #btfw-notify-stack .np-title{ font-weight:600; opacity:.95; }
 #btfw-notify-stack .poll-title{ font-weight:600; margin-bottom:4px; }
 #btfw-notify-stack .poll-opts{ margin:0; padding-left: 18px; opacity:.9; }
@@ -2973,5 +3013,11 @@ html[data-btfw-theme="dark"] .panel {
 /* Reduced motion — toast keyframes weren't covered by the shared block; keep
    toasts appearing instantly rather than sliding. */
 @media (prefers-reduced-motion: reduce) {
-  .btfw-notice { transition: none !important; }
+  .btfw-notice {
+    filter: none;
+    transform: none;
+    transition: opacity 120ms ease-out !important;
+    will-change: auto;
+  }
+  .btfw-notice::after{ display:none; }
 }
