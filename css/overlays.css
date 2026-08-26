@@ -3021,3 +3021,11 @@ html[data-btfw-theme="dark"] .panel {
   }
   .btfw-notice::after{ display:none; }
 }
+
+:root[data-btfw-motion="reduced"] .btfw-notice {
+  filter: none;
+  transform: none;
+  transition: opacity 120ms ease-out !important;
+  will-change: auto;
+}
+:root[data-btfw-motion="reduced"] .btfw-notice::after{ display:none; }
