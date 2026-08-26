@@ -307,11 +307,11 @@ BTFW.define("feature:notify", [], async () => {
       timer.className = "btfw-notice-timer";
       const label = document.createElement("span");
       label.className = "btfw-notice-timer-label";
-      label.innerHTML = `This message will close in <span class="btfw-notice-timer-remaining"></span> seconds.`;
+      label.innerHTML = `Closes in <span class="btfw-notice-timer-remaining"></span>s`;
       const stop = document.createElement("button");
       stop.type = "button";
       stop.className = "btfw-notice-stop";
-      stop.textContent = "Click to stop.";
+      stop.textContent = "Keep open";
       timer.appendChild(label);
       timer.appendChild(stop);
       content.appendChild(timer);

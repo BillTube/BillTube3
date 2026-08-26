@@ -2789,9 +2789,11 @@ html[data-btfw-theme="dark"] .panel {
 .btfw-notice-timer{
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-size: 12px;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.2;
   color: var(--btfw-notice-muted);
 }
 
@@ -2807,12 +2809,15 @@ html[data-btfw-theme="dark"] .panel {
   font-weight: 600;
   cursor: pointer;
   padding: 0;
-  text-decoration: underline;
+  margin: 0;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .btfw-notice-stop:hover,
 .btfw-notice-stop:focus{
-  text-decoration: none;
+  color: color-mix(in srgb, var(--btfw-notice-accent) 78%, white 22%);
+  text-decoration: underline;
 }
 
 .btfw-notice-progress{
