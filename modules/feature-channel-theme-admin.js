@@ -268,6 +268,86 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
         accent: "#bdf263"
       }
     },
+    dustyTwilight: {
+      name: "Dusty Twilight",
+      colors: {
+        background: "#272744",
+        surface: "#494d7e",
+        panel: "#66577f",
+        text: "#fbf5ef",
+        chatText: "#f2d3ab",
+        accent: "#c69fa5"
+      }
+    },
+    harborRose: {
+      name: "Harbor Rose",
+      colors: {
+        background: "#292831",
+        surface: "#333f58",
+        panel: "#3f657e",
+        text: "#fff0ec",
+        chatText: "#fbbbad",
+        accent: "#ee8695"
+      }
+    },
+    guavaDusk: {
+      name: "Guava Dusk",
+      colors: {
+        background: "#24121a",
+        surface: "#42222f",
+        panel: "#7c3f58",
+        text: "#fff6d3",
+        chatText: "#f9c39d",
+        accent: "#eb6b6f"
+      }
+    },
+    silverSage: {
+      name: "Silver Sage",
+      colors: {
+        background: "#211e20",
+        surface: "#35343d",
+        panel: "#555568",
+        text: "#e9efec",
+        chatText: "#c5ccc2",
+        accent: "#a0a08b"
+      }
+    },
+    neonMeadow: {
+      name: "Neon Meadow",
+      colors: {
+        background: "#332c50",
+        surface: "#3c5269",
+        panel: "#3d707b",
+        text: "#e2f3e4",
+        chatText: "#b9d9c1",
+        accent: "#94e344"
+      }
+    },
+    quietAlloy: {
+      name: "Quiet Alloy",
+      colors: {
+        background: "#1f1f29",
+        surface: "#413a42",
+        panel: "#596070",
+        text: "#eaf0d8",
+        chatText: "#b9c3bc",
+        accent: "#96a2b3"
+      }
+    },
+    emeraldCurrent: {
+      name: "Emerald Current",
+      colors: {
+        background: "#0f052d",
+        surface: "#203671",
+        panel: "#2c6a78",
+        text: "#edf8ec",
+        chatText: "#b8deb8",
+        accent: "#5fc75d"
+      }
+    },
+    // These legacy presets remain resolvable for saved configurations, but
+    // are no longer listed in the picker. Existing channels keep their look
+    // while the menu itself stays focused on the more cohesive palettes.
     cyberpunk: {
       name: "Cyberpunk 2077",
       colors: {
@@ -4534,12 +4614,15 @@ function replaceBlock(original, startMarker, endMarker, block){
                   <option value="ember">Amber</option>
                   <option value="sunset">Blush</option>
                   <option value="citron">Citron</option>
+                  <option value="dustyTwilight">Dusty Twilight</option>
+                  <option value="harborRose">Harbor Rose</option>
+                  <option value="guavaDusk">Guava Dusk</option>
+                  <option value="silverSage">Silver Sage</option>
+                  <option value="neonMeadow">Neon Meadow</option>
+                  <option value="quietAlloy">Quiet Alloy</option>
+                  <option value="emeraldCurrent">Emerald Current</option>
                 </optgroup>
                 <optgroup label="Themed">
-                  <option value="cyberpunk">Cyberpunk 2077</option>
-                  <option value="synthwave">Synthwave Sunset</option>
-                  <option value="matrix">Matrix Terminal</option>
-                  <option value="vaporwave">Vaporwave Dream</option>
                   <option value="bloodMoon">Blood Moon</option>
                   <option value="crimsonNoir">Crimson Noir</option>
                   <option value="forestGold">Forest &amp; Gold</option>
@@ -4553,6 +4636,12 @@ function replaceBlock(original, startMarker, endMarker, block){
                   <option value="dracula">Dracula</option>
                   <option value="tokyoNight">Tokyo Night</option>
                   <option value="nord">Nord Frost</option>
+                </optgroup>
+                <optgroup label="Legacy" hidden>
+                  <option value="cyberpunk">Cyberpunk 2077</option>
+                  <option value="synthwave">Synthwave Sunset</option>
+                  <option value="matrix">Matrix Terminal</option>
+                  <option value="vaporwave">Vaporwave Dream</option>
                 </optgroup>
                 <option value="custom">Custom mix</option>
               </select>
