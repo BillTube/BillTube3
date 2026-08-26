@@ -2748,8 +2748,8 @@ html[data-btfw-theme="dark"] .panel {
 
 @container (max-width: 420px){
   #btfw-notify-stack{
-    right: 8px;
-    left: 8px;
+    right: 0;
+    left: 0;
     width: auto;
     max-width: none;
     gap: 8px;
