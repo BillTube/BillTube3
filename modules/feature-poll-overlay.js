@@ -150,20 +150,46 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
 
     .btfw-poll-footer {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
       align-items: center;
+      gap: 12px;
       margin-top: 16px;
       padding-top: 12px;
       border-top: 1px solid color-mix(in srgb, var(--btfw-border) 60%, transparent 40%);
     }
 
     .btfw-poll-info {
+      justify-self: start;
       font-size: 0.85rem;
       color: color-mix(in srgb, var(--btfw-color-text) 70%, transparent 30%);
     }
 
+    .btfw-poll-countdown {
+      display: inline-flex;
+      align-items: center;
+      justify-self: center;
+      gap: 6px;
+      min-width: 64px;
+      color: var(--btfw-color-text);
+      font-size: 0.9rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+
+    .btfw-poll-countdown[hidden] {
+      display: none !important;
+    }
+
+    .btfw-poll-countdown .fa {
+      color: var(--btfw-color-accent);
+      font-size: 0.85em;
+      opacity: 0.9;
+    }
+
     .btfw-poll-end-btn {
+      justify-self: end;
       background: var(--btfw-color-error, #e74c3c);
       color: white;
       border: none;
@@ -405,6 +431,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let userVotes = new Set(); // Track which options user voted for
   let pollDomObserver = null;
   let observedPollElement = null;
+  let pollCountdownTimer = null;
 
   const ENTITY_DECODER = document.createElement("textarea");
 
@@ -441,6 +468,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   /* ---------- Random movie poll ---------- */
   const RANDOM_POLL_TITLE = "What should we watch next?";
+  const RANDOM_POLL_TIMER_RE = /\s*[·•]\s*(\d{1,2})\s*min(?:ute)?s?\s*$/i;
   const RANDOM_POLL_DEFAULT_COUNT = 5;
   const RANDOM_POLL_DEFAULT_MINUTES = 2;
   let randomPollDraft = null;
@@ -501,6 +529,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function boundedInteger(value, min, max, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+  }
+
+  function timedRandomPollTitle(minutes) {
+    return `${RANDOM_POLL_TITLE} · ${minutes} min`;
   }
 
   function pollNotice(message, kind = "info") {
@@ -682,9 +714,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
       return;
     }
 
+    const pollTitle = timedRandomPollTitle(randomPollDraft.minutes);
     automaticPoll = {
       phase: "opening",
-      title: RANDOM_POLL_TITLE,
+      title: pollTitle,
       minutes: randomPollDraft.minutes,
       movies: randomPollDraft.movies.map((movie) => ({ ...movie })),
       counts: new Array(randomPollDraft.movies.length).fill(0)
@@ -696,7 +729,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
 
     window.socket.emit("newPoll", {
-      title: RANDOM_POLL_TITLE,
+      title: pollTitle,
       opts: automaticPoll.movies.map((movie) => movie.title),
       obscured: false,
       retainVotes: true,
@@ -823,6 +856,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
         <div class="btfw-poll-footer">
           <div class="btfw-poll-info">
             <span class="btfw-poll-votes">0 votes</span>
+          </div>
+          <div class="btfw-poll-countdown" hidden aria-label="Poll time remaining">
+            <i class="fa fa-clock-o" aria-hidden="true"></i>
+            <span class="btfw-poll-countdown-time">0:00</span>
           </div>
           <button class="btfw-poll-end-btn" style="display: none;">End Poll</button>
         </div>
@@ -1019,12 +1056,67 @@ BTFW.define("feature:poll-overlay", [], async () => {
     return attempts.length > 0;
   }
 
+  function pollTiming(poll) {
+    const rawTitle = resolvePollTitle(poll?.title);
+    const titleMatch = rawTitle.match(RANDOM_POLL_TIMER_RE);
+    const title = titleMatch ? rawTitle.replace(RANDOM_POLL_TIMER_RE, "").trim() : rawTitle;
+    let durationSeconds = Number(poll?.timeout);
+
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+      durationSeconds = titleMatch ? Number.parseInt(titleMatch[1], 10) * 60 : 0;
+    }
+
+    let openedAt = Number(poll?.timestamp);
+    if (openedAt > 0 && openedAt < 1e12) openedAt *= 1000;
+
+    return {
+      title,
+      deadline: durationSeconds > 0 && Number.isFinite(openedAt) && openedAt > 0
+        ? openedAt + durationSeconds * 1000
+        : null
+    };
+  }
+
+  function stopPollCountdown() {
+    if (pollCountdownTimer) {
+      window.clearInterval(pollCountdownTimer);
+      pollCountdownTimer = null;
+    }
+  }
+
+  function startPollCountdown(deadline) {
+    stopPollCountdown();
+    const countdown = videoOverlay?.querySelector(".btfw-poll-countdown");
+    const time = countdown?.querySelector(".btfw-poll-countdown-time");
+    if (!countdown || !time || !Number.isFinite(deadline)) {
+      if (countdown) countdown.hidden = true;
+      return;
+    }
+
+    countdown.hidden = false;
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      const hours = Math.floor(remaining / 3600);
+      const minutes = Math.floor((remaining % 3600) / 60);
+      const seconds = remaining % 60;
+      time.textContent = hours > 0
+        ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+        : `${minutes}:${String(seconds).padStart(2, "0")}`;
+      countdown.setAttribute("aria-label", `Poll time remaining: ${time.textContent}`);
+      if (remaining === 0) stopPollCountdown();
+    };
+
+    update();
+    if (deadline > Date.now()) pollCountdownTimer = window.setInterval(update, 250);
+  }
+
   function showVideoOverlay(poll) {
     const overlay = createVideoOverlay();
     if (!overlay || !poll) return;
 
     // FIXED: Create fresh poll data without contamination from previous polls
-    const resolvedTitle = resolvePollTitle(poll.title);
+    const timing = pollTiming(poll);
+    const resolvedTitle = timing.title;
 
     currentPoll = {
       ...poll,
@@ -1100,6 +1192,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
     // FIXED: Use currentPoll instead of poll parameter
     updateVoteDisplay(currentPoll);
+    startPollCountdown(timing.deadline);
 
     overlay.classList.add("btfw-poll-active");
 
@@ -1116,6 +1209,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function hideVideoOverlay() {
+    stopPollCountdown();
     if (videoOverlay) {
       videoOverlay.classList.remove("btfw-poll-active");
       currentPoll = null;
@@ -1192,10 +1286,18 @@ BTFW.define("feature:poll-overlay", [], async () => {
       const optionElements = existingPoll.querySelectorAll('.option');
       
       if (titleElement && optionElements.length > 0) {
+        const nativeTimestamp = existingPoll.querySelector(".label.label-default.pull-right");
+        let timestamp = Number(nativeTimestamp?.dataset?.timestamp);
+        try {
+          if ((!Number.isFinite(timestamp) || timestamp <= 0) && window.jQuery && nativeTimestamp) {
+            timestamp = Number(window.jQuery(nativeTimestamp).data("timestamp"));
+          }
+        } catch (_) {}
         const pollData = {
           title: titleElement.textContent.trim(),
           options: [],
           votes: [],
+          timestamp: Number.isFinite(timestamp) && timestamp > 0 ? timestamp : undefined,
           multi: false // Default, will be updated if we can detect it
         };
         
