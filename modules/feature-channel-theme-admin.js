@@ -175,6 +175,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       },
       audioEnhancer: {
         enabled: false
+      },
+      randomMoviePoll: {
+        enabled: false
       }
     },
     resources: {
@@ -872,6 +875,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
     const audioEnhancerEnabled = Boolean(integrations.audioEnhancer.enabled);
     integrations.audioEnhancer.enabled = audioEnhancerEnabled;
+
+    if (!integrations.randomMoviePoll || typeof integrations.randomMoviePoll !== "object") {
+      integrations.randomMoviePoll = { enabled: false };
+    }
+    const randomMoviePollEnabled = Boolean(integrations.randomMoviePoll.enabled);
+    integrations.randomMoviePoll.enabled = randomMoviePollEnabled;
     if (typeof window !== "undefined") {
       window.BTFW_CONFIG = window.BTFW_CONFIG || {};
       if (typeof window.BTFW_CONFIG.tmdb !== "object") {
@@ -910,6 +919,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       window.BTFW_CONFIG.integrations.subdl.apiKey = subdlKey;
       window.BTFW_CONFIG.integrations.audioEnhancer = window.BTFW_CONFIG.integrations.audioEnhancer || {};
       window.BTFW_CONFIG.integrations.audioEnhancer.enabled = audioEnhancerEnabled;
+      window.BTFW_CONFIG.integrations.randomMoviePoll = window.BTFW_CONFIG.integrations.randomMoviePoll || {};
+      window.BTFW_CONFIG.integrations.randomMoviePoll.enabled = randomMoviePollEnabled;
       window.BTFW_CONFIG.movieInfo = window.BTFW_CONFIG.movieInfo || {};
       window.BTFW_CONFIG.movieInfo.enabled = movieInfoEnabled;
       window.BTFW_CONFIG.movieInfoEnabled = movieInfoEnabled;
@@ -964,6 +975,11 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
           } else if (document.body.dataset?.btfwAudioEnhancerEnabled) {
             delete document.body.dataset.btfwAudioEnhancerEnabled;
           }
+          if (randomMoviePollEnabled) {
+            document.body.dataset.btfwRandomMoviePollEnabled = "1";
+          } else if (document.body.dataset?.btfwRandomMoviePollEnabled) {
+            delete document.body.dataset.btfwRandomMoviePollEnabled;
+          }
         }
       } catch (_) {}
     }
@@ -978,7 +994,8 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
           ratingsEndpoint,
           movieInfoEnabled,
           autoSubsEnabled,
-          audioEnhancerEnabled
+          audioEnhancerEnabled,
+          randomMoviePollEnabled
         }
       }));
     } catch (_) {}
@@ -2990,6 +3007,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       normalized.integrations.audioEnhancer.enabled = Boolean(normalized.integrations.audioEnhancer.enabled);
     }
 
+    if (!normalized.integrations.randomMoviePoll || typeof normalized.integrations.randomMoviePoll !== "object") {
+      normalized.integrations.randomMoviePoll = { enabled: false };
+    } else {
+      normalized.integrations.randomMoviePoll.enabled = Boolean(normalized.integrations.randomMoviePoll.enabled);
+    }
+
     if (normalized.features && typeof normalized.features === "object") {
       delete normalized.features.videoOverlayPoll;
       if (Object.keys(normalized.features).length === 0) {
@@ -4031,6 +4054,24 @@ function replaceBlock(original, startMarker, endMarker, block){
     if (audioEnhancerState) audioEnhancerState.textContent = enabled ? 'On' : 'Off';
   }
 
+  function syncRandomMoviePollToggle(panel, cfg){
+    if (!panel || !cfg || typeof cfg !== "object") return;
+    const integrations = cfg.integrations = cfg.integrations && typeof cfg.integrations === "object"
+      ? cfg.integrations
+      : (cfg.integrations = JSON.parse(JSON.stringify(DEFAULT_CONFIG.integrations)));
+    if (!integrations.randomMoviePoll || typeof integrations.randomMoviePoll !== "object") {
+      integrations.randomMoviePoll = { enabled: false };
+    }
+    const button = panel.querySelector('#btfw-theme-random-movie-poll-toggle');
+    const input = panel.querySelector('#btfw-theme-random-movie-poll-enabled');
+    if (!button || !input) return;
+    const enabled = Boolean(integrations.randomMoviePoll.enabled);
+    input.checked = enabled;
+    button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    const state = button.querySelector('[data-role="state-label"]');
+    if (state) state.textContent = enabled ? 'On' : 'Off';
+  }
+
   /* --- BillTube chat-filter status (top of toolkit) ------------------------
      Compares the channel's imported chat filters against the canonical list in
      feature:chat-filters, matched by name. Channel-authored filters (names we
@@ -4504,6 +4545,17 @@ function replaceBlock(original, startMarker, endMarker, block){
               <label for="btfw-theme-integrations-ratings">Ratings API endpoint</label>
               <input type="url" id="btfw-theme-integrations-ratings" data-btfw-bind="integrations.ratings.endpoint" placeholder="https://billtubemovierating.billtube.workers.dev/">
               <p class="help">Leave blank to disable the rating widget entirely.</p>
+            </div>
+            <div class="field btfw-switch-field">
+              <button type="button" class="btfw-switch" id="btfw-theme-random-movie-poll-toggle" role="switch" aria-pressed="false">
+                <span class="btfw-switch__track" aria-hidden="true"><span class="btfw-switch__knob"></span></span>
+                <span class="btfw-switch__meta">
+                  <span class="btfw-switch__title">Random movie polls</span>
+                  <span class="btfw-switch__state" data-role="state-label">Off</span>
+                </span>
+              </button>
+              <input type="checkbox" id="btfw-theme-random-movie-poll-enabled" data-btfw-bind="integrations.randomMoviePoll.enabled" hidden>
+              <p class="help">Shows the random movie poll button to users with poll permissions and the session-only automatic credits poll toggle to the channel owner.</p>
             </div>
           </div>
         </details>
@@ -5410,6 +5462,24 @@ function replaceBlock(original, startMarker, endMarker, block){
       });
     }
 
+    const randomMoviePollButton = panel.querySelector('#btfw-theme-random-movie-poll-toggle');
+    const randomMoviePollInput = panel.querySelector('#btfw-theme-random-movie-poll-enabled');
+    if (randomMoviePollButton && randomMoviePollInput) {
+      randomMoviePollButton.addEventListener('click', () => {
+        const next = !randomMoviePollInput.checked;
+        randomMoviePollInput.checked = next;
+        if (!cfg.integrations || typeof cfg.integrations !== 'object') {
+          cfg.integrations = {};
+        }
+        if (!cfg.integrations.randomMoviePoll || typeof cfg.integrations.randomMoviePoll !== 'object') {
+          cfg.integrations.randomMoviePoll = { enabled: false };
+        }
+        cfg.integrations.randomMoviePoll.enabled = next;
+        syncRandomMoviePollToggle(panel, cfg);
+        onChange();
+      });
+    }
+
     // Developer mode toggle — flips localStorage["btfw:dev-nocache"]. This is
     // intentionally a per-browser setting (not a per-channel config) so the
     // channel admin can flip it while iterating without forcing all viewers
@@ -5745,6 +5815,7 @@ function replaceBlock(original, startMarker, endMarker, block){
     syncMoviePollToggle(panel, cfg);
     syncAutoSubsToggle(panel, cfg);
     syncAudioEnhancerToggle(panel, cfg);
+    syncRandomMoviePollToggle(panel, cfg);
     renderEmotePackList(panel, cfg);
     renderPreview(panel, cfg);
   }
@@ -5840,6 +5911,10 @@ function replaceBlock(original, startMarker, endMarker, block){
       updated.integrations.autoSubs = { enabled: false };
     }
     updated.integrations.autoSubs.enabled = Boolean(updated.integrations.autoSubs.enabled);
+    if (!updated.integrations.randomMoviePoll || typeof updated.integrations.randomMoviePoll !== "object") {
+      updated.integrations.randomMoviePoll = { enabled: false };
+    }
+    updated.integrations.randomMoviePoll.enabled = Boolean(updated.integrations.randomMoviePoll.enabled);
     if (!updated.playlistCatalog || typeof updated.playlistCatalog !== "object") {
       updated.playlistCatalog = { enabled: false, tmdbListUrl: "" };
     }
@@ -6195,6 +6270,10 @@ function replaceBlock(original, startMarker, endMarker, block){
       cfg.integrations.autoSubs = { enabled: false };
     }
     cfg.integrations.autoSubs.enabled = Boolean(cfg.integrations.autoSubs.enabled);
+    if (!cfg.integrations.randomMoviePoll || typeof cfg.integrations.randomMoviePoll !== "object") {
+      cfg.integrations.randomMoviePoll = { enabled: false };
+    }
+    cfg.integrations.randomMoviePoll.enabled = Boolean(cfg.integrations.randomMoviePoll.enabled);
 
     if (!cfg.branding || typeof cfg.branding !== "object") {
       cfg.branding = cloneDefaults().branding;

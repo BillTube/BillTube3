@@ -503,6 +503,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let autoCreditsPollTimer = null;
   let autoCreditsPollChecking = false;
   let autoCreditsPollEnabled = false;
+  let randomMoviePollIntegrationEnabled = Boolean(
+    window.BTFW_CONFIG?.integrations?.randomMoviePoll?.enabled
+      || document.body?.dataset?.btfwRandomMoviePollEnabled === "1"
+  );
   let autoCreditsTriggeredMediaKey = "";
   const autoCreditsMedia = {
     key: "",
@@ -826,6 +830,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function openRandomPollBuilder() {
+    if (!randomMoviePollIntegrationEnabled) return;
     if (!hasChannelPermission("pollctl")) return;
     if (activeNativePoll()) {
       pollNotice("End the active poll first.", "warn");
@@ -905,7 +910,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function startAutomaticPoll() {
-    if (!randomPollDraft || automaticPoll) return false;
+    if (!randomMoviePollIntegrationEnabled || !randomPollDraft || automaticPoll) return false;
     return launchAutomaticPoll({
       movies: randomPollDraft.movies,
       minutes: randomPollDraft.minutes,
@@ -914,7 +919,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function launchAutomaticPoll({ movies, minutes, quiet = false, mediaKey = "", claimToken = "" }) {
-    if (automaticPoll) return false;
+    if (!randomMoviePollIntegrationEnabled || automaticPoll) return false;
     if (!hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) {
       if (!quiet) pollNotice("Poll and playlist move permissions are required.", "warn");
       return false;
@@ -1051,7 +1056,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const wrap = document.getElementById("pollwrap");
     const controls = wrap?.querySelector(".poll-controls");
     let button = document.getElementById("btfw-random-poll-btn");
-    if (!hasChannelPermission("pollctl")) {
+    if (!randomMoviePollIntegrationEnabled || !hasChannelPermission("pollctl")) {
       button?.remove();
       document.querySelector("#pollwrap .btfw-random-poll-builder")?.remove();
       randomPollDraft = null;
@@ -1075,8 +1080,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const wrap = document.getElementById("pollwrap");
     const controls = wrap?.querySelector(".poll-controls");
     let control = document.getElementById("btfw-auto-credits-poll-control");
-    if (!isChannelOwner() || !hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) {
+    if (!randomMoviePollIntegrationEnabled || !isChannelOwner() || !hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) {
       control?.remove();
+      if (!randomMoviePollIntegrationEnabled) autoCreditsPollEnabled = false;
       stopAutoCreditsPolling();
       return;
     }
@@ -1106,6 +1112,15 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function setupRandomPollControls() {
+    if (!randomMoviePollIntegrationEnabled) {
+      syncRandomPollButton();
+      syncAutoCreditsPollControl();
+      if (randomPollTimer) {
+        window.clearInterval(randomPollTimer);
+        randomPollTimer = null;
+      }
+      return;
+    }
     syncRandomPollButton();
     syncAutoCreditsPollControl();
     const wrap = document.getElementById("pollwrap");
@@ -1117,7 +1132,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   async function evaluateAutoCreditsPoll() {
-    if (autoCreditsPollChecking || !autoCreditsPollEnabled || !isChannelOwner()) return;
+    if (!randomMoviePollIntegrationEnabled || autoCreditsPollChecking || !autoCreditsPollEnabled || !isChannelOwner()) return;
     if (!hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) return;
     if (automaticPoll || activeNativePoll() || document.querySelector("#pollwrap .poll-menu, #pollwrap .btfw-random-poll-builder")) return;
 
@@ -1147,7 +1162,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const claimToken = await claimAutoCreditsPoll(mediaKey);
     try {
       if (!claimToken) return;
-      if (!autoCreditsPollEnabled || mediaKey !== autoCreditsMedia.key) {
+      if (!randomMoviePollIntegrationEnabled || !autoCreditsPollEnabled || mediaKey !== autoCreditsMedia.key) {
         releaseAutoCreditsClaim(mediaKey, claimToken);
         return;
       }
@@ -1179,13 +1194,36 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   function setupAutoCreditsPolling() {
     stopAutoCreditsPolling();
-    if (!autoCreditsPollEnabled || !isChannelOwner()) return;
+    if (!randomMoviePollIntegrationEnabled || !autoCreditsPollEnabled || !isChannelOwner()) return;
     if (window.socket && window.socket.connected === false) return;
     updateAutoCreditsMedia(null);
     // Server mediaUpdate events perform the real checks. This low-frequency
     // fallback only covers a missed event or a temporarily quiet socket.
     autoCreditsPollTimer = window.setInterval(evaluateAutoCreditsPoll, AUTO_POLL_FALLBACK_INTERVAL_MS);
     evaluateAutoCreditsPoll();
+  }
+
+  function applyRandomMoviePollIntegration(enabled) {
+    randomMoviePollIntegrationEnabled = Boolean(enabled);
+    if (!randomMoviePollIntegrationEnabled) {
+      autoCreditsPollEnabled = false;
+      stopAutoCreditsPolling();
+      const wrap = document.getElementById("pollwrap");
+      document.querySelector("#pollwrap .btfw-random-poll-builder")?.remove();
+      document.getElementById("btfw-random-poll-btn")?.remove();
+      document.getElementById("btfw-auto-credits-poll-control")?.remove();
+      if (wrap?._btfwRandomPollObserver) {
+        wrap._btfwRandomPollObserver.disconnect();
+        delete wrap._btfwRandomPollObserver;
+      }
+      randomPollDraft = null;
+      if (randomPollTimer) {
+        window.clearInterval(randomPollTimer);
+        randomPollTimer = null;
+      }
+      return;
+    }
+    setupRandomPollControls();
   }
 
   function createVideoOverlay() {
@@ -1790,6 +1828,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
   // Also boot on layout ready event (with delay to ensure everything is settled)
   document.addEventListener("btfw:layoutReady", () => {
     setTimeout(boot, 200);
+  });
+
+  document.addEventListener("btfw:channelIntegrationsChanged", (event) => {
+    applyRandomMoviePollIntegration(Boolean(event?.detail?.randomMoviePollEnabled));
   });
 
   return {
