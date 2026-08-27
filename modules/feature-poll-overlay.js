@@ -231,6 +231,27 @@ BTFW.define("feature:poll-overlay", [], async () => {
       cursor: not-allowed;
     }
 
+    #pollwrap .btfw-auto-credits-poll-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 10px;
+      color: color-mix(in srgb, var(--btfw-color-text) 78%, transparent 22%);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #pollwrap .btfw-auto-credits-poll-control input {
+      margin: 0;
+      accent-color: var(--btfw-color-accent);
+    }
+
+    #pollwrap .btfw-auto-credits-poll-control:has(input:checked) {
+      color: var(--btfw-color-text);
+    }
+
     #pollwrap .btfw-random-poll-builder {
       box-sizing: border-box;
       width: 100%;
@@ -471,9 +492,22 @@ BTFW.define("feature:poll-overlay", [], async () => {
   const RANDOM_POLL_TIMER_RE = /\s*[·•]\s*(\d{1,2})\s*min(?:ute)?s?\s*$/i;
   const RANDOM_POLL_DEFAULT_COUNT = 5;
   const RANDOM_POLL_DEFAULT_MINUTES = 2;
+  const AUTO_POLL_TRIGGER_SECONDS = 4 * 60;
+  const AUTO_POLL_MIN_DURATION_SECONDS = 30 * 60;
+  const AUTO_POLL_MIN_REMAINING_SECONDS = RANDOM_POLL_DEFAULT_MINUTES * 60 + 10;
   let randomPollDraft = null;
   let automaticPoll = null;
   let randomPollTimer = null;
+  let autoCreditsPollTimer = null;
+  let autoCreditsPollChecking = false;
+  const autoCreditsMedia = {
+    key: "",
+    provider: "",
+    duration: 0,
+    currentTime: 0,
+    sampledAt: 0,
+    paused: true
+  };
 
   function hasChannelPermission(permission) {
     try {
@@ -481,6 +515,37 @@ BTFW.define("feature:poll-overlay", [], async () => {
     } catch (_) {
       return false;
     }
+  }
+
+  function isChannelOwner() {
+    const rank = Number(window.CLIENT?.rank);
+    return Number.isFinite(rank) && rank >= 3;
+  }
+
+  function channelStorageName() {
+    const configured = String(window.CHANNEL?.name || window.CHANNELNAME || "").trim();
+    if (configured) return configured.toLocaleLowerCase();
+    const match = location.pathname.match(/\/r\/([^/?#]+)/i);
+    return decodeURIComponent(match?.[1] || "channel").toLocaleLowerCase();
+  }
+
+  function autoCreditsEnabledKey() {
+    return `btfw:auto-credits-poll:enabled:${channelStorageName()}`;
+  }
+
+  function autoCreditsClaimKey() {
+    return `btfw:auto-credits-poll:claim:${channelStorageName()}`;
+  }
+
+  function readAutoCreditsEnabled() {
+    if (!isChannelOwner()) return false;
+    try { return localStorage.getItem(autoCreditsEnabledKey()) === "1"; }
+    catch (_) { return false; }
+  }
+
+  function setAutoCreditsEnabled(enabled) {
+    try { localStorage.setItem(autoCreditsEnabledKey(), enabled ? "1" : "0"); }
+    catch (_) {}
   }
 
   function playlistUid(row) {
@@ -533,6 +598,150 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   function timedRandomPollTitle(minutes) {
     return `${RANDOM_POLL_TITLE} · ${minutes} min`;
+  }
+
+  function activePlaylistRow() {
+    return document.querySelector("#queue > .queue_entry.queue_active");
+  }
+
+  function autoMediaKey(media) {
+    const row = activePlaylistRow();
+    const uid = playlistUid(row);
+    if (uid != null) return `playlist:${uid}`;
+    const provider = String(media?.type || media?.mediaType || media?.provider || "").trim().toLocaleLowerCase();
+    const id = String(media?.id || media?.videoId || media?.vid || "").trim();
+    const title = movieKey(media?.title || playlistTitle(row));
+    return provider && id ? `${provider}:${id}` : title ? `title:${title}` : "";
+  }
+
+  function isYouTubeMedia() {
+    const provider = autoCreditsMedia.provider.toLocaleLowerCase();
+    if (provider === "yt" || provider === "youtube" || provider.startsWith("youtube")) return true;
+
+    const href = activePlaylistRow()?.querySelector(".qe_title")?.href || "";
+    try {
+      const host = new URL(href, location.href).hostname.toLocaleLowerCase();
+      if (host === "youtu.be" || host.endsWith(".youtube.com") || host === "youtube.com") return true;
+    } catch (_) {}
+
+    const frameSource = document.querySelector("#videowrap iframe")?.src || "";
+    return /(?:youtube\.com|youtube-nocookie\.com)\//i.test(frameSource);
+  }
+
+  function finitePlaybackNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : NaN;
+  }
+
+  function readAutoCreditsPlayback() {
+    const videos = document.querySelectorAll("#videowrap video, video");
+    for (const video of videos) {
+      const duration = finitePlaybackNumber(video.duration);
+      const currentTime = finitePlaybackNumber(video.currentTime);
+      if (duration > 0 && currentTime >= 0) {
+        return { duration, currentTime, paused: Boolean(video.paused) };
+      }
+    }
+
+    const player = window.PLAYER;
+    const readFirst = (readers, valid) => {
+      for (const read of readers) {
+        try {
+          const value = finitePlaybackNumber(read());
+          if (valid(value)) return value;
+        } catch (_) {}
+      }
+      return NaN;
+    };
+    const duration = readFirst([
+      () => player?.getDuration?.(),
+      () => player?.getLength?.(),
+      () => player?.media?.seconds,
+      () => player?.media?.duration,
+      () => player?.player?.getDuration?.(),
+      () => player?.player?.duration?.(),
+      () => player?.videojs?.duration?.()
+    ], (value) => value > 0);
+    const currentTime = readFirst([
+      () => player?.getTime?.(),
+      () => player?.getCurrentTime?.(),
+      () => player?.currentTime?.(),
+      () => player?.player?.getCurrentTime?.(),
+      () => player?.player?.currentTime?.(),
+      () => player?.videojs?.currentTime?.()
+    ], (value) => value >= 0);
+    if (duration > 0 && currentTime >= 0) return { duration, currentTime, paused: false };
+
+    let fallbackTime = autoCreditsMedia.currentTime;
+    if (!autoCreditsMedia.paused && autoCreditsMedia.sampledAt) {
+      fallbackTime += Math.max(0, performance.now() - autoCreditsMedia.sampledAt) / 1000;
+    }
+    return {
+      duration: autoCreditsMedia.duration,
+      currentTime: fallbackTime,
+      paused: autoCreditsMedia.paused
+    };
+  }
+
+  function updateAutoCreditsMedia(data, reset = false) {
+    if (data && typeof data === "object") {
+      const key = autoMediaKey(data);
+      if (reset && key && key !== autoCreditsMedia.key) {
+        autoCreditsMedia.duration = 0;
+        autoCreditsMedia.currentTime = 0;
+        autoCreditsMedia.provider = "";
+      }
+      if (key) autoCreditsMedia.key = key;
+      const provider = String(data.type || data.mediaType || data.provider || "").trim();
+      if (provider) autoCreditsMedia.provider = provider;
+      const duration = [data.seconds, data.duration, data.length]
+        .map(finitePlaybackNumber).find((value) => value > 0);
+      const currentTime = [data.currentTime, data.time, data.position]
+        .map(finitePlaybackNumber).find((value) => value >= 0);
+      if (Number.isFinite(duration)) autoCreditsMedia.duration = duration;
+      if (Number.isFinite(currentTime)) autoCreditsMedia.currentTime = currentTime;
+      if (typeof data.paused === "boolean") autoCreditsMedia.paused = data.paused;
+      autoCreditsMedia.sampledAt = performance.now();
+
+      // A replay of the same playlist entry is a new movie session. Clear its
+      // previous claim near the beginning. A short age guard preserves the
+      // claim when a late viewer refresh initially reports position zero.
+      if (reset && key && Number.isFinite(currentTime) && currentTime < 60) {
+        const claim = readAutoCreditsClaim();
+        if (claim?.mediaKey === key && Date.now() - Number(claim.claimedAt || 0) > 3 * 60 * 1000) {
+          releaseAutoCreditsClaim(key);
+        }
+      }
+    } else {
+      const key = autoMediaKey(null);
+      if (key) autoCreditsMedia.key = key;
+    }
+  }
+
+  function readAutoCreditsClaim() {
+    try { return JSON.parse(localStorage.getItem(autoCreditsClaimKey()) || "null"); }
+    catch (_) { return null; }
+  }
+
+  function releaseAutoCreditsClaim(mediaKey, token = "") {
+    try {
+      const claim = readAutoCreditsClaim();
+      if (!claim || claim.mediaKey !== mediaKey || (token && claim.token !== token)) return;
+      localStorage.removeItem(autoCreditsClaimKey());
+    } catch (_) {}
+  }
+
+  async function claimAutoCreditsPoll(mediaKey) {
+    const existing = readAutoCreditsClaim();
+    if (existing?.mediaKey === mediaKey) return "";
+    const token = `${Date.now()}:${Math.random().toString(36).slice(2)}`;
+    try {
+      localStorage.setItem(autoCreditsClaimKey(), JSON.stringify({ mediaKey, token, claimedAt: Date.now() }));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return readAutoCreditsClaim()?.token === token ? token : "";
+    } catch (_) {
+      return token;
+    }
   }
 
   function pollNotice(message, kind = "info") {
@@ -696,33 +905,48 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function startAutomaticPoll() {
-    if (!randomPollDraft || automaticPoll) return;
+    if (!randomPollDraft || automaticPoll) return false;
+    return launchAutomaticPoll({
+      movies: randomPollDraft.movies,
+      minutes: randomPollDraft.minutes,
+      quiet: false
+    });
+  }
+
+  function launchAutomaticPoll({ movies, minutes, quiet = false, mediaKey = "", claimToken = "" }) {
+    if (automaticPoll) return false;
     if (!hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) {
-      pollNotice("Poll and playlist move permissions are required.", "warn");
-      return;
+      if (!quiet) pollNotice("Poll and playlist move permissions are required.", "warn");
+      return false;
     }
     if (activeNativePoll() || document.querySelector("#pollwrap .poll-menu")) {
-      pollNotice("Close the existing poll or poll form first.", "warn");
-      return;
+      if (!quiet) pollNotice("Close the existing poll or poll form first.", "warn");
+      return false;
     }
-    if (randomPollDraft.movies.length < 2) {
-      pollNotice("At least two eligible playlist movies are required.", "warn");
-      return;
+    if (quiet && document.querySelector("#pollwrap .btfw-random-poll-builder")) return false;
+    if (!Array.isArray(movies) || movies.length < 2) {
+      if (!quiet) pollNotice("At least two eligible playlist movies are required.", "warn");
+      return false;
     }
     if (!window.socket || typeof window.socket.emit !== "function") {
-      pollNotice("CyTube is not connected.", "warn");
-      return;
+      if (!quiet) pollNotice("CyTube is not connected.", "warn");
+      return false;
     }
 
-    const pollTitle = timedRandomPollTitle(randomPollDraft.minutes);
+    const pollMinutes = boundedInteger(minutes, 1, 15, RANDOM_POLL_DEFAULT_MINUTES);
+    const pollMovies = movies.map((movie) => ({ ...movie }));
+    const pollTitle = timedRandomPollTitle(pollMinutes);
     automaticPoll = {
       phase: "opening",
       title: pollTitle,
-      minutes: randomPollDraft.minutes,
-      movies: randomPollDraft.movies.map((movie) => ({ ...movie })),
-      counts: new Array(randomPollDraft.movies.length).fill(0)
+      minutes: pollMinutes,
+      movies: pollMovies,
+      counts: new Array(pollMovies.length).fill(0),
+      source: quiet ? "credits" : "manual",
+      mediaKey,
+      claimToken
     };
-    const button = document.querySelector(".btfw-random-poll-start");
+    const button = quiet ? null : document.querySelector(".btfw-random-poll-start");
     if (button) {
       button.disabled = true;
       button.textContent = "Starting…";
@@ -737,9 +961,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }, (result) => {
       if (!result?.error) return;
       pollNotice(result.error.message || "CyTube could not create the poll.", "warn");
+      if (automaticPoll?.mediaKey) {
+        releaseAutoCreditsClaim(automaticPoll.mediaKey, automaticPoll.claimToken);
+      }
       automaticPoll = null;
       renderRandomPollBuilder();
     });
+    return true;
   }
 
   function automaticPollMatches(poll) {
@@ -755,7 +983,12 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (automaticPoll.phase === "opening") {
       automaticPoll.phase = "active";
       closeRandomPollBuilder();
-      pollNotice(`Poll started for ${automaticPoll.movies.length} movies.`, "success");
+      pollNotice(
+        automaticPoll.source === "credits"
+          ? `Credits poll started for ${automaticPoll.movies.length} movies.`
+          : `Poll started for ${automaticPoll.movies.length} movies.`,
+        "success"
+      );
     }
     if (Array.isArray(poll.counts) && poll.counts.length === automaticPoll.movies.length) {
       automaticPoll.counts = poll.counts.map((count) => Number.parseInt(count, 10) || 0);
@@ -826,14 +1059,97 @@ BTFW.define("feature:poll-overlay", [], async () => {
     button.title = button.disabled ? "End the active poll first" : "Poll random movies from the playlist";
   }
 
+  function syncAutoCreditsPollControl() {
+    const wrap = document.getElementById("pollwrap");
+    const controls = wrap?.querySelector(".poll-controls");
+    let control = document.getElementById("btfw-auto-credits-poll-control");
+    if (!isChannelOwner() || !hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) {
+      control?.remove();
+      return;
+    }
+    if (!controls) return;
+    if (!control) {
+      control = document.createElement("label");
+      control.id = "btfw-auto-credits-poll-control";
+      control.className = "btfw-auto-credits-poll-control";
+      control.title = "Automatically start a 5-movie poll when four minutes remain";
+      control.innerHTML = '<input type="checkbox"><span>Auto credits polls</span>';
+      control.querySelector("input").addEventListener("change", (event) => {
+        const enabled = Boolean(event.target.checked);
+        setAutoCreditsEnabled(enabled);
+        pollNotice(
+          enabled ? "Automatic credits polls enabled on this browser." : "Automatic credits polls disabled.",
+          enabled ? "success" : "info"
+        );
+        if (enabled) evaluateAutoCreditsPoll();
+      });
+      controls.appendChild(control);
+    }
+    const toggle = control.querySelector("input");
+    if (toggle) toggle.checked = readAutoCreditsEnabled();
+  }
+
   function setupRandomPollControls() {
     syncRandomPollButton();
+    syncAutoCreditsPollControl();
     const wrap = document.getElementById("pollwrap");
     if (wrap && !wrap._btfwRandomPollObserver) {
       wrap._btfwRandomPollObserver = new MutationObserver(syncRandomPollButton);
       wrap._btfwRandomPollObserver.observe(wrap, { childList: true, subtree: true });
     }
     if (!randomPollTimer) randomPollTimer = window.setInterval(setupRandomPollControls, 2000);
+  }
+
+  async function evaluateAutoCreditsPoll() {
+    if (autoCreditsPollChecking || !readAutoCreditsEnabled() || !isChannelOwner()) return;
+    if (!hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) return;
+    if (automaticPoll || activeNativePoll() || document.querySelector("#pollwrap .poll-menu, #pollwrap .btfw-random-poll-builder")) return;
+
+    const currentKey = autoMediaKey(null);
+    if (currentKey && currentKey !== autoCreditsMedia.key) {
+      autoCreditsMedia.key = currentKey;
+      autoCreditsMedia.provider = "";
+    }
+    if (!autoCreditsMedia.key || isYouTubeMedia()) return;
+
+    const playback = readAutoCreditsPlayback();
+    if (!(playback.duration >= AUTO_POLL_MIN_DURATION_SECONDS) || !(playback.currentTime >= 0)) return;
+    const remaining = playback.duration - playback.currentTime;
+    if (remaining > AUTO_POLL_TRIGGER_SECONDS || remaining < AUTO_POLL_MIN_REMAINING_SECONDS) return;
+
+    const movies = sampleMovies(eligiblePlaylistMovies(), RANDOM_POLL_DEFAULT_COUNT);
+    if (movies.length < 2) return;
+
+    autoCreditsPollChecking = true;
+    const mediaKey = autoCreditsMedia.key;
+    const claimToken = await claimAutoCreditsPoll(mediaKey);
+    try {
+      if (!claimToken || !readAutoCreditsEnabled() || mediaKey !== autoCreditsMedia.key) return;
+      const latest = readAutoCreditsPlayback();
+      const latestRemaining = latest.duration - latest.currentTime;
+      if (latestRemaining > AUTO_POLL_TRIGGER_SECONDS || latestRemaining < AUTO_POLL_MIN_REMAINING_SECONDS) {
+        releaseAutoCreditsClaim(mediaKey, claimToken);
+        return;
+      }
+      const started = launchAutomaticPoll({
+        movies,
+        minutes: RANDOM_POLL_DEFAULT_MINUTES,
+        quiet: true,
+        mediaKey,
+        claimToken
+      });
+      if (!started) releaseAutoCreditsClaim(mediaKey, claimToken);
+    } finally {
+      autoCreditsPollChecking = false;
+    }
+  }
+
+  function setupAutoCreditsPolling() {
+    updateAutoCreditsMedia(null);
+    if (!autoCreditsPollTimer) {
+      autoCreditsPollTimer = window.setInterval(evaluateAutoCreditsPoll, 2000);
+    }
+    evaluateAutoCreditsPoll();
   }
 
   function createVideoOverlay() {
@@ -1344,6 +1660,19 @@ BTFW.define("feature:poll-overlay", [], async () => {
         finishAutomaticPoll();
       });
 
+      window.socket.on("changeMedia", (media) => {
+        updateAutoCreditsMedia(media, true);
+        setTimeout(evaluateAutoCreditsPoll, 500);
+      });
+
+      window.socket.on("setCurrent", (media) => {
+        updateAutoCreditsMedia(media, false);
+      });
+
+      window.socket.on("mediaUpdate", (media) => {
+        updateAutoCreditsMedia(media, false);
+      });
+
       // Handle socket reconnection
       window.socket.on("connect", () => {
         console.log("[poll-overlay] Socket reconnected, re-wiring events");
@@ -1392,6 +1721,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       await waitForSocket();
       wireSocketEvents();
       setupRandomPollControls();
+      setupAutoCreditsPolling();
       
       // Check for existing poll after a short delay to ensure DOM is ready
       setTimeout(() => {
