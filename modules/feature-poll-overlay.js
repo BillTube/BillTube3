@@ -634,15 +634,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function readAutoCreditsPlayback() {
-    const videos = document.querySelectorAll("#videowrap video, video");
-    for (const video of videos) {
-      const duration = finitePlaybackNumber(video.duration);
-      const currentTime = finitePlaybackNumber(video.currentTime);
-      if (duration > 0 && currentTime >= 0) {
-        return { duration, currentTime, paused: Boolean(video.paused) };
-      }
-    }
-
     const player = window.PLAYER;
     const readFirst = (readers, valid) => {
       for (const read of readers) {
@@ -653,7 +644,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
       }
       return NaN;
     };
-    const duration = readFirst([
+    const videoDuration = Array.from(document.querySelectorAll("#videowrap video, video"))
+      .map((video) => finitePlaybackNumber(video.duration))
+      .find((value) => value > 0);
+    const playerDuration = readFirst([
       () => player?.getDuration?.(),
       () => player?.getLength?.(),
       () => player?.media?.seconds,
@@ -662,23 +656,23 @@ BTFW.define("feature:poll-overlay", [], async () => {
       () => player?.player?.duration?.(),
       () => player?.videojs?.duration?.()
     ], (value) => value > 0);
-    const currentTime = readFirst([
-      () => player?.getTime?.(),
-      () => player?.getCurrentTime?.(),
-      () => player?.currentTime?.(),
-      () => player?.player?.getCurrentTime?.(),
-      () => player?.player?.currentTime?.(),
-      () => player?.videojs?.currentTime?.()
-    ], (value) => value >= 0);
-    if (duration > 0 && currentTime >= 0) return { duration, currentTime, paused: false };
+    const duration = autoCreditsMedia.duration > 0
+      ? autoCreditsMedia.duration
+      : videoDuration > 0 ? videoDuration : playerDuration;
 
-    let fallbackTime = autoCreditsMedia.currentTime;
+    // Trigger decisions deliberately never read the local player's current
+    // time. A local-only seek must first be confirmed by CyTube's next
+    // mediaUpdate before it can enter the credits window.
+    if (!autoCreditsMedia.sampledAt) {
+      return { duration, currentTime: NaN, paused: true };
+    }
+    let serverTime = autoCreditsMedia.currentTime;
     if (!autoCreditsMedia.paused && autoCreditsMedia.sampledAt) {
-      fallbackTime += Math.max(0, performance.now() - autoCreditsMedia.sampledAt) / 1000;
+      serverTime += Math.max(0, performance.now() - autoCreditsMedia.sampledAt) / 1000;
     }
     return {
-      duration: autoCreditsMedia.duration,
-      currentTime: fallbackTime,
+      duration,
+      currentTime: serverTime,
       paused: autoCreditsMedia.paused
     };
   }
@@ -690,6 +684,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
         autoCreditsMedia.duration = 0;
         autoCreditsMedia.currentTime = 0;
         autoCreditsMedia.provider = "";
+        autoCreditsMedia.sampledAt = 0;
+        autoCreditsMedia.paused = true;
       }
       if (key) autoCreditsMedia.key = key;
       const provider = String(data.type || data.mediaType || data.provider || "").trim();
@@ -699,9 +695,17 @@ BTFW.define("feature:poll-overlay", [], async () => {
       const currentTime = [data.currentTime, data.time, data.position]
         .map(finitePlaybackNumber).find((value) => value >= 0);
       if (Number.isFinite(duration)) autoCreditsMedia.duration = duration;
-      if (Number.isFinite(currentTime)) autoCreditsMedia.currentTime = currentTime;
-      if (typeof data.paused === "boolean") autoCreditsMedia.paused = data.paused;
-      autoCreditsMedia.sampledAt = performance.now();
+      if (Number.isFinite(currentTime)) {
+        autoCreditsMedia.currentTime = currentTime;
+        autoCreditsMedia.sampledAt = performance.now();
+        autoCreditsMedia.paused = typeof data.paused === "boolean" ? data.paused : false;
+      } else if (typeof data.paused === "boolean" && autoCreditsMedia.sampledAt) {
+        if (!autoCreditsMedia.paused) {
+          autoCreditsMedia.currentTime += Math.max(0, performance.now() - autoCreditsMedia.sampledAt) / 1000;
+        }
+        autoCreditsMedia.paused = data.paused;
+        autoCreditsMedia.sampledAt = performance.now();
+      }
 
       // A replay of the same playlist entry is a new movie session. Clear its
       // previous claim near the beginning. A short age guard preserves the
@@ -1109,6 +1113,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (currentKey && currentKey !== autoCreditsMedia.key) {
       autoCreditsMedia.key = currentKey;
       autoCreditsMedia.provider = "";
+      autoCreditsMedia.duration = 0;
+      autoCreditsMedia.currentTime = 0;
+      autoCreditsMedia.sampledAt = 0;
+      autoCreditsMedia.paused = true;
     }
     if (!autoCreditsMedia.key || isYouTubeMedia()) return;
 
