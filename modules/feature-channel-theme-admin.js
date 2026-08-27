@@ -4352,9 +4352,6 @@ function replaceBlock(original, startMarker, endMarker, block){
     injectLocalStyles();
     panel.innerHTML = `
       <div class="btfw-theme-admin">
-        <h3>Channel Theme Toolkit</h3>
-        <p class="lead">Configure your BillTube channel's featured media, theme palette, typography, and resources without editing raw Channel JS or CSS.</p>
-
         <div class="btfw-filter-status" data-role="filter-status" data-state="checking">
           <div class="btfw-filter-status__row">
             <span class="btfw-filter-status__dot" aria-hidden="true"></span>
