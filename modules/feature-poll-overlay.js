@@ -495,11 +495,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
   const AUTO_POLL_TRIGGER_SECONDS = 4 * 60;
   const AUTO_POLL_MIN_DURATION_SECONDS = 30 * 60;
   const AUTO_POLL_MIN_REMAINING_SECONDS = RANDOM_POLL_DEFAULT_MINUTES * 60 + 10;
+  const AUTO_POLL_FALLBACK_INTERVAL_MS = 30 * 1000;
   let randomPollDraft = null;
   let automaticPoll = null;
   let randomPollTimer = null;
   let autoCreditsPollTimer = null;
   let autoCreditsPollChecking = false;
+  let autoCreditsPollEnabled = false;
   const autoCreditsMedia = {
     key: "",
     provider: "",
@@ -1069,6 +1071,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
     let control = document.getElementById("btfw-auto-credits-poll-control");
     if (!isChannelOwner() || !hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) {
       control?.remove();
+      autoCreditsPollEnabled = false;
+      stopAutoCreditsPolling();
       return;
     }
     if (!controls) return;
@@ -1080,17 +1084,23 @@ BTFW.define("feature:poll-overlay", [], async () => {
       control.innerHTML = '<input type="checkbox"><span>Auto credits polls</span>';
       control.querySelector("input").addEventListener("change", (event) => {
         const enabled = Boolean(event.target.checked);
+        autoCreditsPollEnabled = enabled;
         setAutoCreditsEnabled(enabled);
         pollNotice(
           enabled ? "Automatic credits polls enabled on this browser." : "Automatic credits polls disabled.",
           enabled ? "success" : "info"
         );
-        if (enabled) evaluateAutoCreditsPoll();
+        if (enabled) setupAutoCreditsPolling();
+        else stopAutoCreditsPolling();
       });
       controls.appendChild(control);
     }
     const toggle = control.querySelector("input");
-    if (toggle) toggle.checked = readAutoCreditsEnabled();
+    const enabled = readAutoCreditsEnabled();
+    autoCreditsPollEnabled = enabled;
+    if (toggle) toggle.checked = enabled;
+    if (enabled && !autoCreditsPollTimer) setupAutoCreditsPolling();
+    else if (!enabled && autoCreditsPollTimer) stopAutoCreditsPolling();
   }
 
   function setupRandomPollControls() {
@@ -1105,7 +1115,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   async function evaluateAutoCreditsPoll() {
-    if (autoCreditsPollChecking || !readAutoCreditsEnabled() || !isChannelOwner()) return;
+    if (autoCreditsPollChecking || !autoCreditsPollEnabled || !isChannelOwner()) return;
     if (!hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) return;
     if (automaticPoll || activeNativePoll() || document.querySelector("#pollwrap .poll-menu, #pollwrap .btfw-random-poll-builder")) return;
 
@@ -1132,7 +1142,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const mediaKey = autoCreditsMedia.key;
     const claimToken = await claimAutoCreditsPoll(mediaKey);
     try {
-      if (!claimToken || !readAutoCreditsEnabled() || mediaKey !== autoCreditsMedia.key) return;
+      if (!claimToken) return;
+      if (!autoCreditsPollEnabled || mediaKey !== autoCreditsMedia.key) {
+        releaseAutoCreditsClaim(mediaKey, claimToken);
+        return;
+      }
       const latest = readAutoCreditsPlayback();
       const latestRemaining = latest.duration - latest.currentTime;
       if (latestRemaining > AUTO_POLL_TRIGGER_SECONDS || latestRemaining < AUTO_POLL_MIN_REMAINING_SECONDS) {
@@ -1152,11 +1166,20 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
   }
 
+  function stopAutoCreditsPolling() {
+    if (!autoCreditsPollTimer) return;
+    window.clearInterval(autoCreditsPollTimer);
+    autoCreditsPollTimer = null;
+  }
+
   function setupAutoCreditsPolling() {
+    stopAutoCreditsPolling();
+    autoCreditsPollEnabled = readAutoCreditsEnabled();
+    if (!autoCreditsPollEnabled || !isChannelOwner()) return;
     updateAutoCreditsMedia(null);
-    if (!autoCreditsPollTimer) {
-      autoCreditsPollTimer = window.setInterval(evaluateAutoCreditsPoll, 2000);
-    }
+    // Server mediaUpdate events perform the real checks. This low-frequency
+    // fallback only covers a missed event or a temporarily quiet socket.
+    autoCreditsPollTimer = window.setInterval(evaluateAutoCreditsPoll, AUTO_POLL_FALLBACK_INTERVAL_MS);
     evaluateAutoCreditsPoll();
   }
 
@@ -1666,19 +1689,24 @@ BTFW.define("feature:poll-overlay", [], async () => {
       window.socket.on("closePoll", () => {
         hideVideoOverlay();
         finishAutomaticPoll();
+        if (autoCreditsPollEnabled) setTimeout(evaluateAutoCreditsPoll, 250);
       });
 
       window.socket.on("changeMedia", (media) => {
+        if (!autoCreditsPollEnabled) return;
         updateAutoCreditsMedia(media, true);
         setTimeout(evaluateAutoCreditsPoll, 500);
       });
 
       window.socket.on("setCurrent", (media) => {
+        if (!autoCreditsPollEnabled) return;
         updateAutoCreditsMedia(media, false);
       });
 
       window.socket.on("mediaUpdate", (media) => {
+        if (!autoCreditsPollEnabled) return;
         updateAutoCreditsMedia(media, false);
+        evaluateAutoCreditsPoll();
       });
 
       // Handle socket reconnection
