@@ -531,23 +531,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
     return decodeURIComponent(match?.[1] || "channel").toLocaleLowerCase();
   }
 
-  function autoCreditsEnabledKey() {
-    return `btfw:auto-credits-poll:enabled:${channelStorageName()}`;
-  }
-
   function autoCreditsClaimKey() {
     return `btfw:auto-credits-poll:claim:${channelStorageName()}`;
-  }
-
-  function readAutoCreditsEnabled() {
-    if (!isChannelOwner()) return false;
-    try { return localStorage.getItem(autoCreditsEnabledKey()) === "1"; }
-    catch (_) { return false; }
-  }
-
-  function setAutoCreditsEnabled(enabled) {
-    try { localStorage.setItem(autoCreditsEnabledKey(), enabled ? "1" : "0"); }
-    catch (_) {}
   }
 
   function playlistUid(row) {
@@ -1071,7 +1056,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
     let control = document.getElementById("btfw-auto-credits-poll-control");
     if (!isChannelOwner() || !hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) {
       control?.remove();
-      autoCreditsPollEnabled = false;
       stopAutoCreditsPolling();
       return;
     }
@@ -1085,7 +1069,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
       control.querySelector("input").addEventListener("change", (event) => {
         const enabled = Boolean(event.target.checked);
         autoCreditsPollEnabled = enabled;
-        setAutoCreditsEnabled(enabled);
         pollNotice(
           enabled ? "Automatic credits polls enabled on this browser." : "Automatic credits polls disabled.",
           enabled ? "success" : "info"
@@ -1096,11 +1079,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
       controls.appendChild(control);
     }
     const toggle = control.querySelector("input");
-    const enabled = readAutoCreditsEnabled();
-    autoCreditsPollEnabled = enabled;
-    if (toggle) toggle.checked = enabled;
-    if (enabled && !autoCreditsPollTimer) setupAutoCreditsPolling();
-    else if (!enabled && autoCreditsPollTimer) stopAutoCreditsPolling();
+    if (toggle) toggle.checked = autoCreditsPollEnabled;
+    if (autoCreditsPollEnabled && !autoCreditsPollTimer) setupAutoCreditsPolling();
+    else if (!autoCreditsPollEnabled && autoCreditsPollTimer) stopAutoCreditsPolling();
   }
 
   function setupRandomPollControls() {
@@ -1174,8 +1155,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   function setupAutoCreditsPolling() {
     stopAutoCreditsPolling();
-    autoCreditsPollEnabled = readAutoCreditsEnabled();
     if (!autoCreditsPollEnabled || !isChannelOwner()) return;
+    if (window.socket && window.socket.connected === false) return;
     updateAutoCreditsMedia(null);
     // Server mediaUpdate events perform the real checks. This low-frequency
     // fallback only covers a missed event or a temporarily quiet socket.
@@ -1709,13 +1690,16 @@ BTFW.define("feature:poll-overlay", [], async () => {
         evaluateAutoCreditsPoll();
       });
 
+      window.socket.on("disconnect", () => {
+        // Pause work while offline, but keep the session-only toggle choice.
+        stopAutoCreditsPolling();
+        autoCreditsMedia.sampledAt = 0;
+      });
+
       // Handle socket reconnection
       window.socket.on("connect", () => {
-        console.log("[poll-overlay] Socket reconnected, re-wiring events");
-        socketEventsWired = false;
-        setTimeout(() => {
-          wireSocketEvents();
-        }, 500);
+        if (autoCreditsPollEnabled) setupAutoCreditsPolling();
+        syncAutoCreditsPollControl();
       });
 
       socketEventsWired = true;
