@@ -498,10 +498,12 @@ BTFW.define("feature:poll-overlay", [], async () => {
   const AUTO_POLL_FALLBACK_INTERVAL_MS = 30 * 1000;
   let randomPollDraft = null;
   let automaticPoll = null;
+  let nativePollActive = false;
   let randomPollTimer = null;
   let autoCreditsPollTimer = null;
   let autoCreditsPollChecking = false;
   let autoCreditsPollEnabled = false;
+  let autoCreditsTriggeredMediaKey = "";
   const autoCreditsMedia = {
     key: "",
     provider: "",
@@ -667,6 +669,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function updateAutoCreditsMedia(data, reset = false) {
     if (data && typeof data === "object") {
       const key = autoMediaKey(data);
+      const previousKey = autoCreditsMedia.key;
+      const previousTime = autoCreditsMedia.currentTime;
       if (reset && key && key !== autoCreditsMedia.key) {
         autoCreditsMedia.duration = 0;
         autoCreditsMedia.currentTime = 0;
@@ -681,6 +685,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
         .map(finitePlaybackNumber).find((value) => value > 0);
       const currentTime = [data.currentTime, data.time, data.position]
         .map(finitePlaybackNumber).find((value) => value >= 0);
+      const restartedSameEntry = reset && key && key === previousKey
+        && Number.isFinite(currentTime) && currentTime < 60 && previousTime > 60;
+      if ((key && key !== previousKey) || restartedSameEntry) {
+        autoCreditsTriggeredMediaKey = "";
+      }
       if (Number.isFinite(duration)) autoCreditsMedia.duration = duration;
       if (Number.isFinite(currentTime)) {
         autoCreditsMedia.currentTime = currentTime;
@@ -755,7 +764,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function activeNativePoll() {
-    return !!document.querySelector("#pollwrap .well.active");
+    return nativePollActive || !!document.querySelector("#pollwrap .well.active");
   }
 
   function closeRandomPollBuilder() {
@@ -937,27 +946,39 @@ BTFW.define("feature:poll-overlay", [], async () => {
       mediaKey,
       claimToken
     };
+    const launchedPoll = automaticPoll;
+    nativePollActive = true;
     const button = quiet ? null : document.querySelector(".btfw-random-poll-start");
     if (button) {
       button.disabled = true;
       button.textContent = "Starting…";
     }
 
-    window.socket.emit("newPoll", {
-      title: pollTitle,
-      opts: automaticPoll.movies.map((movie) => movie.title),
-      obscured: false,
-      retainVotes: true,
-      timeout: automaticPoll.minutes * 60
-    }, (result) => {
-      if (!result?.error) return;
-      pollNotice(result.error.message || "CyTube could not create the poll.", "warn");
-      if (automaticPoll?.mediaKey) {
-        releaseAutoCreditsClaim(automaticPoll.mediaKey, automaticPoll.claimToken);
+    const rollbackLaunch = (message) => {
+      if (automaticPoll !== launchedPoll) return;
+      pollNotice(message || "CyTube could not create the poll.", "warn");
+      if (launchedPoll.mediaKey) {
+        releaseAutoCreditsClaim(launchedPoll.mediaKey, launchedPoll.claimToken);
+        if (autoCreditsTriggeredMediaKey === launchedPoll.mediaKey) autoCreditsTriggeredMediaKey = "";
       }
       automaticPoll = null;
+      nativePollActive = false;
       renderRandomPollBuilder();
-    });
+    };
+    try {
+      window.socket.emit("newPoll", {
+        title: pollTitle,
+        opts: launchedPoll.movies.map((movie) => movie.title),
+        obscured: false,
+        retainVotes: true,
+        timeout: launchedPoll.minutes * 60
+      }, (result) => {
+        if (result?.error) rollbackLaunch(result.error.message);
+      });
+    } catch (error) {
+      rollbackLaunch(error?.message);
+      return false;
+    }
     return true;
   }
 
@@ -1103,6 +1124,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const currentKey = autoMediaKey(null);
     if (currentKey && currentKey !== autoCreditsMedia.key) {
       autoCreditsMedia.key = currentKey;
+      autoCreditsTriggeredMediaKey = "";
       autoCreditsMedia.provider = "";
       autoCreditsMedia.duration = 0;
       autoCreditsMedia.currentTime = 0;
@@ -1110,6 +1132,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       autoCreditsMedia.paused = true;
     }
     if (!autoCreditsMedia.key || isYouTubeMedia()) return;
+    if (autoCreditsTriggeredMediaKey === autoCreditsMedia.key) return;
 
     const playback = readAutoCreditsPlayback();
     if (!(playback.duration >= AUTO_POLL_MIN_DURATION_SECONDS) || !(playback.currentTime >= 0)) return;
@@ -1141,7 +1164,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
         mediaKey,
         claimToken
       });
-      if (!started) releaseAutoCreditsClaim(mediaKey, claimToken);
+      if (started) autoCreditsTriggeredMediaKey = mediaKey;
+      else releaseAutoCreditsClaim(mediaKey, claimToken);
     } finally {
       autoCreditsPollChecking = false;
     }
@@ -1607,6 +1631,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     // Check if there's already an active poll when the module loads
     const existingPoll = document.querySelector('#pollwrap .well.active');
     if (existingPoll) {
+      nativePollActive = true;
       console.log("Found existing active poll, extracting data...");
       
       // Extract poll data from the existing DOM
@@ -1653,6 +1678,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       // Listen for new polls
       window.socket.on("newPoll", (poll) => {
         if (poll) {
+          nativePollActive = true;
           showVideoOverlay(poll);
           trackAutomaticPoll(poll);
         }
@@ -1668,6 +1694,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
       // Listen for poll closure
       window.socket.on("closePoll", () => {
+        nativePollActive = false;
         hideVideoOverlay();
         finishAutomaticPoll();
         if (autoCreditsPollEnabled) setTimeout(evaluateAutoCreditsPoll, 250);
