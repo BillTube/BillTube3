@@ -71,28 +71,58 @@
         const style = document.createElement('style');
         style.id = 'animated-movie-cards-styles';
         style.textContent = `
-          .btfw-poll-video-content {
-            max-width: 100% !important;
-            min-height: 500px !important;
+          #btfw-poll-video-overlay {
+            container-type: size;
+          }
+
+          #btfw-poll-video-overlay .btfw-poll-video-content {
+            top: clamp(8px, 3cqh, 20px) !important;
+            box-sizing: border-box !important;
+            display: flex !important;
+            flex-direction: column !important;
+            width: auto !important;
+            max-width: min(1100px, calc(100% - 16px)) !important;
+            max-height: calc(100cqh - 16px) !important;
+            min-height: 0 !important;
+            padding: clamp(12px, 2.5cqh, 20px) !important;
+            overflow: hidden !important;
             backdrop-filter: saturate(130%) blur(1px) !important;
           }
 
-          .btfw-poll-options-grid {
+          #btfw-poll-video-overlay .btfw-poll-video-header {
+            flex: 0 0 auto;
+            margin-bottom: 4px !important;
+          }
+
+          #btfw-poll-video-overlay .btfw-poll-options-grid {
             display: flex !important;
             flex-direction: row !important;
-            gap: 30px !important;
-            align-items: flex-start !important;
-            margin: 20px 0 !important;
-            justify-content: space-evenly;
-            flex-wrap: nowrap;
-            padding: 20px;
+            flex: 1 1 auto !important;
+            gap: clamp(8px, 1.5cqw, 16px) !important;
+            align-items: center !important;
+            min-height: 0 !important;
+            margin: clamp(6px, 1.5cqh, 12px) 0 !important;
+            padding: 6px 4px 10px !important;
+            justify-content: center !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            overscroll-behavior-x: contain;
+            scroll-snap-type: x proximity;
+            scrollbar-gutter: stable;
           }
 
           /* Enhanced Movie Card styling */
-          .btfw-poll-option-row {
+          #btfw-poll-video-overlay .btfw-poll-option-row {
             position: relative !important;
-            width: 300px !important;
-            height: 450px !important;
+            box-sizing: border-box !important;
+            flex: 1 0 clamp(104px, 16cqw, 150px) !important;
+            width: auto !important;
+            min-width: clamp(104px, 16cqw, 150px) !important;
+            max-width: 220px !important;
+            height: auto !important;
+            max-height: max(120px, calc(100cqh - 155px)) !important;
+            aspect-ratio: 2 / 3;
             background: #000 !important;
             overflow: hidden !important;
             box-shadow: 0 5px 10px rgba(0,0,0,0.5) !important;
@@ -102,6 +132,13 @@
             display: block !important;
             padding: 0 !important;
             border: none !important;
+            scroll-snap-align: center;
+          }
+
+          #btfw-poll-video-overlay .btfw-poll-footer {
+            flex: 0 0 auto;
+            margin-top: 4px !important;
+            padding-top: 8px !important;
           }
 
           .btfw-poll-option-row:hover {
@@ -416,16 +453,46 @@
             box-sizing: border-box;
           }
 
-          /* Responsive adjustments */
-          @media (max-width: 768px) {
-            .btfw-poll-options-grid {
-              gap: 20px !important;
+          /* Compact players keep the vote control visible and trade long card
+             details for a usable poster strip. */
+          @container (max-height: 400px) {
+            #btfw-poll-video-overlay .btfw-poll-video-content {
               padding: 10px !important;
             }
-            
-            .btfw-poll-option-row {
-              width: 250px !important;
-              height: 375px !important;
+
+            #btfw-poll-video-overlay .btfw-poll-options-grid {
+              justify-content: flex-start !important;
+              margin: 4px 0 !important;
+              padding-block: 3px 6px !important;
+            }
+
+            #btfw-poll-video-overlay .btfw-poll-option-row {
+              flex: 0 0 clamp(72px, 28cqh, 128px) !important;
+              width: clamp(72px, 28cqh, 128px) !important;
+              min-width: clamp(72px, 28cqh, 128px) !important;
+              max-width: clamp(72px, 28cqh, 128px) !important;
+              max-height: none !important;
+            }
+
+            #btfw-poll-video-overlay .movie-details {
+              height: 88% !important;
+              padding: 12px !important;
+            }
+
+            #btfw-poll-video-overlay .movie-overview,
+            #btfw-poll-video-overlay .movie-cast {
+              display: none !important;
+            }
+          }
+
+          @container (max-width: 520px) and (min-height: 401px) {
+            #btfw-poll-video-overlay .btfw-poll-options-grid {
+              justify-content: flex-start !important;
+            }
+
+            #btfw-poll-video-overlay .btfw-poll-option-row {
+              flex-basis: clamp(108px, 38cqw, 150px) !important;
+              min-width: clamp(108px, 38cqw, 150px) !important;
             }
           }
         `;
