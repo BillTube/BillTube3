@@ -186,6 +186,217 @@ BTFW.define("feature:poll-overlay", [], async () => {
         padding: 16px;
       }
     }
+
+    /* Random movie poll builder — lives in the native Polls & Voting panel. */
+    #pollwrap .btfw-random-poll-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin: 0;
+      padding: 8px 18px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--btfw-color-surface) 80%, var(--btfw-color-accent) 20%);
+      border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 45%, transparent 55%);
+      color: var(--btfw-color-text);
+    }
+
+    #pollwrap .btfw-random-poll-btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    #pollwrap .btfw-random-poll-builder {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 700px;
+      padding: 18px;
+      border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 34%, transparent 66%);
+      border-radius: var(--btfw-radius, 14px);
+      background: linear-gradient(145deg,
+        color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%),
+        color-mix(in srgb, var(--btfw-color-accent) 14%, var(--btfw-color-surface) 86%));
+      box-shadow: 0 18px 44px color-mix(in srgb, var(--btfw-color-bg) 34%, transparent 66%);
+    }
+
+    .btfw-random-poll-head,
+    .btfw-random-poll-settings,
+    .btfw-random-poll-actions {
+      display: flex;
+      align-items: center;
+    }
+
+    .btfw-random-poll-head {
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .btfw-random-poll-head h3 {
+      margin: 0;
+      color: var(--btfw-color-text);
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .btfw-random-poll-close {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 1px solid var(--btfw-border);
+      border-radius: 9px;
+      background: var(--btfw-color-surface);
+      color: var(--btfw-color-text-muted);
+      font-size: 20px;
+    }
+
+    .btfw-random-poll-settings {
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .btfw-random-poll-setting {
+      display: flex;
+      flex: 1 1 0;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid color-mix(in srgb, var(--btfw-border) 68%, transparent 32%);
+      border-radius: 11px;
+      background: color-mix(in srgb, var(--btfw-color-surface) 86%, transparent 14%);
+      color: var(--btfw-color-text);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .btfw-random-poll-stepper {
+      display: inline-flex;
+      align-items: center;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--btfw-color-accent) 34%, var(--btfw-border) 66%);
+      border-radius: 9px;
+    }
+
+    .btfw-random-poll-stepper button,
+    .btfw-random-poll-stepper input {
+      height: 30px;
+      border: 0;
+      background: transparent;
+      color: var(--btfw-color-text);
+      text-align: center;
+    }
+
+    .btfw-random-poll-stepper button {
+      width: 30px;
+      padding: 0;
+      color: var(--btfw-color-accent);
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .btfw-random-poll-stepper input {
+      width: 38px;
+      padding: 0;
+      border-right: 1px solid var(--btfw-border);
+      border-left: 1px solid var(--btfw-border);
+      font: inherit;
+      -moz-appearance: textfield;
+    }
+
+    .btfw-random-poll-stepper input::-webkit-inner-spin-button,
+    .btfw-random-poll-stepper input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+    }
+
+    .btfw-random-poll-unit {
+      padding-right: 6px;
+      color: var(--btfw-color-text-muted);
+      font-size: 11px;
+    }
+
+    .btfw-random-poll-eligible {
+      margin: 10px 2px 8px;
+      color: var(--btfw-color-text-muted);
+      font-size: 12px;
+    }
+
+    .btfw-random-poll-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .btfw-random-poll-list li {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+      padding: 9px 10px;
+      border: 1px solid color-mix(in srgb, var(--btfw-border) 62%, transparent 38%);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--btfw-color-surface) 88%, transparent 12%);
+      color: var(--btfw-color-text);
+    }
+
+    .btfw-random-poll-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 23px;
+      height: 23px;
+      flex: 0 0 23px;
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--btfw-color-accent) 24%, transparent 76%);
+      color: var(--btfw-color-accent);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .btfw-random-poll-movie-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 550;
+    }
+
+    .btfw-random-poll-warning {
+      margin: 9px 0 0;
+      color: #ffbd59;
+      font-size: 12px;
+    }
+
+    .btfw-random-poll-actions {
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 13px;
+    }
+
+    #pollwrap .btfw-random-poll-actions .button {
+      margin: 0;
+      border-radius: 9px;
+    }
+
+    #pollwrap .btfw-random-poll-start {
+      background: var(--btfw-color-accent);
+      color: var(--btfw-color-on-accent);
+      font-weight: 700;
+    }
+
+    @media (max-width: 600px) {
+      .btfw-random-poll-settings,
+      .btfw-random-poll-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .btfw-random-poll-list { grid-template-columns: 1fr; }
+      #pollwrap .btfw-random-poll-actions .button { width: 100%; }
+    }
   `;
 
   let videoOverlay = null;
@@ -226,6 +437,370 @@ BTFW.define("feature:poll-overlay", [], async () => {
     style.id = CSS_ID;
     style.textContent = POLL_OVERLAY_CSS;
     document.head.appendChild(style);
+  }
+
+  /* ---------- Random movie poll ---------- */
+  const RANDOM_POLL_TITLE = "What should we watch next?";
+  const RANDOM_POLL_DEFAULT_COUNT = 5;
+  const RANDOM_POLL_DEFAULT_MINUTES = 2;
+  let randomPollDraft = null;
+  let automaticPoll = null;
+  let randomPollTimer = null;
+
+  function hasChannelPermission(permission) {
+    try {
+      return typeof window.hasPermission === "function" && !!window.hasPermission(permission);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function playlistUid(row) {
+    const match = String(row?.className || "").match(/\bpluid-(\d+)\b/);
+    return match ? Number.parseInt(match[1], 10) : null;
+  }
+
+  function playlistTitle(row) {
+    const title = row?.querySelector(".qe_title") || row?.querySelector("a");
+    return String(title?.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function movieKey(value) {
+    return String(value || "").replace(/\s+/g, " ").trim().toLocaleLowerCase();
+  }
+
+  function eligiblePlaylistMovies() {
+    const activeUid = playlistUid(document.querySelector("#queue > .queue_active"));
+    const seen = new Set();
+    const movies = [];
+
+    document.querySelectorAll("#queue > .queue_entry").forEach((row) => {
+      const uid = playlistUid(row);
+      const title = playlistTitle(row);
+      const key = movieKey(title);
+      if (uid == null || uid === activeUid || !title || seen.has(key)) return;
+      seen.add(key);
+      movies.push({ uid, title, key });
+    });
+    return movies;
+  }
+
+  function randomChoice(items) {
+    return items.length ? items[Math.floor(Math.random() * items.length)] : null;
+  }
+
+  function sampleMovies(items, count) {
+    const pool = items.slice();
+    const result = [];
+    while (pool.length && result.length < count) {
+      result.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    }
+    return result;
+  }
+
+  function boundedInteger(value, min, max, fallback) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+  }
+
+  function pollNotice(message, kind = "info") {
+    try {
+      const notifications = window.BTFW_notify;
+      if (notifications && typeof notifications[kind] === "function") {
+        const safe = String(message).replace(/[&<>"']/g, (character) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        })[character]);
+        notifications[kind]({
+          title: "Random movie poll",
+          html: `<span>${safe}</span>`,
+          icon: kind === "success" ? "✅" : kind === "warn" ? "⚠️" : "🎬",
+          timeout: 5200
+        });
+        return;
+      }
+    } catch (_) {}
+    console.log("[poll-overlay]", message);
+  }
+
+  function activeNativePoll() {
+    return !!document.querySelector("#pollwrap .well.active");
+  }
+
+  function closeRandomPollBuilder() {
+    document.querySelector("#pollwrap .btfw-random-poll-builder")?.remove();
+    randomPollDraft = null;
+    syncRandomPollButton();
+  }
+
+  function renderRandomPollBuilder() {
+    const builder = document.querySelector("#pollwrap .btfw-random-poll-builder");
+    if (!builder || !randomPollDraft) return;
+
+    const eligible = eligiblePlaylistMovies();
+    const list = builder.querySelector(".btfw-random-poll-list");
+    const countInput = builder.querySelector("#btfw-random-poll-count");
+    const minutesInput = builder.querySelector("#btfw-random-poll-minutes");
+    const startButton = builder.querySelector(".btfw-random-poll-start");
+
+    if (countInput) countInput.value = String(randomPollDraft.count);
+    if (minutesInput) minutesInput.value = String(randomPollDraft.minutes);
+    builder.querySelector(".btfw-random-poll-eligible").textContent =
+      `${eligible.length} eligible movie${eligible.length === 1 ? "" : "s"} · currently playing excluded`;
+
+    list.innerHTML = "";
+    randomPollDraft.movies.forEach((movie, index) => {
+      const item = document.createElement("li");
+      const number = document.createElement("span");
+      const title = document.createElement("span");
+      number.className = "btfw-random-poll-number";
+      title.className = "btfw-random-poll-movie-title";
+      number.textContent = String(index + 1);
+      title.textContent = movie.title;
+      item.append(number, title);
+      list.appendChild(item);
+    });
+
+    const canMove = hasChannelPermission("playlistmove");
+    const warning = builder.querySelector(".btfw-random-poll-warning");
+    warning.hidden = canMove;
+    startButton.textContent = `Start ${randomPollDraft.minutes}-Minute Poll`;
+    startButton.disabled = !canMove || randomPollDraft.movies.length < 2 || activeNativePoll();
+  }
+
+  function rerollRandomMovies() {
+    if (!randomPollDraft) return;
+    randomPollDraft.movies = sampleMovies(eligiblePlaylistMovies(), randomPollDraft.count);
+    renderRandomPollBuilder();
+  }
+
+  function changeRandomPollSetting(setting, delta) {
+    if (!randomPollDraft) return;
+    if (setting === "count") {
+      randomPollDraft.count = boundedInteger(randomPollDraft.count + delta, 2, 10, RANDOM_POLL_DEFAULT_COUNT);
+      rerollRandomMovies();
+    } else {
+      randomPollDraft.minutes = boundedInteger(randomPollDraft.minutes + delta, 1, 15, RANDOM_POLL_DEFAULT_MINUTES);
+      renderRandomPollBuilder();
+    }
+  }
+
+  function openRandomPollBuilder() {
+    if (!hasChannelPermission("pollctl")) return;
+    if (activeNativePoll()) {
+      pollNotice("End the active poll first.", "warn");
+      return;
+    }
+    if (document.querySelector("#pollwrap .poll-menu")) {
+      pollNotice("Close the standard New Poll form first.", "warn");
+      return;
+    }
+
+    closeRandomPollBuilder();
+    const wrap = document.getElementById("pollwrap");
+    const controls = wrap?.querySelector(".poll-controls");
+    if (!wrap) return;
+
+    const builder = document.createElement("section");
+    builder.className = "btfw-random-poll-builder";
+    builder.setAttribute("aria-labelledby", "btfw-random-poll-heading");
+    builder.innerHTML = `
+      <div class="btfw-random-poll-head">
+        <h3 id="btfw-random-poll-heading">Random Movie Poll</h3>
+        <button class="btfw-random-poll-close" type="button" aria-label="Close random movie poll">&times;</button>
+      </div>
+      <div class="btfw-random-poll-settings">
+        <div class="btfw-random-poll-setting">
+          <label for="btfw-random-poll-count">Movies</label>
+          <span class="btfw-random-poll-stepper">
+            <button type="button" data-setting="count" data-delta="-1" aria-label="Use one fewer movie">−</button>
+            <input id="btfw-random-poll-count" type="number" min="2" max="10" step="1" value="5">
+            <button type="button" data-setting="count" data-delta="1" aria-label="Use one more movie">+</button>
+          </span>
+        </div>
+        <div class="btfw-random-poll-setting">
+          <label for="btfw-random-poll-minutes">Poll time</label>
+          <span class="btfw-random-poll-stepper">
+            <button type="button" data-setting="minutes" data-delta="-1" aria-label="Make the poll one minute shorter">−</button>
+            <input id="btfw-random-poll-minutes" type="number" min="1" max="15" step="1" value="2">
+            <span class="btfw-random-poll-unit">min</span>
+            <button type="button" data-setting="minutes" data-delta="1" aria-label="Make the poll one minute longer">+</button>
+          </span>
+        </div>
+      </div>
+      <p class="btfw-random-poll-eligible" aria-live="polite"></p>
+      <ol class="btfw-random-poll-list"></ol>
+      <p class="btfw-random-poll-warning" hidden>Playlist move permission is required to queue the winner.</p>
+      <div class="btfw-random-poll-actions">
+        <button class="button is-small btfw-random-poll-reroll" type="button"><i class="fa fa-shuffle" aria-hidden="true"></i> Reroll Movies</button>
+        <button class="button is-small btfw-random-poll-cancel" type="button">Cancel</button>
+        <button class="button is-small btfw-random-poll-start" type="button">Start 2-Minute Poll</button>
+      </div>`;
+
+    wrap.insertBefore(builder, controls || wrap.firstChild);
+    randomPollDraft = {
+      count: RANDOM_POLL_DEFAULT_COUNT,
+      minutes: RANDOM_POLL_DEFAULT_MINUTES,
+      movies: sampleMovies(eligiblePlaylistMovies(), RANDOM_POLL_DEFAULT_COUNT)
+    };
+
+    builder.querySelector(".btfw-random-poll-close").addEventListener("click", closeRandomPollBuilder);
+    builder.querySelector(".btfw-random-poll-cancel").addEventListener("click", closeRandomPollBuilder);
+    builder.querySelector(".btfw-random-poll-reroll").addEventListener("click", rerollRandomMovies);
+    builder.querySelector(".btfw-random-poll-start").addEventListener("click", startAutomaticPoll);
+    builder.querySelectorAll("[data-setting]").forEach((button) => {
+      button.addEventListener("click", () => {
+        changeRandomPollSetting(button.dataset.setting, Number.parseInt(button.dataset.delta, 10) || 0);
+      });
+    });
+    builder.querySelector("#btfw-random-poll-count").addEventListener("change", (event) => {
+      randomPollDraft.count = boundedInteger(event.target.value, 2, 10, RANDOM_POLL_DEFAULT_COUNT);
+      rerollRandomMovies();
+    });
+    builder.querySelector("#btfw-random-poll-minutes").addEventListener("change", (event) => {
+      randomPollDraft.minutes = boundedInteger(event.target.value, 1, 15, RANDOM_POLL_DEFAULT_MINUTES);
+      renderRandomPollBuilder();
+    });
+    renderRandomPollBuilder();
+  }
+
+  function startAutomaticPoll() {
+    if (!randomPollDraft || automaticPoll) return;
+    if (!hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) {
+      pollNotice("Poll and playlist move permissions are required.", "warn");
+      return;
+    }
+    if (activeNativePoll() || document.querySelector("#pollwrap .poll-menu")) {
+      pollNotice("Close the existing poll or poll form first.", "warn");
+      return;
+    }
+    if (randomPollDraft.movies.length < 2) {
+      pollNotice("At least two eligible playlist movies are required.", "warn");
+      return;
+    }
+    if (!window.socket || typeof window.socket.emit !== "function") {
+      pollNotice("CyTube is not connected.", "warn");
+      return;
+    }
+
+    automaticPoll = {
+      phase: "opening",
+      title: RANDOM_POLL_TITLE,
+      minutes: randomPollDraft.minutes,
+      movies: randomPollDraft.movies.map((movie) => ({ ...movie })),
+      counts: new Array(randomPollDraft.movies.length).fill(0)
+    };
+    const button = document.querySelector(".btfw-random-poll-start");
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Starting…";
+    }
+
+    window.socket.emit("newPoll", {
+      title: RANDOM_POLL_TITLE,
+      opts: automaticPoll.movies.map((movie) => movie.title),
+      obscured: false,
+      retainVotes: true,
+      timeout: automaticPoll.minutes * 60
+    }, (result) => {
+      if (!result?.error) return;
+      pollNotice(result.error.message || "CyTube could not create the poll.", "warn");
+      automaticPoll = null;
+      renderRandomPollBuilder();
+    });
+  }
+
+  function automaticPollMatches(poll) {
+    if (!automaticPoll || !poll || !Array.isArray(poll.options)) return false;
+    if (resolvePollTitle(poll.title) !== automaticPoll.title) return false;
+    return poll.options.length === automaticPoll.movies.length && poll.options.every((option, index) => {
+      return movieKey(decodeHtmlEntities(option)) === automaticPoll.movies[index].key;
+    });
+  }
+
+  function trackAutomaticPoll(poll) {
+    if (!automaticPoll || !automaticPollMatches(poll)) return;
+    if (automaticPoll.phase === "opening") {
+      automaticPoll.phase = "active";
+      closeRandomPollBuilder();
+      pollNotice(`Poll started for ${automaticPoll.movies.length} movies.`, "success");
+    }
+    if (Array.isArray(poll.counts) && poll.counts.length === automaticPoll.movies.length) {
+      automaticPoll.counts = poll.counts.map((count) => Number.parseInt(count, 10) || 0);
+    }
+  }
+
+  function queueWinningMovie(movie) {
+    if (!hasChannelPermission("playlistmove")) {
+      pollNotice(`“${movie.title}” won, but playlist move permission is no longer available.`, "warn");
+      return;
+    }
+    const rows = Array.from(document.querySelectorAll("#queue > .queue_entry"));
+    const winner = rows.find((row) => playlistUid(row) === movie.uid)
+      || rows.find((row) => movieKey(playlistTitle(row)) === movie.key);
+    const active = document.querySelector("#queue > .queue_active");
+    const winnerUid = playlistUid(winner);
+    const activeUid = playlistUid(active);
+    if (winnerUid == null || activeUid == null) {
+      pollNotice(`“${movie.title}” won, but its playlist position could not be resolved.`, "warn");
+      return;
+    }
+    if (winnerUid === activeUid) {
+      pollNotice(`“${movie.title}” won and is already playing.`, "success");
+      return;
+    }
+    if (active.nextElementSibling === winner) {
+      pollNotice(`“${movie.title}” won and is already queued next.`, "success");
+      return;
+    }
+    window.socket.emit("moveMedia", { from: winnerUid, after: activeUid });
+    pollNotice(`“${movie.title}” won and was queued next.`, "success");
+  }
+
+  function finishAutomaticPoll() {
+    if (!automaticPoll || automaticPoll.phase !== "active") return;
+    const finished = automaticPoll;
+    automaticPoll = null;
+    const highest = Math.max(0, ...finished.counts);
+    const finalists = finished.movies.filter((_, index) => finished.counts[index] === highest);
+    const winner = randomChoice(finalists.length ? finalists : finished.movies);
+    if (!winner) return;
+    if (highest === 0) pollNotice(`No votes were cast, so “${winner.title}” was picked at random.`);
+    else if (finalists.length > 1) pollNotice(`The poll tied; “${winner.title}” won the random tiebreak.`);
+    queueWinningMovie(winner);
+  }
+
+  function syncRandomPollButton() {
+    const wrap = document.getElementById("pollwrap");
+    const controls = wrap?.querySelector(".poll-controls");
+    let button = document.getElementById("btfw-random-poll-btn");
+    if (!hasChannelPermission("pollctl")) {
+      button?.remove();
+      document.querySelector("#pollwrap .btfw-random-poll-builder")?.remove();
+      randomPollDraft = null;
+      return;
+    }
+    if (!controls) return;
+    if (!button) {
+      button = document.createElement("button");
+      button.id = "btfw-random-poll-btn";
+      button.type = "button";
+      button.className = "btn btn-sm btn-default button is-small btfw-random-poll-btn";
+      button.innerHTML = '<i class="fa fa-shuffle" aria-hidden="true"></i><span>Random Movie Poll</span>';
+      button.addEventListener("click", openRandomPollBuilder);
+      controls.appendChild(button);
+    }
+    button.disabled = activeNativePoll() || !!automaticPoll;
+    button.title = button.disabled ? "End the active poll first" : "Poll random movies from the playlist";
+  }
+
+  function setupRandomPollControls() {
+    syncRandomPollButton();
+    const wrap = document.getElementById("pollwrap");
+    if (wrap && !wrap._btfwRandomPollObserver) {
+      wrap._btfwRandomPollObserver = new MutationObserver(syncRandomPollButton);
+      wrap._btfwRandomPollObserver.observe(wrap, { childList: true, subtree: true });
+    }
+    if (!randomPollTimer) randomPollTimer = window.setInterval(setupRandomPollControls, 2000);
   }
 
   function createVideoOverlay() {
@@ -649,6 +1224,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       window.socket.on("newPoll", (poll) => {
         if (poll) {
           showVideoOverlay(poll);
+          trackAutomaticPoll(poll);
         }
       });
 
@@ -657,11 +1233,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
         if (poll && currentPoll) {
           updateVoteDisplay(poll);
         }
+        if (poll) trackAutomaticPoll(poll);
       });
 
       // Listen for poll closure
       window.socket.on("closePoll", () => {
         hideVideoOverlay();
+        finishAutomaticPoll();
       });
 
       // Handle socket reconnection
@@ -711,6 +1289,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       // Wait for socket to be available before wiring events
       await waitForSocket();
       wireSocketEvents();
+      setupRandomPollControls();
       
       // Check for existing poll after a short delay to ensure DOM is ready
       setTimeout(() => {
@@ -737,6 +1316,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   return {
     name: "feature:poll-overlay",
     showOverlay: showVideoOverlay,
-    hideOverlay: hideVideoOverlay
+    hideOverlay: hideVideoOverlay,
+    openRandomMoviePoll: openRandomPollBuilder
   };
 });
