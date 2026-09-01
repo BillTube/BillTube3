@@ -1491,7 +1491,7 @@
 
 /* Card shell */
 .modal-card {
-  background-color: color-mix(in srgb, var(--btfw-overlay-elevated) 96%, transparent 4%);
+  background-color: color-mix(in srgb, var(--btfw-modal-elevated) 96%, transparent 4%);
   background-image: var(--btfw-panel-gradient-soft);
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
@@ -1512,7 +1512,7 @@
 #btfw-cmds-modal .btfw-cmds-card,
 #btfw-userlist-pop,
 #btfw-pl-help-pop {
-  background-color: color-mix(in srgb, var(--btfw-overlay-bg) 94%, transparent 6%) !important;
+  background-color: color-mix(in srgb, var(--btfw-modal-shell) 94%, transparent 6%) !important;
   background-image: var(--btfw-panel-gradient-soft) !important;
   background-size: var(--btfw-panel-background-size) !important;
   background-position: var(--btfw-panel-background-position) !important;
@@ -1521,7 +1521,7 @@
 /* Header / footer */
 .modal-card-head,
 .modal-card-foot {
-  background-color: var(--btfw-nested-surface);
+  background-color: var(--btfw-modal-shell);
   background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
@@ -1548,7 +1548,7 @@
 
 /* Body */
 .modal-card-body {
-  background-color: var(--btfw-nested-surface-soft) !important;
+  background-color: var(--btfw-modal-inset) !important;
   background-image: none !important;
   background-size: var(--btfw-panel-background-size) !important;
   background-position: var(--btfw-panel-background-position) !important;
@@ -2125,7 +2125,7 @@
 .modal.btfw-bulma-skin .btfw-card,
 .modal.btfw-bulma-skin .modal-content {
   /* Match the Theme Settings modal-card chrome (radius, surface, border, shadow). */
-  background-color: color-mix(in srgb, var(--btfw-color-surface) 96%, transparent 4%);
+  background-color: color-mix(in srgb, var(--btfw-modal-elevated) 96%, transparent 4%);
   background-image: var(--btfw-panel-gradient-soft);
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
@@ -2161,7 +2161,7 @@
    the title can actually breathe instead of being crammed next to the tabs. */
 .modal.btfw-bulma-skin .btfw-card-head,
 .modal.btfw-bulma-skin .modal-header {
-  background-color: var(--btfw-nested-surface);
+  background-color: var(--btfw-modal-shell);
   background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
@@ -2341,6 +2341,7 @@
    intrinsic content size so overflow-y can engage. */
 .modal.btfw-bulma-skin .btfw-card-body,
 .modal.btfw-bulma-skin .modal-body {
+  background-color: var(--btfw-modal-inset);
   padding: 24px;
   flex: 1 1 auto;
   min-height: 0;
@@ -2351,7 +2352,7 @@
 /* Footer — subtle separator, right-aligned actions. */
 .modal.btfw-bulma-skin .btfw-card-foot,
 .modal.btfw-bulma-skin .modal-footer {
-  background-color: var(--btfw-nested-surface);
+  background-color: var(--btfw-modal-shell);
   background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
@@ -2370,7 +2371,7 @@
 .modal.btfw-bulma-skin .modal-body .card,
 .modal.btfw-bulma-skin .modal-body .panel,
 .modal.btfw-bulma-skin .modal-body .well {
-  background-color: var(--btfw-nested-surface-soft);
+  background-color: var(--btfw-modal-shell);
   background-image: none;
   background-size: var(--btfw-panel-background-size);
   background-position: var(--btfw-panel-background-position);
@@ -2498,13 +2499,13 @@ html[data-btfw-theme="dark"] .modal .modal-background {
   background-color: color-mix(in srgb, var(--btfw-color-bg) 86%, transparent 14%) !important;
 }
 html[data-btfw-theme="dark"] .modal-card {
-  background-color: var(--btfw-overlay-elevated) !important;
+  background-color: var(--btfw-modal-elevated) !important;
   color: var(--btfw-color-text) !important;
   box-shadow: var(--btfw-overlay-shadow);
 }
 html[data-btfw-theme="dark"] .modal-card-head,
 html[data-btfw-theme="dark"] .modal-card-foot {
-  background-color: color-mix(in srgb, var(--btfw-overlay-bg) 96%, transparent 4%) !important;
+  background-color: color-mix(in srgb, var(--btfw-modal-shell) 96%, transparent 4%) !important;
   border-color: var(--btfw-border) !important;
   color: var(--btfw-color-text) !important;
 }

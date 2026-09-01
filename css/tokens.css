@@ -114,6 +114,11 @@
   --btfw-split-width: 8px;
   --btfw-overlay-bg: color-mix(in srgb, var(--btfw-color-panel) 92%, transparent 8%);
   --btfw-overlay-elevated: color-mix(in srgb, var(--btfw-color-surface) 92%, transparent 8%);
+  /* Modal surfaces sit over long-form video, so keep them quieter than normal
+     cards while retaining the active palette's hue. */
+  --btfw-modal-shell: color-mix(in srgb, var(--btfw-color-panel) 72%, black 28%);
+  --btfw-modal-elevated: color-mix(in srgb, var(--btfw-color-surface) 72%, black 28%);
+  --btfw-modal-inset: color-mix(in srgb, var(--btfw-color-surface) 64%, black 36%);
   --btfw-overlay-border: color-mix(in srgb, var(--btfw-color-accent) 22%, transparent 78%);
   --btfw-overlay-shadow: 0 18px 48px color-mix(in srgb, var(--btfw-color-bg) 58%, transparent 42%),
     0 4px 12px color-mix(in srgb, var(--btfw-color-bg) 42%, transparent 58%);

@@ -274,9 +274,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     dustyTwilight: {
       name: "Dusty Twilight",
       colors: {
-        background: "#272744",
-        surface: "#494d7e",
-        panel: "#66577f",
+        background: "#1b1b30",
+        surface: "#282a45",
+        panel: "#332c40",
         text: "#fbf5ef",
         chatText: "#f2d3ab",
         accent: "#c69fa5"
@@ -285,9 +285,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     harborRose: {
       name: "Harbor Rose",
       colors: {
-        background: "#292831",
-        surface: "#333f58",
-        panel: "#3f657e",
+        background: "#1b1a20",
+        surface: "#1f2635",
+        panel: "#233845",
         text: "#fff0ec",
         chatText: "#fbbbad",
         accent: "#ee8695"
@@ -296,9 +296,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     guavaDusk: {
       name: "Guava Dusk",
       colors: {
-        background: "#24121a",
-        surface: "#42222f",
-        panel: "#7c3f58",
+        background: "#190d12",
+        surface: "#28141c",
+        panel: "#3e202c",
         text: "#fff6d3",
         chatText: "#f9c39d",
         accent: "#eb6b6f"
@@ -307,9 +307,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     silverSage: {
       name: "Silver Sage",
       colors: {
-        background: "#211e20",
-        surface: "#35343d",
-        panel: "#555568",
+        background: "#171516",
+        surface: "#222228",
+        panel: "#2f2f39",
         text: "#e9efec",
         chatText: "#c5ccc2",
         accent: "#a0a08b"
@@ -318,9 +318,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     neonMeadow: {
       name: "Neon Meadow",
       colors: {
-        background: "#332c50",
-        surface: "#3c5269",
-        panel: "#3d707b",
+        background: "#211d34",
+        surface: "#24313f",
+        panel: "#223e44",
         text: "#e2f3e4",
         chatText: "#b9d9c1",
         accent: "#94e344"
@@ -329,9 +329,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     quietAlloy: {
       name: "Quiet Alloy",
       colors: {
-        background: "#1f1f29",
-        surface: "#413a42",
-        panel: "#596070",
+        background: "#16161d",
+        surface: "#272328",
+        panel: "#31353e",
         text: "#eaf0d8",
         chatText: "#b9c3bc",
         accent: "#96a2b3"
@@ -340,9 +340,9 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     emeraldCurrent: {
       name: "Emerald Current",
       colors: {
-        background: "#0f052d",
-        surface: "#203671",
-        panel: "#2c6a78",
+        background: "#0c0424",
+        surface: "#121e3e",
+        panel: "#183a42",
         text: "#edf8ec",
         chatText: "#b8deb8",
         accent: "#5fc75d"
