@@ -2726,20 +2726,16 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     let inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
     while (inputs.length > MODULE_FIELD_MIN) {
       const last = inputs[inputs.length - 1];
-      if (last && !last.value.trim()) {
-        const precedingHasEmpty = inputs.slice(0, inputs.length - 1).some(input => !input.value.trim());
-        if (precedingHasEmpty) {
-          const wrapper = last.closest('.module-input__row');
-          if (wrapper && wrapper.parentElement === container) {
-            container.removeChild(wrapper);
-          } else {
-            last.remove();
-          }
-          inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
-          continue;
-        }
+      const previous = inputs[inputs.length - 2];
+      if (!last || last.value.trim() || !previous || previous.value.trim()) break;
+
+      const wrapper = last.closest('.module-input__row');
+      if (wrapper && wrapper.parentElement === container) {
+        container.removeChild(wrapper);
+      } else {
+        last.remove();
       }
-      break;
+      inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
     }
   }
 
@@ -2764,12 +2760,12 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
       }
       inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
     }
-    const hasEmpty = inputs.some(input => !input.value.trim());
-    if (!hasEmpty && inputs.length < MODULE_FIELD_MAX) {
-      appendModuleInput(container, inputs.length, "");
-      inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
-    }
     trimModuleInputs(panel);
+    inputs = Array.from(container.querySelectorAll('input[data-role="module-input"]'));
+    const lastInput = inputs[inputs.length - 1];
+    if (lastInput && lastInput.value.trim() && inputs.length < MODULE_FIELD_MAX) {
+      appendModuleInput(container, inputs.length, "");
+    }
   }
 
   function finalizeModuleWatcher(container, watcher){
