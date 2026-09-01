@@ -112,6 +112,20 @@
             scrollbar-gutter: stable;
           }
 
+          /* Up to six movies stay in the cinematic poster strip. Larger polls
+             switch to a compact grid so every option remains visible without
+             the clipped first/last cards caused by horizontal centering. */
+          #btfw-poll-video-overlay .btfw-poll-options-grid.btfw-poll-options-grid--wrapped {
+            display: grid !important;
+            grid-template-columns: repeat(var(--btfw-poll-columns, 4), minmax(0, 150px)) !important;
+            grid-auto-flow: row !important;
+            align-content: center !important;
+            justify-content: center !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            scrollbar-gutter: stable;
+          }
+
           /* Enhanced Movie Card styling */
           #btfw-poll-video-overlay .btfw-poll-option-row {
             position: relative !important;
@@ -133,6 +147,13 @@
             padding: 0 !important;
             border: none !important;
             scroll-snap-align: center;
+          }
+
+          #btfw-poll-video-overlay .btfw-poll-options-grid--wrapped .btfw-poll-option-row {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 150px !important;
+            justify-self: center;
           }
 
           #btfw-poll-video-overlay .btfw-poll-footer {
@@ -474,6 +495,12 @@
               max-height: none !important;
             }
 
+            #btfw-poll-video-overlay .btfw-poll-options-grid--wrapped .btfw-poll-option-row {
+              width: 100% !important;
+              min-width: 0 !important;
+              max-width: clamp(60px, 24cqh, 96px) !important;
+            }
+
             #btfw-poll-video-overlay .movie-details {
               height: 88% !important;
               padding: 12px !important;
@@ -493,6 +520,11 @@
             #btfw-poll-video-overlay .btfw-poll-option-row {
               flex-basis: clamp(108px, 38cqw, 150px) !important;
               min-width: clamp(108px, 38cqw, 150px) !important;
+            }
+
+            #btfw-poll-video-overlay .btfw-poll-options-grid--wrapped .btfw-poll-option-row {
+              width: 100% !important;
+              min-width: 0 !important;
             }
           }
         `;

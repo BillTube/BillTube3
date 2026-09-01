@@ -109,7 +109,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     if (!item) {
       item = document.createElement("li");
       item.id = "btfw-movie-catalogue-nav";
-      item.innerHTML = '<a href="#" class="btfw-nav-pill" aria-label="Open movie catalog"><span class="btfw-nav-pill__icon" aria-hidden="true"><i class="fa fa-film"></i></span><span class="btfw-nav-pill__label">Movie Catalog</span></a>';
+      item.innerHTML = '<a href="#" class="btfw-nav-pill" aria-label="Open movie catalog"><span class="btfw-nav-pill__icon" aria-hidden="true"><i class="fa fa-film"></i></span><span class="btfw-nav-pill__label">Catalog</span></a>';
       item.querySelector("a").addEventListener("click", event => { event.preventDefault(); openModal(); });
     }
     if (list.firstElementChild !== item) list.insertBefore(item, list.firstElementChild);
@@ -222,7 +222,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     modal.innerHTML = `
       <section class="btfw-catalogue__dialog" role="dialog" aria-modal="true" aria-labelledby="btfw-catalogue-title">
         <header class="btfw-catalogue__head"><h2 id="btfw-catalogue-title">Movie Catalogue</h2><button type="button" class="btfw-catalogue__view-toggle" data-action="toggle-vhs" aria-label="Use VHS catalogue design" aria-pressed="false"><span>VHS</span><span class="btfw-catalogue__switch" aria-hidden="true"></span></button><button type="button" data-action="close" aria-label="Close catalogue">×</button></header>
-        <div class="btfw-catalogue__filters"><label class="btfw-catalogue__filter"><span>Search catalog</span><input type="search" data-role="query" placeholder="Find a movie…"></label><label class="btfw-catalogue__filter"><span>Format</span><select data-role="type"><option value="">All media</option><option value="movie">Movies</option><option value="tv">TV shows</option></select></label><label class="btfw-catalogue__filter"><span>Sort by</span><select data-role="sort"><option value="order">Playlist order</option><option value="title">Title</option><option value="date">Release date</option><option value="rating">TMDB rating</option></select></label></div>
+        <div class="btfw-catalogue__filters"><label class="btfw-catalogue__filter"><span>Search catalog</span><input type="search" data-role="query" placeholder="Find a movie…"></label><label class="btfw-catalogue__filter"><span>Format</span><select data-role="type"><option value="">All media</option><option value="movie">Movies</option><option value="tv">TV shows</option></select></label><label class="btfw-catalogue__filter"><span>Sort by</span><select data-role="sort"><option value="order">Default</option><option value="title">Title</option><option value="date">Release date</option><option value="rating">TMDB rating</option></select></label></div>
         <div class="btfw-catalogue__status" data-role="status"></div><main class="btfw-catalogue__body"><div class="btfw-catalogue__grid" data-role="list"></div></main>
         <footer class="btfw-catalogue__foot"><span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span><span class="btfw-catalogue__load-status" data-role="load-status"></span></footer>
       </section>`;

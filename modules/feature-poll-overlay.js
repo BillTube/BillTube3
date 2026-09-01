@@ -1527,6 +1527,15 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (endBtn) {
       endBtn.style.display = canEndPoll() ? "block" : "none";
     }
+
+    const optionCount = Array.isArray(poll.options) ? poll.options.length : 0;
+    if (optionsGrid) {
+      const shouldWrap = optionCount > 6;
+      const columns = shouldWrap ? Math.min(6, Math.ceil(optionCount / 2)) : Math.max(1, optionCount);
+      optionsGrid.classList.toggle("btfw-poll-options-grid--wrapped", shouldWrap);
+      optionsGrid.style.setProperty("--btfw-poll-columns", String(columns));
+      optionsGrid.dataset.optionCount = String(optionCount);
+    }
     
     if (optionsGrid && poll.options) {
       optionsGrid.innerHTML = "";
