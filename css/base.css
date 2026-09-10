@@ -1591,7 +1591,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 
 /* Private Google Drive library inside the Add media drawer. */
 .btfw-drive-library { display: grid; gap: 12px; color: var(--btfw-color-text); }
-.btfw-drive-library__search { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
+.btfw-drive-library__search { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; }
 .btfw-drive-library__settings { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) 100px auto; gap: 10px; align-items: end; padding: 12px; border: 1px solid color-mix(in srgb, var(--btfw-border) 45%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--btfw-color-bg) 72%, transparent); }
 .btfw-drive-library__settings label { display: grid; gap: 5px; font-size: 11px; color: color-mix(in srgb, var(--btfw-color-text) 70%, transparent); }
 .btfw-drive-library__status, .btfw-drive-library__empty { margin: 0; font-size: 12px; color: color-mix(in srgb, var(--btfw-color-text) 68%, transparent); }
@@ -1602,8 +1602,14 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 .btfw-drive-library__meta { min-width: 0; display: grid; gap: 2px; }
 .btfw-drive-library__meta strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .btfw-drive-library__meta span { font-size: 10px; opacity: .65; }
+.btfw-drive-library__meta .btfw-drive-library__normalized { font-size: 12px; opacity: .82; }
 .btfw-drive-library__actions { flex: 0 0 auto; display: flex; gap: 6px; }
+.btfw-drive-library__imported { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; color: #7ee2aa; background: color-mix(in srgb, #7ee2aa 12%, transparent); font-size: 11px; font-weight: 600; }
+.btfw-drive-library__item.is-imported { border-color: color-mix(in srgb, #7ee2aa 35%, transparent); }
 @media (max-width: 720px) {
+  .btfw-drive-library__search { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .btfw-drive-library__search [type="submit"] span { display: none; }
+  .btfw-drive-library__search [data-action="recent"] { grid-column: 1 / -1; }
   .btfw-drive-library__settings { grid-template-columns: 1fr; }
   .btfw-drive-library__item { align-items: stretch; flex-direction: column; }
   .btfw-drive-library__actions .button { flex: 1; }

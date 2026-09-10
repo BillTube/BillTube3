@@ -32,6 +32,38 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
     return `${value >= 10 || unit === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unit]}`;
   }
 
+  function normalizeMovieTitle(filename){
+    let value = String(filename || "Drive movie");
+    try { value = decodeURIComponent(value); } catch (_) {}
+    value = value.split(/[?#]/)[0].split(/[\\/]/).pop().replace(/\.[a-z0-9]{2,5}$/i, "");
+    value = value.replace(/[._]+/g, " ").replace(/[\[\]{}]/g, " ").replace(/\s+/g, " ").trim();
+    const yearMatch = value.match(/(?:^|\s|\()(19\d{2}|20\d{2})(?=\s|\)|$)/);
+    const year = yearMatch ? yearMatch[1] : "";
+    if (yearMatch) value = value.slice(0, yearMatch.index).trim();
+    value = value
+      .replace(/\b(?:2160p|1080p|720p|480p|bluray|blu-ray|brrip|webrip|web-dl|hdrip|dvdrip|remux|x26[45]|h\.?26[45]|hevc|avc|yify|rarbg|aac(?:\d\.\d)?|dts|proper|repack)\b.*$/i, "")
+      .replace(/[-–—]+$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (value && (value === value.toUpperCase() || value === value.toLowerCase())) {
+      value = value.toLowerCase().replace(/(^|[\s:'-])([a-z])/g, (_all, lead, letter) => lead + letter.toUpperCase());
+    }
+    return `${value || "Drive movie"}${year ? ` (${year})` : ""}`;
+  }
+
+  function movieKey(value){
+    const normalized = normalizeMovieTitle(value).toLowerCase();
+    const year = normalized.match(/\((19\d{2}|20\d{2})\)/)?.[1] || "";
+    return `${normalized.replace(/\((19\d{2}|20\d{2})\)/, "").replace(/[^a-z0-9]+/g, "").trim()}|${year}`;
+  }
+
+  function playlistKeys(){
+    return new Set(Array.from(document.querySelectorAll("#queue .queue_entry")).map(entry => {
+      const title = entry.querySelector(".qe_title")?.textContent || entry.textContent || "";
+      return movieKey(title);
+    }).filter(Boolean));
+  }
+
   function notify(message, variant){
     const notices = window.BTFW_notify;
     const method = variant === "error" ? "error" : variant === "success" ? "success" : "info";
@@ -71,15 +103,19 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
   function queue(file, atEnd){
     const url = absoluteLink(file.link);
     if (!url) return false;
-    const title = String(file.name || "Drive movie").replace(/\.[^.]+$/, "");
+    const title = normalizeMovieTitle(file.name);
     const input = document.getElementById("mediaurl");
-    const titleInput = document.querySelector("#addfromurl-title-val, #mediaurl-title, .media-title-input");
     const button = document.getElementById(atEnd ? "queue_end" : "queue_next");
     if (input && button) {
       input.value = url;
       input.dispatchEvent(new Event("input", { bubbles: true }));
+      // CyTube creates #addfromurl-title-val from its keyup handler only after
+      // it recognizes a raw-file URL. Trigger that path before filling title.
+      input.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Unidentified" }));
+      const titleInput = document.querySelector("#addfromurl-title-val, #mediaurl-title, .media-title-input");
       if (titleInput) {
         titleInput.value = title;
+        titleInput.dispatchEvent(new Event("input", { bubbles: true }));
         titleInput.dispatchEvent(new CustomEvent("btfw:title-autofilled", { bubbles: true }));
       }
       button.click();
@@ -103,6 +139,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
         <label class="sr-only" for="btfw-drive-query">Search Drive movies</label>
         <input id="btfw-drive-query" class="input" type="search" placeholder="Search movies in Drive…" autocomplete="off">
         <button class="button is-primary" type="submit"><i class="fa fa-search" aria-hidden="true"></i><span>Search</span></button>
+        <button class="button" type="button" data-action="recent"><i class="fa fa-clock-o" aria-hidden="true"></i><span>Recent 20</span></button>
         <button class="button btfw-drive-library__settings-toggle" type="button" aria-expanded="false" title="Library connection"><i class="fa fa-cog" aria-hidden="true"></i></button>
       </form>
       <div class="btfw-drive-library__settings" hidden>
@@ -124,17 +161,24 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       results.innerHTML = '<p class="btfw-drive-library__empty">No playable movies found.</p>';
       return;
     }
-    results.innerHTML = playable.map((file, index) => `
-      <article class="btfw-drive-library__item" data-index="${index}">
+    const queued = playlistKeys();
+    results.innerHTML = playable.map((file, index) => {
+      const title = normalizeMovieTitle(file.name);
+      const imported = queued.has(movieKey(title));
+      return `
+      <article class="btfw-drive-library__item${imported ? " is-imported" : ""}" data-index="${index}">
         <div class="btfw-drive-library__meta">
           <strong title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</strong>
-          <span>${escapeHtml(formatSize(file.size))}</span>
+          <span class="btfw-drive-library__normalized">${escapeHtml(title)}</span>
+          <span>${escapeHtml(formatSize(file.size))}${file.createdTime || file.modifiedTime ? ` · ${escapeHtml(new Date(file.createdTime || file.modifiedTime).toLocaleDateString())}` : ""}</span>
         </div>
         <div class="btfw-drive-library__actions">
-          <button class="button is-small" type="button" data-queue="next">Play next</button>
-          <button class="button is-small" type="button" data-queue="end">Add to end</button>
+          ${imported ? '<span class="btfw-drive-library__imported"><i class="fa fa-check" aria-hidden="true"></i> In playlist</span>' : `
+            <button class="button is-small" type="button" data-queue="next">Play next</button>
+            <button class="button is-small" type="button" data-queue="end">Add to end</button>`}
         </div>
-      </article>`).join("");
+      </article>`;
+    }).join("");
     results._btfwFiles = playable;
   }
 
@@ -144,6 +188,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
     const settings = root.querySelector(".btfw-drive-library__settings");
     const status = root.querySelector(".btfw-drive-library__status");
     const toggle = root.querySelector(".btfw-drive-library__settings-toggle");
+    let currentFiles = [];
     const setStatus = (message, variant) => { status.textContent = message; status.dataset.variant = variant || "idle"; };
     const syncFields = () => {
       settings.querySelector('[data-field="endpoint"]').value = state.endpoint;
@@ -179,8 +224,24 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       try {
         const data = await api({ action: "search", query, pageIndex: 0 });
         const files = data.files || data.data?.files || [];
-        render(root, files);
+        currentFiles = files;
+        render(root, currentFiles);
         setStatus(`${files.length} result${files.length === 1 ? "" : "s"} returned.`, "success");
+      } catch (error) { setStatus(error.message, "error"); }
+    });
+    root.querySelector('[data-action="recent"]').addEventListener("click", async () => {
+      if (!state.token) {
+        settings.hidden = false;
+        toggle.setAttribute("aria-expanded", "true");
+        setStatus("Add the Worker access token before loading recent movies.", "error");
+        return;
+      }
+      setStatus("Loading the 20 most recent additions…", "pending");
+      try {
+        const data = await api({ action: "recent", limit: 20 });
+        currentFiles = data.files || [];
+        render(root, currentFiles);
+        setStatus(`${currentFiles.length} recent movie${currentFiles.length === 1 ? "" : "s"}.`, "success");
       } catch (error) { setStatus(error.message, "error"); }
     });
     root.querySelector(".btfw-drive-library__results").addEventListener("click", event => {
@@ -193,13 +254,19 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
         return;
       }
       notify(`${file.name} added to the playlist.`, "success");
+      setTimeout(() => render(root, currentFiles), 250);
     });
+    const queueElement = document.getElementById("queue");
+    if (queueElement) {
+      new MutationObserver(() => { if (currentFiles.length) render(root, currentFiles); })
+        .observe(queueElement, { childList: true, subtree: true });
+    }
     root._btfwWired = true;
   }
 
   loadState();
   const root = createRoot();
   wire(root);
-  window.BTFW_DriveLibrary = { search: query => api({ action: "search", query }), queue };
+  window.BTFW_DriveLibrary = { search: query => api({ action: "search", query }), recent: () => api({ action: "recent", limit: 20 }), queue, normalizeMovieTitle };
   return { name: "feature:driveLibrary" };
 });
