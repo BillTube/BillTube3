@@ -136,17 +136,17 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
     root.id = "btfw-drive-library";
     root.className = "btfw-drive-library";
     root.innerHTML = `
-      <form class="btfw-drive-library__search" role="search">
+      <form class="btfw-drive-library__search" role="search" autocomplete="off">
         <label class="sr-only" for="btfw-drive-query">Search Drive movies</label>
-        <input id="btfw-drive-query" class="input" type="search" placeholder="Search movies in Drive…" autocomplete="off">
+        <input id="btfw-drive-query" class="input" name="btfw_movie_search" type="search" placeholder="Search movies in Drive…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
         <button class="button is-primary" type="submit"><i class="fa fa-search" aria-hidden="true"></i><span>Search</span></button>
         <button class="button" type="button" data-action="recent"><i class="fa fa-clock-o" aria-hidden="true"></i><span>Recent 20</span></button>
         <button class="button" type="button" data-action="browse"><i class="fa fa-film" aria-hidden="true"></i><span>Browse all</span></button>
-        <button class="button btfw-drive-library__settings-toggle" type="button" aria-expanded="false" title="Library connection"><i class="fa fa-cog" aria-hidden="true"></i></button>
+        <button class="button btfw-drive-library__settings-toggle" type="button" aria-expanded="false" aria-controls="btfw-drive-library-settings" title="Library connection"><i class="fa fa-cog" aria-hidden="true"></i></button>
       </form>
-      <div class="btfw-drive-library__settings" hidden>
-        <label>Worker URL<input class="input" data-field="endpoint" type="url"></label>
-        <label>Access token<input class="input" data-field="token" type="password" autocomplete="off" placeholder="Stored only in this browser"></label>
+      <div id="btfw-drive-library-settings" class="btfw-drive-library__settings" hidden>
+        <label>Worker URL<input class="input" data-field="endpoint" name="btfw_worker_url" type="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label>Access token<input class="input" data-field="token" name="btfw_library_access_token" type="password" autocomplete="new-password" data-1p-ignore data-bwignore="true" data-lpignore="true" placeholder="Stored only in this browser"></label>
         <label>Movie drive<select class="input" data-field="drive"><option value="0">Drive 1</option></select></label>
         <button class="button" data-action="save" type="button">Save connection</button>
       </div>
