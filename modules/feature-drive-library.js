@@ -88,7 +88,8 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
     let data = null;
     try { data = await response.json(); } catch (_) {}
     if (!response.ok) {
-      const error = new Error(data?.error || (response.status === 401 ? "Connect this browser with a library access token." : `Library request failed (${response.status}).`));
+      const workerUpgrade = response.status === 400 && data?.error === "Unknown action";
+      const error = new Error(workerUpgrade ? "The Drive Worker needs the latest library bridge before this feature can be used." : (data?.error || (response.status === 401 ? "Connect this browser with a library access token." : `Library request failed (${response.status}).`)));
       error.status = response.status;
       throw error;
     }
@@ -140,12 +141,13 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
         <input id="btfw-drive-query" class="input" type="search" placeholder="Search movies in Drive…" autocomplete="off">
         <button class="button is-primary" type="submit"><i class="fa fa-search" aria-hidden="true"></i><span>Search</span></button>
         <button class="button" type="button" data-action="recent"><i class="fa fa-clock-o" aria-hidden="true"></i><span>Recent 20</span></button>
+        <button class="button" type="button" data-action="browse"><i class="fa fa-film" aria-hidden="true"></i><span>Browse all</span></button>
         <button class="button btfw-drive-library__settings-toggle" type="button" aria-expanded="false" title="Library connection"><i class="fa fa-cog" aria-hidden="true"></i></button>
       </form>
       <div class="btfw-drive-library__settings" hidden>
         <label>Worker URL<input class="input" data-field="endpoint" type="url"></label>
         <label>Access token<input class="input" data-field="token" type="password" autocomplete="off" placeholder="Stored only in this browser"></label>
-        <label>Drive number<input class="input" data-field="drive" type="number" min="0" step="1"></label>
+        <label>Movie drive<select class="input" data-field="drive"><option value="0">Drive 1</option></select></label>
         <button class="button" data-action="save" type="button">Save connection</button>
       </div>
       <p class="btfw-drive-library__status" role="status" aria-live="polite">Search your private movie library without leaving CyTube.</p>
@@ -154,8 +156,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
     return root;
   }
 
-  function render(root, files){
-    const results = root.querySelector(".btfw-drive-library__results");
+  function renderInto(results, files){
     const playable = (files || []).filter(file => VIDEO_RE.test(file.mimeType || "") || /\.(?:mp4|m4v|webm|mkv|mov|m3u8)$/i.test(file.name || ""));
     if (!playable.length) {
       results.innerHTML = '<p class="btfw-drive-library__empty">No playable movies found.</p>';
@@ -182,18 +183,51 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
     results._btfwFiles = playable;
   }
 
+  function render(root, files){ renderInto(root.querySelector(".btfw-drive-library__results"), files); }
+
+  function createModal(){
+    let modal = document.getElementById("btfw-drive-library-modal");
+    if (modal) return modal;
+    modal = document.createElement("div");
+    modal.id = "btfw-drive-library-modal";
+    modal.className = "btfw-drive-library-modal";
+    modal.hidden = true;
+    modal.innerHTML = `<div class="btfw-drive-library-modal__backdrop" data-close></div>
+      <section class="btfw-drive-library-modal__panel" role="dialog" aria-modal="true" aria-labelledby="btfw-drive-modal-title">
+        <header><div><h3 id="btfw-drive-modal-title">All movies</h3><p class="btfw-drive-library-modal__status" role="status"></p></div><button class="button" type="button" data-close aria-label="Close">×</button></header>
+        <input class="input btfw-drive-library-modal__filter" type="search" placeholder="Filter loaded movies…" autocomplete="off">
+        <div class="btfw-drive-library__results"></div>
+      </section>`;
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  async function loadDrives(select, setStatus){
+    if (!state.token) return;
+    try {
+      const data = await api({ action: "drives" });
+      const drives = Array.isArray(data.drives) ? data.drives : [];
+      if (!drives.length) throw new Error("No configured drives were returned.");
+      select.innerHTML = drives.map(drive => `<option value="${Number(drive.index)}">${escapeHtml(drive.name)}</option>`).join("");
+      if (!drives.some(drive => Number(drive.index) === state.drive)) state.drive = Number(drives[0].index) || 0;
+      select.value = String(state.drive);
+    } catch (error) { setStatus(error.message, "error"); }
+  }
+
   function wire(root){
     if (root._btfwWired) return;
     const form = root.querySelector("form");
     const settings = root.querySelector(".btfw-drive-library__settings");
     const status = root.querySelector(".btfw-drive-library__status");
     const toggle = root.querySelector(".btfw-drive-library__settings-toggle");
+    const driveSelect = settings.querySelector('[data-field="drive"]');
     let currentFiles = [];
     const setStatus = (message, variant) => { status.textContent = message; status.dataset.variant = variant || "idle"; };
     const syncFields = () => {
       settings.querySelector('[data-field="endpoint"]').value = state.endpoint;
       settings.querySelector('[data-field="token"]').value = state.token;
-      settings.querySelector('[data-field="drive"]').value = String(state.drive);
+      driveSelect.value = String(state.drive);
+      loadDrives(driveSelect, setStatus);
     };
     toggle.addEventListener("click", () => {
       const open = settings.hidden;
@@ -204,11 +238,12 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
     settings.querySelector('[data-action="save"]').addEventListener("click", () => {
       state.endpoint = String(settings.querySelector('[data-field="endpoint"]').value || DEFAULT_ENDPOINT).trim().replace(/\/$/, "");
       state.token = String(settings.querySelector('[data-field="token"]').value || "").trim();
-      state.drive = Math.max(0, Number(settings.querySelector('[data-field="drive"]').value) || 0);
+      state.drive = Math.max(0, Number(driveSelect.value) || 0);
       saveState();
       settings.hidden = true;
       toggle.setAttribute("aria-expanded", "false");
       setStatus("Connection saved in this browser. Search to test it.", "success");
+      loadDrives(driveSelect, setStatus);
     });
     form.addEventListener("submit", async event => {
       event.preventDefault();
@@ -244,6 +279,54 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
         setStatus(`${currentFiles.length} recent movie${currentFiles.length === 1 ? "" : "s"}.`, "success");
       } catch (error) { setStatus(error.message, "error"); }
     });
+    root.querySelector('[data-action="browse"]').addEventListener("click", async () => {
+      if (!state.token) {
+        settings.hidden = false;
+        toggle.setAttribute("aria-expanded", "true");
+        setStatus("Add the Worker access token before browsing movies.", "error");
+        return;
+      }
+      const modal = createModal();
+      const modalResults = modal.querySelector(".btfw-drive-library__results");
+      const modalStatus = modal.querySelector(".btfw-drive-library-modal__status");
+      const filter = modal.querySelector(".btfw-drive-library-modal__filter");
+      modal.querySelector("#btfw-drive-modal-title").textContent = `All movies · ${driveSelect.selectedOptions[0]?.textContent || `Drive ${state.drive + 1}`}`;
+      let allFiles = [];
+      let cancelled = false;
+      const paint = () => {
+        const term = filter.value.trim().toLowerCase();
+        renderInto(modalResults, term ? allFiles.filter(file => `${file.name} ${normalizeMovieTitle(file.name)}`.toLowerCase().includes(term)) : allFiles);
+      };
+      const close = () => { cancelled = true; modal.hidden = true; document.body.classList.remove("btfw-drive-modal-open"); };
+      modal.querySelectorAll("[data-close]").forEach(button => button.onclick = close);
+      filter.oninput = paint;
+      modal.hidden = false;
+      document.body.classList.add("btfw-drive-modal-open");
+      filter.value = "";
+      modalResults.innerHTML = "";
+      modalStatus.textContent = "Loading movies…";
+      modalResults.onclick = event => {
+        const button = event.target.closest("[data-queue]");
+        const item = button?.closest("[data-index]");
+        const file = button && item ? event.currentTarget._btfwFiles?.[Number(item.dataset.index)] : null;
+        if (!file) return;
+        if (!queue(file, button.dataset.queue === "end")) return notify("Could not add that movie to the playlist.", "error");
+        notify(`${file.name} added to the playlist.`, "success");
+        setTimeout(paint, 250);
+      };
+      try {
+        let pageToken = null;
+        let pageIndex = 0;
+        do {
+          const data = await api({ action: "all", pageToken, pageIndex });
+          allFiles.push(...(data.files || []));
+          pageToken = data.nextPageToken || null;
+          pageIndex++;
+          modalStatus.textContent = `Loaded ${allFiles.length} movie${allFiles.length === 1 ? "" : "s"}${pageToken ? "…" : "."}`;
+          paint();
+        } while (pageToken && !cancelled);
+      } catch (error) { modalStatus.textContent = error.message; }
+    });
     root.querySelector(".btfw-drive-library__results").addEventListener("click", event => {
       const button = event.target.closest("[data-queue]");
       const item = button?.closest("[data-index]");
@@ -262,6 +345,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
         .observe(queueElement, { childList: true, subtree: true });
     }
     root._btfwWired = true;
+    if (state.token) loadDrives(driveSelect, setStatus);
   }
 
   loadState();
