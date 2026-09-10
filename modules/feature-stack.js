@@ -1,4 +1,4 @@
-BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
+BTFW.define("feature:stack", ["feature:layout", "feature:driveLibrary"], async ({}) => {
   const SKEY="btfw-stack-order";
   const PLAYLIST_VISIBILITY_KEY = "btfw-stack-playlist-open";
   let compactSpacing = true;
@@ -39,6 +39,7 @@ BTFW.define("feature:stack", ["feature:layout"], async ({}) => {
 
   const ADD_MEDIA_SECTIONS = [
     { id: "addfromurl", title: "From URL", default: true },
+    { id: "btfw-drive-library", title: "Drive library" },
     { id: "searchcontrol", title: "Library & YouTube" },
     { id: "customembed", title: "Custom embed" }
   ];

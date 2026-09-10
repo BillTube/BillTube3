@@ -167,9 +167,12 @@ Most of BillTube works without an external service. These features need addition
 | GIF search | Klipy API key |
 | Automatic subtitle fetching | A TMDB API key; Wyzie and SubDL keys are optional because a Stremio addon fallback is included |
 | Audience ratings | A compatible ratings endpoint |
+| Private Drive library search | The BillTube Drive Worker bridge and a per-browser access token |
 
 > [!IMPORTANT]
 > Integration keys saved through the toolkit are stored in the channel's public JavaScript and can be viewed by visitors. Use restricted or free-tier keys that are safe to expose. Never enter a private or privileged credential.
+
+The Drive library access token is an exception: it is entered from **Add media → Drive library → Connection** and stored only in that browser's local storage. It is not written to Channel JavaScript. The matching `BTFW_LIBRARY_TOKEN` must be configured as a secret on the Drive Worker.
 
 ## Chat commands
 

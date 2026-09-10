@@ -1589,6 +1589,26 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
   border-color: color-mix(in srgb, var(--btfw-color-accent) 48%, transparent 52%) !important;
 }
 
+/* Private Google Drive library inside the Add media drawer. */
+.btfw-drive-library { display: grid; gap: 12px; color: var(--btfw-color-text); }
+.btfw-drive-library__search { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
+.btfw-drive-library__settings { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) 100px auto; gap: 10px; align-items: end; padding: 12px; border: 1px solid color-mix(in srgb, var(--btfw-border) 45%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--btfw-color-bg) 72%, transparent); }
+.btfw-drive-library__settings label { display: grid; gap: 5px; font-size: 11px; color: color-mix(in srgb, var(--btfw-color-text) 70%, transparent); }
+.btfw-drive-library__status, .btfw-drive-library__empty { margin: 0; font-size: 12px; color: color-mix(in srgb, var(--btfw-color-text) 68%, transparent); }
+.btfw-drive-library__status[data-variant="error"] { color: #ff879b; }
+.btfw-drive-library__status[data-variant="success"] { color: #7ee2aa; }
+.btfw-drive-library__results { display: grid; gap: 7px; max-height: 360px; overflow: auto; }
+.btfw-drive-library__item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--btfw-border) 38%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--btfw-color-bg) 55%, transparent); }
+.btfw-drive-library__meta { min-width: 0; display: grid; gap: 2px; }
+.btfw-drive-library__meta strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.btfw-drive-library__meta span { font-size: 10px; opacity: .65; }
+.btfw-drive-library__actions { flex: 0 0 auto; display: flex; gap: 6px; }
+@media (max-width: 720px) {
+  .btfw-drive-library__settings { grid-template-columns: 1fr; }
+  .btfw-drive-library__item { align-items: stretch; flex-direction: column; }
+  .btfw-drive-library__actions .button { flex: 1; }
+}
+
 /* "Copy titles" when active. */
 .btfw-plbar #btfw-pl-copytoggle.is-success,
 .btfw-plbar__actions .button.is-success {
