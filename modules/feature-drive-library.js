@@ -209,7 +209,10 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       const drives = Array.isArray(data.drives) ? data.drives : [];
       if (!drives.length) throw new Error("No configured drives were returned.");
       select.innerHTML = drives.map(drive => `<option value="${Number(drive.index)}">${escapeHtml(drive.name)}</option>`).join("");
-      if (!drives.some(drive => Number(drive.index) === state.drive)) state.drive = Number(drives[0].index) || 0;
+      if (!drives.some(drive => Number(drive.index) === state.drive)) {
+        state.drive = Number(drives[0].index) || 0;
+        saveState();
+      }
       select.value = String(state.drive);
     } catch (error) { setStatus(error.message, "error"); }
   }
@@ -234,6 +237,11 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       settings.hidden = !open;
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
       if (open) syncFields();
+    });
+    driveSelect.addEventListener("change", () => {
+      state.drive = Math.max(0, Number(driveSelect.value) || 0);
+      saveState();
+      setStatus(`${driveSelect.selectedOptions[0]?.textContent || `Drive ${state.drive}`} selected.`, "success");
     });
     settings.querySelector('[data-action="save"]').addEventListener("click", () => {
       state.endpoint = String(settings.querySelector('[data-field="endpoint"]').value || DEFAULT_ENDPOINT).trim().replace(/\/$/, "");
@@ -261,7 +269,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
         const files = data.files || data.data?.files || [];
         currentFiles = files;
         render(root, currentFiles);
-        setStatus(`${files.length} result${files.length === 1 ? "" : "s"} returned.`, "success");
+        setStatus(`${files.length} result${files.length === 1 ? "" : "s"} returned from ${data.drive?.name || `Drive ${state.drive}`}.`, "success");
       } catch (error) { setStatus(error.message, "error"); }
     });
     root.querySelector('[data-action="recent"]').addEventListener("click", async () => {
@@ -276,7 +284,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
         const data = await api({ action: "recent", limit: 20 });
         currentFiles = data.files || [];
         render(root, currentFiles);
-        setStatus(`${currentFiles.length} recent movie${currentFiles.length === 1 ? "" : "s"}.`, "success");
+        setStatus(`${currentFiles.length} recent movie${currentFiles.length === 1 ? "" : "s"} from ${data.drive?.name || `Drive ${state.drive}`}.`, "success");
       } catch (error) { setStatus(error.message, "error"); }
     });
     root.querySelector('[data-action="browse"]').addEventListener("click", async () => {
@@ -290,7 +298,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       const modalResults = modal.querySelector(".btfw-drive-library__results");
       const modalStatus = modal.querySelector(".btfw-drive-library-modal__status");
       const filter = modal.querySelector(".btfw-drive-library-modal__filter");
-      modal.querySelector("#btfw-drive-modal-title").textContent = `All movies · ${driveSelect.selectedOptions[0]?.textContent || `Drive ${state.drive + 1}`}`;
+      modal.querySelector("#btfw-drive-modal-title").textContent = `All movies · Drive ${state.drive}`;
       let allFiles = [];
       let cancelled = false;
       const paint = () => {
@@ -319,6 +327,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
         let pageIndex = 0;
         do {
           const data = await api({ action: "all", pageToken, pageIndex });
+          if (pageIndex === 0 && data.drive) modal.querySelector("#btfw-drive-modal-title").textContent = `All movies · ${data.drive.name} (${data.drive.index}:/)`;
           allFiles.push(...(data.files || []));
           pageToken = data.nextPageToken || null;
           pageIndex++;
