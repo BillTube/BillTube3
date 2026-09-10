@@ -2,7 +2,9 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
   const STORAGE_KEY = "btfw:drive-library";
   const DEFAULT_ENDPOINT = "https://cytube.billtube.workers.dev";
   const VIDEO_RE = /^(video\/|application\/(?:x-mpegURL|vnd\.apple\.mpegurl))/i;
+  const FOLDER_TYPE = "application/vnd.google-apps.folder";
   let state = { endpoint: DEFAULT_ENDPOINT, token: "", drive: 0 };
+  const driveCache = new Map();
 
   function loadState(){
     try {
@@ -94,6 +96,39 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       throw error;
     }
     return data || {};
+  }
+
+  async function scanSelectedDrive(onProgress, fresh){
+    const drive = state.drive;
+    const cacheKey = `${state.endpoint}|${drive}`;
+    const cached = driveCache.get(cacheKey);
+    if (!fresh && cached && Date.now() - cached.savedAt < 120000) return cached.files;
+
+    const folders = ["/"];
+    const visited = new Set();
+    const movies = [];
+    while (folders.length) {
+      const path = folders.shift();
+      if (visited.has(path)) continue;
+      visited.add(path);
+      let pageToken = null;
+      let pageIndex = 0;
+      do {
+        const data = await api({ action: "list", drive, path, pageToken, pageIndex });
+        for (const file of data.files || []) {
+          if (file.mimeType === FOLDER_TYPE) {
+            folders.push(`${path}${encodeURIComponent(file.name)}/`);
+          } else if (VIDEO_RE.test(file.mimeType || "") || /\.(?:mp4|m4v|webm|mkv|mov|m3u8)$/i.test(file.name || "")) {
+            movies.push(file);
+          }
+        }
+        pageToken = data.nextPageToken || null;
+        pageIndex++;
+        if (onProgress) onProgress({ drive, movies: movies.length, folders: visited.size, pending: folders.length });
+      } while (pageToken);
+    }
+    driveCache.set(cacheKey, { files: movies, savedAt: Date.now() });
+    return movies;
   }
 
   function absoluteLink(link){
@@ -265,11 +300,15 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       }
       setStatus(`Searching for “${query}”…`, "pending");
       try {
-        const data = await api({ action: "search", query, pageIndex: 0 });
-        const files = data.files || data.data?.files || [];
+        const allFiles = await scanSelectedDrive(progress => setStatus(`Scanning Drive ${progress.drive}: ${progress.movies} movies found…`, "pending"));
+        const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+        const files = allFiles.filter(file => {
+          const haystack = `${file.name} ${normalizeMovieTitle(file.name)}`.toLowerCase();
+          return terms.every(term => haystack.includes(term));
+        });
         currentFiles = files;
         render(root, currentFiles);
-        setStatus(`${files.length} result${files.length === 1 ? "" : "s"} returned from ${data.drive?.name || `Drive ${state.drive}`}.`, "success");
+        setStatus(`${files.length} result${files.length === 1 ? "" : "s"} in ${driveSelect.selectedOptions[0]?.textContent || `Drive ${state.drive}`} (${state.drive}:/).`, "success");
       } catch (error) { setStatus(error.message, "error"); }
     });
     root.querySelector('[data-action="recent"]').addEventListener("click", async () => {
@@ -281,10 +320,10 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       }
       setStatus("Loading the 20 most recent additions…", "pending");
       try {
-        const data = await api({ action: "recent", limit: 20 });
-        currentFiles = data.files || [];
+        const allFiles = await scanSelectedDrive(progress => setStatus(`Scanning Drive ${progress.drive}: ${progress.movies} movies found…`, "pending"), true);
+        currentFiles = allFiles.slice().sort((a, b) => new Date(b.createdTime || b.modifiedTime || 0) - new Date(a.createdTime || a.modifiedTime || 0)).slice(0, 20);
         render(root, currentFiles);
-        setStatus(`${currentFiles.length} recent movie${currentFiles.length === 1 ? "" : "s"} from ${data.drive?.name || `Drive ${state.drive}`}.`, "success");
+        setStatus(`${currentFiles.length} recent movie${currentFiles.length === 1 ? "" : "s"} from ${driveSelect.selectedOptions[0]?.textContent || `Drive ${state.drive}`} (${state.drive}:/).`, "success");
       } catch (error) { setStatus(error.message, "error"); }
     });
     root.querySelector('[data-action="browse"]').addEventListener("click", async () => {
@@ -323,17 +362,15 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
         setTimeout(paint, 250);
       };
       try {
-        let pageToken = null;
-        let pageIndex = 0;
-        do {
-          const data = await api({ action: "all", pageToken, pageIndex });
-          if (pageIndex === 0 && data.drive) modal.querySelector("#btfw-drive-modal-title").textContent = `All movies · ${data.drive.name} (${data.drive.index}:/)`;
-          allFiles.push(...(data.files || []));
-          pageToken = data.nextPageToken || null;
-          pageIndex++;
-          modalStatus.textContent = `Loaded ${allFiles.length} movie${allFiles.length === 1 ? "" : "s"}${pageToken ? "…" : "."}`;
+        allFiles = await scanSelectedDrive(progress => {
+          if (cancelled) return;
+          modalStatus.textContent = `Scanning ${progress.folders} folder${progress.folders === 1 ? "" : "s"} · ${progress.movies} movies found…`;
+        });
+        if (!cancelled) {
+          modal.querySelector("#btfw-drive-modal-title").textContent = `All movies · ${driveSelect.selectedOptions[0]?.textContent || `Drive ${state.drive}`} (${state.drive}:/)`;
+          modalStatus.textContent = `Loaded ${allFiles.length} movie${allFiles.length === 1 ? "" : "s"}.`;
           paint();
-        } while (pageToken && !cancelled);
+        }
       } catch (error) { modalStatus.textContent = error.message; }
     });
     root.querySelector(".btfw-drive-library__results").addEventListener("click", event => {
@@ -360,6 +397,6 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
   loadState();
   const root = createRoot();
   wire(root);
-  window.BTFW_DriveLibrary = { search: query => api({ action: "search", query }), recent: () => api({ action: "recent", limit: 20 }), queue, normalizeMovieTitle };
+  window.BTFW_DriveLibrary = { scan: fresh => scanSelectedDrive(null, fresh), queue, normalizeMovieTitle };
   return { name: "feature:driveLibrary" };
 });
