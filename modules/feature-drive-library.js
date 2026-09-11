@@ -201,7 +201,6 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
         <label class="sr-only" for="btfw-drive-query">Search Drive movies</label>
         <input id="btfw-drive-query" class="input" name="btfw_movie_search" type="search" placeholder="Connect a Drive library to search…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" disabled>
         <button class="button is-primary" type="submit" disabled><i class="fa fa-search" aria-hidden="true"></i><span>Search</span></button>
-        <button class="button" type="button" data-action="recent" disabled><i class="fa fa-clock-o" aria-hidden="true"></i><span>Recent 20</span></button>
         <button class="button" type="button" data-action="browse" disabled><i class="fa fa-film" aria-hidden="true"></i><span>Browse all</span></button>
         <button class="button btfw-drive-library__settings-toggle" type="button" aria-expanded="false" aria-controls="btfw-drive-library-settings" title="Library connection"><i class="fa fa-cog" aria-hidden="true"></i></button>
       </form>
@@ -301,7 +300,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
     const toggle = root.querySelector(".btfw-drive-library__settings-toggle");
     const driveSelect = settings.querySelector('[data-field="drive"]');
     const queryInput = root.querySelector("#btfw-drive-query");
-    const libraryActions = Array.from(form.querySelectorAll('[type="submit"], [data-action="recent"], [data-action="browse"]'));
+    const libraryActions = Array.from(form.querySelectorAll('[type="submit"], [data-action="browse"]'));
     let currentFiles = [];
     const setStatus = (message, variant) => { status.textContent = message; status.dataset.variant = variant || "idle"; };
     const setConnectionReady = ready => {
@@ -373,21 +372,6 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
         currentFiles = files;
         render(root, currentFiles);
         setStatus(`${files.length} result${files.length === 1 ? "" : "s"} in ${driveSelect.selectedOptions[0]?.textContent || `Drive ${state.drive}`} (${state.drive}:/).`, "success");
-      } catch (error) { setStatus(error.message, "error"); }
-    });
-    root.querySelector('[data-action="recent"]').addEventListener("click", async () => {
-      if (!state.token) {
-        settings.hidden = false;
-        toggle.setAttribute("aria-expanded", "true");
-        setStatus("Add the Worker access token before loading recent movies.", "error");
-        return;
-      }
-      setStatus("Loading the 20 most recent additions…", "pending");
-      try {
-        const allFiles = await scanSelectedDrive(progress => setStatus(`Scanning Drive ${progress.drive}: ${progress.movies} movies found…`, "pending"), true);
-        currentFiles = allFiles.slice().sort((a, b) => new Date(b.createdTime || b.modifiedTime || 0) - new Date(a.createdTime || a.modifiedTime || 0)).slice(0, 20);
-        render(root, currentFiles);
-        setStatus(`${currentFiles.length} recent movie${currentFiles.length === 1 ? "" : "s"} from ${driveSelect.selectedOptions[0]?.textContent || `Drive ${state.drive}`} (${state.drive}:/).`, "success");
       } catch (error) { setStatus(error.message, "error"); }
     });
     root.querySelector('[data-action="browse"]').addEventListener("click", async () => {

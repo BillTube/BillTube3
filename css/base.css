@@ -1591,7 +1591,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 
 /* Private Google Drive library inside the Add media drawer. */
 .btfw-drive-library { display: grid; gap: 12px; color: var(--btfw-color-text); }
-.btfw-drive-library__search { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto auto; gap: 9px; align-items: stretch; }
+.btfw-drive-library__search { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 9px; align-items: stretch; }
 .btfw-drive-library__search > .input { min-height: 40px; border-radius: 11px; }
 .btfw-drive-library__search > .button { min-height: 40px; padding: 0 15px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 11px; line-height: 1; white-space: nowrap; }
 .btfw-drive-library__search > .button i { width: 14px; margin: 0; text-align: center; font-size: 13px; opacity: .82; }
@@ -1629,7 +1629,7 @@ body:not(.btfw-mobile-stack-enabled) #btfw-stack.btfw-stack--compact .btfw-stack
 @media (max-width: 720px) {
   .btfw-drive-library__search { grid-template-columns: minmax(0, 1fr) auto auto; }
   .btfw-drive-library__search [type="submit"] span { display: none; }
-  .btfw-drive-library__search [data-action="recent"], .btfw-drive-library__search [data-action="browse"] { grid-column: span 2; }
+  .btfw-drive-library__search [data-action="browse"] { grid-column: span 2; }
   .btfw-drive-library__settings { grid-template-columns: 1fr; }
   .btfw-drive-library__item { align-items: stretch; flex-direction: column; }
   .btfw-drive-library__actions .button { flex: 1; }
