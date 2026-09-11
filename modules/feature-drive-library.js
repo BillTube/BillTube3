@@ -7,6 +7,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
   const CACHE_TTL = 10 * 60 * 1000;
   let state = { endpoint: DEFAULT_ENDPOINT, token: "", drive: 0 };
   const driveCache = new Map();
+  const driveScans = new Map();
 
   function loadState(){
     try {
@@ -103,38 +104,58 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
   async function scanSelectedDrive(onProgress, fresh){
     const drive = state.drive;
     const cacheKey = `${state.endpoint}|${drive}`;
+    let active = driveScans.get(cacheKey);
+    if (active) {
+      if (onProgress) {
+        active.listeners.add(onProgress);
+        if (active.progress) onProgress(active.progress);
+      }
+      return active.promise.finally(() => onProgress && active.listeners.delete(onProgress));
+    }
+
     const cached = driveCache.get(cacheKey);
     if (!fresh && cached && Date.now() - cached.savedAt < CACHE_TTL) {
       if (onProgress) onProgress({ drive, files: cached.files.slice(), movies: cached.files.length, folders: cached.folders, pending: 0, cached: true, done: true });
       return cached.files;
     }
 
-    const folders = ["/"];
-    const visited = new Set();
-    const movies = [];
-    while (folders.length) {
-      const path = folders.shift();
-      if (visited.has(path)) continue;
-      visited.add(path);
-      let pageToken = null;
-      let pageIndex = 0;
-      do {
-        const data = await api({ action: "list", drive, path, pageToken, pageIndex });
-        for (const file of data.files || []) {
-          if (file.mimeType === FOLDER_TYPE) {
-            folders.push(`${path}${encodeURIComponent(file.name)}/`);
-          } else if (file.mimeType === "video/mp4" || MP4_RE.test(file.name || "")) {
-            movies.push(file);
+    active = { listeners: new Set(onProgress ? [onProgress] : []), progress: null, promise: null };
+    const publish = progress => {
+      active.progress = progress;
+      for (const listener of active.listeners) {
+        try { listener(progress); } catch (error) { console.warn("Drive scan progress listener failed", error); }
+      }
+    };
+    active.promise = (async () => {
+      const folders = ["/"];
+      const visited = new Set();
+      const movies = [];
+      while (folders.length) {
+        const path = folders.shift();
+        if (visited.has(path)) continue;
+        visited.add(path);
+        let pageToken = null;
+        let pageIndex = 0;
+        do {
+          const data = await api({ action: "list", drive, path, pageToken, pageIndex });
+          for (const file of data.files || []) {
+            if (file.mimeType === FOLDER_TYPE) {
+              folders.push(`${path}${encodeURIComponent(file.name)}/`);
+            } else if (file.mimeType === "video/mp4" || MP4_RE.test(file.name || "")) {
+              movies.push(file);
+            }
           }
-        }
-        pageToken = data.nextPageToken || null;
-        pageIndex++;
-        if (onProgress) onProgress({ drive, files: movies.slice(), movies: movies.length, folders: visited.size, pending: folders.length, cached: false, done: false });
-      } while (pageToken);
-    }
-    driveCache.set(cacheKey, { files: movies, folders: visited.size, savedAt: Date.now() });
-    if (onProgress) onProgress({ drive, files: movies.slice(), movies: movies.length, folders: visited.size, pending: 0, cached: false, done: true });
-    return movies;
+          pageToken = data.nextPageToken || null;
+          pageIndex++;
+          publish({ drive, files: movies.slice(), movies: movies.length, folders: visited.size, pending: folders.length, cached: false, done: false });
+        } while (pageToken);
+      }
+      driveCache.set(cacheKey, { files: movies, folders: visited.size, savedAt: Date.now() });
+      publish({ drive, files: movies.slice(), movies: movies.length, folders: visited.size, pending: 0, cached: false, done: true });
+      return movies;
+    })().finally(() => driveScans.delete(cacheKey));
+    driveScans.set(cacheKey, active);
+    return active.promise.finally(() => onProgress && active.listeners.delete(onProgress));
   }
 
   function absoluteLink(link){
