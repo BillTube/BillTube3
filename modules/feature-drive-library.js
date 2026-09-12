@@ -271,14 +271,13 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
     return root;
   }
 
-  function renderInto(results, files){
+  function renderInto(results, files, queued = playlistKeys()){
     const playable = (files || []).filter(isUsableMovie);
     if (!playable.length) {
       results.innerHTML = '<p class="btfw-drive-library__empty">No playable movies found.</p>';
       results._btfwFiles = [];
       return;
     }
-    const queued = playlistKeys();
     results.innerHTML = playable.map((file, index) => {
       const title = normalizeMovieTitle(file.name);
       const imported = queued.has(movieKey(title));
@@ -311,7 +310,14 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
     modal.innerHTML = `<div class="btfw-drive-library-modal__backdrop" data-close></div>
       <section class="btfw-drive-library-modal__panel" role="dialog" aria-modal="true" aria-labelledby="btfw-drive-modal-title">
         <header><div><h3 id="btfw-drive-modal-title">All movies</h3><p class="btfw-drive-library-modal__status" role="status"></p></div><button class="button" type="button" data-close aria-label="Close">×</button></header>
-        <input class="input btfw-drive-library-modal__filter" type="search" placeholder="Filter loaded movies…" autocomplete="off">
+        <div class="btfw-drive-library-modal__filters">
+          <input class="input btfw-drive-library-modal__filter" type="search" placeholder="Filter loaded movies…" autocomplete="off">
+          <select class="input btfw-drive-library-modal__playlist-filter" aria-label="Filter by playlist status">
+            <option value="all">All movies</option>
+            <option value="missing">Not in playlist</option>
+            <option value="queued">In playlist</option>
+          </select>
+        </div>
         <div class="btfw-drive-library__results"></div>
         <footer class="btfw-drive-library-modal__pager">
           <button class="button is-small" type="button" data-page="prev">Previous</button>
@@ -440,6 +446,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       const modalResults = modal.querySelector(".btfw-drive-library__results");
       const modalStatus = modal.querySelector(".btfw-drive-library-modal__status");
       const filter = modal.querySelector(".btfw-drive-library-modal__filter");
+      const playlistFilter = modal.querySelector(".btfw-drive-library-modal__playlist-filter");
       const pager = modal.querySelector(".btfw-drive-library-modal__pager");
       const pageKey = `${state.endpoint}|${state.drive}`;
       modal.querySelector("#btfw-drive-modal-title").textContent = `All movies · Drive ${state.drive}`;
@@ -449,7 +456,12 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       let page = drivePages.get(pageKey) || 0;
       const paint = () => {
         const term = filter.value.trim().toLowerCase();
-        const filtered = term ? allFiles.filter(file => `${file.name} ${normalizeMovieTitle(file.name)}`.toLowerCase().includes(term)) : allFiles;
+        const queued = playlistKeys();
+        const filtered = allFiles.filter(file => {
+          if (term && !`${file.name} ${normalizeMovieTitle(file.name)}`.toLowerCase().includes(term)) return false;
+          const imported = queued.has(movieKey(file.name));
+          return playlistFilter.value === "all" || (playlistFilter.value === "queued" ? imported : !imported);
+        });
         const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
         if (filtered.length) {
           page = Math.min(page, pages - 1);
@@ -460,7 +472,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
           modalResults.innerHTML = '<p class="btfw-drive-library__empty">Scanning folders… The first MP4 movies will appear here as soon as they are found.</p>';
           modalResults._btfwFiles = [];
         } else {
-          renderInto(modalResults, filtered.slice(visiblePage * PAGE_SIZE, (visiblePage + 1) * PAGE_SIZE));
+          renderInto(modalResults, filtered.slice(visiblePage * PAGE_SIZE, (visiblePage + 1) * PAGE_SIZE), queued);
         }
         const previous = pager.querySelector('[data-page="prev"]');
         const next = pager.querySelector('[data-page="next"]');
@@ -476,11 +488,13 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       };
       modal.querySelectorAll("[data-close]").forEach(button => button.onclick = close);
       filter.oninput = () => { page = 0; paint(); };
+      playlistFilter.onchange = () => { page = 0; paint(); };
       pager.querySelector('[data-page="prev"]').onclick = () => { if (page > 0) page--; paint(); };
       pager.querySelector('[data-page="next"]').onclick = () => { page++; paint(); };
       modal.hidden = false;
       document.body.classList.add("btfw-drive-modal-open");
       filter.value = "";
+      playlistFilter.value = "all";
       modalResults.innerHTML = "";
       modalStatus.textContent = "Loading movies…";
       paint();
