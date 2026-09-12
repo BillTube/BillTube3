@@ -3,10 +3,12 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
   const MP4_RE = /\.mp4$/i;
   const FOLDER_TYPE = "application/vnd.google-apps.folder";
   const PAGE_SIZE = 10;
-  const CACHE_TTL = 10 * 60 * 1000;
+  const CACHE_STORAGE_KEY = "btfw:drive-library:movie-cache:v1";
+  const CACHE_REFRESH_INTERVAL = 60 * 60 * 1000;
   let state = { endpoint: "", token: "", drive: 0 };
   const driveCache = new Map();
   const driveScans = new Map();
+  const drivePages = new Map();
 
   function loadState(){
     try {
@@ -19,6 +21,45 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
 
   function saveState(){
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+  }
+
+  function isUsableMovie(file){
+    return Number(file?.size) > 0 && (file.mimeType === "video/mp4" || MP4_RE.test(file?.name || ""));
+  }
+
+  function movieFileKey(file){
+    const name = String(file?.name || "").trim().toLowerCase();
+    return name ? `${name}|${Number(file?.size) || 0}` : String(file?.id || file?.link || "");
+  }
+
+  function compactMovie(file){
+    return {
+      id: file.id || "",
+      name: file.name || "",
+      link: file.link || "",
+      size: Number(file.size) || 0,
+      mimeType: file.mimeType || "",
+      createdTime: file.createdTime || "",
+      modifiedTime: file.modifiedTime || ""
+    };
+  }
+
+  function readPersistentCache(cacheKey){
+    try {
+      const stores = JSON.parse(localStorage.getItem(CACHE_STORAGE_KEY) || "{}");
+      const cached = stores[cacheKey];
+      if (!cached || !Array.isArray(cached.files)) return null;
+      const files = Array.from(new Map(cached.files.filter(isUsableMovie).map(file => [movieFileKey(file), file])).values());
+      return { files, folders: Number(cached.folders) || 0, savedAt: Number(cached.savedAt) || 0 };
+    } catch (_) { return null; }
+  }
+
+  function writePersistentCache(cacheKey, cached){
+    try {
+      const stores = JSON.parse(localStorage.getItem(CACHE_STORAGE_KEY) || "{}");
+      stores[cacheKey] = cached;
+      localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(stores));
+    } catch (error) { console.warn("Could not persist the Drive movie cache", error); }
   }
 
   function escapeHtml(value){
@@ -112,8 +153,12 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       return active.promise.finally(() => onProgress && active.listeners.delete(onProgress));
     }
 
-    const cached = driveCache.get(cacheKey);
-    if (!fresh && cached && Date.now() - cached.savedAt < CACHE_TTL) {
+    let cached = driveCache.get(cacheKey);
+    if (!cached) {
+      cached = readPersistentCache(cacheKey);
+      if (cached) driveCache.set(cacheKey, cached);
+    }
+    if (!fresh && cached && Date.now() - cached.savedAt < CACHE_REFRESH_INTERVAL) {
       if (onProgress) onProgress({ drive, files: cached.files.slice(), movies: cached.files.length, folders: cached.folders, pending: 0, cached: true, done: true });
       return cached.files;
     }
@@ -128,7 +173,8 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
     active.promise = (async () => {
       const folders = ["/"];
       const visited = new Set();
-      const movies = [];
+      const movies = new Map((cached?.files || []).filter(isUsableMovie).map(file => [movieFileKey(file), compactMovie(file)]));
+      if (cached) publish({ drive, files: Array.from(movies.values()), movies: movies.size, folders: cached.folders, pending: 1, cached: true, done: false });
       while (folders.length) {
         const path = folders.shift();
         if (visited.has(path)) continue;
@@ -140,18 +186,27 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
           for (const file of data.files || []) {
             if (file.mimeType === FOLDER_TYPE) {
               folders.push(`${path}${encodeURIComponent(file.name)}/`);
-            } else if (file.mimeType === "video/mp4" || MP4_RE.test(file.name || "")) {
-              movies.push(file);
+            } else if (isUsableMovie(file)) {
+              movies.set(movieFileKey(file), compactMovie(file));
             }
           }
           pageToken = data.nextPageToken || null;
           pageIndex++;
-          publish({ drive, files: movies.slice(), movies: movies.length, folders: visited.size, pending: folders.length, cached: false, done: false });
+          const files = Array.from(movies.values());
+          publish({ drive, files, movies: files.length, folders: visited.size, pending: folders.length, cached: false, done: false });
+          if (visited.size % 10 === 0) {
+            const partial = { files, folders: visited.size, savedAt: cached?.savedAt || 0 };
+            driveCache.set(cacheKey, partial);
+            writePersistentCache(cacheKey, partial);
+          }
         } while (pageToken);
       }
-      driveCache.set(cacheKey, { files: movies, folders: visited.size, savedAt: Date.now() });
-      publish({ drive, files: movies.slice(), movies: movies.length, folders: visited.size, pending: 0, cached: false, done: true });
-      return movies;
+      const files = Array.from(movies.values());
+      const complete = { files, folders: visited.size, savedAt: Date.now() };
+      driveCache.set(cacheKey, complete);
+      writePersistentCache(cacheKey, complete);
+      publish({ drive, files, movies: files.length, folders: visited.size, pending: 0, cached: false, done: true });
+      return files;
     })().finally(() => driveScans.delete(cacheKey));
     driveScans.set(cacheKey, active);
     return active.promise.finally(() => onProgress && active.listeners.delete(onProgress));
@@ -217,7 +272,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
   }
 
   function renderInto(results, files){
-    const playable = (files || []).filter(file => file.mimeType === "video/mp4" || MP4_RE.test(file.name || ""));
+    const playable = (files || []).filter(isUsableMovie);
     if (!playable.length) {
       results.innerHTML = '<p class="btfw-drive-library__empty">No playable movies found.</p>';
       results._btfwFiles = [];
@@ -386,29 +441,39 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
       const modalStatus = modal.querySelector(".btfw-drive-library-modal__status");
       const filter = modal.querySelector(".btfw-drive-library-modal__filter");
       const pager = modal.querySelector(".btfw-drive-library-modal__pager");
+      const pageKey = `${state.endpoint}|${state.drive}`;
       modal.querySelector("#btfw-drive-modal-title").textContent = `All movies · Drive ${state.drive}`;
       let allFiles = [];
       let cancelled = false;
       let scanning = true;
-      let page = 0;
+      let page = drivePages.get(pageKey) || 0;
       const paint = () => {
         const term = filter.value.trim().toLowerCase();
         const filtered = term ? allFiles.filter(file => `${file.name} ${normalizeMovieTitle(file.name)}`.toLowerCase().includes(term)) : allFiles;
         const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-        page = Math.min(page, pages - 1);
+        if (filtered.length) {
+          page = Math.min(page, pages - 1);
+          if (!term) drivePages.set(pageKey, page);
+        }
+        const visiblePage = filtered.length ? page : 0;
         if (!filtered.length && scanning) {
           modalResults.innerHTML = '<p class="btfw-drive-library__empty">Scanning folders… The first MP4 movies will appear here as soon as they are found.</p>';
           modalResults._btfwFiles = [];
         } else {
-          renderInto(modalResults, filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE));
+          renderInto(modalResults, filtered.slice(visiblePage * PAGE_SIZE, (visiblePage + 1) * PAGE_SIZE));
         }
         const previous = pager.querySelector('[data-page="prev"]');
         const next = pager.querySelector('[data-page="next"]');
-        previous.disabled = page === 0;
-        next.disabled = page >= pages - 1;
-        pager.querySelector("span").textContent = `Page ${page + 1} of ${pages} · ${filtered.length} ${scanning ? "loaded so far" : "movies"}`;
+        previous.disabled = visiblePage === 0;
+        next.disabled = visiblePage >= pages - 1;
+        pager.querySelector("span").textContent = `Page ${visiblePage + 1} of ${pages} · ${filtered.length} ${scanning ? "loaded so far" : "movies"}`;
       };
-      const close = () => { cancelled = true; modal.hidden = true; document.body.classList.remove("btfw-drive-modal-open"); };
+      const close = () => {
+        if (!filter.value.trim()) drivePages.set(pageKey, page);
+        cancelled = true;
+        modal.hidden = true;
+        document.body.classList.remove("btfw-drive-modal-open");
+      };
       modal.querySelectorAll("[data-close]").forEach(button => button.onclick = close);
       filter.oninput = () => { page = 0; paint(); };
       pager.querySelector('[data-page="prev"]').onclick = () => { if (page > 0) page--; paint(); };
@@ -434,7 +499,7 @@ BTFW.define("feature:driveLibrary", ["feature:playlist-tools"], async ({}) => {
           allFiles = progress.files;
           scanning = !progress.done;
           modalStatus.textContent = progress.cached
-            ? `Loaded ${progress.movies} cached MP4 movie${progress.movies === 1 ? "" : "s"}.`
+            ? `${progress.movies} cached MP4 movie${progress.movies === 1 ? "" : "s"} ready${progress.done ? "." : " · checking for new additions…"}`
             : progress.done
               ? `Finished scanning ${progress.folders} folders · ${progress.movies} MP4 movie${progress.movies === 1 ? "" : "s"}.`
               : `Scanning ${progress.folders} folder${progress.folders === 1 ? "" : "s"} · ${progress.movies} MP4 movie${progress.movies === 1 ? "" : "s"} found so far…`;
