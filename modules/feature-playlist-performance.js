@@ -8,6 +8,7 @@ BTFW.define("feature:playlistPerformance", [], function() {
   let currentVisibleCount = Infinity;
   let scrollHandler = null;
   let usesNativeVirtualization = false;
+  let usesStableLayout = false;
   let isSorting = false;
   let pendingOptimizationTimer = null;
 
@@ -47,7 +48,6 @@ BTFW.define("feature:playlistPerformance", [], function() {
       item.style.contentVisibility = contentVisibility === undefined ? '' : contentVisibility;
       item.style.containIntrinsicSize = intrinsicSize === undefined ? '' : intrinsicSize;
     });
-    removePerformanceIndicator();
   }
 
   function scheduleOptimization(delay = 120) {
@@ -180,6 +180,12 @@ BTFW.define("feature:playlistPerformance", [], function() {
       return;
     }
 
+    if (usesStableLayout) {
+      status.textContent = `${totalCount} items · stable layout for drag and drop`;
+      if (controls) controls.style.display = 'none';
+      return;
+    }
+
     if (controls) controls.style.display = 'flex';
     if (hiddenCount > 0) {
       status.textContent = `Showing ${shownCount} of ${totalCount} items (${hiddenCount} hidden for performance)`;
@@ -210,18 +216,23 @@ BTFW.define("feature:playlistPerformance", [], function() {
 
     const hadOptimization = isOptimized;
 
-    if (!hadOptimization || !Number.isFinite(currentVisibleCount)) {
-      currentVisibleCount = INITIAL_BATCH;
-    }
-
-    currentVisibleCount = Math.min(children.length, Math.max(currentVisibleCount, INITIAL_BATCH));
-    usesNativeVirtualization = SUPPORTS_CONTENT_VISIBILITY;
-
-    if (usesNativeVirtualization) {
-      applyNativeVirtualization(children);
-    } else {
-      applyVisibility(children);
-    }
+    // jQuery UI Sortable measures every row before and during a drag. Both
+    // content-visibility and display-based batching change those measurements
+    // as offscreen rows become real, which makes the placeholder jump in long
+    // playlists. Keep all queue rows in a stable layout; the playlist already
+    // has its own fixed-height scrolling viewport.
+    children.forEach(item => {
+      const display = originalDisplay.get(item);
+      const contentVisibility = originalContentVisibility.get(item);
+      const intrinsicSize = originalContainIntrinsicSize.get(item);
+      item.style.display = display === undefined ? '' : display;
+      item.style.contentVisibility = contentVisibility === undefined ? '' : contentVisibility;
+      item.style.containIntrinsicSize = intrinsicSize === undefined ? '' : intrinsicSize;
+    });
+    currentVisibleCount = children.length;
+    usesNativeVirtualization = false;
+    usesStableLayout = true;
+    ensurePollButtonsForVisibleItems(children);
 
     isOptimized = true;
 
@@ -229,20 +240,9 @@ BTFW.define("feature:playlistPerformance", [], function() {
     addPerformanceIndicator(children.length);
     updatePerformanceIndicator(children.length);
 
-    // Older browsers fall back to progressive batches. Chromium can keep the
-    // complete layout while skipping paint/layout work inside offscreen rows.
+    // Do not attach a progressive reveal watcher: hidden rows are incompatible
+    // with sortable's position cache for long-distance dragging.
     detachScrollWatcher(queue);
-    if (!usesNativeVirtualization) {
-      scrollHandler = () => {
-        if (!isOptimized) return;
-
-        if (queue.scrollTop + queue.clientHeight >= queue.scrollHeight - SCROLL_THRESHOLD) {
-          revealNextBatch();
-        }
-      };
-
-      queue.addEventListener('scroll', scrollHandler, { passive: true });
-    }
   }
 
   function restorePlaylist() {
@@ -262,6 +262,7 @@ BTFW.define("feature:playlistPerformance", [], function() {
     originalContainIntrinsicSize.clear();
     currentVisibleCount = Infinity;
     usesNativeVirtualization = false;
+    usesStableLayout = false;
     ensurePollButtonsForVisibleItems(children);
     isOptimized = false;
 
@@ -300,7 +301,9 @@ BTFW.define("feature:playlistPerformance", [], function() {
       </div>
     `;
 
-    queue.appendChild(indicator);
+    // Keep this outside #queue. Any non-entry child in the sortable container
+    // can become an invalid drop target or alter the bottom boundary.
+    queue.insertAdjacentElement('afterend', indicator);
     
     // Add show all button handler
     const showMoreBtn = indicator.querySelector('#btfw-show-more-items');
