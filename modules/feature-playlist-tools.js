@@ -600,6 +600,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
     const $q = jq && jq("#queue");
     if (!$q || !$q.length || !$q.data("uiSortable")) return false;
     $q.sortable("option", {
+      items: "> .queue_entry",
       scroll: true,
       scrollSensitivity: 70,
       scrollSpeed: 45

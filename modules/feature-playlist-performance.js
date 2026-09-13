@@ -8,6 +8,8 @@ BTFW.define("feature:playlistPerformance", [], function() {
   let currentVisibleCount = Infinity;
   let scrollHandler = null;
   let usesNativeVirtualization = false;
+  let isSorting = false;
+  let pendingOptimizationTimer = null;
 
   const INITIAL_BATCH = 120;
   const BATCH_SIZE = 80;
@@ -26,7 +28,55 @@ BTFW.define("feature:playlistPerformance", [], function() {
     const queue = getQueue();
     if (!queue) return [];
 
-    return Array.from(queue.children).filter(item => item.id !== 'btfw-playlist-performance-indicator');
+    return Array.from(queue.children).filter(item => item.classList?.contains('queue_entry'));
+  }
+
+  function clearPendingOptimization() {
+    if (pendingOptimizationTimer !== null) {
+      clearTimeout(pendingOptimizationTimer);
+      pendingOptimizationTimer = null;
+    }
+  }
+
+  function restoreRowGeometryForSort() {
+    getPlaylistItems().forEach(item => {
+      const display = originalDisplay.get(item);
+      const contentVisibility = originalContentVisibility.get(item);
+      const intrinsicSize = originalContainIntrinsicSize.get(item);
+      item.style.display = display === undefined ? item.style.display : display;
+      item.style.contentVisibility = contentVisibility === undefined ? '' : contentVisibility;
+      item.style.containIntrinsicSize = intrinsicSize === undefined ? '' : intrinsicSize;
+    });
+    removePerformanceIndicator();
+  }
+
+  function scheduleOptimization(delay = 120) {
+    clearPendingOptimization();
+    pendingOptimizationTimer = setTimeout(() => {
+      pendingOptimizationTimer = null;
+      if (isSorting) {
+        return;
+      }
+      if (isOptimized) optimizePlaylist();
+      checkAutoEnable();
+    }, delay);
+  }
+
+  function bindSortLifecycle() {
+    const queue = getQueue();
+    const jq = window.jQuery || window.$;
+    if (!queue || typeof jq !== 'function' || queue._btfwPerfSortLifecycle) return;
+    queue._btfwPerfSortLifecycle = true;
+    jq(queue)
+      .on('sortstart.btfwPlaylistPerformance', () => {
+        isSorting = true;
+        clearPendingOptimization();
+        if (isOptimized) restoreRowGeometryForSort();
+      })
+      .on('sortstop.btfwPlaylistPerformance', () => {
+        isSorting = false;
+        scheduleOptimization(160);
+      });
   }
 
   function ensurePollButtonForItem(item) {
@@ -151,6 +201,7 @@ BTFW.define("feature:playlistPerformance", [], function() {
   }
 
   function optimizePlaylist() {
+    if (isSorting) return;
     const queue = getQueue();
     if (!queue) return;
 
@@ -457,15 +508,13 @@ BTFW.define("feature:playlistPerformance", [], function() {
         return;
       }
 
-      if (isOptimized) {
-        // Re-apply optimization after playlist change
-        setTimeout(() => {
-          optimizePlaylist();
-        }, 100);
+      // jQuery UI temporarily removes/inserts queue rows as its placeholder
+      // moves. Re-optimizing during that lifecycle invalidates its geometry.
+      if (isSorting || queue.querySelector('.ui-sortable-helper, .ui-sortable-placeholder')) {
+        return;
       }
 
-      // Check if we should auto-enable
-      checkAutoEnable();
+      scheduleOptimization();
     });
     
     observer.observe(queue, {
@@ -479,6 +528,7 @@ BTFW.define("feature:playlistPerformance", [], function() {
     addToggleButton();
     addStackToggle();
     watchPlaylist();
+    bindSortLifecycle();
     checkAutoEnable();
     
   }
