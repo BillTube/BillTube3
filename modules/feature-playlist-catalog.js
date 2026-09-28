@@ -2,6 +2,7 @@
 BTFW.define("feature:playlistCatalog", [], async () => {
   const TMDB_API = "https://api.themoviedb.org";
   const PAGE_SIZE = 20;
+  const RENDER_BATCH_SIZE = 40;
   const $ = (sel, root = document) => root.querySelector(sel);
 
   const state = {
@@ -12,12 +13,18 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     queryEl: null,
     typeEl: null,
     sortEl: null,
+    directionEl: null,
     items: [],
     page: 0,
     totalPages: 1,
     totalResults: 0,
     loading: false,
+    pagePromise: null,
+    fullLoadPromise: null,
+    loadFailed: false,
     loadedAll: false,
+    visibleCount: RENDER_BATCH_SIZE,
+    filteredCount: 0,
     abort: null,
     scrollBound: false,
     authTimer: null,
@@ -145,7 +152,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       #btfw-playlist-catalogue .btfw-catalogue__view-toggle[aria-pressed="true"] { color:var(--btfw-color-text,#eef2ff); background:color-mix(in srgb,var(--btfw-color-accent) 16%,rgba(255,255,255,.06)); }
       #btfw-playlist-catalogue .btfw-catalogue__view-toggle[aria-pressed="true"] .btfw-catalogue__switch { border-color:color-mix(in srgb,var(--btfw-color-accent) 64%,#fff 10%); background:color-mix(in srgb,var(--btfw-color-accent) 62%,#10131a); }
       #btfw-playlist-catalogue .btfw-catalogue__view-toggle[aria-pressed="true"] .btfw-catalogue__switch::after { transform:translateX(13px); background:#fff; }
-      #btfw-playlist-catalogue .btfw-catalogue__filters { display:grid; grid-template-columns:minmax(210px,1fr) minmax(130px,.46fr) minmax(150px,.56fr); gap:10px; padding:14px 20px 16px; border-bottom:1px solid color-mix(in srgb,var(--btfw-border,#2a2f3a) 72%,transparent); background-color:var(--btfw-nested-surface-soft,color-mix(in srgb,var(--btfw-color-panel,#171d2b) 80%,transparent)); background-image:none; background-size:var(--btfw-panel-background-size); background-position:var(--btfw-panel-background-position); }
+      #btfw-playlist-catalogue .btfw-catalogue__filters { display:grid; grid-template-columns:minmax(210px,1fr) repeat(3,minmax(120px,.45fr)); gap:10px; padding:14px 20px 16px; border-bottom:1px solid color-mix(in srgb,var(--btfw-border,#2a2f3a) 72%,transparent); background-color:var(--btfw-nested-surface-soft,color-mix(in srgb,var(--btfw-color-panel,#171d2b) 80%,transparent)); background-image:none; background-size:var(--btfw-panel-background-size); background-position:var(--btfw-panel-background-position); }
       #btfw-playlist-catalogue .btfw-catalogue__filter { min-width:0; display:flex; flex-direction:column; gap:5px; color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 66%,transparent); font-size:.68rem; font-weight:700; letter-spacing:.075em; text-transform:uppercase; }
       #btfw-playlist-catalogue input, #btfw-playlist-catalogue select { box-sizing:border-box; width:100%; min-width:0; min-height:40px; border:1px solid color-mix(in srgb,var(--btfw-border,#2a2f3a) 70%,transparent); border-radius:12px; padding:9px 13px; color:var(--btfw-color-text,#eef2ff); background:color-mix(in srgb,var(--btfw-color-panel,#171d2b) 84%,transparent); box-shadow:inset 0 1px 0 rgba(255,255,255,.035); transition:border-color .14s ease,box-shadow .14s ease,background .14s ease; }
       #btfw-playlist-catalogue input::placeholder { color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 42%,transparent); }
@@ -222,7 +229,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     modal.innerHTML = `
       <section class="btfw-catalogue__dialog" role="dialog" aria-modal="true" aria-labelledby="btfw-catalogue-title">
         <header class="btfw-catalogue__head"><h2 id="btfw-catalogue-title">Movie Catalogue</h2><button type="button" class="btfw-catalogue__view-toggle" data-action="toggle-vhs" aria-label="Use VHS catalogue design" aria-pressed="false"><span>VHS</span><span class="btfw-catalogue__switch" aria-hidden="true"></span></button><button type="button" data-action="close" aria-label="Close catalogue">×</button></header>
-        <div class="btfw-catalogue__filters"><label class="btfw-catalogue__filter"><span>Search catalog</span><input type="search" data-role="query" placeholder="Find a movie…"></label><label class="btfw-catalogue__filter"><span>Format</span><select data-role="type"><option value="">All media</option><option value="movie">Movies</option><option value="tv">TV shows</option></select></label><label class="btfw-catalogue__filter"><span>Sort by</span><select data-role="sort"><option value="order">Default</option><option value="title">Title</option><option value="date">Release date</option><option value="rating">TMDB rating</option></select></label></div>
+        <div class="btfw-catalogue__filters"><label class="btfw-catalogue__filter"><span>Search catalog</span><input type="search" data-role="query" placeholder="Find a movie…"></label><label class="btfw-catalogue__filter"><span>Format</span><select data-role="type"><option value="">All media</option><option value="movie">Movies</option><option value="tv">TV shows</option></select></label><label class="btfw-catalogue__filter"><span>Sort by</span><select data-role="sort"><option value="order">Default</option><option value="title">Title</option><option value="date">Release date</option><option value="rating">TMDB rating</option></select></label><label class="btfw-catalogue__filter"><span>Order</span><select data-role="direction"><option value="asc">Ascending</option><option value="desc">Descending</option></select></label></div>
         <div class="btfw-catalogue__status" data-role="status"></div><main class="btfw-catalogue__body"><div class="btfw-catalogue__grid" data-role="list"></div></main>
         <footer class="btfw-catalogue__foot"><span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span><span class="btfw-catalogue__load-status" data-role="load-status"></span></footer>
       </section>`;
@@ -235,13 +242,37 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     state.queryEl = $("[data-role=query]", modal);
     state.typeEl = $("[data-role=type]", modal);
     state.sortEl = $("[data-role=sort]", modal);
+    state.directionEl = $("[data-role=direction]", modal);
     modal.addEventListener("click", event => { if (event.target === modal || event.target.closest("[data-action=close]")) closeModal(); });
     $("[data-action=toggle-vhs]", modal).addEventListener("click", () => setViewMode(state.viewMode === "vhs" ? "poster" : "vhs"));
     modal.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
-    [state.queryEl, state.typeEl, state.sortEl].forEach(el => el.addEventListener("input", () => { render(); if (state.queryEl.value.trim()) loadAllPages(); }));
+    const updateFilters = () => {
+      state.visibleCount = RENDER_BATCH_SIZE;
+      $(".btfw-catalogue__body", modal).scrollTop = 0;
+      render();
+      if (needsFullList()) loadAllPages();
+    };
+    [state.queryEl, state.typeEl, state.directionEl].forEach(el => el.addEventListener("input", updateFilters));
+    state.sortEl.addEventListener("change", () => {
+      state.directionEl.value = ["date", "rating"].includes(state.sortEl.value) ? "desc" : "asc";
+      updateFilters();
+    });
+    state.listEl.addEventListener("click", event => {
+      if (!event.target.closest("[data-action=retry-page]")) return;
+      state.loadFailed = false;
+      showStatus("");
+      if (needsFullList()) loadAllPages();
+      else loadNextPage();
+    });
     $(".btfw-catalogue__body", modal).addEventListener("scroll", event => {
       const el = event.currentTarget;
-      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 220) loadNextPage();
+      if (el.scrollTop + el.clientHeight < el.scrollHeight - 220) return;
+      if (state.loadedAll) {
+        if (state.visibleCount < state.filteredCount) {
+          state.visibleCount += RENDER_BATCH_SIZE;
+          render();
+        }
+      } else if (!state.loadFailed && !needsFullList()) loadNextPage();
     });
     return modal;
   }
@@ -252,38 +283,63 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   function itemTitle(item){ return item.title || item.name || item.original_title || item.original_name || "Untitled"; }
   function itemDate(item){ return item.release_date || item.first_air_date || ""; }
   function itemType(item){ return item.media_type || (item.title ? "movie" : "tv"); }
+  function needsFullList(){
+    return Boolean(state.queryEl?.value.trim() || state.typeEl?.value ||
+      (state.sortEl?.value || "order") !== "order" || state.directionEl?.value === "desc");
+  }
 
   function filteredItems(){
     const query = String(state.queryEl?.value || "").trim().toLowerCase();
     const type = state.typeEl?.value || "";
     const sort = state.sortEl?.value || "order";
+    const direction = state.directionEl?.value === "desc" ? -1 : 1;
     const rows = state.items.map((item, index) => ({ item, index })).filter(({ item }) => {
       if (type && itemType(item) !== type) return false;
       if (!query) return true;
       return [itemTitle(item), item.original_title, item.original_name, item.overview].filter(Boolean).join(" ").toLowerCase().includes(query);
     });
     rows.sort((a, b) => {
-      if (sort === "title") return itemTitle(a.item).localeCompare(itemTitle(b.item));
-      if (sort === "date") return String(itemDate(b.item)).localeCompare(String(itemDate(a.item)));
-      if (sort === "rating") return Number(b.item.vote_average || 0) - Number(a.item.vote_average || 0);
-      return a.index - b.index;
+      let comparison = 0;
+      if (sort === "title") comparison = itemTitle(a.item).localeCompare(itemTitle(b.item));
+      else if (sort === "date") {
+        const aDate = itemDate(a.item);
+        const bDate = itemDate(b.item);
+        if (!aDate || !bDate) return aDate ? -1 : bDate ? 1 : a.index - b.index;
+        comparison = aDate.localeCompare(bDate);
+      } else if (sort === "rating") comparison = Number(a.item.vote_average || 0) - Number(b.item.vote_average || 0);
+      else comparison = a.index - b.index;
+      return direction * comparison || a.index - b.index;
     });
     return rows.map(row => row.item);
   }
 
   function render(){
     if (!state.listEl) return;
-    const items = filteredItems();
     const total = Math.max(state.items.length, Number(state.totalResults || 0));
     const loadedText = total ? `${state.items.length}/${total} loaded` : `${state.items.length} loaded`;
-    const visibleText = items.length === state.items.length ? "" : ` · ${items.length} matching`;
-    const completeText = state.loadedAll && total ? ` · ${total} total` : "";
-    showLoadStatus(`${loadedText}${visibleText}${completeText}`);
-    if (!items.length) {
-      state.listEl.innerHTML = `<div class="btfw-catalogue__empty">${state.loading ? "Loading catalogue…" : "No matching titles found."}</div>`;
+    const completeText = state.loadedAll && !state.loadFailed && total ? ` · ${total} total` : "";
+    const sortingText = needsFullList() && !state.loadedAll && !state.loadFailed ? " · loading full catalog for accurate results" : "";
+    if (needsFullList() && !state.loadedAll) {
+      state.filteredCount = 0;
+      showLoadStatus(`${loadedText}${sortingText}`);
+      state.listEl.innerHTML = state.loadFailed
+        ? '<div class="btfw-catalogue__empty">Could not load the full catalog. <button type="button" data-action="retry-page">Retry loading</button></div>'
+        : '<div class="btfw-catalogue__empty">Loading the full catalog before sorting and filtering…</div>';
       return;
     }
-    state.listEl.innerHTML = items.map(item => {
+    const items = filteredItems();
+    state.filteredCount = items.length;
+    const visibleText = items.length === state.items.length ? "" : ` · ${items.length} matching`;
+    const shownText = state.loadedAll && items.length > state.visibleCount ? ` · ${state.visibleCount} shown` : "";
+    showLoadStatus(`${loadedText}${visibleText}${completeText}${shownText}`);
+    if (!items.length) {
+      const message = state.loadFailed ? 'Could not load the catalog. <button type="button" data-action="retry-page">Retry loading</button>' :
+        state.loading ? "Loading catalogue…" : "No matching titles found.";
+      state.listEl.innerHTML = `<div class="btfw-catalogue__empty">${message}</div>`;
+      return;
+    }
+    const visibleItems = state.loadedAll ? items.slice(0, state.visibleCount) : items;
+    state.listEl.innerHTML = visibleItems.map(item => {
       const poster = item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : "";
       const title = escapeHtml(itemTitle(item));
       const type = itemType(item) === "tv" ? "TV" : "Movie";
@@ -294,7 +350,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       const meta = `${type}${year ? ` · ${escapeHtml(year)}` : ""}${rating ? ` · ★ ${rating.toFixed(1)}` : ""}`;
       const overview = item.overview ? escapeHtml(item.overview) : "No synopsis available.";
       return `<article class="btfw-catalogue__card"><img class="btfw-catalogue__poster btfw-catalogue__poster--classic" ${poster ? `data-src="${escapeAttr(poster)}"` : ""} alt="" loading="lazy"><a class="btfw-catalogue__vhs" href="${url}" target="_blank" rel="noopener" aria-label="View ${escapeAttr(itemTitle(item))} on TMDB"><span class="btfw-catalogue__vhs-rotor"><span class="btfw-catalogue__vhs-face btfw-catalogue__vhs-front" aria-hidden="true"><span class="btfw-catalogue__vhs-label"><img class="btfw-catalogue__vhs-art" ${poster ? `data-src="${escapeAttr(poster)}"` : ""} alt="" loading="lazy"></span><span class="btfw-catalogue__vhs-reel btfw-catalogue__vhs-reel--left"></span><span class="btfw-catalogue__vhs-reel btfw-catalogue__vhs-reel--right"></span><span class="btfw-catalogue__vhs-mark">VHS · BT-120</span></span><span class="btfw-catalogue__vhs-face btfw-catalogue__vhs-back" aria-hidden="true"><span class="btfw-catalogue__vhs-info"><span class="btfw-catalogue__vhs-title">${title}</span><span class="btfw-catalogue__vhs-meta">${meta}</span><span class="btfw-catalogue__vhs-overview">${overview}</span></span></span></span></a><div class="btfw-catalogue__copy"><a class="btfw-catalogue__title" href="${url}" target="_blank" rel="noopener">${title}</a><div class="btfw-catalogue__meta">${meta}</div>${item.overview ? `<p class="btfw-catalogue__overview">${overview}</p>` : ""}</div></article>`;
-    }).join("");
+    }).join("") + (state.loadFailed ? '<div class="btfw-catalogue__empty"><button type="button" data-action="retry-page">Retry loading remaining titles</button></div>' : "");
     state.listEl.querySelectorAll("img[data-src]").forEach(img => { img.src = img.dataset.src; });
   }
 
@@ -314,35 +370,48 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     return response.json();
   }
 
-  async function loadNextPage(){
-    if (state.loading || state.loadedAll || !activeList()) return;
+  function loadNextPage(){
+    if (state.pagePromise) return state.pagePromise;
+    if (state.loadedAll || state.loadFailed || !activeList()) return Promise.resolve();
     state.loading = true;
     render();
-    try {
-      const next = state.page + 1;
-      const payload = await readListPage(next, state.abort?.signal);
-      showStatus("");
-      const items = Array.isArray(payload.items) ? payload.items : Array.isArray(payload.results) ? payload.results : [];
-      state.items.push(...items);
-      state.page = Number(payload.page || next);
-      state.totalPages = Math.max(1, Number(payload.total_pages || 1));
-      const totalResults = Number(payload.total_results ?? payload.total_items ?? 0);
-      if (Number.isFinite(totalResults) && totalResults >= 0) state.totalResults = Math.max(state.totalResults, totalResults);
-      state.loadedAll = state.page >= state.totalPages || !items.length;
-    } catch (error) {
-      showStatus(error?.message || "Unable to load catalogue.");
-      state.loadedAll = true;
-    } finally {
-      state.loading = false;
-      render();
-    }
+    state.pagePromise = (async () => {
+      try {
+        const next = state.page + 1;
+        const payload = await readListPage(next, state.abort?.signal);
+        showStatus("");
+        const items = Array.isArray(payload.items) ? payload.items : Array.isArray(payload.results) ? payload.results : [];
+        state.items.push(...items);
+        state.page = Number(payload.page || next);
+        state.totalPages = Math.max(1, Number(payload.total_pages || 1));
+        const totalResults = Number(payload.total_results ?? payload.total_items ?? 0);
+        if (Number.isFinite(totalResults) && totalResults >= 0) state.totalResults = Math.max(state.totalResults, totalResults);
+        state.loadedAll = state.page >= state.totalPages || !items.length;
+      } catch (error) {
+        state.loadFailed = true;
+        showStatus(`${error?.message || "Unable to load catalogue."} Results may be incomplete.`);
+      } finally {
+        state.loading = false;
+        state.pagePromise = null;
+        render();
+      }
+    })();
+    return state.pagePromise;
   }
 
-  async function loadAllPages(){
-    if (state.loading || state.loadedAll || !state.modal?.classList.contains("is-open")) return;
-    while (!state.loading && !state.loadedAll && state.modal?.classList.contains("is-open")) {
-      await loadNextPage();
-    }
+  function loadAllPages(){
+    if (state.fullLoadPromise) return state.fullLoadPromise;
+    if (state.loadedAll || state.loadFailed || !state.modal?.classList.contains("is-open") || !needsFullList()) return Promise.resolve();
+    state.fullLoadPromise = (async () => {
+      while (!state.loadedAll && !state.loadFailed && state.modal?.classList.contains("is-open") && needsFullList()) {
+        await loadNextPage();
+      }
+    })().finally(() => {
+      state.fullLoadPromise = null;
+      render();
+      if (!state.loadedAll && !state.loadFailed && needsFullList()) loadAllPages();
+    });
+    return state.fullLoadPromise;
   }
 
   async function openModal(){
@@ -351,12 +420,14 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     modal.setAttribute("aria-hidden", "false");
     if (!enabled()) { showStatus("The movie catalogue has not been configured for this channel."); return; }
     showStatus("");
-    if (!state.items.length) {
+    if (!state.items.length && !state.pagePromise) {
       state.abort?.abort();
       state.abort = new AbortController();
-      state.page = 0; state.totalPages = 1; state.totalResults = 0; state.loadedAll = false; state.items = [];
+      state.page = 0; state.totalPages = 1; state.totalResults = 0; state.loadedAll = false; state.loadFailed = false; state.items = []; state.visibleCount = RENDER_BATCH_SIZE;
       await loadNextPage();
-    } else render();
+    } else if (state.pagePromise) await state.pagePromise;
+    else render();
+    if (needsFullList()) loadAllPages();
     setTimeout(() => state.queryEl?.focus(), 0);
   }
 
