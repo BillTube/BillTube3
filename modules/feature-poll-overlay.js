@@ -489,14 +489,17 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   /* ---------- Random movie poll ---------- */
   const RANDOM_POLL_TITLE = "What should we watch next?";
-  const RANDOM_POLL_TIMER_RE = /\s*[·•]\s*(\d{1,2})\s*min(?:ute)?s?\s*$/i;
+  const RANDOM_POLL_TIMER_RE = /\s*[·•]\s*(\d{1,3})\s*(min(?:ute)?s?|sec(?:ond)?s?)\s*$/i;
   const RANDOM_POLL_DEFAULT_COUNT = 5;
   const RANDOM_POLL_DEFAULT_MINUTES = 2;
   const AUTO_POLL_TRIGGER_SECONDS = 2 * 60;
+  const AUTO_POLL_DURATION_SECONDS = 90;
+  const AUTO_POLL_QUEUE_BUFFER_SECONDS = 30;
+  const AUTO_POLL_MIN_VOTING_SECONDS = 30;
   const AUTO_POLL_MIN_DURATION_SECONDS = 30 * 60;
-  // Keep a small voting window if the 30-second fallback notices the trigger
-  // late; the poll no longer needs enough time to run its full two minutes.
-  const AUTO_POLL_MIN_REMAINING_SECONDS = 10;
+  // A late start must still leave time to vote and move the winner before
+  // the current movie ends.
+  const AUTO_POLL_MIN_REMAINING_SECONDS = AUTO_POLL_MIN_VOTING_SECONDS + AUTO_POLL_QUEUE_BUFFER_SECONDS;
   const AUTO_POLL_FALLBACK_INTERVAL_MS = 30 * 1000;
   let randomPollDraft = null;
   let automaticPoll = null;
@@ -591,8 +594,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
     return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
   }
 
-  function timedRandomPollTitle(minutes) {
-    return `${RANDOM_POLL_TITLE} · ${minutes} min`;
+  function timedRandomPollTitle(durationSeconds) {
+    const duration = durationSeconds % 60 === 0
+      ? `${durationSeconds / 60} min`
+      : `${durationSeconds} sec`;
+    return `${RANDOM_POLL_TITLE} · ${duration}`;
   }
 
   function activePlaylistRow() {
@@ -920,7 +926,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     });
   }
 
-  function launchAutomaticPoll({ movies, minutes, quiet = false, mediaKey = "", claimToken = "" }) {
+  function launchAutomaticPoll({ movies, minutes, durationSeconds = null, quiet = false, mediaKey = "", claimToken = "" }) {
     if (!randomMoviePollIntegrationEnabled || automaticPoll) return false;
     if (!hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) {
       if (!quiet) pollNotice("Poll and playlist move permissions are required.", "warn");
@@ -940,13 +946,15 @@ BTFW.define("feature:poll-overlay", [], async () => {
       return false;
     }
 
-    const pollMinutes = boundedInteger(minutes, 1, 15, RANDOM_POLL_DEFAULT_MINUTES);
+    const pollDurationSeconds = durationSeconds == null
+      ? boundedInteger(minutes, 1, 15, RANDOM_POLL_DEFAULT_MINUTES) * 60
+      : boundedInteger(durationSeconds, AUTO_POLL_MIN_VOTING_SECONDS, 15 * 60, AUTO_POLL_DURATION_SECONDS);
     const pollMovies = movies.map((movie) => ({ ...movie }));
-    const pollTitle = timedRandomPollTitle(pollMinutes);
+    const pollTitle = timedRandomPollTitle(pollDurationSeconds);
     automaticPoll = {
       phase: "opening",
       title: pollTitle,
-      minutes: pollMinutes,
+      durationSeconds: pollDurationSeconds,
       movies: pollMovies,
       counts: new Array(pollMovies.length).fill(0),
       source: quiet ? "credits" : "manual",
@@ -978,7 +986,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
         opts: launchedPoll.movies.map((movie) => movie.title),
         obscured: false,
         retainVotes: true,
-        timeout: launchedPoll.minutes * 60
+        timeout: launchedPoll.durationSeconds
       }, (result) => {
         if (result?.error) rollbackLaunch(result.error.message);
       });
@@ -1093,7 +1101,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       control = document.createElement("label");
       control.id = "btfw-auto-credits-poll-control";
       control.className = "btfw-auto-credits-poll-control";
-      control.title = "Automatically start a 5-movie poll when two minutes remain";
+      control.title = "Automatically start a 5-movie poll with up to 90 seconds of voting when two minutes remain";
       control.innerHTML = '<input type="checkbox"><span>Auto credits polls</span>';
       control.querySelector("input").addEventListener("change", (event) => {
         const enabled = Boolean(event.target.checked);
@@ -1174,9 +1182,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
         releaseAutoCreditsClaim(mediaKey, claimToken);
         return;
       }
+      const votingSeconds = Math.min(
+        AUTO_POLL_DURATION_SECONDS,
+        Math.floor(latestRemaining - AUTO_POLL_QUEUE_BUFFER_SECONDS)
+      );
       const started = launchAutomaticPoll({
         movies,
-        minutes: RANDOM_POLL_DEFAULT_MINUTES,
+        durationSeconds: votingSeconds,
         quiet: true,
         mediaKey,
         claimToken
@@ -1455,7 +1467,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
     let durationSeconds = Number(poll?.timeout);
 
     if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-      durationSeconds = titleMatch ? Number.parseInt(titleMatch[1], 10) * 60 : 0;
+      durationSeconds = titleMatch
+        ? Number.parseInt(titleMatch[1], 10) * (/^min/i.test(titleMatch[2]) ? 60 : 1)
+        : 0;
     }
 
     let openedAt = Number(poll?.timestamp);
