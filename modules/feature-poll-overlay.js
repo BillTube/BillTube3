@@ -492,9 +492,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
   const RANDOM_POLL_TIMER_RE = /\s*[·•]\s*(\d{1,2})\s*min(?:ute)?s?\s*$/i;
   const RANDOM_POLL_DEFAULT_COUNT = 5;
   const RANDOM_POLL_DEFAULT_MINUTES = 2;
-  const AUTO_POLL_TRIGGER_SECONDS = 4 * 60;
+  const AUTO_POLL_TRIGGER_SECONDS = 2 * 60;
   const AUTO_POLL_MIN_DURATION_SECONDS = 30 * 60;
-  const AUTO_POLL_MIN_REMAINING_SECONDS = RANDOM_POLL_DEFAULT_MINUTES * 60 + 10;
+  // Keep a small voting window if the 30-second fallback notices the trigger
+  // late; the poll no longer needs enough time to run its full two minutes.
+  const AUTO_POLL_MIN_REMAINING_SECONDS = 10;
   const AUTO_POLL_FALLBACK_INTERVAL_MS = 30 * 1000;
   let randomPollDraft = null;
   let automaticPoll = null;
@@ -1091,7 +1093,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       control = document.createElement("label");
       control.id = "btfw-auto-credits-poll-control";
       control.className = "btfw-auto-credits-poll-control";
-      control.title = "Automatically start a 5-movie poll when four minutes remain";
+      control.title = "Automatically start a 5-movie poll when two minutes remain";
       control.innerHTML = '<input type="checkbox"><span>Auto credits polls</span>';
       control.querySelector("input").addEventListener("change", (event) => {
         const enabled = Boolean(event.target.checked);

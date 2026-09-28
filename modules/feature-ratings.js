@@ -36,7 +36,7 @@ BTFW.define("feature:ratings", [], async () => {
   const DEFAULT_MIN_RANK = -1;
   const CHECK_INTERVAL_MS = 1200;
   const STATS_DEBOUNCE_MS = 400;
-  const STATS_REFRESH_INTERVAL_MS = 20000;
+  const STATS_REFRESH_INTERVAL_MS = 60000;
   const MIN_MEDIA_DURATION_SECONDS = 60 * 60;
   const FINAL_WINDOW_SECONDS = 15 * 60;
   const TIME_TOLERANCE_SECONDS = 1;
@@ -72,6 +72,7 @@ BTFW.define("feature:ratings", [], async () => {
     lastVote: null,
     isSubmitting: false,
     lastStatsRequest: 0,
+    statsRequestKey: "",
     statsTimer: null,
     playbackTimer: null,
 
@@ -1324,6 +1325,7 @@ BTFW.define("feature:ratings", [], async () => {
 
     if (!shouldDisplayRatings(duration, currentTime)) {
       hideRatings();
+      if (state.statsTimer) { clearTimeout(state.statsTimer); state.statsTimer = null; }
       return;
     }
 
@@ -1332,6 +1334,9 @@ BTFW.define("feature:ratings", [], async () => {
 
     if (!wasVisible && state.ratingVisible) {
       announceRatingWindow();
+      // Refresh when voting opens so the active panel starts with current
+      // stats, even if the one-time movie lookup happened earlier.
+      refreshStats(true);
     }
   }
 
@@ -1361,20 +1366,24 @@ BTFW.define("feature:ratings", [], async () => {
 
   function scheduleStatsRefresh() {
     if (state.statsTimer) { clearTimeout(state.statsTimer); state.statsTimer = null; }
+    if (!state.ratingVisible) return;
     state.statsTimer = setTimeout(() => refreshStats(false), STATS_REFRESH_INTERVAL_MS);
   }
 
   async function refreshStats(force) {
-    if (!state.currentKey) return;
+    if (!state.currentKey || !state.ratingVisible) return;
+    const mediaKey = state.currentKey;
+    if (state.statsRequestKey === mediaKey) return;
     const endpoint = ensureEndpoint();
     if (!endpoint) { updateVisibility(); return; }
 
     const now = Date.now();
     if (!force && now - state.lastStatsRequest < STATS_DEBOUNCE_MS) return;
     state.lastStatsRequest = now;
+    state.statsRequestKey = mediaKey;
 
     const channel = resolveChannelName();
-    const params = new URLSearchParams({ channel, mediaKey: state.currentKey });
+    const params = new URLSearchParams({ channel, mediaKey });
     try { params.set("userKey", buildUserKey()); } catch {}
     const url = `${endpoint}/stats?${params.toString()}`;
 
@@ -1382,6 +1391,7 @@ BTFW.define("feature:ratings", [], async () => {
       const resp = await fetch(url, { credentials: "omit" });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const payload = await resp.json();
+      if (state.currentKey !== mediaKey) return;
       const u = Number(payload?.userScore);
       state.stats = {
         avg: Number(payload?.avg) || 0,
@@ -1391,11 +1401,11 @@ BTFW.define("feature:ratings", [], async () => {
       if (state.stats.user) {
         state.lastVote = state.stats.user;
         // persist optimistic self-vote cache
-        try { localStorage.setItem(LS_SELF_PREFIX + state.currentKey, String(state.lastVote)); } catch {}
+        try { localStorage.setItem(LS_SELF_PREFIX + mediaKey, String(state.lastVote)); } catch {}
       } else {
         // attempt to load cached self-vote if any
         try {
-          const cached = Number(localStorage.getItem(LS_SELF_PREFIX + state.currentKey));
+          const cached = Number(localStorage.getItem(LS_SELF_PREFIX + mediaKey));
           if (Number.isFinite(cached) && cached >= 1 && cached <= 5) {
             state.lastVote = cached;
           }
@@ -1403,18 +1413,24 @@ BTFW.define("feature:ratings", [], async () => {
       }
       setError("");
     } catch (err) {
+      if (state.currentKey !== mediaKey) return;
       console.warn("[ratings] stats fetch failed", err);
       setError("Stats unavailable");
       // fallback: load cached self vote for UI
       try {
-        const cached = Number(localStorage.getItem(LS_SELF_PREFIX + state.currentKey));
+        const cached = Number(localStorage.getItem(LS_SELF_PREFIX + mediaKey));
         if (Number.isFinite(cached) && cached >= 1 && cached <= 5) state.lastVote = cached;
       } catch {}
+    } finally {
+      if (state.statsRequestKey === mediaKey) state.statsRequestKey = "";
     }
 
-    updateVisibility();
-    updateTopbarPill();
-    scheduleStatsRefresh();
+    if (state.currentKey === mediaKey) {
+      updateVisibility();
+      updateTopbarPill();
+      scheduleStatsRefresh();
+    }
+    if (state.statsRequestKey === mediaKey) state.statsRequestKey = "";
   }
 
   /* ---------- Topbar community-rating pill ----------
@@ -1569,6 +1585,8 @@ BTFW.define("feature:ratings", [], async () => {
     updatePlaybackFromPlayer();
     updateVisibility();
     updateTopbarPill();
+    // Load the overall rating once for this movie so the topbar can display
+    // it outside the voting window. Recurring refreshes remain window-gated.
     refreshStats(true);
     startPlaybackPolling();
   }
