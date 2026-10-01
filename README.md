@@ -63,6 +63,7 @@ flowchart LR
 
 - Now-playing cards with posters, summaries, and ratings
 - Movie polls with TMDB information
+- Random movie and automatic credits polls select across the full loaded playlist, mix the 1980s–2020s where title years are available, and avoid recent nominations when possible. Winners stay excluded using browser-local history for each channel; owners can view and clear it under **Movie history** beside the poll controls. History starts when this version is used and also includes manual random movie poll winners.
 - A searchable playlist catalogue
 - End-of-movie audience ratings and a channel leaderboard
 - Movie cards posted by the `!summary` chat command

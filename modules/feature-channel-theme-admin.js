@@ -4548,7 +4548,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                 </span>
               </button>
               <input type="checkbox" id="btfw-theme-random-movie-poll-enabled" data-btfw-bind="integrations.randomMoviePoll.enabled" hidden>
-              <p class="help">Shows the random movie poll button to users with poll permissions and the session-only automatic credits poll toggle to the channel owner.</p>
+              <p class="help">Shows the random movie poll button to users with poll permissions and the session-only automatic credits poll toggle to the channel owner. Polls mix decades where title years are available and exclude previous winners using clearable history saved in this browser for this channel.</p>
             </div>
           </div>
         </details>
