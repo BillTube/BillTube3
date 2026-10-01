@@ -9,7 +9,7 @@ const { test } = require('node:test');
 const source = fs.readFileSync(path.join(__dirname, '../modules/feature-poll-overlay.js'), 'utf8')
   .replace('name: "feature:poll-overlay",', `
     sampleMovies, eligiblePlaylistMovies, playlistMovieMetadata,
-    readMovieHistory, saveMovieHistory, recordMovieWinner, syncMovieHistoryControl,
+    readMovieHistory, saveMovieHistory, recordMovieWinner, syncMovieHistoryControl, removeMovieHistoryControl,
     launchAutomaticPoll, trackAutomaticPoll, finishAutomaticPoll,
     name: "feature:poll-overlay",`);
 
@@ -30,22 +30,31 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
   const elements = new Map();
   function element(tag) {
     const node = {
-      children: [], listeners: {}, textContent: '',
+      children: [], listeners: {}, attributes: {}, textContent: '', tag, open: false,
+      setAttribute(name, value) { this.attributes[name] = value; },
+      focus() { this.focused = true; },
+      showModal() { this.open = true; },
+      close() { this.open = false; this.listeners.close?.(); },
+      getBoundingClientRect: () => ({ left: 100, right: 500, top: 100, bottom: 500 }),
       addEventListener(event, callback) { this.listeners[event] = callback; },
-      appendChild(child) { this.children.push(child); if (child.id) elements.set(child.id, child); },
+      appendChild(child) { this.children.push(child); child.isConnected = true; if (child.id) elements.set(child.id, child); },
       replaceChildren() { this.children = []; },
       remove() { elements.delete(this.id); },
       querySelector(selector) { return this.parts?.[selector] || null; },
       set innerHTML(value) {
         this.value = value;
-        if (tag === 'details') this.parts = { summary: element('summary'), button: element('button'), ol: element('ol') };
+        if (tag === 'button') this.parts = { span: element('span') };
+        if (tag === 'dialog') this.parts = {
+          '.btfw-history-close': element('button'), '.btfw-history-clear': element('button'),
+          '.btfw-history-list': element('ol'), '.btfw-history-empty': element('p')
+        };
       }
     };
     return node;
   }
   const controls = showControls ? element('div') : null;
   const document = {
-    readyState: 'loading', body: { dataset: {} },
+    readyState: 'loading', body: Object.assign(element('body'), { dataset: {} }),
     addEventListener() {}, getElementById: (id) => elements.get(id) || null,
     createElement: element,
     querySelector(selector) {
@@ -155,11 +164,44 @@ test('history control displays winners and its clear button restores eligibility
   api.syncMovieHistoryControl();
   api.recordMovieWinner(api.eligiblePlaylistMovies()[0]);
   const control = elements.get('btfw-movie-poll-history');
-  assert.equal(control.querySelector('summary').textContent, 'Movie history (1)');
-  assert.equal(control.querySelector('ol').children[0].textContent, '<Movie> (1990)');
-  control.querySelector('button').listeners.click();
-  assert.equal(control.querySelector('summary').textContent, 'Movie history (0)');
+  const dialog = elements.get('btfw-movie-history-dialog');
+  assert.equal(control.tag, 'button');
+  assert.equal(control.attributes['aria-haspopup'], 'dialog');
+  assert.equal(control.querySelector('span').textContent, 'Movie history (1)');
+  assert.equal(dialog.querySelector('.btfw-history-list').children[0].textContent, '<Movie> (1990)');
+  assert.equal(dialog.open, false);
+  control.listeners.click();
+  assert.equal(dialog.open, true);
+  dialog.querySelector('.btfw-history-clear').listeners.click();
+  assert.equal(control.querySelector('span').textContent, 'Movie history (0)');
+  assert.equal(dialog.querySelector('.btfw-history-empty').hidden, false);
+  assert.equal(dialog.querySelector('.btfw-history-clear').disabled, true);
+  assert.equal(dialog.querySelector('.btfw-history-close').focused, true);
+  assert.equal(dialog.open, true);
   assert.equal(api.eligiblePlaylistMovies().length, 2);
+});
+
+test('history modal closes and restores focus, and ignores clicks and drags from inside', async () => {
+  const { api, elements } = await harness([movieRow(0, 'Current'), movieRow(1, 'A')], new Map(), false, true);
+  api.syncMovieHistoryControl();
+  const control = elements.get('btfw-movie-poll-history');
+  const dialog = elements.get('btfw-movie-history-dialog');
+  control.listeners.click();
+  dialog.querySelector('.btfw-history-close').listeners.click();
+  assert.equal(dialog.open, false);
+  assert.equal(control.focused, true);
+  control.listeners.click();
+  dialog.listeners.pointerdown({ target: dialog, clientX: 150, clientY: 150 });
+  dialog.listeners.click({ target: dialog, clientX: 50, clientY: 50 });
+  assert.equal(dialog.open, true);
+  dialog.listeners.pointerdown({ target: dialog, clientX: 50, clientY: 50 });
+  dialog.listeners.click({ target: dialog, clientX: 50, clientY: 50 });
+  assert.equal(dialog.open, false);
+  control.listeners.click();
+  api.removeMovieHistoryControl();
+  assert.equal(dialog.open, false);
+  assert.equal(elements.has('btfw-movie-history-dialog'), false);
+  assert.equal(elements.has('btfw-movie-poll-history'), false);
 });
 
 test('duplicates of the currently playing movie are excluded', async () => {

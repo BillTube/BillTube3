@@ -252,15 +252,74 @@ BTFW.define("feature:poll-overlay", [], async () => {
       color: var(--btfw-color-text);
     }
 
-    #btfw-movie-poll-history {
-      margin: 10px 0;
+    #pollwrap #btfw-movie-poll-history {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 10px;
+      border: 1px solid color-mix(in srgb, var(--btfw-color-text) 22%, transparent);
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--btfw-color-text) 8%, transparent);
       color: var(--btfw-color-text);
       font-size: .85rem;
+      cursor: pointer;
     }
 
-    #btfw-movie-poll-history summary { cursor: pointer; }
-    #btfw-movie-poll-history p { max-width: 520px; margin: 8px 0; }
-    #btfw-movie-poll-history ol { max-height: 220px; overflow-y: auto; padding-left: 24px; }
+    #btfw-movie-poll-history:active,
+    #btfw-movie-history-dialog button:active { transform: scale(.97); }
+    #btfw-movie-poll-history:focus-visible,
+    #btfw-movie-history-dialog button:focus-visible {
+      outline: 2px solid var(--btfw-color-accent, #4ade80);
+      outline-offset: 3px;
+    }
+
+    #btfw-movie-history-dialog {
+      box-sizing: border-box;
+      width: min(440px, calc(100vw - 32px));
+      max-height: calc(100dvh - 48px);
+      padding: 0;
+      border: 1px solid color-mix(in srgb, var(--btfw-color-accent, #4ade80) 28%, transparent);
+      border-radius: 14px;
+      background: var(--btfw-color-panel, #171d2b);
+      color: var(--btfw-color-text, #eef2ff);
+      box-shadow: 0 20px 70px rgba(0, 0, 0, .5);
+      overflow: auto;
+    }
+
+    #btfw-movie-history-dialog::backdrop { background: rgba(0, 0, 0, .65); }
+    #btfw-movie-history-dialog .btfw-history-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px 10px;
+    }
+    #btfw-movie-history-dialog h3 { margin: 0; font-size: 1.1rem; color: inherit; }
+    #btfw-movie-history-dialog button {
+      border: 1px solid color-mix(in srgb, var(--btfw-color-text, #eef2ff) 20%, transparent);
+      border-radius: 7px;
+      padding: 7px 11px;
+      background: color-mix(in srgb, var(--btfw-color-text, #eef2ff) 8%, transparent);
+      color: inherit;
+      cursor: pointer;
+    }
+    #btfw-movie-history-dialog .btfw-history-close { font-size: 20px; line-height: 1; }
+    #btfw-movie-history-dialog button:disabled { opacity: .45; cursor: default; }
+    #btfw-movie-history-dialog .btfw-history-description { margin: 0; padding: 0 18px 14px; font-size: .85rem; line-height: 1.5; }
+    #btfw-movie-history-dialog .btfw-history-list {
+      max-height: min(300px, 45dvh);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      margin: 0 18px;
+      padding: 0 0 0 24px;
+    }
+    #btfw-movie-history-dialog .btfw-history-list li { padding: 7px 0 7px 4px; overflow-wrap: anywhere; }
+    #btfw-movie-history-dialog .btfw-history-empty { margin: 0 18px; padding: 18px 0; font-size: .9rem; }
+    #btfw-movie-history-dialog .btfw-history-footer {
+      display: flex;
+      justify-content: flex-end;
+      padding: 14px 18px 18px;
+    }
 
     #pollwrap .btfw-random-poll-builder {
       box-sizing: border-box;
@@ -1215,32 +1274,85 @@ BTFW.define("feature:poll-overlay", [], async () => {
     else if (!autoCreditsPollEnabled && autoCreditsPollTimer) stopAutoCreditsPolling();
   }
 
+  function removeMovieHistoryControl() {
+    const dialog = document.getElementById("btfw-movie-history-dialog");
+    if (dialog?.open) dialog.close();
+    dialog?.remove();
+    document.getElementById("btfw-movie-poll-history")?.remove();
+  }
+
   function syncMovieHistoryControl() {
     const controls = document.querySelector("#pollwrap .poll-controls");
     let control = document.getElementById("btfw-movie-poll-history");
     if (!randomMoviePollIntegrationEnabled || !isChannelOwner() || !hasChannelPermission("pollctl")) {
-      control?.remove();
+      removeMovieHistoryControl();
       return;
     }
     if (!controls) return;
     if (!control) {
-      control = document.createElement("details");
+      control = document.createElement("button");
       control.id = "btfw-movie-poll-history";
-      control.innerHTML = '<summary></summary><p>Previous poll winners are excluded on this browser for this channel. Clear history to make them eligible again.</p><button type="button" class="button is-small">Clear movie history</button><ol></ol>';
-      control.querySelector("button").addEventListener("click", () => {
-        saveMovieHistory({ winners: [], recentPolls: [] });
-        if (randomPollDraft) rerollRandomMovies();
-        pollNotice("Movie poll history cleared. Previous winners are eligible again.", "success");
+      control.type = "button";
+      control.className = "btn btn-sm btn-default button is-small";
+      control.setAttribute("aria-haspopup", "dialog");
+      control.setAttribute("aria-controls", "btfw-movie-history-dialog");
+      control.innerHTML = '<i class="fa fa-history" aria-hidden="true"></i><span></span>';
+      control.addEventListener("click", () => {
+        syncMovieHistoryControl();
+        const dialog = document.getElementById("btfw-movie-history-dialog");
+        if (dialog && !dialog.open) dialog.showModal();
       });
       controls.appendChild(control);
     }
+    let dialog = document.getElementById("btfw-movie-history-dialog");
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.id = "btfw-movie-history-dialog";
+      dialog.setAttribute("aria-labelledby", "btfw-movie-history-heading");
+      dialog.setAttribute("aria-describedby", "btfw-movie-history-description");
+      dialog.innerHTML = `
+        <div class="btfw-history-head">
+          <h3 id="btfw-movie-history-heading">Movie history</h3>
+          <button type="button" class="btfw-history-close" aria-label="Close movie history" autofocus>&times;</button>
+        </div>
+        <p id="btfw-movie-history-description" class="btfw-history-description">Previous poll winners are excluded on this browser for this channel. Clear history to make them eligible again.</p>
+        <p class="btfw-history-empty">No winners yet. Movies will appear here after they win a poll.</p>
+        <ol class="btfw-history-list" aria-label="Previous poll winners"></ol>
+        <div class="btfw-history-footer"><button type="button" class="btfw-history-clear">Clear movie history</button></div>`;
+      dialog.querySelector(".btfw-history-close").addEventListener("click", () => dialog.close());
+      dialog.addEventListener("close", () => {
+        const trigger = document.getElementById("btfw-movie-poll-history");
+        if (trigger?.isConnected) trigger.focus();
+      });
+      // Only dismiss for a press that starts and ends outside the modal.
+      const outsideDialog = (event) => {
+        const rect = dialog.getBoundingClientRect();
+        return event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right
+          || event.clientY < rect.top || event.clientY > rect.bottom);
+      };
+      let backdropPress = false;
+      dialog.addEventListener("pointerdown", (event) => { backdropPress = outsideDialog(event); });
+      dialog.addEventListener("click", (event) => {
+        if (backdropPress && outsideDialog(event)) dialog.close();
+        backdropPress = false;
+      });
+      dialog.querySelector(".btfw-history-clear").addEventListener("click", () => {
+        saveMovieHistory({ winners: [], recentPolls: [] });
+        if (randomPollDraft) rerollRandomMovies();
+        dialog.querySelector(".btfw-history-close").focus();
+        pollNotice("Movie poll history cleared. Previous winners are eligible again.", "success");
+      });
+      document.body.appendChild(dialog);
+    }
     const history = readMovieHistory();
     const signature = JSON.stringify(history);
-    if (control._historySignature === signature) return;
-    control._historySignature = signature;
-    control.querySelector("summary").textContent = `Movie history (${history.winners.length})`;
-    control.querySelector("button").disabled = !history.winners.length && !history.recentPolls.length;
-    const list = control.querySelector("ol");
+    const label = `Movie history (${history.winners.length})`;
+    if (control.querySelector("span").textContent !== label) control.querySelector("span").textContent = label;
+    if (dialog._historySignature === signature) return;
+    dialog._historySignature = signature;
+    dialog.querySelector(".btfw-history-clear").disabled = !history.winners.length && !history.recentPolls.length;
+    dialog.querySelector(".btfw-history-empty").hidden = history.winners.length > 0;
+    const list = dialog.querySelector(".btfw-history-list");
     list.replaceChildren();
     history.winners.slice().reverse().forEach((movie) => {
       const item = document.createElement("li");
@@ -1355,7 +1467,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       document.querySelector("#pollwrap .btfw-random-poll-builder")?.remove();
       document.getElementById("btfw-random-poll-btn")?.remove();
       document.getElementById("btfw-auto-credits-poll-control")?.remove();
-      document.getElementById("btfw-movie-poll-history")?.remove();
+      removeMovieHistoryControl();
       if (wrap?._btfwRandomPollObserver) {
         wrap._btfwRandomPollObserver.disconnect();
         delete wrap._btfwRandomPollObserver;
