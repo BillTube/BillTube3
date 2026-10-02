@@ -2,11 +2,51 @@
 $(document).ready(function () {
   var session = null;
   var castPlayer = null;
-  var CHECK_INTERVAL = 120000; // Sync every 120 seconds
-  var SYNC_THRESHOLD = 20;     // Sync if time difference > 20 seconds
+  var CHECK_INTERVAL = 10000;
+  var SYNC_THRESHOLD = 5;
   var player = null;
   var castAvailable = false;
   var syncInterval = null;
+  var boundPlayer = null;
+  var roomKey = currentMediaKey();
+  var roomSample = null;
+  var awaitingRoom = false;
+  var sourceReady = true;
+  var castKey = null;
+  var pendingLoad = null;
+  var generation = 0;
+  var statusPending = false;
+
+  function mediaKey(media) {
+    if (!media || !media.type || media.id == null) return null;
+    return String(media.type).toLowerCase() + ':' + String(media.id);
+  }
+
+  function currentMediaKey() {
+    return window.PLAYER && mediaKey({ type: window.PLAYER.mediaType, id: window.PLAYER.mediaId });
+  }
+
+  function validTime(value) {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+  }
+
+  function playbackTarget() {
+    if (window.socket && (window.socket.connected === false || awaitingRoom)) return null;
+    if (!isDirectMedia()) return null;
+    if (roomKey && currentMediaKey() && roomKey !== currentMediaKey()) return null;
+    if (roomSample) {
+      var age = (Date.now() - roomSample.at) / 1000;
+      if (age > 30) return null; // Never seek using a stale room clock.
+      return { time: roomSample.time + (roomSample.paused ? 0 : age), paused: roomSample.paused };
+    }
+    // Until the first room sample, a ready local player can seed a new session.
+    if (window.socket && castPlayer) return null;
+    if (sourceReady && player && typeof player.readyState === 'function' && player.readyState() >= 2) {
+      var time = player.currentTime();
+      if (validTime(time)) return { time: time, paused: player.paused() };
+    }
+    return null;
+  }
 
   function getMediaType() {
     try {
@@ -118,8 +158,11 @@ $(document).ready(function () {
 
   /* ------------------------------ Player wiring ------------------------------- */
   function initializePlayer() {
-    if ($('#ytapiplayer').length) {
+    if ($('#ytapiplayer').length && typeof videojs === 'function') {
       player = videojs('ytapiplayer');
+      if (player !== boundPlayer && typeof player.readyState === 'function' && player.readyState() >= 2) {
+        sourceReady = true;
+      }
       attachPlayerEventListeners();
       updateCastButtonVisibility();
     } else {
@@ -128,50 +171,32 @@ $(document).ready(function () {
   }
 
   function attachPlayerEventListeners() {
-    if (!player) return;
+    if (!player || player === boundPlayer) return;
+    if (boundPlayer && typeof boundPlayer.off === 'function') {
+      boundPlayer.off('play', syncPlaybackTime);
+      boundPlayer.off('pause', syncPlaybackTime);
+      boundPlayer.off('seeked', syncPlaybackTime);
+      boundPlayer.off('loadstart', onLocalLoadStart);
+      boundPlayer.off('loadeddata', onLocalLoaded);
+    }
+    boundPlayer = player;
+    player.on('play', syncPlaybackTime);
+    player.on('pause', syncPlaybackTime);
+    player.on('seeked', syncPlaybackTime);
+    player.on('loadstart', onLocalLoadStart);
+    player.on('loadeddata', onLocalLoaded);
+  }
 
-    player.on('play', function () {
-      if (session && castPlayer && castPlayer.playerState !== chrome.cast.media.PlayerState.PLAYING) {
-        castPlayer.play(
-          function () { console.log('Cast player resumed'); },
-          function (error) { console.error('Error playing cast player:', error); }
-        );
-      }
-    });
+  function onLocalLoadStart() {
+    sourceReady = false;
+  }
 
-    player.on('pause', function () {
-      if (session && castPlayer && castPlayer.playerState !== chrome.cast.media.PlayerState.PAUSED) {
-        castPlayer.pause(function (error) {
-          console.error('Error pausing cast player:', error);
-        });
-      }
-    });
-
-    player.on('seeked', function () {
-      if (session && castPlayer) {
-        var currentTime = player.currentTime();
-        if (castPlayer && castPlayer.sessionId === session.getSessionId()) {
-          var seekRequest = new chrome.cast.media.SeekRequest();
-          seekRequest.currentTime = currentTime;
-          castPlayer.seek(seekRequest,
-            function () { console.log('Cast player synced after seek'); },
-            function (error) { console.error('Error syncing cast player after seek:', error); }
-          );
-        } else {
-          console.error('Cannot seek: Invalid cast player session.');
-        }
-      }
-    });
-
-    player.on('loadstart', function () {
-      stopSync();
-    });
-
-    player.on('loadeddata', function () {
-      startSync();
-      if (session) castCurrentVideo(0);
-      updateCastButtonVisibility();
-    });
+  function onLocalLoaded() {
+    sourceReady = true;
+    startSync();
+    castCurrentVideo();
+    syncPlaybackTime();
+    updateCastButtonVisibility();
   }
 
   /* ------------------------------ Cast controls ------------------------------- */
@@ -270,17 +295,29 @@ $(document).ready(function () {
     switch (event.sessionState) {
       case cast.framework.SessionState.SESSION_STARTED:
       case cast.framework.SessionState.SESSION_RESUMED: {
+        generation++;
+        pendingLoad = null;
+        statusPending = false;
         session = cast.framework.CastContext.getInstance().getCurrentSession();
-        if (session) castPlayer = session.getMediaSession();
+        castPlayer = session ? session.getMediaSession() : null;
+        castKey = castPlayer && castPlayer.media && castPlayer.media.customData
+          ? castPlayer.media.customData.billcastMediaKey : null;
+        if (!castKey && castPlayer && castPlayer.media && castPlayer.media.contentId === getCurrentVideoSrc()) {
+          castKey = roomKey || currentMediaKey();
+        }
 
         waitForPlayer(function () {
-          var t = (player && typeof player.currentTime === 'function') ? player.currentTime() : 0;
-          castCurrentVideo(t);
+          castCurrentVideo();
+          syncPlaybackTime();
         });
         startSync();
         break;
       }
       case cast.framework.SessionState.SESSION_ENDED:
+        generation++;
+        pendingLoad = null;
+        statusPending = false;
+        castKey = null;
         session = null;
         castPlayer = null;
         stopSync();
@@ -313,16 +350,31 @@ $(document).ready(function () {
     return src;
   }
 
-  function castCurrentVideo(currentTime) {
-    if (!session) return;
+  function castCurrentVideo() {
+    if (!session || pendingLoad) return;
+
+    var target = playbackTarget();
+    if (!target) return;
 
     var videoSrc = getCurrentVideoSrc();
     if (!videoSrc) { console.error('Cannot cast: no video src'); return; }
 
     if (!isDirectMedia()) return;
+    var key = roomKey || currentMediaKey() || videoSrc;
+    if (castPlayer && castPlayer.media && castPlayer.sessionId === session.getSessionId()) {
+      // Local reloads and reconnect snapshots do not replace an already playing movie.
+      var receiverFailed = castPlayer.playerState === chrome.cast.media.PlayerState.IDLE
+        && castPlayer.idleReason === chrome.cast.media.IdleReason.ERROR;
+      if (!receiverFailed && (castKey === key || (!castKey && castPlayer.media.contentId === videoSrc))) {
+        castKey = key;
+        return;
+      }
+    }
+    if (!sourceReady) return;
 
     var mimeType = getMimeType(videoSrc);
     var mediaInfo = new chrome.cast.media.MediaInfo(videoSrc, mimeType);
+    mediaInfo.customData = { billcastMediaKey: key };
 
     var videoName = $('#currenttitle').text() || 'Unknown Title';
     var fullTitle = 'BillTube Cast: ' + videoName;
@@ -332,15 +384,27 @@ $(document).ready(function () {
     mediaInfo.metadata = metadata;
 
     var request = new chrome.cast.media.LoadRequest(mediaInfo);
-    request.currentTime = currentTime || 0;
-    request.autoplay = true;
+    request.currentTime = target.time;
+    request.autoplay = !target.paused;
+    var loadingSession = session;
+    var loadGeneration = generation;
+    var token = {};
+    pendingLoad = token;
 
-    session.loadMedia(request).then(
+    loadingSession.loadMedia(request).then(
       function () {
-        castPlayer = session.getMediaSession();
+        if (pendingLoad === token) pendingLoad = null;
+        if (session !== loadingSession || generation !== loadGeneration) {
+          castCurrentVideo();
+          return;
+        }
+        castPlayer = loadingSession.getMediaSession();
+        castKey = key;
         updateCastButtonVisibility();
+        syncPlaybackTime();
       },
       function (error) {
+        if (pendingLoad === token) pendingLoad = null;
         console.error('Error loading media:', error);
       }
     );
@@ -368,62 +432,94 @@ $(document).ready(function () {
     if (syncInterval) { clearInterval(syncInterval); syncInterval = null; }
   }
   function syncPlaybackTime() {
-    if (session && castPlayer && player && typeof player.currentTime === 'function') {
-      var localTime = player.currentTime();
-      var startTime = Date.now();
-      castPlayer.getStatus(null, function (status) {
-        var endTime = Date.now();
-        var latency = (endTime - startTime) / 2000; // → seconds
-        var castTime = status.currentTime + latency;
-
-        if (Math.abs(localTime - castTime) > SYNC_THRESHOLD) {
-          if (castPlayer && castPlayer.sessionId === session.getSessionId()) {
-            var seekRequest = new chrome.cast.media.SeekRequest();
-            seekRequest.currentTime = localTime;
-            castPlayer.seek(seekRequest,
-              function () { console.log('Cast synced to local'); },
-              function (error) { console.error('Cast sync error:', error); }
-            );
-          } else {
-            console.error('Invalid cast session; stopping sync.');
-            stopSync();
-          }
-        }
-      });
-    } else {
-      stopSync();
-    }
-  }
-
-  /* ----------------------------- Socket hooks --------------------------------- */
-  if (window.socket && typeof window.socket.on === 'function') {
-    socket.on("changeMedia", function () {
-      waitForYtapiplayer(function () {
-        initializePlayer();
-        if (player && typeof player.ready === 'function') {
-          player.ready(function () {
-            if (session) castCurrentVideo(0);
-            updateCastButtonVisibility();
-          });
-        }
-      });
+    if (!session || !playbackTarget()) return;
+    castCurrentVideo();
+    if (pendingLoad || !castPlayer || statusPending) return;
+    if (castPlayer.sessionId !== session.getSessionId()) return;
+    if (castKey !== (roomKey || currentMediaKey() || getCurrentVideoSrc())) return;
+    var media = castPlayer;
+    var syncingSession = session;
+    var syncGeneration = generation;
+    statusPending = true;
+    media.getStatus(null, function () {
+      if (generation !== syncGeneration || session !== syncingSession || castPlayer !== media) return;
+      statusPending = false;
+      var target = playbackTarget(); // Read again after the asynchronous status request.
+      if (!target || pendingLoad) return;
+      var castTime = media.getEstimatedTime();
+      if (validTime(castTime) && Math.abs(target.time - castTime) > SYNC_THRESHOLD) {
+        var seekRequest = new chrome.cast.media.SeekRequest();
+        seekRequest.currentTime = target.time;
+        media.seek(seekRequest, function () {}, function (error) {
+          console.error('Cast sync error:', error);
+        });
+      }
+      var states = chrome.cast.media.PlayerState;
+      if (target.paused && media.playerState === states.PLAYING) {
+        media.pause(null, function () {}, logControlError);
+      } else if (!target.paused && media.playerState === states.PAUSED) {
+        media.play(null, function () {}, logControlError);
+      }
+    }, function (error) {
+      if (generation === syncGeneration) statusPending = false;
+      console.warn('Cast status unavailable; will retry:', error);
     });
   }
 
-  function waitForYtapiplayer(cb) {
-    if ($('#ytapiplayer').length > 0) cb();
-    else setTimeout(function () { waitForYtapiplayer(cb); }, 500);
+  function logControlError(error) { console.warn('Cast playback control failed:', error); }
+
+  /* ----------------------------- Socket hooks --------------------------------- */
+  if (window.socket && typeof window.socket.on === 'function') {
+    socket.on('disconnect', function () {
+      awaitingRoom = true;
+      roomSample = null;
+      generation++;
+      statusPending = false;
+    });
+    socket.on('connect', function () {
+      awaitingRoom = true;
+      roomSample = null;
+    });
+    socket.on('changeMedia', function (data) {
+      var key = mediaKey(data);
+      if (key && key !== (roomKey || currentMediaKey())) {
+        generation++;
+        statusPending = false;
+        roomSample = null;
+        sourceReady = false;
+      }
+      if (key) roomKey = key;
+      updateRoomSample(data);
+      // CyTube replaces its player asynchronously. Do not cast the old DOM source here.
+      setTimeout(function () {
+        initializePlayer();
+        updateCastButtonVisibility();
+        syncPlaybackTime();
+      }, 0);
+    });
+    socket.on('mediaUpdate', function (data) {
+      updateRoomSample(data);
+      syncPlaybackTime();
+    });
+  }
+
+  function updateRoomSample(data) {
+    if (!data || !validTime(data.currentTime)) return;
+    var key = mediaKey(data);
+    if (key && roomKey && key !== roomKey) return;
+    if (!roomKey) roomKey = key || currentMediaKey();
+    roomSample = { time: data.currentTime, paused: data.paused === true, at: Date.now() };
+    awaitingRoom = false;
   }
 
   /* ------------------------ Load Google Cast framework ------------------------ */
   var castScript = document.createElement('script');
   castScript.src = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
-  document.head.appendChild(castScript);
-
   window['__onGCastApiAvailable'] = function (isAvailable) {
     if (isAvailable) initializeCastApi();
     else { castAvailable = false; whenVoBarReady(initializeCastButton); }
   };
+  document.head.appendChild(castScript);
 
   // Cleanup on unload
   $(window).on('beforeunload', function () {
