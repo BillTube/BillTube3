@@ -2,8 +2,8 @@
 $(document).ready(function () {
   var session = null;
   var castPlayer = null;
-  var CHECK_INTERVAL = 10000;
-  var SYNC_THRESHOLD = 5;
+  var CHECK_INTERVAL = 120000; // Preserve the original two-minute drift check.
+  var SYNC_THRESHOLD = 20;
   var player = null;
   var castAvailable = false;
   var syncInterval = null;
@@ -15,7 +15,9 @@ $(document).ready(function () {
   var castKey = null;
   var pendingLoad = null;
   var generation = 0;
-  var statusPending = false;
+  var needsSync = false;
+  var loadNeeded = false;
+  var settleUntil = 0;
 
   function mediaKey(media) {
     if (!media || !media.type || media.id == null) return null;
@@ -173,16 +175,16 @@ $(document).ready(function () {
   function attachPlayerEventListeners() {
     if (!player || player === boundPlayer) return;
     if (boundPlayer && typeof boundPlayer.off === 'function') {
-      boundPlayer.off('play', syncPlaybackTime);
-      boundPlayer.off('pause', syncPlaybackTime);
-      boundPlayer.off('seeked', syncPlaybackTime);
+      boundPlayer.off('play', onLocalPlaybackChange);
+      boundPlayer.off('pause', onLocalPlaybackChange);
+      boundPlayer.off('seeked', onLocalPlaybackChange);
       boundPlayer.off('loadstart', onLocalLoadStart);
       boundPlayer.off('loadeddata', onLocalLoaded);
     }
     boundPlayer = player;
-    player.on('play', syncPlaybackTime);
-    player.on('pause', syncPlaybackTime);
-    player.on('seeked', syncPlaybackTime);
+    player.on('play', onLocalPlaybackChange);
+    player.on('pause', onLocalPlaybackChange);
+    player.on('seeked', onLocalPlaybackChange);
     player.on('loadstart', onLocalLoadStart);
     player.on('loadeddata', onLocalLoaded);
   }
@@ -191,11 +193,25 @@ $(document).ready(function () {
     sourceReady = false;
   }
 
+  function onLocalPlaybackChange() {
+    // Preserve play/pause controls without forwarding the local playback clock.
+    if (!session || !castPlayer || !sourceReady || needsSync || pendingLoad || awaitingRoom) return;
+    if (window.socket && window.socket.connected === false) return;
+    if (Date.now() < settleUntil || player.readyState() < 2) return;
+    if (castPlayer.sessionId !== session.getSessionId() || castKey !== (roomKey || currentMediaKey())) return;
+    var states = chrome.cast.media.PlayerState;
+    if (player.paused() && castPlayer.playerState === states.PLAYING) {
+      castPlayer.pause(null, function () {}, logControlError);
+    } else if (!player.paused() && castPlayer.playerState === states.PAUSED) {
+      castPlayer.play(null, function () {}, logControlError);
+    }
+  }
+
   function onLocalLoaded() {
     sourceReady = true;
     startSync();
     castCurrentVideo();
-    syncPlaybackTime();
+    if (needsSync) syncPlaybackTime();
     updateCastButtonVisibility();
   }
 
@@ -297,9 +313,11 @@ $(document).ready(function () {
       case cast.framework.SessionState.SESSION_RESUMED: {
         generation++;
         pendingLoad = null;
-        statusPending = false;
+        needsSync = true;
+        settleUntil = 0;
         session = cast.framework.CastContext.getInstance().getCurrentSession();
         castPlayer = session ? session.getMediaSession() : null;
+        loadNeeded = true; // Adopt matching media, or load once for this connection.
         castKey = castPlayer && castPlayer.media && castPlayer.media.customData
           ? castPlayer.media.customData.billcastMediaKey : null;
         if (!castKey && castPlayer && castPlayer.media && castPlayer.media.contentId === getCurrentVideoSrc()) {
@@ -316,7 +334,8 @@ $(document).ready(function () {
       case cast.framework.SessionState.SESSION_ENDED:
         generation++;
         pendingLoad = null;
-        statusPending = false;
+        needsSync = false;
+        loadNeeded = false;
         castKey = null;
         session = null;
         castPlayer = null;
@@ -351,7 +370,7 @@ $(document).ready(function () {
   }
 
   function castCurrentVideo() {
-    if (!session || pendingLoad) return;
+    if (!session || pendingLoad || !loadNeeded) return;
 
     var target = playbackTarget();
     if (!target) return;
@@ -367,6 +386,7 @@ $(document).ready(function () {
         && castPlayer.idleReason === chrome.cast.media.IdleReason.ERROR;
       if (!receiverFailed && (castKey === key || (!castKey && castPlayer.media.contentId === videoSrc))) {
         castKey = key;
+        loadNeeded = false;
         return;
       }
     }
@@ -390,18 +410,22 @@ $(document).ready(function () {
     var loadGeneration = generation;
     var token = {};
     pendingLoad = token;
+    loadNeeded = false; // One load attempt per movie/session, even if it fails.
+    settleUntil = Date.now() + 15000;
 
     loadingSession.loadMedia(request).then(
       function () {
         if (pendingLoad === token) pendingLoad = null;
-        if (session !== loadingSession || generation !== loadGeneration) {
+        if (session !== loadingSession) return;
+        if (key !== (roomKey || currentMediaKey() || getCurrentVideoSrc())) {
           castCurrentVideo();
           return;
         }
         castPlayer = loadingSession.getMediaSession();
         castKey = key;
         updateCastButtonVisibility();
-        syncPlaybackTime();
+        // The LOAD already supplied the playback position. Let the receiver buffer.
+        if (generation === loadGeneration) needsSync = false;
       },
       function (error) {
         if (pendingLoad === token) pendingLoad = null;
@@ -426,44 +450,38 @@ $(document).ready(function () {
 
   /* ------------------------------- Time sync ---------------------------------- */
   function startSync() {
-    if (!syncInterval) syncInterval = setInterval(syncPlaybackTime, CHECK_INTERVAL);
+    if (!session || syncInterval) return;
+    syncInterval = setInterval(function () { syncPlaybackTime(true); }, CHECK_INTERVAL);
   }
   function stopSync() {
     if (syncInterval) { clearInterval(syncInterval); syncInterval = null; }
   }
-  function syncPlaybackTime() {
-    if (!session || !playbackTarget()) return;
-    castCurrentVideo();
-    if (pendingLoad || !castPlayer || statusPending) return;
+  function syncPlaybackTime(routineCheck) {
+    if ((!needsSync && routineCheck !== true) || !session || !playbackTarget()) return;
+    if (routineCheck !== true) castCurrentVideo();
+    if (pendingLoad || !castPlayer || Date.now() < settleUntil) return;
     if (castPlayer.sessionId !== session.getSessionId()) return;
     if (castKey !== (roomKey || currentMediaKey() || getCurrentVideoSrc())) return;
     var media = castPlayer;
-    var syncingSession = session;
-    var syncGeneration = generation;
-    statusPending = true;
-    media.getStatus(null, function () {
-      if (generation !== syncGeneration || session !== syncingSession || castPlayer !== media) return;
-      statusPending = false;
-      var target = playbackTarget(); // Read again after the asynchronous status request.
-      if (!target || pendingLoad) return;
-      var castTime = media.getEstimatedTime();
-      if (validTime(castTime) && Math.abs(target.time - castTime) > SYNC_THRESHOLD) {
-        var seekRequest = new chrome.cast.media.SeekRequest();
-        seekRequest.currentTime = target.time;
-        media.seek(seekRequest, function () {}, function (error) {
-          console.error('Cast sync error:', error);
-        });
-      }
-      var states = chrome.cast.media.PlayerState;
-      if (target.paused && media.playerState === states.PLAYING) {
-        media.pause(null, function () {}, logControlError);
-      } else if (!target.paused && media.playerState === states.PAUSED) {
-        media.play(null, function () {}, logControlError);
-      }
-    }, function (error) {
-      if (generation === syncGeneration) statusPending = false;
-      console.warn('Cast status unavailable; will retry:', error);
-    });
+    var states = chrome.cast.media.PlayerState;
+    // Automatic Cast status updates already maintain this object. Do not poll
+    // getStatus, reload failed media, or seek while the receiver is buffering.
+    if (media.playerState !== states.PLAYING && media.playerState !== states.PAUSED) return;
+    var target = playbackTarget();
+    var castTime = media.getEstimatedTime();
+    if (!validTime(castTime)) return;
+    needsSync = false;
+    if (Math.abs(target.time - castTime) > SYNC_THRESHOLD) {
+      var seekRequest = new chrome.cast.media.SeekRequest();
+      seekRequest.currentTime = target.time;
+      settleUntil = Date.now() + 15000;
+      media.seek(seekRequest, function () {}, logControlError);
+    }
+    if (target.paused && media.playerState === states.PLAYING) {
+      media.pause(null, function () {}, logControlError);
+    } else if (!target.paused && media.playerState === states.PAUSED) {
+      media.play(null, function () {}, logControlError);
+    }
   }
 
   function logControlError(error) { console.warn('Cast playback control failed:', error); }
@@ -474,17 +492,20 @@ $(document).ready(function () {
       awaitingRoom = true;
       roomSample = null;
       generation++;
-      statusPending = false;
+      needsSync = true;
     });
     socket.on('connect', function () {
       awaitingRoom = true;
       roomSample = null;
+      needsSync = true;
     });
     socket.on('changeMedia', function (data) {
       var key = mediaKey(data);
       if (key && key !== (roomKey || currentMediaKey())) {
         generation++;
-        statusPending = false;
+        needsSync = true;
+        loadNeeded = true;
+        settleUntil = 0;
         roomSample = null;
         sourceReady = false;
       }
@@ -494,12 +515,17 @@ $(document).ready(function () {
       setTimeout(function () {
         initializePlayer();
         updateCastButtonVisibility();
-        syncPlaybackTime();
+        castCurrentVideo();
+        if (needsSync) syncPlaybackTime();
       }, 0);
     });
     socket.on('mediaUpdate', function (data) {
+      // Cache the room clock for the original two-minute check. Ordinary updates
+      // send no commands; only a pending connection recovery can seek here.
       updateRoomSample(data);
-      syncPlaybackTime();
+      if (!needsSync && !loadNeeded && !awaitingRoom) return;
+      if (loadNeeded) castCurrentVideo();
+      if (needsSync) syncPlaybackTime();
     });
   }
 

@@ -10,24 +10,18 @@ const source = fs.readFileSync(path.join(__dirname, '../modules/feature-billcast
   window.testApi = { sessionStateChanged, syncPlaybackTime, initializePlayer };
   /* --------------------------------- Boot`);
 
-function harness({ existing = false, deferredLoad = false } = {}) {
+function harness({ existing = false, deferredLoad = false, failLoad = false, loadedState = null } = {}) {
   const playerEvents = new Map();
   const socketEvents = new Map();
-  const loads = [], seeks = [], controls = [], timers = [];
+  const loads = [], seeks = [], controls = [], timers = [], intervals = [];
   let now = 100000, src = 'https://example.com/movie.mp4', localTime = 1200;
-  let ready = 4, localPaused = false, statusCallback = null, failStatus = false;
-  let delayStatus = false, resolveLoad;
+  let ready = 4, localPaused = false, resolveLoad;
   const roomPlayer = { mediaType: 'fi', mediaId: 'movie' };
   const socket = { connected: true, on: (name, fn) => socketEvents.set(name, fn) };
   const media = {
     sessionId: 'session', media: { contentId: src }, currentTime: 1200, playerState: 'PLAYING',
     getEstimatedTime() { return this.currentTime; },
-    getStatus(request, success, error) {
-      assert.equal(request, null);
-      if (failStatus) error('TIMEOUT');
-      else if (delayStatus) statusCallback = success;
-      else success(); // Cast success callback has NO status argument.
-    },
+    getStatus() { assert.fail('Sender must not poll Cast status on room updates'); },
     seek(request, success) { seeks.push(request.currentTime); this.currentTime = request.currentTime; success(); },
     play(request, success) { assert.equal(request, null); controls.push('play'); this.playerState = 'PLAYING'; success(); },
     pause(request, success) { assert.equal(request, null); controls.push('pause'); this.playerState = 'PAUSED'; success(); }
@@ -37,11 +31,12 @@ function harness({ existing = false, deferredLoad = false } = {}) {
     getSessionId: () => 'session', getMediaSession: () => currentMedia,
     loadMedia(request) {
       loads.push(request);
+      if (failLoad) return Promise.reject('NETWORK_ERROR');
       const finish = () => {
         currentMedia = media;
         media.media = request.media;
         media.currentTime = request.currentTime;
-        media.playerState = request.autoplay ? 'PLAYING' : 'PAUSED';
+        media.playerState = loadedState || (request.autoplay ? 'PLAYING' : 'PAUSED');
       };
       if (deferredLoad) return new Promise(resolve => { resolveLoad = () => { finish(); resolve(); }; });
       finish();
@@ -71,9 +66,9 @@ function harness({ existing = false, deferredLoad = false } = {}) {
     window: { PLAYER: roomPlayer, socket }, socket, document, $, videojs: () => localPlayer,
     Date: { now: () => now }, console: { log() {}, warn() {}, error() {} },
     setTimeout: fn => { timers.push(fn); return timers.length; },
-    setInterval: () => 1, clearInterval() {},
+    setInterval: (fn, ms) => { intervals.push({ fn, ms }); return intervals.length; }, clearInterval() {},
     chrome: { cast: { media: {
-      PlayerState: { PLAYING: 'PLAYING', PAUSED: 'PAUSED', IDLE: 'IDLE' }, IdleReason: { ERROR: 'ERROR' },
+      PlayerState: { PLAYING: 'PLAYING', PAUSED: 'PAUSED', IDLE: 'IDLE', BUFFERING: 'BUFFERING' }, IdleReason: { ERROR: 'ERROR' },
       SeekRequest: function () {}, MediaInfo: function (id) { this.contentId = id; },
       GenericMediaMetadata: function () {}, LoadRequest: function (info) { this.media = info; }
     } } },
@@ -81,7 +76,7 @@ function harness({ existing = false, deferredLoad = false } = {}) {
   };
   vm.runInNewContext(source, context);
   return {
-    loads, seeks, controls, media, roomPlayer, socket, playerEvents,
+    loads, seeks, controls, media, roomPlayer, socket, playerEvents, intervals,
     api: context.window.testApi,
     start: state => context.window.testApi.sessionStateChanged({ sessionState: state || 'started' }),
     event: name => { for (const fn of [...(playerEvents.get(name) || [])]) fn(); },
@@ -90,8 +85,9 @@ function harness({ existing = false, deferredLoad = false } = {}) {
     advance: seconds => { now += seconds * 1000; },
     local: time => { localTime = time; }, setSource: value => { src = value; },
     ready: value => { ready = value; },
-    delayStatus: value => { delayStatus = value; }, statusSuccess: () => statusCallback(),
-    failStatus: value => { failStatus = value; }, resolveLoad: () => resolveLoad()
+    paused: value => { localPaused = value; },
+    tick: () => { for (const interval of intervals) interval.fn(); },
+    resolveLoad: () => resolveLoad()
   };
 }
 
@@ -133,7 +129,7 @@ test('resumed session adopts existing movie instead of loading it again', () => 
   assert.equal(h.loads.length, 0);
 });
 
-test('Cast status success with no argument corrects drift', () => {
+test('connection recovery uses Cast estimated time without status polling', () => {
   const h = harness({ existing: true }); h.start();
   h.room('mediaUpdate', { currentTime: 1400, paused: false });
   assert.equal(h.seeks.at(-1), 1400);
@@ -141,8 +137,9 @@ test('Cast status success with no argument corrects drift', () => {
 
 test('pause and play requests use documented API arguments', () => {
   const h = harness({ existing: true }); h.start();
-  h.room('mediaUpdate', { currentTime: 1200, paused: true });
   h.room('mediaUpdate', { currentTime: 1200, paused: false });
+  h.paused(true); h.event('pause');
+  h.paused(false); h.event('play');
   assert.deepEqual(h.controls, ['pause', 'play']);
 });
 
@@ -170,17 +167,20 @@ test('repeated initialization does not multiply player listeners', () => {
   for (const handlers of h.playerEvents.values()) assert.equal(handlers.length, 1);
 });
 
-test('late status from before disconnect cannot seek', () => {
-  const h = harness({ existing: true }); h.delayStatus(true); h.start();
+test('local events while disconnected cannot seek', () => {
+  const h = harness({ existing: true }); h.start();
   h.room('mediaUpdate', { currentTime: 1200, paused: false });
-  h.room('disconnect'); h.local(0); h.statusSuccess();
+  h.room('disconnect'); h.local(0); h.event('seeked'); h.tick();
   assert.deepEqual(h.seeks, []);
 });
 
-test('status failure is retried on the next room update', () => {
-  const h = harness({ existing: true }); h.failStatus(true); h.start();
-  h.failStatus(false); h.room('mediaUpdate', { currentTime: 1400, paused: false });
-  assert.equal(h.seeks.at(-1), 1400);
+test('ordinary room updates never seek, reload, pause, or play the receiver', () => {
+  const h = harness({ existing: true }); h.start();
+  h.room('mediaUpdate', { currentTime: 1200, paused: false });
+  for (let i = 0; i < 100; i++) h.room('mediaUpdate', { currentTime: 2000 + i, paused: i % 2 === 0 });
+  assert.deepEqual(h.seeks, []);
+  assert.deepEqual(h.controls, []);
+  assert.equal(h.loads.length, 0);
 });
 
 test('concurrent readiness events share a single pending load', async () => {
@@ -211,27 +211,35 @@ test('receiver can resync from room while local video is still buffering', () =>
   assert.equal(h.loads.length, 0);
 });
 
-test('playing room clock advances but paused room clock stays fixed', () => {
+test('original two-minute check preserves the 20-second tolerance', () => {
   const h = harness({ existing: true }); h.start();
-  h.room('mediaUpdate', { currentTime: 1200, paused: false }); h.advance(10);
-  h.api.syncPlaybackTime(); assert.equal(h.seeks.at(-1), 1210);
-  h.room('mediaUpdate', { currentTime: 1200, paused: true }); h.advance(10);
-  h.api.syncPlaybackTime(); assert.equal(h.seeks.at(-1), 1200);
+  assert.equal(h.intervals.length, 1);
+  assert.equal(h.intervals[0].ms, 120000);
+  h.room('mediaUpdate', { currentTime: 1200, paused: false });
+  h.room('mediaUpdate', { currentTime: 1220, paused: false }); h.tick();
+  assert.deepEqual(h.seeks, []);
+  h.room('mediaUpdate', { currentTime: 1221, paused: false });
+  assert.deepEqual(h.seeks, []); // Clock updates are passive.
+  h.tick(); assert.equal(h.seeks.at(-1), 1221);
 });
 
-test('receiver network error reloads at room position rather than zero', async () => {
+test('receiver network errors do not trigger an automatic reload loop', async () => {
   const h = harness({ existing: true }); h.start();
+  h.room('mediaUpdate', { currentTime: 1200, paused: false });
   h.media.playerState = 'IDLE'; h.media.idleReason = 'ERROR';
-  h.room('mediaUpdate', { currentTime: 1300, paused: false }); await settle();
-  assert.equal(h.loads.length, 1);
-  assert.equal(h.loads[0].currentTime, 1300);
+  for (let i = 0; i < 100; i++) { h.room('mediaUpdate', { currentTime: 1300 + i, paused: false }); h.tick(); }
+  await settle(); assert.equal(h.loads.length, 0);
 });
 
-test('late previous-movie status cannot seek the next movie', () => {
+test('a buffering receiver is left alone until recovery can seek once', () => {
   const h = harness({ existing: true }); h.start();
-  h.delayStatus(true); h.room('mediaUpdate', { currentTime: 1200, paused: false });
-  h.room('changeMedia', { type: 'fi', id: 'next', currentTime: 0, paused: false });
-  h.statusSuccess(); assert.deepEqual(h.seeks, []);
+  h.media.playerState = 'BUFFERING';
+  for (let i = 0; i < 100; i++) h.room('mediaUpdate', { currentTime: 1400, paused: false });
+  assert.deepEqual(h.seeks, []); assert.equal(h.loads.length, 0);
+  h.media.playerState = 'PLAYING'; h.room('mediaUpdate', { currentTime: 1400, paused: false });
+  assert.deepEqual(h.seeks, [1400]);
+  for (let i = 0; i < 100; i++) h.room('mediaUpdate', { currentTime: 1400 + i, paused: false });
+  assert.deepEqual(h.seeks, [1400]);
 });
 
 test('late load completion cannot block loading a newly selected movie', async () => {
@@ -244,4 +252,50 @@ test('late load completion cannot block loading a newly selected movie', async (
   assert.equal(h.loads[1].media.contentId, 'https://example.com/next.mp4');
   h.resolveLoad(); await settle();
   assert.equal(h.loads.length, 2);
+});
+
+test('a rejected load is not retried by timing or local load events', async () => {
+  const h = harness({ failLoad: true }); h.start(); await settle();
+  for (let i = 0; i < 100; i++) {
+    h.room('mediaUpdate', { currentTime: 1200 + i, paused: false });
+    h.event('loadeddata'); h.tick();
+  }
+  await settle();
+  assert.equal(h.loads.length, 1);
+  assert.deepEqual(h.seeks, []);
+});
+
+test('successful load with stale receiver ERROR status cannot recursively reload', async () => {
+  const h = harness({ loadedState: 'IDLE' }); h.media.idleReason = 'ERROR';
+  h.start(); await settle();
+  for (let i = 0; i < 100; i++) {
+    h.room('mediaUpdate', { currentTime: 1200 + i, paused: false }); h.tick();
+  }
+  await settle();
+  assert.equal(h.loads.length, 1);
+  assert.deepEqual(h.seeks, []);
+});
+
+test('reconnect without timing waits for one fresh CyTube position', () => {
+  const h = harness({ existing: true }); h.start();
+  h.room('mediaUpdate', { currentTime: 1200, paused: false });
+  h.socket.connected = false; h.room('disconnect'); h.local(0);
+  h.socket.connected = true; h.room('connect');
+  h.room('changeMedia', { type: 'fi', id: 'movie' }); h.flush();
+  assert.deepEqual(h.seeks, []);
+  h.room('mediaUpdate', { currentTime: 1450, paused: false });
+  assert.deepEqual(h.seeks, [1450]);
+  for (let i = 0; i < 100; i++) h.room('mediaUpdate', { currentTime: 1450 + i, paused: false });
+  assert.deepEqual(h.seeks, [1450]);
+  assert.equal(h.loads.length, 0);
+});
+
+test('newly loaded buffering movie receives no repeated load or seek requests', async () => {
+  const h = harness({ loadedState: 'BUFFERING' }); h.start(); await settle();
+  for (let i = 0; i < 100; i++) {
+    h.room('mediaUpdate', { currentTime: 1200 + i, paused: false }); h.event('loadeddata'); h.tick();
+  }
+  assert.equal(h.loads.length, 1);
+  assert.deepEqual(h.seeks, []);
+  assert.deepEqual(h.controls, []);
 });
