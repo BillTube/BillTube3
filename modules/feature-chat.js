@@ -1,6 +1,7 @@
-BTFW.define("feature:chat", ["feature:layout", "util:chat-popover"], async ({ init }) => {
+BTFW.define("feature:chat", ["feature:layout", "util:chat-popover", "util:chat-scroll"], async ({ init }) => {
   const motion = await init("util:motion");
   const chatPopover = await init("util:chat-popover");
+  const chatScroll = await init("util:chat-scroll");
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const MESSAGE_SELECTOR = ".chat-msg, .message, [class*=message]";
@@ -677,6 +678,11 @@ function updateActionsCollapse(){
   const actions = actionsNode(); if (!actions) return;
   const pill = document.getElementById("btfw-chatactions-pill"); if (!pill) return;
   const avail = actions.clientWidth; if (!avail) return;
+  // Phones keep the secondary tools behind one button even when they fit.
+  if (chatScroll.isMobile()) {
+    actions.classList.add("btfw-actions-collapsed");
+    return;
+  }
   const gap = actionsRowGap(actions);
   const need = naturalRowWidth(pill) + gap + rightClusterWidth(actions, gap);
   const collapsed = actions.classList.contains("btfw-actions-collapsed");
@@ -992,16 +998,18 @@ const scheduleNormalizeChatActions = (() => {
   function ensureScrollManagement(){
     const buffer = getChatBuffer();
     if (!buffer) return;
+    chatScroll.bind(buffer);
 
     // Direct socket hook - scroll on every chat message
     const sock = window.socket;
     if (sock && typeof sock.on === "function" && !sock._btfwScrollChatBound) {
       sock._btfwScrollChatBound = true;
       sock.on("chatMsg", () => {
+        if (chatScroll.isMobile()) return;
         if (typeof window.scrollChat === "function") {
           window.scrollChat();
-          setTimeout(() => window.scrollChat(), 100);
-          setTimeout(() => window.scrollChat(), 250);
+          setTimeout(() => { if (!chatScroll.isMobile()) window.scrollChat(); }, 100);
+          setTimeout(() => { if (!chatScroll.isMobile()) window.scrollChat(); }, 250);
         }
       });
     }
@@ -1009,8 +1017,8 @@ const scheduleNormalizeChatActions = (() => {
     processPendingChatMessages();
 
     // Initial scroll
-    if (typeof window.scrollChat === "function") {
-      setTimeout(() => window.scrollChat(), 80);
+    if (!chatScroll.isMobile() && typeof window.scrollChat === "function") {
+      setTimeout(() => { if (!chatScroll.isMobile()) window.scrollChat(); }, 80);
     }
   }
 

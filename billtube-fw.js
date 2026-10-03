@@ -297,6 +297,7 @@ function resolveBranchToSHA(){
     var coreMods=[
       "modules/util-motion.js",
       "modules/util-chat-popover.js",
+      "modules/util-chat-scroll.js",
       "modules/util-anime.js",
       "modules/util-avatar-dither.js",
       "modules/util-range-sliders.js",

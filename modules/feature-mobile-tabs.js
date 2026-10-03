@@ -1,11 +1,10 @@
-/* BTFW — feature:mobileTabs — phone-only tab bar + bottom sheet for the
-   below-video stack. On phones the main page stays video + chat; each stack
-   item (Playlist, MOTD, Polls, Featured Channels, …) opens in a slide-up
-   sheet from a pill bar under the video instead of stacking into one long
-   scroll. Items are re-parented into the sheet and returned to their exact
+/* BTFW — feature:mobileTabs — phone-only Channel menu + bottom sheet for the
+   below-video stack. Each item (Playlist, MOTD, Polls, Featured Channels, …)
+   opens from one compact button in the chat header. Items are re-parented
+   into the sheet and returned to their exact
    slot on close, so CyTube's own handlers keep working. Desktop untouched. */
 BTFW.define("feature:mobileTabs", [], async () => {
-  const MQ = window.matchMedia("(max-width: 768px)");
+  const MQ = window.matchMedia("(max-width: 768px), (max-width: 940px) and (max-height: 500px)");
   const LABELS = [
     [/message of the day|motd/i, "MOTD"],
     [/playlist|queue/i, "Playlist"],
@@ -17,6 +16,7 @@ BTFW.define("feature:mobileTabs", [], async () => {
   let bar = null, sheet = null, backdrop = null;
   let listObserver = null, pollObserver = null;
   let openEntry = null; // { item, placeholder, tab }
+  let menuOpen = false;
 
   const $ = (s, r) => (r || document).querySelector(s);
 
@@ -31,12 +31,7 @@ BTFW.define("feature:mobileTabs", [], async () => {
     if (bar) return;
     bar = document.createElement("div");
     bar.id = "btfw-mobile-tabbar";
-    const video = $("#videowrap");
-    if (video && video.parentElement) {
-      video.parentElement.insertBefore(bar, video.nextSibling);
-    } else {
-      document.body.appendChild(bar);
-    }
+    placeBar();
 
     backdrop = document.createElement("div");
     backdrop.id = "btfw-mobile-sheet-backdrop";
@@ -54,26 +49,77 @@ BTFW.define("feature:mobileTabs", [], async () => {
       </div>
       <div class="btfw-msheet__body"></div>`;
     sheet.querySelector(".btfw-msheet__close").addEventListener("click", closeSheet);
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && openEntry) closeSheet(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && (openEntry || menuOpen)) closeSheet(); });
     document.body.appendChild(backdrop);
     document.body.appendChild(sheet);
   }
 
-  function buildTabs() {
+  function placeBar() {
     if (!bar) return;
-    bar.textContent = "";
-    const items = document.querySelectorAll("#btfw-stack .btfw-stack-list > .btfw-stack-item");
-    items.forEach((item) => {
-      const label = shortLabel(item);
+    const actions = $("#btfw-chat-topbar-actions");
+    if (actions) {
+      if (bar.parentElement !== actions) actions.prepend(bar);
+    } else {
+      const video = $("#videowrap");
+      if (video?.parentElement && bar.parentElement !== video.parentElement) {
+        video.parentElement.insertBefore(bar, video.nextSibling);
+      }
+    }
+  }
+
+  function stackItems() {
+    return document.querySelectorAll("#btfw-stack .btfw-stack-list > .btfw-stack-item");
+  }
+
+  function openMenu() {
+    closeSheet();
+    menuOpen = true;
+    sheet.querySelector(".btfw-msheet__title").textContent = "Channel";
+    const body = sheet.querySelector(".btfw-msheet__body");
+    body.textContent = "";
+    const menu = document.createElement("div");
+    menu.className = "btfw-msheet__sections";
+    stackItems().forEach(item => {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "btfw-btn btfw-btn--sm btfw-btn--pill btfw-mtab";
-      b.textContent = label;
-      b.addEventListener("click", () => {
-        if (openEntry && openEntry.item === item) { closeSheet(); return; }
-        openSheet(item, label, b);
+      b.className = "btfw-btn btfw-msheet__section";
+      b.textContent = shortLabel(item);
+      b.addEventListener("click", () => openSheet(item, b.textContent, bar.firstElementChild));
+      menu.appendChild(b);
+    });
+    body.appendChild(menu);
+    bar.firstElementChild?.setAttribute("aria-expanded", "true");
+    document.body.classList.add("btfw-mobile-sheet-open");
+    sheet.querySelector(".btfw-msheet__close").focus({ preventScroll: true });
+  }
+
+  function buildTabs() {
+    if (!bar) return;
+    placeBar();
+    // Reuse the trigger when stack items move into/out of the sheet, so a
+    // queued stack observer cannot remove it after we restore focus to it.
+    if (bar.firstElementChild) {
+      stackItems().forEach(item => {
+        if (/poll/i.test(shortLabel(item))) watchPolls(item, bar.firstElementChild);
       });
-      bar.appendChild(b);
+      return;
+    }
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "btfw-btn btfw-btn--sm btfw-btn--pill btfw-mtab";
+    b.textContent = "Channel";
+    b.setAttribute("aria-label", "Open channel sections");
+    b.setAttribute("aria-haspopup", "dialog");
+    b.setAttribute("aria-controls", "btfw-mobile-sheet");
+    b.setAttribute("aria-expanded", "false");
+    b.addEventListener("click", () => {
+      if (openEntry || menuOpen) closeSheet();
+      else openMenu();
+    });
+    bar.appendChild(b);
+    const items = stackItems();
+    items.forEach((item) => {
+      const label = shortLabel(item);
       if (/poll/i.test(label)) watchPolls(item, b);
     });
   }
@@ -84,22 +130,31 @@ BTFW.define("feature:mobileTabs", [], async () => {
     const placeholder = document.createComment("btfw-mtab-slot");
     item.parentNode.insertBefore(placeholder, item);
     sheet.querySelector(".btfw-msheet__title").textContent = label;
+    sheet.querySelector(".btfw-msheet__body").textContent = "";
     sheet.querySelector(".btfw-msheet__body").appendChild(item);
     openEntry = { item, placeholder, tab };
     tab.classList.add("is-active");
+    tab.setAttribute("aria-expanded", "true");
     document.body.classList.add("btfw-mobile-sheet-open");
+    sheet.querySelector(".btfw-msheet__close").focus({ preventScroll: true });
   }
 
   function closeSheet() {
+    const wasOpen = menuOpen || !!openEntry;
+    menuOpen = false;
     document.body.classList.remove("btfw-mobile-sheet-open");
-    if (!openEntry) return;
-    const { item, placeholder, tab } = openEntry;
-    if (placeholder.parentNode) {
-      placeholder.parentNode.insertBefore(item, placeholder);
-      placeholder.remove();
+    if (openEntry) {
+      const { item, placeholder, tab } = openEntry;
+      if (placeholder.parentNode) {
+        placeholder.parentNode.insertBefore(item, placeholder);
+        placeholder.remove();
+      }
+      tab.classList.remove("is-active");
+      openEntry = null;
     }
-    tab.classList.remove("is-active");
-    openEntry = null;
+    sheet?.querySelector(".btfw-msheet__body").replaceChildren();
+    bar?.firstElementChild?.setAttribute("aria-expanded", "false");
+    if (wasOpen && MQ.matches) bar?.firstElementChild?.focus({ preventScroll: true });
   }
 
   function watchPolls(item, tab) {
@@ -116,13 +171,13 @@ BTFW.define("feature:mobileTabs", [], async () => {
   function apply() {
     if (MQ.matches) {
       ensureUI();
-      buildTabs();
+      if (!openEntry && !menuOpen) buildTabs();
       document.body.classList.add("btfw-mobile-tabs-active");
       if (!listObserver) {
         const list = $("#btfw-stack .btfw-stack-list");
         if (list) {
           // channel modules add stack items after boot (e.g. custom widgets)
-          listObserver = new MutationObserver(() => { if (!openEntry) buildTabs(); });
+          listObserver = new MutationObserver(() => { if (!openEntry && !menuOpen) buildTabs(); });
           listObserver.observe(list, { childList: true });
         }
       }
@@ -155,6 +210,7 @@ BTFW.define("feature:mobileTabs", [], async () => {
     if (MQ.addEventListener) MQ.addEventListener("change", apply);
     else if (MQ.addListener) MQ.addListener(apply);
     document.addEventListener("btfw:ready", apply, { once: true });
+    document.addEventListener("btfw:chat:barsReady", placeBar);
     setTimeout(apply, 1500); // catch stack items added late by channel modules
   }
 
