@@ -79,11 +79,14 @@ BTFW.define("feature:mobileTabs", [], async () => {
     body.textContent = "";
     const menu = document.createElement("div");
     menu.className = "btfw-msheet__sections";
-    stackItems().forEach(item => {
+    const items = Array.from(stackItems());
+    const ratings = $("#btfw-ratings-wrapper");
+    if (ratings?.querySelector("#btfw-ratings:not([hidden])")) items.push(ratings);
+    items.forEach(item => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "btfw-btn btfw-msheet__section";
-      b.textContent = shortLabel(item);
+      b.textContent = item === ratings ? "Rate movie" : shortLabel(item);
       b.addEventListener("click", () => openSheet(item, b.textContent, bar.firstElementChild));
       menu.appendChild(b);
     });

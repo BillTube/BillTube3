@@ -434,7 +434,8 @@ body.btfw-mobile-nav-open{
   }
   #chatwrap .btfw-chat-topbar::before,
   #chatwrap .btfw-chat-topbar::after,
-  #chatwrap .btfw-chat-topbar #btfw-playback-progress{
+  #chatwrap .btfw-chat-topbar #btfw-playback-progress,
+  #chatwrap .btfw-chat-topbar #btfw-ratings-wrapper{
     display: none;
   }
   #chatwrap .btfw-chat-topbar #btfw-nowplaying-slot{
@@ -513,7 +514,17 @@ body.btfw-mobile-nav-open{
     text-align: left;
     padding: 10px 14px;
   }
+  #btfw-mobile-sheet #btfw-ratings{
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 10px 0;
+  }
+  #btfw-mobile-sheet #btfw-ratings .btfw-ratings__stars button,
+  #btfw-mobile-sheet #btfw-ratings .btfw-ratings__actions button{
+    min-width: 44px;
+    min-height: 44px;
+  }
   /* CyTube's server-wide announcement is outside the channel grid. */
-  #mainpage > .col-md-12 > .alert.alert-info{ display: none !important; }
+  #announcements{ display: none !important; }
 }
 
