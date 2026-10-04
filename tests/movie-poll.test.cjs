@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const { test } = require('node:test');
 
 // Exercise the actual module in a browser stub, exposing internals only in this
-// test copy. No production API or dependency on a live CyTube channel is needed.
+// test copy. Sampling internals stay private in production; no live channel is needed.
 const source = fs.readFileSync(path.join(__dirname, '../modules/feature-poll-overlay.js'), 'utf8')
   .replace('name: "feature:poll-overlay",', `
     sampleMovies, eligiblePlaylistMovies, playlistMovieMetadata,
@@ -61,7 +61,7 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
         if (tag === 'section') this.parts = Object.fromEntries([
           '.btfw-random-poll-close', '.btfw-random-poll-cancel', '.btfw-random-poll-reroll',
           '.btfw-random-poll-start', '#btfw-random-poll-count', '#btfw-random-poll-minutes',
-          '.btfw-random-poll-list', '.btfw-random-poll-warning', '.btfw-random-poll-eligible'
+          '.btfw-random-poll-list', '.btfw-random-poll-warning', '.btfw-random-poll-eligible', '.btfw-random-poll-pool'
         ].map((selector) => [selector, element('div')]));
       }
     };
@@ -89,7 +89,7 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
     BTFW_CONFIG: { integrations: { randomMoviePoll: { enabled: true } } },
     CHANNEL: { name: 'TestChannel' }, CLIENT: { rank: 3 },
     hasPermission: () => true,
-    jQuery: (row) => ({ data: () => row.media }),
+    jQuery: (row) => ({ data: (key) => key === 'uid' ? row?.uid : row?.media }),
     requestAnimationFrame: (callback) => frames.push(callback),
     socket: { emit: (...args) => emitted.push(args), on: (event, callback) => { socketListeners[event] = callback; } }
   };
@@ -116,6 +116,76 @@ test('all 700+ upcoming entries are eligible regardless of visibility or distanc
   const { api } = await harness(rows);
   assert.equal(api.eligiblePlaylistMovies().length, 750);
   assert.equal(api.eligiblePlaylistMovies().at(-1).uid, 750);
+});
+
+test('canonical media titles and UIDs remain selectable when row decorations are missing', async () => {
+  const future = movieRow(2, '');
+  future.className = 'queue_entry';
+  future.uid = 2;
+  future.media.title = 'Alien1979';
+  const { api } = await harness([movieRow(1, 'Current (2000)'), future]);
+  const [movie] = api.eligiblePlaylistMovies();
+  assert.equal(movie.uid, 2);
+  assert.equal(movie.title, 'Alien1979');
+  assert.equal(movie.decade, 1970);
+  assert.equal(api.playlistMovieMetadata(future, 'Serial 119790').decade, null);
+  assert.equal(api.playlistMovieMetadata(future, '2001 A Space Odyssey (1968)').decade, 1960);
+});
+
+test('diagnostics account for every upcoming row and show fresh movies by decade', async () => {
+  const rows = [movieRow(1, 'Past (1970)'), movieRow(2, 'Current (1980)'),
+    movieRow(3, 'Past (1970)'), movieRow(4, 'Current (1980)'),
+    movieRow(5, 'Fresh (1990)'), movieRow(6, 'Fresh (1990)'), movieRow(7, ''),
+    movieRow(8, 'Wildcard')];
+  const h = await harness(rows);
+  h.setActive(rows[1]);
+  h.api.rememberMovieNominations([h.api.eligiblePlaylistMovies()[0]]);
+  const stats = h.api.getMovieSelectionDiagnostics();
+  assert.equal(stats.total, 8);
+  assert.equal(stats.reportedTotal, 8);
+  assert.equal(stats.upcoming, 6);
+  assert.equal(stats.eligible, 2);
+  assert.equal(stats.fresh, 1);
+  assert.deepEqual({ ...stats.excluded }, { missingIdentity: 1, history: 1, duplicates: 1, current: 1 });
+  assert.deepEqual(JSON.parse(JSON.stringify(stats.decades)), [
+    { decade: 1990, eligible: 1, fresh: 0 }, { decade: null, eligible: 1, fresh: 1 }
+  ]);
+});
+
+test('an incomplete mounted playlist never silently narrows random selections', async () => {
+  const rows = [movieRow(1, 'Current'), movieRow(2, 'A (1970)'), movieRow(3, 'B (1980)')];
+  const h = await harness(rows, new Map(), false, true);
+  const count = { textContent: '396 items' };
+  h.elements.set('plcount', count);
+  assert.equal(h.api.getMovieSelectionDiagnostics().status, 'loading');
+  assert.equal(h.api.eligiblePlaylistMovies().length, 0);
+  h.api.openRandomMoviePoll();
+  await h.flushSelection();
+  assert.match(h.getBuilder().querySelector('.btfw-random-poll-eligible').textContent, /3 of 396/);
+  assert.equal(h.getBuilder().querySelector('.btfw-random-poll-start').disabled, true);
+  count.textContent = '3 items';
+  const pending = h.api.rerollRandomMovies();
+  await h.flushSelection();
+  await pending;
+  assert.equal(h.api.getMovieSelectionDiagnostics().status, 'ready');
+  assert.equal(h.api.eligiblePlaylistMovies().length, 2);
+  assert.equal(h.getBuilder().querySelector('.btfw-random-poll-start').disabled, false);
+});
+
+test('four available decades can force a scarce decade to repeat despite a large pool', async () => {
+  const rows = [movieRow(0, 'Current'), movieRow(1, 'Only seventies (1979)'),
+    ...Array.from({ length: 300 }, (_, i) => movieRow(i + 2, `Movie ${i} (${1980 + (i % 3) * 10})`))];
+  const { api } = await harness(rows);
+  for (let i = 0; i < 5; i++) {
+    const movies = api.sampleMovies(api.eligiblePlaylistMovies(), 5);
+    assert.equal(new Set(movies.map((movie) => movie.decade)).size, 4);
+    assert.ok(movies.some((movie) => movie.title === 'Only seventies (1979)'));
+    api.rememberMovieNominations(movies);
+  }
+  const stats = api.getMovieSelectionDiagnostics();
+  assert.equal(stats.eligible, 301);
+  assert.ok(stats.fresh > 270);
+  assert.equal(stats.decades[0].fresh, 0);
 });
 
 test('playlist order excludes everything above current, without a limit on upcoming rows', async () => {

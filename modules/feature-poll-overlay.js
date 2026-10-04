@@ -624,10 +624,21 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   function playlistUid(row) {
     const match = String(row?.className || "").match(/\bpluid-(\d+)\b/);
-    return match ? Number.parseInt(match[1], 10) : null;
+    if (match) return Number.parseInt(match[1], 10);
+    try {
+      const uid = (window.jQuery || window.$)?.(row)?.data("uid");
+      if (uid != null && /^(?:0|[1-9]\d*)$/.test(String(uid))) return Number(uid);
+    } catch (_) {}
+    return null;
   }
 
   function playlistTitle(row) {
+    // CyTube attaches the full media record before rendering row details.
+    // Prefer that source even if a lazy/custom title element is still empty.
+    try {
+      const media = (window.jQuery || window.$)?.(row)?.data("media");
+      if (typeof media?.title === "string" && media.title.trim()) return media.title.replace(/\s+/g, " ").trim();
+    } catch (_) {}
     const title = row?.querySelector(".qe_title") || row?.querySelector("a");
     return String(title?.textContent || "").replace(/\s+/g, " ").trim();
   }
@@ -710,21 +721,36 @@ BTFW.define("feature:poll-overlay", [], async () => {
     try { media = (window.jQuery || window.$)?.(row)?.data("media"); } catch (_) {}
     const provider = String(media?.type || "").toLocaleLowerCase();
     const mediaKey = provider && media?.id != null ? `${provider}:${media.id}` : "";
-    // Prefer an explicit release year. Otherwise use the last standalone year
+    // Prefer an explicit release year. Otherwise use the last year
     // in the title, so "2001: A Space Odyssey (1968)" belongs to the 1960s.
     const taggedYear = title.match(/[([]\s*((?:19|20)\d{2})\s*[)\]]/);
-    const years = title.match(/\b(?:19|20)\d{2}\b/g);
+    // Upload titles often attach the release year to the last word (Alien1979).
+    // Digit boundaries avoid mistaking part of a longer number for a year.
+    const years = title.match(/(?<!\d)(?:19|20)\d{2}(?!\d)/g);
     const year = Number(taggedYear?.[1] || years?.[years.length - 1] || 0);
     return { mediaKey, decade: year ? Math.floor(year / 10) * 10 : null };
   }
 
-  function eligiblePlaylistMovies() {
+  function movieSelectionPool() {
     const activeRow = document.querySelector("#queue > .queue_active");
     const rows = Array.from(document.querySelectorAll("#queue > .queue_entry"));
     const activeIndex = rows.indexOf(activeRow);
+    const countText = document.getElementById("plcount")?.textContent || "";
+    const reportedMatch = String(countText).match(/([\d,]+)\s+items?/i);
+    const reportedTotal = reportedMatch ? Number(reportedMatch[1].replace(/,/g, "")) : rows.length;
+    const stats = {
+      policy: "upcoming-all-v2", build: window.BTFW?.BASE || "", total: rows.length, reportedTotal,
+      currentIndex: activeIndex, currentTitle: playlistTitle(activeRow),
+      upcoming: activeIndex < 0 ? 0 : rows.length - activeIndex - 1,
+      excluded: { missingIdentity: 0, history: 0, duplicates: 0, current: 0 },
+      eligible: 0, fresh: 0, decades: [], status: "ready"
+    };
+    // Detect a partially mounted queue rather than quietly sampling its first
+    // few rows. Performance mode must not turn incomplete data into bias.
+    if (rows.length < reportedTotal) return { movies: [], stats: { ...stats, status: "loading" } };
     // Until CyTube identifies the current row, we cannot tell which entries
     // are upcoming. Never fall back to nominating the already-played queue.
-    if (activeIndex < 0) return [];
+    if (activeIndex < 0) return { movies: [], stats: { ...stats, status: "awaiting-current" } };
     const activeTitle = movieKey(playlistTitle(activeRow));
     const activeMedia = playlistMovieMetadata(activeRow, activeTitle).mediaKey;
     const history = readMovieHistory();
@@ -749,14 +775,34 @@ BTFW.define("feature:poll-overlay", [], async () => {
       const uid = playlistUid(row);
       const title = playlistTitle(row);
       const key = movieKey(title);
-      if (uid == null || key === activeTitle || !title || seen.has(key)) return;
+      if (uid == null || !title) { stats.excluded.missingIdentity++; return; }
+      if (key === activeTitle) { stats.excluded.current++; return; }
       const metadata = playlistMovieMetadata(row, title);
-      if (wonTitles.has(key) || (metadata.mediaKey && (metadata.mediaKey === activeMedia || wonMedia.has(metadata.mediaKey) || seenMedia.has(metadata.mediaKey)))) return;
+      if (metadata.mediaKey && metadata.mediaKey === activeMedia) { stats.excluded.current++; return; }
+      if (wonTitles.has(key) || (metadata.mediaKey && wonMedia.has(metadata.mediaKey))) { stats.excluded.history++; return; }
+      if (seen.has(key) || (metadata.mediaKey && seenMedia.has(metadata.mediaKey))) { stats.excluded.duplicates++; return; }
       seen.add(key);
       if (metadata.mediaKey) seenMedia.add(metadata.mediaKey);
       movies.push({ uid, title, key, ...metadata });
     });
-    return movies;
+    const recent = new Set(history.recentPolls.flat());
+    const decades = new Map();
+    movies.forEach((movie) => {
+      const fresh = !recent.has(movie.key) && (!movie.mediaKey || !recent.has(`media:${movie.mediaKey}`));
+      if (fresh) stats.fresh++;
+      const decade = movie.decade;
+      if (!decades.has(decade)) decades.set(decade, { decade, eligible: 0, fresh: 0 });
+      const bucket = decades.get(decade);
+      bucket.eligible++;
+      if (fresh) bucket.fresh++;
+    });
+    stats.eligible = movies.length;
+    stats.decades = Array.from(decades.values()).sort((a, b) => (a.decade ?? Infinity) - (b.decade ?? Infinity));
+    return { movies, stats };
+  }
+
+  function eligiblePlaylistMovies() {
+    return movieSelectionPool().movies;
   }
 
   function randomChoice(items) {
@@ -998,7 +1044,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const builder = document.querySelector("#pollwrap .btfw-random-poll-builder");
     if (!builder || !randomPollDraft) return;
 
-    const eligible = randomPollDraft.loading ? null : eligiblePlaylistMovies();
+    const pool = randomPollDraft.loading ? null : movieSelectionPool();
     const list = builder.querySelector(".btfw-random-poll-list");
     const countInput = builder.querySelector("#btfw-random-poll-count");
     const minutesInput = builder.querySelector("#btfw-random-poll-minutes");
@@ -1006,8 +1052,18 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
     if (countInput) countInput.value = String(randomPollDraft.count);
     if (minutesInput) minutesInput.value = String(randomPollDraft.minutes);
-    if (eligible) builder.querySelector(".btfw-random-poll-eligible").textContent =
-      `${eligible.length} eligible movie${eligible.length === 1 ? "" : "s"} below the current movie · earlier playlist entries, recent playback and previous winners excluded · four different decades where available, plus wildcards`;
+    if (pool) {
+      const summary = builder.querySelector(".btfw-random-poll-eligible");
+      const stats = pool.stats;
+      summary.textContent = stats.status === "loading"
+        ? `Playlist still loading: ${stats.total} of ${stats.reportedTotal} entries. Reroll once loading finishes.`
+        : stats.status === "awaiting-current"
+          ? "Waiting for the current playlist movie. Reroll once playback is ready."
+          : `${stats.eligible} eligible movies below the current movie · ${stats.upcoming} upcoming of ${stats.total} playlist entries · ${stats.fresh} not nominated recently`;
+      const decadeSummary = stats.decades.map((bucket) => `${bucket.decade == null ? "Unknown year" : `${bucket.decade}s`}: ${bucket.eligible} eligible, ${bucket.fresh} fresh`).join(" · ");
+      builder.querySelector(".btfw-random-poll-pool").textContent = decadeSummary;
+      builder.querySelector(".btfw-random-poll-pool").hidden = !decadeSummary;
+    }
 
     if (!randomPollDraft.loading) {
       list.innerHTML = "";
@@ -1117,6 +1173,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
         </div>
       </div>
       <p class="btfw-random-poll-eligible" aria-live="polite"></p>
+      <details class="btfw-random-poll-eligible">
+        <summary>Movie pool by decade</summary>
+        <p>Four different decades where available, plus wildcards. A decade with few eligible movies can repeat sooner.</p>
+        <p class="btfw-random-poll-pool"></p>
+      </details>
       <ol class="btfw-random-poll-list"></ol>
       <p class="btfw-random-poll-warning" hidden>Playlist move permission is required to queue the winner.</p>
       <div class="btfw-random-poll-actions">
@@ -2204,6 +2265,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   return {
     name: "feature:poll-overlay",
+    getMovieSelectionDiagnostics: () => movieSelectionPool().stats,
     showOverlay: showVideoOverlay,
     hideOverlay: hideVideoOverlay,
     openRandomMoviePoll: openRandomPollBuilder
