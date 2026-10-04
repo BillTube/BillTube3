@@ -380,6 +380,14 @@ body.btfw-mobile-nav-open{
     margin-top: 0;
     margin-bottom: 0;
   }
+  /* Video.js writes a 16:9 pixel height after layout. The phone viewport cap
+     must also size its inner player, otherwise the preview is cropped. */
+  body.btfw-phone-layout #btfw-grid #videowrap :is(.video-js, video, iframe){
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+  }
   #btfw-grid.btfw-grid--vertical #btfw-chatcol{
     height: 100%;
     min-height: 0;
