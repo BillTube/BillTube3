@@ -528,3 +528,254 @@ body.btfw-mobile-nav-open{
   #announcements{ display: none !important; }
 }
 
+/* Added navigation labels/icons must never change the desktop navbar. */
+#btfw-navhost .btfw-mobile-nav-icon,
+#btfw-navhost .btfw-mobile-profile-text{ display: none; }
+
+@media (max-width: 768px), (max-width: 940px) and (max-height: 500px){
+  body.btfw-phone-layout #btfw-navhost.btfw-navhost--mobile{
+    padding: 0;
+    min-height: 0;
+    height: 0;
+  }
+  body.btfw-phone-layout #btfw-navhost.btfw-navhost--mobile[data-mobile-open="true"]{
+    top: var(--btfw-phone-top, 0px);
+    height: var(--btfw-phone-height, 100dvh);
+    padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+    background: rgba(0, 0, 0, 0.65);
+    pointer-events: auto;
+    overflow: hidden;
+    justify-content: center;
+  }
+  body.btfw-phone-layout #btfw-navhost.btfw-navhost--mobile[data-mobile-open="true"] > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top){
+    width: min(100%, 420px);
+    height: 100%;
+    min-height: 0;
+    align-self: center;
+    justify-content: flex-start;
+    padding: 16px;
+    gap: 0;
+    border-radius: 20px !important;
+    border: 1px solid var(--btfw-border);
+    background-color: var(--btfw-color-surface, #19120d) !important;
+    background-image: none !important;
+    box-shadow: 0 16px 60px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+  }
+  body.btfw-phone-layout #btfw-navhost.btfw-navhost--mobile[data-mobile-open="true"] > nav.navbar::before,
+  body.btfw-phone-layout #btfw-navhost.btfw-navhost--mobile[data-mobile-open="true"] > nav.navbar::after{ display: none !important; }
+  body.btfw-phone-layout #btfw-navhost nav.navbar > .container{
+    flex-direction: column;
+    align-items: stretch;
+    height: 100%;
+    min-height: 0;
+  }
+  body.btfw-phone-layout #btfw-navhost .navbar-header{
+    min-height: 60px;
+    margin: 0 52px 8px 0;
+    padding: 0 8px;
+    width: auto;
+    align-self: stretch;
+  }
+  body.btfw-phone-layout #btfw-navhost .navbar-brand{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    padding: 0;
+    font-size: 20px;
+    letter-spacing: -0.02em;
+    color: var(--btfw-color-text);
+  }
+  body.btfw-phone-layout #btfw-navhost .navbar-brand::after{
+    content: "Navigation";
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--btfw-color-text-soft);
+  }
+  body.btfw-phone-layout #btfw-mobile-nav-close{
+    top: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 12px;
+    background: var(--btfw-color-panel);
+    color: var(--btfw-color-text);
+    box-shadow: none;
+    transform: none;
+    font-size: 24px;
+  }
+  body.btfw-phone-layout #btfw-navhost #nav-collapsible{
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+    margin: 0 !important;
+    padding: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    justify-content: flex-start;
+  }
+  body.btfw-phone-layout #btfw-navhost #nav-collapsible > ul{
+    width: 100%;
+    min-height: 100%;
+    gap: 4px;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+  body.btfw-phone-layout #btfw-navhost #nav-collapsible > ul::before{
+    content: "Channel";
+    display: block;
+    padding: 8px 12px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--btfw-color-text-soft);
+  }
+  body.btfw-phone-layout #btfw-navhost #nav-collapsible > ul > li{
+    flex-direction: column;
+    align-items: stretch;
+  }
+  body.btfw-phone-layout #btfw-navhost #nav-collapsible > ul > li > :is(a, button){
+    display: flex;
+    min-height: 52px;
+    width: 100%;
+    padding: 12px;
+    gap: 12px;
+    border-radius: 12px;
+    border: 0;
+    background: transparent;
+    background-image: none;
+    box-shadow: none;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    line-height: 1.3;
+    color: var(--btfw-color-text);
+    transform: none;
+    filter: none;
+    justify-content: flex-start;
+  }
+  body.btfw-phone-layout #btfw-navhost .btfw-mobile-nav-icon{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    flex: 0 0 24px;
+    color: var(--btfw-color-accent);
+  }
+  body.btfw-phone-layout #btfw-navhost .btfw-nav-pill__icon,
+  body.btfw-phone-layout #btfw-navhost .caret{ display: none; }
+  body.btfw-phone-layout #btfw-navhost #nav-collapsible > ul > li > a::after{
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-top: 1.5px solid var(--btfw-color-text-soft);
+    border-right: 1.5px solid var(--btfw-color-text-soft);
+    transform: rotate(45deg);
+    margin-left: auto;
+    flex: 0 0 6px;
+    opacity: 0.6;
+  }
+  body.btfw-phone-layout #btfw-navhost #nav-collapsible > ul > li > a:hover,
+  body.btfw-phone-layout #btfw-navhost #nav-collapsible > ul > li > a:focus-visible{
+    background: var(--btfw-color-panel);
+    box-shadow: none;
+    transform: none;
+    filter: none;
+  }
+  body.btfw-phone-layout #btfw-navhost #nav-collapsible > ul > li > a:active{ transform: scale(0.98); }
+  body.btfw-phone-layout #btfw-navhost li:has(> .dropdown-toggle){ order: 20; }
+  body.btfw-phone-layout #btfw-navhost li.btfw-mobile-nav-settings-start{ order: 10; }
+  body.btfw-phone-layout #btfw-navhost li:has(> #btfw-theme-btn-nav){ order: 11; }
+  body.btfw-phone-layout #btfw-navhost li:has(> #showchansettings){ order: 12; }
+  body.btfw-phone-layout #btfw-navhost .btfw-mobile-nav-settings-start::before{
+    content: "Settings";
+    padding: 20px 12px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--btfw-color-text-soft);
+  }
+  body.btfw-phone-layout #btfw-navhost .dropdown-menu{
+    position: static;
+    float: none;
+    width: 100%;
+    min-width: 0;
+    margin: 4px 0;
+    padding: 6px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--btfw-color-panel);
+    box-shadow: none;
+    animation: none !important;
+  }
+  body.btfw-phone-layout #btfw-navhost .dropdown-menu > li > a{
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 14px;
+    white-space: normal;
+    font-size: 14px;
+  }
+  body.btfw-phone-layout #btfw-navhost #btfw-nav-avatar-item{
+    order: 30;
+    margin: auto 0 0;
+    padding-top: 16px;
+  }
+  body.btfw-phone-layout #btfw-navhost #btfw-nav-avatar-item > a{
+    background: var(--btfw-color-panel) !important;
+    padding: 12px;
+    min-height: 68px;
+  }
+  body.btfw-phone-layout #btfw-navhost .btfw-nav-avatar{
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+  }
+  body.btfw-phone-layout #btfw-navhost .btfw-mobile-profile-text{
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  body.btfw-phone-layout #btfw-navhost .btfw-mobile-profile-text strong{ font-size: 14px; }
+  body.btfw-phone-layout #btfw-navhost .btfw-mobile-profile-text small{ font-size: 12px; color: var(--btfw-color-text-soft); }
+}
+
+/* Phones in landscape use a fitted two-column player/chat layout. The JS
+   vertical flag still owns the mobile navigation and hidden section stack. */
+@media (max-width: 940px) and (max-height: 500px) and (orientation: landscape){
+  #btfw-grid.btfw-grid--vertical{
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.85fr);
+    grid-template-areas: "nav nav" "video chat";
+    grid-template-rows: 0 minmax(0, 1fr);
+    column-gap: 8px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  #btfw-grid.btfw-grid--vertical #btfw-leftpad{ height: 100%; }
+  #btfw-grid.btfw-grid--vertical #videowrap{
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+  }
+  #videowrap .btfw-video-overlay .btfw-vo-bar{ flex-wrap: wrap; }
+  body.btfw-phone-layout #btfw-navhost.btfw-navhost--mobile[data-mobile-open="true"] > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top){ width: min(100%, 760px); }
+  body.btfw-phone-layout #btfw-navhost #nav-collapsible > ul{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: 0;
+    align-content: start;
+    gap: 4px 12px;
+  }
+  body.btfw-phone-layout #btfw-navhost #nav-collapsible > ul::before,
+  body.btfw-phone-layout #btfw-navhost .btfw-mobile-nav-settings-start::before{ display: none; }
+  body.btfw-phone-layout #btfw-navhost #btfw-nav-avatar-item{
+    grid-column: 1 / -1;
+    padding-top: 4px;
+  }
+  body.btfw-phone-layout #btfw-navhost #btfw-nav-avatar-item > a{ min-height: 56px; }
+}
