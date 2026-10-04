@@ -1,4 +1,5 @@
-BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) => {
+BTFW.define("feature:layout", ["feature:styleCore","feature:bulma","util:mobileViewport"], async ({ init: initModule }) => {
+  const mobileViewport = await initModule("util:mobileViewport");
   const SPLIT_KEY = "btfw:grid:leftPx";
   const CHAT_WIDTH_KEY = "btfw:layout:chatWidth";
   const CHAT_SIDE_KEY = "btfw:layout:chatSide";
@@ -342,10 +343,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
       // The phone grid owns the height. Measuring its screen-relative top
       // while scrolling used to grow chat and turn the whole page into a
       // scroll container. visualViewport also excludes the iOS keyboard.
-      const viewport = window.visualViewport;
-      const root = document.documentElement;
-      root.style.setProperty("--btfw-phone-height", (viewport?.height || window.innerHeight) + "px");
-      root.style.setProperty("--btfw-phone-top", (viewport?.offsetTop || 0) + "px");
+      mobileViewport.sync();
       chatwrap.style.removeProperty("height");
       return;
     }

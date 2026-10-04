@@ -1,5 +1,11 @@
 /*! BillTube Framework — v3.4g */
 (function(){
+  // Install before async modules/styles load so server notices cannot flash
+  // through the boot overlay on a phone.
+  var phoneStyle = document.createElement('style');
+  phoneStyle.id = 'btfw-phone-early-style';
+  phoneStyle.textContent = '@media (max-width:768px), (max-width:940px) and (max-height:500px){#announcements,#announcements .alert{display:none!important}#chatline,#guestname{font-size:16px!important}body{-webkit-text-size-adjust:100%;text-size-adjust:100%}}';
+  (document.head || document.documentElement).appendChild(phoneStyle);
   var scripts=document.getElementsByTagName('script');
   var BASE=(document.currentScript&&document.currentScript.src)||scripts[scripts.length-1].src; BASE=BASE.replace(/\/[^\/]*$/, "");
 
@@ -298,6 +304,7 @@ function resolveBranchToSHA(){
       "modules/util-motion.js",
       "modules/util-chat-popover.js",
       "modules/util-chat-scroll.js",
+      "modules/util-mobile-viewport.js",
       "modules/util-anime.js",
       "modules/util-avatar-dither.js",
       "modules/util-range-sliders.js",

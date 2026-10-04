@@ -353,6 +353,8 @@ body.btfw-mobile-nav-open{
   body.btfw-phone-layout{
     overflow: hidden;
     overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
   body.btfw-phone-layout #wrap{
     min-height: 0;
@@ -397,7 +399,7 @@ body.btfw-mobile-nav-open{
     overflow-y: auto;
     overscroll-behavior-y: contain;
     scroll-behavior: auto;
-    font-size: max(15px, var(--btfw-chat-text, 14px));
+    font-size: 14px;
     content-visibility: visible;
   }
   /* Avoid estimated row heights changing underneath an upward touch scroll. */
@@ -480,7 +482,7 @@ body.btfw-mobile-nav-open{
   }
   #chatline,
   #guestname{
-    font-size: 16px; /* Prevent Safari input-focus zoom. */
+    font-size: 16px !important; /* Prevent Safari input-focus zoom. */
     min-width: 0;
     min-height: 44px;
   }
@@ -525,7 +527,17 @@ body.btfw-mobile-nav-open{
     min-height: 44px;
   }
   /* CyTube's server-wide announcement is outside the channel grid. */
-  #announcements{ display: none !important; }
+  #announcements,
+  #announcements .alert{ display: none !important; }
+  /* Typing gets a compact preview, leaving the limited keyboard viewport
+     mostly for history. Keep the media mounted so playback continues. */
+  body.btfw-phone-keyboard:not(.btfw-phone-landscape) #btfw-grid #videowrap{
+    max-height: min(88px, calc(var(--btfw-phone-height, 100dvh) * 0.22));
+  }
+  body.btfw-phone-keyboard #chatwrap .btfw-chat-bottombar{
+    padding-bottom: 4px;
+  }
+  body.btfw-phone-keyboard #btfw-theme-cog-chat{ display: none !important; }
 }
 
 /* Added navigation labels/icons must never change the desktop navbar. */
@@ -747,36 +759,36 @@ body.btfw-mobile-nav-open{
 
 /* Phones in landscape use a fitted two-column player/chat layout. The JS
    vertical flag still owns the mobile navigation and hidden section stack. */
-@media (max-width: 940px) and (max-height: 500px) and (orientation: landscape){
-  #btfw-grid.btfw-grid--vertical{
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.85fr);
+@media (max-width: 768px), (max-width: 940px) and (max-height: 500px){
+  body.btfw-phone-landscape #btfw-grid.btfw-grid--vertical{
+    grid-template-columns: minmax(0, 1.8fr) minmax(240px, 1fr);
     grid-template-areas: "nav nav" "video chat";
     grid-template-rows: 0 minmax(0, 1fr);
     column-gap: 8px;
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
-  #btfw-grid.btfw-grid--vertical #btfw-leftpad{ height: 100%; }
-  #btfw-grid.btfw-grid--vertical #videowrap{
+  body.btfw-phone-landscape #btfw-grid.btfw-grid--vertical #btfw-leftpad{ height: 100%; }
+  body.btfw-phone-landscape #btfw-grid.btfw-grid--vertical #videowrap{
     margin: 0;
     width: 100%;
     height: 100%;
     max-height: none;
     aspect-ratio: auto;
   }
-  #videowrap .btfw-video-overlay .btfw-vo-bar{ flex-wrap: wrap; }
-  body.btfw-phone-layout #btfw-navhost.btfw-navhost--mobile[data-mobile-open="true"] > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top){ width: min(100%, 760px); }
-  body.btfw-phone-layout #btfw-navhost #nav-collapsible > ul{
+  body.btfw-phone-landscape #videowrap .btfw-video-overlay .btfw-vo-bar{ flex-wrap: wrap; }
+  body.btfw-phone-landscape #btfw-navhost.btfw-navhost--mobile[data-mobile-open="true"] > :is(nav.navbar, .navbar, #navbar, .navbar-fixed-top){ width: min(100%, 760px); }
+  body.btfw-phone-landscape #btfw-navhost #nav-collapsible > ul{
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     min-height: 0;
     align-content: start;
     gap: 4px 12px;
   }
-  body.btfw-phone-layout #btfw-navhost #nav-collapsible > ul::before,
-  body.btfw-phone-layout #btfw-navhost .btfw-mobile-nav-settings-start::before{ display: none; }
-  body.btfw-phone-layout #btfw-navhost #btfw-nav-avatar-item{
+  body.btfw-phone-landscape #btfw-navhost #nav-collapsible > ul::before,
+  body.btfw-phone-landscape #btfw-navhost .btfw-mobile-nav-settings-start::before{ display: none; }
+  body.btfw-phone-landscape #btfw-navhost #btfw-nav-avatar-item{
     grid-column: 1 / -1;
     padding-top: 4px;
   }
-  body.btfw-phone-layout #btfw-navhost #btfw-nav-avatar-item > a{ min-height: 56px; }
+  body.btfw-phone-landscape #btfw-navhost #btfw-nav-avatar-item > a{ min-height: 56px; }
 }
