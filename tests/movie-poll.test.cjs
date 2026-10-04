@@ -27,7 +27,7 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
   let modulePromise;
   const emitted = [];
   let active = rows[0];
-  active.nextElementSibling = rows[1];
+  rows.forEach((row, index) => { row.nextElementSibling = rows[index + 1] || null; });
   const elements = new Map();
   let builder = null;
   const frames = [], timers = [], socketListeners = {};
@@ -111,11 +111,103 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
   };
 }
 
-test('all 700+ entries are eligible regardless of visibility or queue position', async () => {
+test('all 700+ upcoming entries are eligible regardless of visibility or distance from current', async () => {
   const rows = Array.from({ length: 751 }, (_, i) => movieRow(i, `Movie ${i} (1995)`));
   const { api } = await harness(rows);
   assert.equal(api.eligiblePlaylistMovies().length, 750);
   assert.equal(api.eligiblePlaylistMovies().at(-1).uid, 750);
+});
+
+test('playlist order excludes everything above current, without a limit on upcoming rows', async () => {
+  const rows = Array.from({ length: 1101 }, (_, i) => movieRow(i, `Movie ${i} (1995)`));
+  const { api, setActive } = await harness(rows);
+  setActive(rows[300]);
+  const eligible = api.eligiblePlaylistMovies();
+  assert.equal(eligible.length, 800);
+  assert.equal(eligible[0].uid, 301);
+  assert.equal(eligible.at(-1).uid, 1100);
+  for (let i = 0; i < 10; i++) {
+    assert.ok(api.sampleMovies(eligible, 5).every((movie) => movie.uid > 300));
+  }
+});
+
+test('upcoming means DOM order, even when queue UIDs are out of numerical order', async () => {
+  const rows = [movieRow(1, 'Played'), movieRow(900, 'Current'), movieRow(2, 'Upcoming'), movieRow(3, 'Last')];
+  const { api, setActive } = await harness(rows);
+  setActive(rows[1]);
+  assert.deepEqual(Array.from(api.eligiblePlaylistMovies(), (movie) => movie.title), ['Upcoming', 'Last']);
+});
+
+test('playlist-derived exclusions work with empty history and remain after clearing history', async () => {
+  const rows = [movieRow(0, 'Played before browser opened'), movieRow(1, 'Current'), movieRow(2, 'Upcoming')];
+  const { api, setActive } = await harness(rows);
+  setActive(rows[1]);
+  assert.equal(api.readMovieHistory().played.length, 0);
+  assert.deepEqual(Array.from(api.eligiblePlaylistMovies(), (movie) => movie.title), ['Upcoming']);
+  api.saveMovieHistory({ winners: [], played: [], recentPolls: [] });
+  assert.deepEqual(Array.from(api.eligiblePlaylistMovies(), (movie) => movie.title), ['Upcoming']);
+});
+
+test('duplicate titles and renamed media below current cannot reintroduce movies above it', async () => {
+  const rows = [movieRow(0, 'Played A', 'a'), movieRow(1, 'Played B', 'b'), movieRow(2, 'Current'),
+    movieRow(3, 'Played A HD', 'a'), movieRow(4, 'Played B', 'different'), movieRow(5, 'Upcoming')];
+  const { api, setActive } = await harness(rows);
+  setActive(rows[2]);
+  assert.deepEqual(Array.from(api.eligiblePlaylistMovies(), (movie) => movie.title), ['Upcoming']);
+});
+
+test('no current entry or no upcoming entries never falls back to earlier movies', async () => {
+  const rows = [movieRow(0, 'A'), movieRow(1, 'B'), movieRow(2, 'C')];
+  const { api, setActive } = await harness(rows);
+  for (const current of [null, movieRow(999, 'Not in the queue'), rows[2]]) {
+    setActive(current);
+    assert.equal(api.eligiblePlaylistMovies().length, 0);
+    assert.equal(api.sampleMovies(api.eligiblePlaylistMovies(), 5).length, 0);
+  }
+  const empty = await harness([]);
+  assert.equal(empty.api.eligiblePlaylistMovies().length, 0);
+});
+
+test('playlist advancement and reordering recompute upcoming eligibility on each selection', async () => {
+  const rows = ['Current', 'A', 'B', 'C', 'D'].map((title, uid) => movieRow(uid, title));
+  const { api, setActive } = await harness(rows);
+  setActive(rows[2]);
+  assert.deepEqual(Array.from(api.eligiblePlaylistMovies(), (movie) => movie.title), ['C', 'D']);
+  const d = rows.pop(); rows.unshift(d);
+  assert.deepEqual(Array.from(api.eligiblePlaylistMovies(), (movie) => movie.title), ['C']);
+});
+
+test('manual and credits launches reject a draft that moved above current before starting', async () => {
+  for (const quiet of [false, true]) {
+    const rows = ['Current', 'A', 'B', 'C', 'D', 'E'].map((title, uid) => movieRow(uid, title));
+    const { api, setActive, emitted } = await harness(rows);
+    const draft = api.eligiblePlaylistMovies();
+    setActive(rows[3]);
+    assert.equal(api.launchAutomaticPoll({ movies: draft, quiet }), false);
+    assert.equal(emitted.length, 0);
+    assert.equal(api.launchAutomaticPoll({ movies: api.eligiblePlaylistMovies(), quiet }), true);
+  }
+});
+
+test('actual builder and ten rerolls only nominate upcoming movies across four decades', async () => {
+  const rows = [...Array.from({ length: 300 }, (_, i) => movieRow(i, `Past ${i} (${1930 + i % 10 * 10})`)),
+    movieRow(300, 'Current'), ...Array.from({ length: 800 }, (_, i) => movieRow(i + 301, `Future ${i} (${1930 + i % 10 * 10})`))];
+  const h = await harness(rows, new Map(), false, true);
+  h.setActive(rows[300]);
+  h.api.openRandomMoviePoll();
+  await h.flushSelection();
+  for (let i = 0; i < 11; i++) {
+    const list = h.getBuilder().querySelector('.btfw-random-poll-list');
+    const titles = list.children.map((item) => item.children[1].textContent);
+    assert.equal(titles.length, 5);
+    assert.ok(titles.every((title) => title.startsWith('Future ')));
+    assert.ok(new Set(titles.map((title) => Math.floor(Number(title.match(/\((\d{4})\)/)[1]) / 10))).size >= 4);
+    if (i < 10) {
+      const pending = h.api.rerollRandomMovies();
+      await h.flushSelection(); await pending;
+    }
+  }
+  assert.ok(h.getBuilder().querySelector('.btfw-random-poll-eligible').textContent.includes('800 eligible movies below the current movie'));
 });
 
 test('five choices represent at least four decades, without duplicates', async () => {

@@ -720,23 +720,36 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   function eligiblePlaylistMovies() {
     const activeRow = document.querySelector("#queue > .queue_active");
-    const activeUid = playlistUid(activeRow);
+    const rows = Array.from(document.querySelectorAll("#queue > .queue_entry"));
+    const activeIndex = rows.indexOf(activeRow);
+    // Until CyTube identifies the current row, we cannot tell which entries
+    // are upcoming. Never fall back to nominating the already-played queue.
+    if (activeIndex < 0) return [];
     const activeTitle = movieKey(playlistTitle(activeRow));
     const activeMedia = playlistMovieMetadata(activeRow, activeTitle).mediaKey;
     const history = readMovieHistory();
     const excluded = [...history.winners, ...(history.played || [])];
     const wonTitles = new Set(excluded.map((movie) => movie.key));
     const wonMedia = new Set(excluded.map((movie) => movie.mediaKey).filter(Boolean));
+    // The queue plays downward. Entries above the current row are treated as
+    // played, including duplicate titles/media re-added farther down.
+    rows.slice(0, activeIndex).forEach((row) => {
+      const title = playlistTitle(row);
+      if (title) wonTitles.add(movieKey(title));
+      const mediaKey = playlistMovieMetadata(row, title).mediaKey;
+      if (mediaKey) wonMedia.add(mediaKey);
+    });
     const seen = new Set();
     const seenMedia = new Set();
     const movies = [];
 
-    // Scan the whole queue, without visibility filtering or a candidate limit.
-    document.querySelectorAll("#queue > .queue_entry").forEach((row) => {
+    // Scan every upcoming row, without a visibility filter, proximity window,
+    // or candidate limit. Queue position is DOM order, not the numeric UID.
+    rows.slice(activeIndex + 1).forEach((row) => {
       const uid = playlistUid(row);
       const title = playlistTitle(row);
       const key = movieKey(title);
-      if (uid == null || uid === activeUid || key === activeTitle || !title || seen.has(key)) return;
+      if (uid == null || key === activeTitle || !title || seen.has(key)) return;
       const metadata = playlistMovieMetadata(row, title);
       if (wonTitles.has(key) || (metadata.mediaKey && (metadata.mediaKey === activeMedia || wonMedia.has(metadata.mediaKey) || seenMedia.has(metadata.mediaKey)))) return;
       seen.add(key);
@@ -994,7 +1007,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (countInput) countInput.value = String(randomPollDraft.count);
     if (minutesInput) minutesInput.value = String(randomPollDraft.minutes);
     if (eligible) builder.querySelector(".btfw-random-poll-eligible").textContent =
-      `${eligible.length} eligible movie${eligible.length === 1 ? "" : "s"} · current movie, last ${RECENT_PLAYBACK_LIMIT} played movies and previous winners excluded · four different decades where available, plus wildcards`;
+      `${eligible.length} eligible movie${eligible.length === 1 ? "" : "s"} below the current movie · earlier playlist entries, recent playback and previous winners excluded · four different decades where available, plus wildcards`;
 
     if (!randomPollDraft.loading) {
       list.innerHTML = "";
@@ -1167,7 +1180,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
     movies = Array.isArray(movies) ? movies : [];
     if (movies.length < 2) {
-      if (!quiet) pollNotice("At least two eligible playlist movies are required. Clear movie history to allow previous winners again.", "warn");
+      if (!quiet) pollNotice("At least two eligible movies below the current playlist movie are required. Add upcoming movies or clear history to allow previous winners below it again.", "warn");
       return false;
     }
     if (!window.socket || typeof window.socket.emit !== "function") {
