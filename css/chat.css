@@ -1,10 +1,12 @@
 #messagebuffer {
   contain: layout style paint;
-  content-visibility: auto;
+  content-visibility: visible;
 }
 #messagebuffer > div {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 60px; /* Estimated height for layout calculations */
+  /* Follow needs real row heights before paint; estimates change scrollHeight
+     again when a newly appended row becomes visible. */
+  content-visibility: visible;
+  contain-intrinsic-size: none;
   position: relative;
   width: 100%;
   box-sizing: border-box;
@@ -180,7 +182,6 @@
 /* Ensure consecutive messages render efficiently */
 #messagebuffer > div.btfw-compact {
   margin-top: 2px !important;
-  /* content-visibility inherited from parent */
 }
 
 #chatwrap{
@@ -526,10 +527,11 @@
 #messagebuffer{
   flex: 1 1 auto;
   overflow: auto;
+  scrollbar-gutter: stable;
   min-height: 0; /* Allow shrinking */
   padding: 6px;
-  /* Ensure smooth scrolling */
-  scroll-behavior: smooth;
+  /* Frequent incoming messages must not restart an animated scroll. */
+  scroll-behavior: auto;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -1307,16 +1309,21 @@
 }
 
 #chatwrap .btfw-newmessages-slot{
+  position: relative;
   display: flex;
   justify-content: center;
-  margin: 6px 0;
+  flex: 0 0 0;
+  height: 0;
+  margin: 0;
+  z-index: 2;
+  pointer-events: none;
 }
 
 #chatwrap .btfw-newmessages-slot #newmessages-indicator{
-  position: relative;
+  position: absolute;
   left: auto;
   right: auto;
-  bottom: auto;
+  bottom: 8px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1332,6 +1339,7 @@
   letter-spacing: 0.01em;
   box-shadow: 0 12px 28px color-mix(in srgb, var(--btfw-color-bg) 32%, transparent 68%);
   cursor: pointer;
+  pointer-events: auto;
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
@@ -1360,8 +1368,11 @@ img.twemoji { width: 1em; height: 1em; vertical-align: -0.15em; }
 
 #userlist, #messagebuffer, #chatheader, #videowrap-header {
     border: 0 solid transparent!important;
-        scroll-behavior: smooth;
     overflow-x: hidden;
+}
+
+#userlist, #chatheader, #videowrap-header {
+  scroll-behavior: smooth;
 }
 
 #userlist {

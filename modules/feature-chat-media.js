@@ -3,9 +3,11 @@
    - Emote/GIF size: small(100) / medium(130) / big(170)  [persisted]
    - GIF autoplay: ON (default) or hover-to-play          [persisted]
    - ChildList-only observer (no attribute loops)
+   - Suspend offscreen media beyond a 600px buffer, preserving intrinsic sizes
    - Forces size on existing images at runtime (removes width/height attrs and applies CSS var inline with !important)
 */
-BTFW.define("feature:chatMedia", [], async () => {
+BTFW.define("feature:chatMedia", ["util:chat-media-visibility"], async ({ init }) => {
+  const visibility = await init("util:chat-media-visibility");
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
@@ -45,7 +47,7 @@ BTFW.define("feature:chatMedia", [], async () => {
   }
 
   function setSrcIfDifferent(img, next){
-    if (next && img.src !== next) img.src = next;
+    visibility.setSource(img, next);
   }
 
   // Ensure width/height are controlled by CSS var at runtime
@@ -76,15 +78,16 @@ BTFW.define("feature:chatMedia", [], async () => {
     }
 
     const auto = getAutoplay() === "1";
+    const src = visibility.getSource(img);
     if (isGiphy(img)) {
       if (auto) {
-        setSrcIfDifferent(img, toAnimated(img.src));
+        setSrcIfDifferent(img, toAnimated(src));
         img.onmouseenter = null;
         img.onmouseleave = null;
       } else {
-        setSrcIfDifferent(img, toStatic(img.src));
-        img.onmouseenter = () => { setSrcIfDifferent(img, toAnimated(img.src)); };
-        img.onmouseleave = () => { setSrcIfDifferent(img, toStatic(img.src));   };
+        setSrcIfDifferent(img, toStatic(src));
+        img.onmouseenter = () => { setSrcIfDifferent(img, toAnimated(visibility.getSource(img))); };
+        img.onmouseleave = () => { setSrcIfDifferent(img, toStatic(visibility.getSource(img))); };
       }
     } else if (isKlipy(img) || isTenor(img)) {
       // Klipy/Tenor stay animated; no static variant from filter
@@ -125,12 +128,14 @@ BTFW.define("feature:chatMedia", [], async () => {
     // Apply persisted settings on startup
     applySize(getSize());
     applyAutoplay();
+    visibility.bind(buf);
 
     console.log("[BTFW] chatMedia ready (runtime sizing)");
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
+  document.addEventListener("btfw:layoutReady", boot);
 
   return {
     name:"feature:chatMedia",

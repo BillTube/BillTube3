@@ -4,7 +4,7 @@ BTFW.define("feature:chat", ["feature:layout", "util:chat-popover", "util:chat-s
   const chatScroll = await init("util:chat-scroll");
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-  const MESSAGE_SELECTOR = ".chat-msg, .message, [class*=message]";
+  const MESSAGE_SELECTOR = ".chat-msg, [class^='chat-msg-'], [class*=' chat-msg-'], .message, [class*=message]";
   const TRIVIA_PREFIX = /^Trivia:\s*/i;
   const BASE = (window.BTFW && BTFW.BASE ? BTFW.BASE.replace(/\/+$/,'') : "");
 
@@ -1000,26 +1000,9 @@ const scheduleNormalizeChatActions = (() => {
     if (!buffer) return;
     chatScroll.bind(buffer);
 
-    // Direct socket hook - scroll on every chat message
-    const sock = window.socket;
-    if (sock && typeof sock.on === "function" && !sock._btfwScrollChatBound) {
-      sock._btfwScrollChatBound = true;
-      sock.on("chatMsg", () => {
-        if (chatScroll.isMobile()) return;
-        if (typeof window.scrollChat === "function") {
-          window.scrollChat();
-          setTimeout(() => { if (!chatScroll.isMobile()) window.scrollChat(); }, 100);
-          setTimeout(() => { if (!chatScroll.isMobile()) window.scrollChat(); }, 250);
-        }
-      });
-    }
-
+    // The shared controller follows actual DOM additions on every viewport.
+    // Repeated refreshes must not enqueue initial or delayed socket scrolls.
     processPendingChatMessages();
-
-    // Initial scroll
-    if (!chatScroll.isMobile() && typeof window.scrollChat === "function") {
-      setTimeout(() => { if (!chatScroll.isMobile()) window.scrollChat(); }, 80);
-    }
   }
 
   function escapeHTML(str){
@@ -1773,7 +1756,14 @@ const scheduleNormalizeChatActions = (() => {
     const cw = $("#chatwrap"); if (!cw || cw._btfw_chat_obs) return;
     cw._btfw_chat_obs = true;
 
-    new MutationObserver(()=>{
+    new MutationObserver((records)=>{
+      const buffer = getChatBuffer();
+      if (buffer && records.some(record => record.target === buffer && record.addedNodes.length)) {
+        // Grouping/trivia styling can change a row's height. Finish it in the
+        // mutation microtask, before the follow frame measures scrollHeight.
+        processPendingChatMessages();
+        adoptNewMessageIndicator();
+      }
       scheduleChatDomRefresh();
     }).observe(cw,{childList:true,subtree:true});
 

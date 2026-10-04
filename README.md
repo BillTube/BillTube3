@@ -27,14 +27,14 @@ It runs from Channel JavaScript, so it does not need a separate website or serve
 
 ## How it loads
 
-The loader resolves the `main` branch to a Git commit before loading BillTube. This keeps the framework, its 54 loaded modules, and its 8 stylesheets on the same revision. If jsDelivr fails, the loader tries a second CDN.
+The loader resolves the `main` branch to a Git commit before loading BillTube. This keeps the framework, its modules, and its 8 stylesheets on the same revision. If jsDelivr fails, the loader tries a second CDN.
 
 ```mermaid
 flowchart LR
     A[Channel JavaScript] --> B[BillTube loader]
     B --> C[Pinned Git commit]
     C --> D[8 stylesheets]
-    C --> E[54 modules]
+    C --> E[Modules]
     D --> F[CyTube channel]
     E --> F
 ```
@@ -55,6 +55,7 @@ flowchart LR
 - Emote picker with channel emotes, animated emoji, recent emotes, and searchable community packs
 - Inline emote autocomplete with image previews
 - GIF search and favorites
+- GIFs and emotes outside a 600 px buffer around the chat viewport are suspended with their layout space preserved, and restored before scrolling into view
 - Avatars, timestamps, mentions, and notification sounds
 - Spoilers, text styling, chat colors, ignore controls, and a user-list overlay
 - Emote packs from 7TV, BetterTTV, FrankerFaceZ, and emoji.gg
@@ -63,7 +64,7 @@ flowchart LR
 
 - Now-playing cards with posters, summaries, and ratings
 - Movie polls with TMDB information
-- Random movie and automatic credits polls select across the full loaded playlist, mix the 1980s–2020s where title years are available, and avoid recent nominations when possible. Winners stay excluded using browser-local history for each channel; owners can view and clear it under **Movie history** beside the poll controls. History starts when this version is used and also includes manual random movie poll winners.
+- Random movie and automatic credits polls select across the full loaded playlist, aim for four different decades where title years are available (including older films), and fill remaining slots with wildcards. The last 20 selections, including unstarted drafts and rerolls, are avoided when possible; exhausted pools reuse the least recently nominated movies. The current movie, previous poll winners, and the last 50 distinct movies played while this browser is connected are excluded. History is stored per channel in this browser and can be viewed or cleared under **Movie history**. Playback history starts when this version is used; it cannot reconstruct movies played while the browser was closed. Rerolls show a loading indicator while selecting.
 - A searchable playlist catalogue
 - End-of-movie audience ratings and a channel leaderboard
 - Movie cards posted by the `!summary` chat command

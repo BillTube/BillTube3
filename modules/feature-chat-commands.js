@@ -17,8 +17,8 @@ BTFW.define("feature:chat-commands", ["util:chat-scroll"], async () => {
     d.className = "server-msg btfw-cmd";
     d.textContent = text;
     buf.appendChild(d);
-    if (chatScroll.isMobile()) chatScroll.scheduleFollow();
-    else buf.scrollTop = buf.scrollHeight;
+    chatScroll.bind(buf);
+    chatScroll.scheduleFollow();
   }
   function getUser(){ try { return (window.CLIENT && CLIENT.name) ? CLIENT.name : ""; } catch(_) { return ""; } }
   function getRank(){ try { return (window.CLIENT && (CLIENT.rank|0)) || 0; } catch(_) { return 0; } }

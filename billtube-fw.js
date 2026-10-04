@@ -304,6 +304,7 @@ function resolveBranchToSHA(){
       "modules/util-motion.js",
       "modules/util-chat-popover.js",
       "modules/util-chat-scroll.js",
+      "modules/util-chat-media-visibility.js",
       "modules/util-mobile-viewport.js",
       "modules/util-anime.js",
       "modules/util-avatar-dither.js",
