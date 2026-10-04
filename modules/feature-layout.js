@@ -1,4 +1,5 @@
-BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) => {
+BTFW.define("feature:layout", ["feature:styleCore","feature:bulma","util:mobileViewport"], async ({ init: initModule }) => {
+  const mobileViewport = await initModule("util:mobileViewport");
   const SPLIT_KEY = "btfw:grid:leftPx";
   const CHAT_WIDTH_KEY = "btfw:layout:chatWidth";
   const CHAT_SIDE_KEY = "btfw:layout:chatSide";
@@ -9,6 +10,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   const WIDTH_BUFFER = 20;
   const MOBILE_THRESHOLD_MIN = 900;
   const MOBILE_THRESHOLD_MAX = 940;
+  const PHONE_MQ = window.matchMedia("(max-width: 768px), (max-width: 940px) and (max-height: 500px)");
 
   let videoColumnPx = null;
   let chatWidthPresetPx = null;
@@ -259,7 +261,8 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
 
     wireMobileToggle();
 
-    const shouldVertical = window.innerWidth < computeThreshold();
+    const shouldVertical = PHONE_MQ.matches || window.innerWidth < computeThreshold();
+    document.body.classList.toggle("btfw-phone-layout", shouldVertical && PHONE_MQ.matches);
     if (shouldVertical !== isVertical) {
       isVertical = shouldVertical;
       grid.classList.toggle("btfw-grid--vertical", shouldVertical);
@@ -336,6 +339,14 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
   function fitVerticalChat(){
     const chatwrap = document.getElementById("chatwrap");
     if (!chatwrap) return;
+    if (isVertical && PHONE_MQ.matches) {
+      // The phone grid owns the height. Measuring its screen-relative top
+      // while scrolling used to grow chat and turn the whole page into a
+      // scroll container. visualViewport also excludes the iOS keyboard.
+      mobileViewport.sync();
+      chatwrap.style.removeProperty("height");
+      return;
+    }
     if (!isVertical) {
       chatwrap.style.removeProperty("height");
       return;
@@ -343,7 +354,7 @@ BTFW.define("feature:layout", ["feature:styleCore","feature:bulma"], async ({}) 
     // Double rAF so we measure after layout/reflow has fully committed (a
     // single frame can still catch a mid-transition position on boot).
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (!isVertical) { chatwrap.style.removeProperty("height"); return; }
+      if (!isVertical || PHONE_MQ.matches) { chatwrap.style.removeProperty("height"); return; }
       const top = chatwrap.getBoundingClientRect().top;
       const avail = window.innerHeight - top - 8;
       chatwrap.style.height = Math.max(Math.round(avail), 320) + "px";

@@ -843,7 +843,7 @@ BTFW.define("feature:gifs", ["util:chat-popover"], async () => {
     const isK = img.classList.contains("klipy");
     const isT = img.classList.contains("tenor");
     if (!isG && !isK && !isT) return null;
-    const src = img.getAttribute("src") || img.src || "";
+    const src = img.dataset.btfwMediaSrc || img.getAttribute("src") || img.src || "";
     let item;
     if (isG) {
       const m = src.match(/\/media\/([A-Za-z0-9_-]+)\//);

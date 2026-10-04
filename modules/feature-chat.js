@@ -1,9 +1,10 @@
-BTFW.define("feature:chat", ["feature:layout", "util:chat-popover"], async ({ init }) => {
+BTFW.define("feature:chat", ["feature:layout", "util:chat-popover", "util:chat-scroll"], async ({ init }) => {
   const motion = await init("util:motion");
   const chatPopover = await init("util:chat-popover");
+  const chatScroll = await init("util:chat-scroll");
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-  const MESSAGE_SELECTOR = ".chat-msg, .message, [class*=message]";
+  const MESSAGE_SELECTOR = ".chat-msg, [class^='chat-msg-'], [class*=' chat-msg-'], .message, [class*=message]";
   const TRIVIA_PREFIX = /^Trivia:\s*/i;
   const BASE = (window.BTFW && BTFW.BASE ? BTFW.BASE.replace(/\/+$/,'') : "");
 
@@ -677,6 +678,11 @@ function updateActionsCollapse(){
   const actions = actionsNode(); if (!actions) return;
   const pill = document.getElementById("btfw-chatactions-pill"); if (!pill) return;
   const avail = actions.clientWidth; if (!avail) return;
+  // Phones keep the secondary tools behind one button even when they fit.
+  if (chatScroll.isMobile()) {
+    actions.classList.add("btfw-actions-collapsed");
+    return;
+  }
   const gap = actionsRowGap(actions);
   const need = naturalRowWidth(pill) + gap + rightClusterWidth(actions, gap);
   const collapsed = actions.classList.contains("btfw-actions-collapsed");
@@ -992,26 +998,11 @@ const scheduleNormalizeChatActions = (() => {
   function ensureScrollManagement(){
     const buffer = getChatBuffer();
     if (!buffer) return;
+    chatScroll.bind(buffer);
 
-    // Direct socket hook - scroll on every chat message
-    const sock = window.socket;
-    if (sock && typeof sock.on === "function" && !sock._btfwScrollChatBound) {
-      sock._btfwScrollChatBound = true;
-      sock.on("chatMsg", () => {
-        if (typeof window.scrollChat === "function") {
-          window.scrollChat();
-          setTimeout(() => window.scrollChat(), 100);
-          setTimeout(() => window.scrollChat(), 250);
-        }
-      });
-    }
-
+    // The shared controller follows actual DOM additions on every viewport.
+    // Repeated refreshes must not enqueue initial or delayed socket scrolls.
     processPendingChatMessages();
-
-    // Initial scroll
-    if (typeof window.scrollChat === "function") {
-      setTimeout(() => window.scrollChat(), 80);
-    }
   }
 
   function escapeHTML(str){
@@ -1765,7 +1756,14 @@ const scheduleNormalizeChatActions = (() => {
     const cw = $("#chatwrap"); if (!cw || cw._btfw_chat_obs) return;
     cw._btfw_chat_obs = true;
 
-    new MutationObserver(()=>{
+    new MutationObserver((records)=>{
+      const buffer = getChatBuffer();
+      if (buffer && records.some(record => record.target === buffer && record.addedNodes.length)) {
+        // Grouping/trivia styling can change a row's height. Finish it in the
+        // mutation microtask, before the follow frame measures scrollHeight.
+        processPendingChatMessages();
+        adoptNewMessageIndicator();
+      }
       scheduleChatDomRefresh();
     }).observe(cw,{childList:true,subtree:true});
 

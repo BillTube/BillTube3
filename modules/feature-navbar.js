@@ -7,6 +7,7 @@ BTFW.define("feature:navbar", ["util:avatar-dither"], async ({ init }) => {
   let mobileNavActive = false;
   let mobileNavHandlersBound = false;
   let lastMobileDispatch = { open: null, mobile: null };
+  let phoneNavReturnFocus = null;
 
   // The navbar's burger/mobile state must track the LAYOUT's vertical state,
   // not a separate width breakpoint. feature-layout.js flips to the stacked
@@ -155,6 +156,14 @@ BTFW.define("feature:navbar", ["util:avatar-dither"], async ({ init }) => {
     }
 
     a.appendChild(img);
+    const label = document.createElement("span");
+    label.className = "btfw-mobile-profile-text";
+    const username = document.createElement("strong");
+    username.textContent = name || "Sign in";
+    const hint = document.createElement("small");
+    hint.textContent = name ? "View your profile" : "Join the chat";
+    label.append(username, hint);
+    a.appendChild(label);
     return a;
   }
 
@@ -223,12 +232,60 @@ BTFW.define("feature:navbar", ["util:avatar-dither"], async ({ init }) => {
     }
 
     const isMobile = host.classList.contains("btfw-navhost--mobile");
+    const isPhone = document.body.classList.contains("btfw-phone-layout");
     if (document.body) {
       if (isMobile && open) document.body.classList.add("btfw-mobile-nav-open");
       else document.body.classList.remove("btfw-mobile-nav-open");
     }
 
+    if (isPhone && isMobile && open) {
+      decoratePhoneNav(host);
+      host.setAttribute("role", "dialog");
+      host.setAttribute("aria-modal", "true");
+      host.setAttribute("aria-label", "Navigation");
+      if (prev !== "true") {
+        phoneNavReturnFocus = document.activeElement;
+        host.querySelector("#btfw-mobile-nav-close")?.focus({ preventScroll: true });
+      }
+    } else {
+      host.removeAttribute("role");
+      host.removeAttribute("aria-modal");
+      host.removeAttribute("aria-label");
+      if (isPhone && prev === "true" && !open) {
+        host.querySelectorAll("li.dropdown.open").forEach(li => {
+          li.classList.remove("open");
+          li.querySelector(".dropdown-toggle")?.setAttribute("aria-expanded", "false");
+        });
+        if (phoneNavReturnFocus?.isConnected) phoneNavReturnFocus.focus({ preventScroll: true });
+        phoneNavReturnFocus = null;
+      }
+    }
+
     dispatchMobileState(open);
+  }
+
+  function decoratePhoneNav(host) {
+    host.querySelectorAll("#nav-collapsible > ul > li > a").forEach(link => {
+      if (link.classList.contains("btfw-nav-avatar-link")) return;
+      const label = (link.textContent || "").trim().toLowerCase();
+      let icon = "fa-arrow-up-right-from-square";
+      if (/catalog/.test(label)) icon = "fa-film";
+      else if (/request/.test(label)) icon = "fa-circle-plus";
+      else if (/donate/.test(label)) icon = "fa-heart";
+      else if (/account/.test(label)) icon = "fa-user";
+      else if (/options/.test(label)) {
+        icon = "fa-gear";
+        link.parentElement.classList.add("btfw-mobile-nav-settings-start");
+      } else if (link.id === "showchansettings") icon = "fa-wrench";
+      else if (link.id === "btfw-theme-btn-nav") icon = "fa-palette";
+      if (!link.querySelector(".btfw-mobile-nav-icon")) {
+        const span = document.createElement("span");
+        span.className = "btfw-mobile-nav-icon";
+        span.setAttribute("aria-hidden", "true");
+        span.innerHTML = '<i class="fa ' + icon + '"></i>';
+        link.prepend(span);
+      }
+    });
   }
 
   function ensureMobileCloseButton(){
@@ -303,7 +360,28 @@ BTFW.define("feature:navbar", ["util:avatar-dither"], async ({ init }) => {
       if (!isLayoutVertical()) return;
       const target = ev.target.closest?.('#btfw-navhost a, #btfw-navhost button');
       if (!target) return;
+      if (document.body.classList.contains("btfw-phone-layout") && target.matches('[data-toggle="dropdown"], .dropdown-toggle')) return;
       setMobileNavOpen(false);
+    }, true);
+    host.addEventListener("click", (ev) => {
+      if (document.body.classList.contains("btfw-phone-layout") && ev.target === host) setMobileNavOpen(false);
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (!document.body.classList.contains("btfw-phone-layout") || !isMobileNavOpen()) return;
+      if (ev.key === "Escape") {
+        ev.preventDefault();
+        ev.stopPropagation();
+        setMobileNavOpen(false);
+      } else if (ev.key === "Tab") {
+        const controls = Array.from(host.querySelectorAll('a[href], button:not([disabled]), [tabindex="0"]'))
+          .filter(el => el.getClientRects().length && getComputedStyle(el).visibility !== "hidden");
+        const first = controls[0], last = controls[controls.length - 1];
+        if (ev.shiftKey && document.activeElement === first) {
+          ev.preventDefault(); last?.focus();
+        } else if (!ev.shiftKey && document.activeElement === last) {
+          ev.preventDefault(); first?.focus();
+        }
+      }
     }, true);
   }
 

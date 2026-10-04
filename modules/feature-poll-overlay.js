@@ -503,6 +503,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
       font-weight: 700;
     }
 
+    #pollwrap .btfw-random-poll-reroll { min-width: 155px; }
+    @media (prefers-reduced-motion: reduce) {
+      #pollwrap .btfw-random-poll-reroll .fa-spin { animation: none; }
+    }
+
     @media (max-width: 600px) {
       .btfw-random-poll-settings,
       .btfw-random-poll-actions {
@@ -561,6 +566,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
   const RANDOM_POLL_TIMER_RE = /\s*[·•]\s*(\d{1,3})\s*(min(?:ute)?s?|sec(?:ond)?s?)\s*$/i;
   const RANDOM_POLL_DEFAULT_COUNT = 5;
   const RANDOM_POLL_DEFAULT_MINUTES = 2;
+  const RECENT_NOMINATION_LIMIT = 20;
+  const RECENT_PLAYBACK_LIMIT = 50;
   const AUTO_POLL_TRIGGER_SECONDS = 2 * 60;
   const AUTO_POLL_DURATION_SECONDS = 90;
   const AUTO_POLL_QUEUE_BUFFER_SECONDS = 30;
@@ -617,10 +624,21 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   function playlistUid(row) {
     const match = String(row?.className || "").match(/\bpluid-(\d+)\b/);
-    return match ? Number.parseInt(match[1], 10) : null;
+    if (match) return Number.parseInt(match[1], 10);
+    try {
+      const uid = (window.jQuery || window.$)?.(row)?.data("uid");
+      if (uid != null && /^(?:0|[1-9]\d*)$/.test(String(uid))) return Number(uid);
+    } catch (_) {}
+    return null;
   }
 
   function playlistTitle(row) {
+    // CyTube attaches the full media record before rendering row details.
+    // Prefer that source even if a lazy/custom title element is still empty.
+    try {
+      const media = (window.jQuery || window.$)?.(row)?.data("media");
+      if (typeof media?.title === "string" && media.title.trim()) return media.title.replace(/\s+/g, " ").trim();
+    } catch (_) {}
     const title = row?.querySelector(".qe_title") || row?.querySelector("a");
     return String(title?.textContent || "").replace(/\s+/g, " ").trim();
   }
@@ -629,7 +647,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
     return String(value || "").replace(/\s+/g, " ").trim().toLocaleLowerCase();
   }
 
-  let movieHistoryFallback = { winners: [], recentPolls: [] };
+  let movieHistoryFallback = { winners: [], played: [], recentPolls: [] };
+  let lastObservedMovie = "";
   let movieHistoryStorageUnavailable = false;
   function movieHistoryStorageKey() {
     return `btfw:movie-poll:history:${channelStorageName()}`;
@@ -642,14 +661,16 @@ BTFW.define("feature:poll-overlay", [], async () => {
       if (saved && Array.isArray(saved.winners) && Array.isArray(saved.recentPolls)) {
         movieHistoryFallback = {
           winners: saved.winners.filter((movie) => movie && typeof movie.key === "string" && typeof movie.title === "string"),
-          recentPolls: saved.recentPolls.filter(Array.isArray).slice(-3)
+          played: (Array.isArray(saved.played) ? saved.played : []).filter((movie) => movie && typeof movie.key === "string" && typeof movie.title === "string").slice(-RECENT_PLAYBACK_LIMIT),
+          recentPolls: saved.recentPolls.filter(Array.isArray).map((poll) => poll.filter((key) => typeof key === "string")).slice(-RECENT_NOMINATION_LIMIT)
         };
-      } else movieHistoryFallback = { winners: [], recentPolls: [] };
+      } else movieHistoryFallback = { winners: [], played: [], recentPolls: [] };
     } catch (_) {}
     return movieHistoryFallback;
   }
 
   function saveMovieHistory(history) {
+    history.played = history.played || [];
     movieHistoryFallback = history;
     try {
       localStorage.setItem(movieHistoryStorageKey(), JSON.stringify(history));
@@ -668,44 +689,120 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
   }
 
+  function recordMoviePlayback(media) {
+    if (!randomMoviePollIntegrationEnabled) return;
+    const row = activePlaylistRow();
+    const title = String(media?.title || playlistTitle(row)).replace(/\s+/g, " ").trim();
+    const key = movieKey(title);
+    const mediaKey = media?.type && media?.id != null
+      ? `${String(media.type).toLocaleLowerCase()}:${media.id}`
+      : playlistMovieMetadata(row, title).mediaKey;
+    if (!key || lastObservedMovie === (mediaKey || key)) return;
+    lastObservedMovie = mediaKey || key;
+    const history = readMovieHistory();
+    history.played = (history.played || []).filter((movie) => movie.key !== key && (!mediaKey || movie.mediaKey !== mediaKey));
+    history.played.push({ key, title, mediaKey, playedAt: Date.now() });
+    history.played = history.played.slice(-RECENT_PLAYBACK_LIMIT);
+    saveMovieHistory(history);
+  }
+
+  function rememberMovieNominations(movies) {
+    if (!movies.length) return;
+    const history = readMovieHistory();
+    const keys = movies.flatMap((movie) => [movie.key, ...(movie.mediaKey ? [`media:${movie.mediaKey}`] : [])]);
+    // Starting an already displayed draft shouldn't use a second history slot.
+    if (JSON.stringify(history.recentPolls.at(-1)) === JSON.stringify(keys)) return;
+    history.recentPolls = [...history.recentPolls, keys].slice(-RECENT_NOMINATION_LIMIT);
+    saveMovieHistory(history);
+  }
+
   function playlistMovieMetadata(row, title) {
     let media;
     try { media = (window.jQuery || window.$)?.(row)?.data("media"); } catch (_) {}
     const provider = String(media?.type || "").toLocaleLowerCase();
     const mediaKey = provider && media?.id != null ? `${provider}:${media.id}` : "";
-    // Prefer an explicit release year. Otherwise use the last standalone year
+    // Prefer an explicit release year. Otherwise use the last year
     // in the title, so "2001: A Space Odyssey (1968)" belongs to the 1960s.
     const taggedYear = title.match(/[([]\s*((?:19|20)\d{2})\s*[)\]]/);
-    const years = title.match(/\b(?:19|20)\d{2}\b/g);
+    // Upload titles often attach the release year to the last word (Alien1979).
+    // Digit boundaries avoid mistaking part of a longer number for a year.
+    const years = title.match(/(?<!\d)(?:19|20)\d{2}(?!\d)/g);
     const year = Number(taggedYear?.[1] || years?.[years.length - 1] || 0);
     return { mediaKey, decade: year ? Math.floor(year / 10) * 10 : null };
   }
 
-  function eligiblePlaylistMovies() {
+  function movieSelectionPool() {
     const activeRow = document.querySelector("#queue > .queue_active");
-    const activeUid = playlistUid(activeRow);
+    const rows = Array.from(document.querySelectorAll("#queue > .queue_entry"));
+    const activeIndex = rows.indexOf(activeRow);
+    const countText = document.getElementById("plcount")?.textContent || "";
+    const reportedMatch = String(countText).match(/([\d,]+)\s+items?/i);
+    const reportedTotal = reportedMatch ? Number(reportedMatch[1].replace(/,/g, "")) : rows.length;
+    const stats = {
+      policy: "upcoming-all-v2", build: window.BTFW?.BASE || "", total: rows.length, reportedTotal,
+      currentIndex: activeIndex, currentTitle: playlistTitle(activeRow),
+      upcoming: activeIndex < 0 ? 0 : rows.length - activeIndex - 1,
+      excluded: { missingIdentity: 0, history: 0, duplicates: 0, current: 0 },
+      eligible: 0, fresh: 0, decades: [], status: "ready"
+    };
+    // Detect a partially mounted queue rather than quietly sampling its first
+    // few rows. Performance mode must not turn incomplete data into bias.
+    if (rows.length < reportedTotal) return { movies: [], stats: { ...stats, status: "loading" } };
+    // Until CyTube identifies the current row, we cannot tell which entries
+    // are upcoming. Never fall back to nominating the already-played queue.
+    if (activeIndex < 0) return { movies: [], stats: { ...stats, status: "awaiting-current" } };
     const activeTitle = movieKey(playlistTitle(activeRow));
     const activeMedia = playlistMovieMetadata(activeRow, activeTitle).mediaKey;
     const history = readMovieHistory();
-    const wonTitles = new Set(history.winners.map((movie) => movie.key));
-    const wonMedia = new Set(history.winners.map((movie) => movie.mediaKey).filter(Boolean));
+    const excluded = [...history.winners, ...(history.played || [])];
+    const wonTitles = new Set(excluded.map((movie) => movie.key));
+    const wonMedia = new Set(excluded.map((movie) => movie.mediaKey).filter(Boolean));
+    // The queue plays downward. Entries above the current row are treated as
+    // played, including duplicate titles/media re-added farther down.
+    rows.slice(0, activeIndex).forEach((row) => {
+      const title = playlistTitle(row);
+      if (title) wonTitles.add(movieKey(title));
+      const mediaKey = playlistMovieMetadata(row, title).mediaKey;
+      if (mediaKey) wonMedia.add(mediaKey);
+    });
     const seen = new Set();
     const seenMedia = new Set();
     const movies = [];
 
-    // Scan the whole queue, without visibility filtering or a candidate limit.
-    document.querySelectorAll("#queue > .queue_entry").forEach((row) => {
+    // Scan every upcoming row, without a visibility filter, proximity window,
+    // or candidate limit. Queue position is DOM order, not the numeric UID.
+    rows.slice(activeIndex + 1).forEach((row) => {
       const uid = playlistUid(row);
       const title = playlistTitle(row);
       const key = movieKey(title);
-      if (uid == null || uid === activeUid || key === activeTitle || !title || seen.has(key)) return;
+      if (uid == null || !title) { stats.excluded.missingIdentity++; return; }
+      if (key === activeTitle) { stats.excluded.current++; return; }
       const metadata = playlistMovieMetadata(row, title);
-      if (wonTitles.has(key) || (metadata.mediaKey && (metadata.mediaKey === activeMedia || wonMedia.has(metadata.mediaKey) || seenMedia.has(metadata.mediaKey)))) return;
+      if (metadata.mediaKey && metadata.mediaKey === activeMedia) { stats.excluded.current++; return; }
+      if (wonTitles.has(key) || (metadata.mediaKey && wonMedia.has(metadata.mediaKey))) { stats.excluded.history++; return; }
+      if (seen.has(key) || (metadata.mediaKey && seenMedia.has(metadata.mediaKey))) { stats.excluded.duplicates++; return; }
       seen.add(key);
       if (metadata.mediaKey) seenMedia.add(metadata.mediaKey);
       movies.push({ uid, title, key, ...metadata });
     });
-    return movies;
+    const recent = new Set(history.recentPolls.flat());
+    const decades = new Map();
+    movies.forEach((movie) => {
+      const fresh = !recent.has(movie.key) && (!movie.mediaKey || !recent.has(`media:${movie.mediaKey}`));
+      if (fresh) stats.fresh++;
+      const decade = movie.decade;
+      if (!decades.has(decade)) decades.set(decade, { decade, eligible: 0, fresh: 0 });
+      const bucket = decades.get(decade);
+      bucket.eligible++;
+      if (fresh) bucket.fresh++;
+    });
+    stats.eligible = movies.length;
+    stats.decades = Array.from(decades.values()).sort((a, b) => (a.decade ?? Infinity) - (b.decade ?? Infinity));
+    return { movies, stats };
+  }
+
+  function eligiblePlaylistMovies() {
+    return movieSelectionPool().movies;
   }
 
   function randomChoice(items) {
@@ -713,25 +810,36 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function sampleMovies(items, count) {
-    const recent = new Set(readMovieHistory().recentPolls.flat());
-    const fresh = items.filter((movie) => !recent.has(movie.key));
+    const nominated = new Map();
+    readMovieHistory().recentPolls.forEach((poll, index) => poll.forEach((key) => nominated.set(key, index)));
+    const age = (movie) => Math.max(nominated.get(movie.key) ?? -1, nominated.get(`media:${movie.mediaKey}`) ?? -1);
     const result = [];
     const pick = (pool) => {
-      const movie = randomChoice(pool.filter((item) => !result.includes(item)));
+      const unused = pool.filter((item) => !result.includes(item));
+      const oldest = unused.reduce((value, movie) => Math.min(value, age(movie)), Infinity);
+      const movie = randomChoice(unused.filter((item) => age(item) === oldest));
       if (movie) result.push(movie);
     };
-    // Shuffle decade order so smaller manual polls don't always favor the 80s.
-    const decades = [1980, 1990, 2000, 2010, 2020];
-    while (decades.length && result.length < count) {
-      const decade = decades.splice(Math.floor(Math.random() * decades.length), 1)[0];
-      const decadePool = items.filter((movie) => movie.decade === decade);
-      const freshDecade = decadePool.filter((movie) => !recent.has(movie.key));
-      pick(freshDecade.length ? freshDecade : decadePool);
+    const buckets = new Map();
+    items.forEach((movie) => {
+      if (movie.decade == null) return;
+      if (!buckets.has(movie.decade)) buckets.set(movie.decade, []);
+      buckets.get(movie.decade).push(movie);
+    });
+    // Four distinct decades, including older films. Prefer decades with fresh
+    // choices so a small, exhausted bucket doesn't force repeated nominations.
+    const decades = Array.from(buckets.keys());
+    const decadeAge = (decade) => buckets.get(decade).reduce((value, movie) => Math.min(value, age(movie)), Infinity);
+    while (decades.length && result.length < Math.min(4, count)) {
+      const oldest = Math.min(...decades.map(decadeAge));
+      const decade = randomChoice(decades.filter((value) => decadeAge(value) === oldest));
+      decades.splice(decades.indexOf(decade), 1);
+      pick(buckets.get(decade));
     }
-    // Missing decades and unknown years fall back to the entire eligible pool.
+    // The remaining slots are wildcards from the full pool, including titles
+    // without a year. Exhausted pools repeat the least recent choices first.
     while (result.length < Math.min(count, items.length)) {
-      const unusedFresh = fresh.filter((movie) => !result.includes(movie));
-      pick(unusedFresh.length ? unusedFresh : items);
+      pick(items);
     }
     return result;
   }
@@ -936,7 +1044,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const builder = document.querySelector("#pollwrap .btfw-random-poll-builder");
     if (!builder || !randomPollDraft) return;
 
-    const eligible = eligiblePlaylistMovies();
+    const pool = randomPollDraft.loading ? null : movieSelectionPool();
     const list = builder.querySelector(".btfw-random-poll-list");
     const countInput = builder.querySelector("#btfw-random-poll-count");
     const minutesInput = builder.querySelector("#btfw-random-poll-minutes");
@@ -944,37 +1052,73 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
     if (countInput) countInput.value = String(randomPollDraft.count);
     if (minutesInput) minutesInput.value = String(randomPollDraft.minutes);
-    builder.querySelector(".btfw-random-poll-eligible").textContent =
-      `${eligible.length} eligible movie${eligible.length === 1 ? "" : "s"} · current movie and previous winners excluded · decade variety where years are available`;
+    if (pool) {
+      const summary = builder.querySelector(".btfw-random-poll-eligible");
+      const stats = pool.stats;
+      summary.textContent = stats.status === "loading"
+        ? `Playlist still loading: ${stats.total} of ${stats.reportedTotal} entries. Reroll once loading finishes.`
+        : stats.status === "awaiting-current"
+          ? "Waiting for the current playlist movie. Reroll once playback is ready."
+          : `${stats.eligible} eligible movies below the current movie · ${stats.upcoming} upcoming of ${stats.total} playlist entries · ${stats.fresh} not nominated recently`;
+      const decadeSummary = stats.decades.map((bucket) => `${bucket.decade == null ? "Unknown year" : `${bucket.decade}s`}: ${bucket.eligible} eligible, ${bucket.fresh} fresh`).join(" · ");
+      builder.querySelector(".btfw-random-poll-pool").textContent = decadeSummary;
+      builder.querySelector(".btfw-random-poll-pool").hidden = !decadeSummary;
+    }
 
-    list.innerHTML = "";
-    randomPollDraft.movies.forEach((movie, index) => {
-      const item = document.createElement("li");
-      const number = document.createElement("span");
-      const title = document.createElement("span");
-      number.className = "btfw-random-poll-number";
-      title.className = "btfw-random-poll-movie-title";
-      number.textContent = String(index + 1);
-      title.textContent = movie.title;
-      item.append(number, title);
-      list.appendChild(item);
-    });
+    if (!randomPollDraft.loading) {
+      list.innerHTML = "";
+      randomPollDraft.movies.forEach((movie, index) => {
+        const item = document.createElement("li");
+        const number = document.createElement("span");
+        const title = document.createElement("span");
+        number.className = "btfw-random-poll-number";
+        title.className = "btfw-random-poll-movie-title";
+        number.textContent = String(index + 1);
+        title.textContent = movie.title;
+        item.append(number, title);
+        list.appendChild(item);
+      });
+    }
 
     const canMove = hasChannelPermission("playlistmove");
     const warning = builder.querySelector(".btfw-random-poll-warning");
     warning.hidden = canMove;
     startButton.textContent = `Start ${randomPollDraft.minutes}-Minute Poll`;
-    startButton.disabled = !canMove || randomPollDraft.movies.length < 2 || activeNativePoll();
+    startButton.disabled = randomPollDraft.loading || !canMove || randomPollDraft.movies.length < 2 || activeNativePoll();
+    builder.setAttribute("aria-busy", String(!!randomPollDraft.loading));
+    builder.querySelectorAll('[data-setting="count"], #btfw-random-poll-count, .btfw-random-poll-reroll').forEach((control) => {
+      control.disabled = !!randomPollDraft.loading;
+    });
+    builder.querySelector(".btfw-random-poll-reroll").innerHTML = randomPollDraft.loading
+      ? '<i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Picking Movies…'
+      : '<i class="fa fa-shuffle" aria-hidden="true"></i> Reroll Movies';
   }
 
-  function rerollRandomMovies() {
-    if (!randomPollDraft) return;
-    randomPollDraft.movies = sampleMovies(eligiblePlaylistMovies(), randomPollDraft.count);
+  async function rerollRandomMovies() {
+    if (!randomPollDraft || randomPollDraft.loading) return;
+    const draft = randomPollDraft;
+    draft.loading = true;
     renderRandomPollBuilder();
+    // Paint feedback before scanning large playlists. No artificial delay.
+    await new Promise((resolve) => {
+      if (document.hidden) setTimeout(resolve, 0);
+      else window.requestAnimationFrame(() => setTimeout(resolve, 0));
+    });
+    if (randomPollDraft !== draft) return;
+    try {
+      draft.movies = sampleMovies(eligiblePlaylistMovies(), draft.count);
+      rememberMovieNominations(draft.movies);
+    } catch (error) {
+      pollNotice("Could not pick movies. Try rerolling again.", "warn");
+      console.warn("[poll-overlay] Movie selection failed:", error);
+    } finally {
+      draft.loading = false;
+      renderRandomPollBuilder();
+    }
   }
 
   function changeRandomPollSetting(setting, delta) {
-    if (!randomPollDraft) return;
+    if (!randomPollDraft || randomPollDraft.loading) return;
     if (setting === "count") {
       randomPollDraft.count = boundedInteger(randomPollDraft.count + delta, 2, 10, RANDOM_POLL_DEFAULT_COUNT);
       rerollRandomMovies();
@@ -1029,6 +1173,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
         </div>
       </div>
       <p class="btfw-random-poll-eligible" aria-live="polite"></p>
+      <details class="btfw-random-poll-eligible">
+        <summary>Movie pool by decade</summary>
+        <p>Four different decades where available, plus wildcards. A decade with few eligible movies can repeat sooner.</p>
+        <p class="btfw-random-poll-pool"></p>
+      </details>
       <ol class="btfw-random-poll-list"></ol>
       <p class="btfw-random-poll-warning" hidden>Playlist move permission is required to queue the winner.</p>
       <div class="btfw-random-poll-actions">
@@ -1041,7 +1190,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     randomPollDraft = {
       count: RANDOM_POLL_DEFAULT_COUNT,
       minutes: RANDOM_POLL_DEFAULT_MINUTES,
-      movies: sampleMovies(eligiblePlaylistMovies(), RANDOM_POLL_DEFAULT_COUNT)
+      movies: []
     };
 
     builder.querySelector(".btfw-random-poll-close").addEventListener("click", closeRandomPollBuilder);
@@ -1054,6 +1203,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       });
     });
     builder.querySelector("#btfw-random-poll-count").addEventListener("change", (event) => {
+      if (!randomPollDraft || randomPollDraft.loading) return;
       randomPollDraft.count = boundedInteger(event.target.value, 2, 10, RANDOM_POLL_DEFAULT_COUNT);
       rerollRandomMovies();
     });
@@ -1061,11 +1211,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
       randomPollDraft.minutes = boundedInteger(event.target.value, 1, 15, RANDOM_POLL_DEFAULT_MINUTES);
       renderRandomPollBuilder();
     });
-    renderRandomPollBuilder();
+    rerollRandomMovies();
   }
 
   function startAutomaticPoll() {
-    if (!randomMoviePollIntegrationEnabled || !randomPollDraft || automaticPoll) return false;
+    if (!randomMoviePollIntegrationEnabled || !randomPollDraft || randomPollDraft.loading || automaticPoll) return false;
     return launchAutomaticPoll({
       movies: randomPollDraft.movies,
       minutes: randomPollDraft.minutes,
@@ -1085,9 +1235,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
     if (quiet && document.querySelector("#pollwrap .btfw-random-poll-builder")) return false;
     const eligibleKeys = new Set(eligiblePlaylistMovies().map((movie) => movie.key));
-    movies = Array.isArray(movies) ? movies.filter((movie) => eligibleKeys.has(movie.key)) : [];
+    if (Array.isArray(movies) && movies.some((movie) => !eligibleKeys.has(movie.key))) {
+      if (!quiet) pollNotice("Movie history or the playlist changed. Reroll before starting this poll.", "warn");
+      return false;
+    }
+    movies = Array.isArray(movies) ? movies : [];
     if (movies.length < 2) {
-      if (!quiet) pollNotice("At least two eligible playlist movies are required. Clear movie history to allow previous winners again.", "warn");
+      if (!quiet) pollNotice("At least two eligible movies below the current playlist movie are required. Add upcoming movies or clear history to allow previous winners below it again.", "warn");
       return false;
     }
     if (!window.socket || typeof window.socket.emit !== "function") {
@@ -1158,9 +1312,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (!automaticPoll || !automaticPollMatches(poll)) return;
     if (automaticPoll.phase === "opening") {
       automaticPoll.phase = "active";
-      const history = readMovieHistory();
-      history.recentPolls = [...history.recentPolls, automaticPoll.movies.map((movie) => movie.key)].slice(-3);
-      saveMovieHistory(history);
+      rememberMovieNominations(automaticPoll.movies);
       closeRandomPollBuilder();
       pollNotice(
         automaticPoll.source === "credits"
@@ -1315,9 +1467,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
           <h3 id="btfw-movie-history-heading">Movie history</h3>
           <button type="button" class="btfw-history-close" aria-label="Close movie history" autofocus>&times;</button>
         </div>
-        <p id="btfw-movie-history-description" class="btfw-history-description">Previous poll winners are excluded on this browser for this channel. Clear history to make them eligible again.</p>
-        <p class="btfw-history-empty">No winners yet. Movies will appear here after they win a poll.</p>
-        <ol class="btfw-history-list" aria-label="Previous poll winners"></ol>
+        <p id="btfw-movie-history-description" class="btfw-history-description">Previous poll winners and the last ${RECENT_PLAYBACK_LIMIT} movies played while this browser was connected are excluded for this channel. The last ${RECENT_NOMINATION_LIMIT} selections are avoided when possible. Clear history to allow repeats again.</p>
+        <p class="btfw-history-empty">No movies recorded yet. Movies appear here when played or when they win a poll.</p>
+        <ol class="btfw-history-list" aria-label="Played movies and poll winners"></ol>
         <div class="btfw-history-footer"><button type="button" class="btfw-history-clear">Clear movie history</button></div>`;
       dialog.querySelector(".btfw-history-close").addEventListener("click", () => dialog.close());
       dialog.addEventListener("close", () => {
@@ -1337,24 +1489,31 @@ BTFW.define("feature:poll-overlay", [], async () => {
         backdropPress = false;
       });
       dialog.querySelector(".btfw-history-clear").addEventListener("click", () => {
-        saveMovieHistory({ winners: [], recentPolls: [] });
+        saveMovieHistory({ winners: [], played: [], recentPolls: [] });
         if (randomPollDraft) rerollRandomMovies();
         dialog.querySelector(".btfw-history-close").focus();
-        pollNotice("Movie poll history cleared. Previous winners are eligible again.", "success");
+        pollNotice("Movie history cleared. Previous movies are eligible again.", "success");
       });
       document.body.appendChild(dialog);
     }
     const history = readMovieHistory();
+    const entries = new Map();
+    [...(history.played || []), ...history.winners].forEach((movie) => {
+      const key = movie.mediaKey || movie.key;
+      const previous = entries.get(key);
+      entries.set(key, { ...movie, at: Math.max(previous?.at || 0, movie.playedAt || movie.wonAt || 0) });
+    });
+    const recorded = Array.from(entries.values()).sort((a, b) => b.at - a.at);
     const signature = JSON.stringify(history);
-    const label = `Movie history (${history.winners.length})`;
+    const label = `Movie history (${recorded.length})`;
     if (control.querySelector("span").textContent !== label) control.querySelector("span").textContent = label;
     if (dialog._historySignature === signature) return;
     dialog._historySignature = signature;
-    dialog.querySelector(".btfw-history-clear").disabled = !history.winners.length && !history.recentPolls.length;
-    dialog.querySelector(".btfw-history-empty").hidden = history.winners.length > 0;
+    dialog.querySelector(".btfw-history-clear").disabled = !recorded.length && !history.recentPolls.length;
+    dialog.querySelector(".btfw-history-empty").hidden = recorded.length > 0;
     const list = dialog.querySelector(".btfw-history-list");
     list.replaceChildren();
-    history.winners.slice().reverse().forEach((movie) => {
+    recorded.forEach((movie) => {
       const item = document.createElement("li");
       item.textContent = movie.title;
       list.appendChild(item);
@@ -1362,6 +1521,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function setupRandomPollControls() {
+    recordMoviePlayback();
     syncMovieHistoryControl();
     if (!randomMoviePollIntegrationEnabled) {
       syncRandomPollButton();
@@ -2006,12 +2166,14 @@ BTFW.define("feature:poll-overlay", [], async () => {
       });
 
       window.socket.on("changeMedia", (media) => {
+        recordMoviePlayback(media);
         if (!autoCreditsPollEnabled) return;
         updateAutoCreditsMedia(media, true);
         setTimeout(evaluateAutoCreditsPoll, 500);
       });
 
       window.socket.on("setCurrent", (media) => {
+        recordMoviePlayback(media);
         if (!autoCreditsPollEnabled) return;
         updateAutoCreditsMedia(media, false);
       });
@@ -2103,6 +2265,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   return {
     name: "feature:poll-overlay",
+    getMovieSelectionDiagnostics: () => movieSelectionPool().stats,
     showOverlay: showVideoOverlay,
     hideOverlay: hideVideoOverlay,
     openRandomMoviePoll: openRandomPollBuilder

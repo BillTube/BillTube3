@@ -1,8 +1,9 @@
-BTFW.define("feature:chat-commands", [], async () => {
+BTFW.define("feature:chat-commands", ["util:chat-scroll"], async () => {
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
   const motion = await BTFW.init("util:motion");
   const chatPopover = await BTFW.init("util:chat-popover");
+  const chatScroll = await BTFW.init("util:chat-scroll");
   const now = ()=>Date.now();
 
   // ---------- Utils ----------
@@ -16,7 +17,8 @@ BTFW.define("feature:chat-commands", [], async () => {
     d.className = "server-msg btfw-cmd";
     d.textContent = text;
     buf.appendChild(d);
-    buf.scrollTop = buf.scrollHeight;
+    chatScroll.bind(buf);
+    chatScroll.scheduleFollow();
   }
   function getUser(){ try { return (window.CLIENT && CLIENT.name) ? CLIENT.name : ""; } catch(_) { return ""; } }
   function getRank(){ try { return (window.CLIENT && (CLIENT.rank|0)) || 0; } catch(_) { return 0; } }
