@@ -383,9 +383,10 @@ body.btfw-mobile-nav-open{
   }
   /* Video.js writes a 16:9 pixel height after layout. The phone viewport cap
      must also size its inner player, otherwise the preview is cropped. */
-  body.btfw-phone-layout #btfw-grid #videowrap :is(.video-js, video, iframe){
+  body.btfw-phone-layout #btfw-grid #videowrap :is(.embed-responsive, .video-js, video, iframe){
     position: absolute !important;
     inset: 0 !important;
+    padding: 0 !important;
     width: 100% !important;
     height: 100% !important;
     max-height: 100% !important;
