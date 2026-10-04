@@ -376,6 +376,7 @@ body.btfw-mobile-nav-open{
     min-width: 0;
   }
   #btfw-grid.btfw-grid--vertical #videowrap{
+    height: min(calc(100vw * 9 / 16), calc(var(--btfw-phone-height, 100dvh) * 0.38));
     max-height: calc(var(--btfw-phone-height, 100dvh) * 0.38);
     margin-top: 0;
     margin-bottom: 0;
@@ -540,6 +541,7 @@ body.btfw-mobile-nav-open{
   /* Typing gets a compact preview, leaving the limited keyboard viewport
      mostly for history. Keep the media mounted so playback continues. */
   body.btfw-phone-keyboard:not(.btfw-phone-landscape) #btfw-grid #videowrap{
+    height: min(88px, calc(var(--btfw-phone-height, 100dvh) * 0.22));
     max-height: min(88px, calc(var(--btfw-phone-height, 100dvh) * 0.22));
   }
   body.btfw-phone-keyboard #chatwrap .btfw-chat-bottombar{
