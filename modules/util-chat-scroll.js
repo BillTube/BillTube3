@@ -11,6 +11,7 @@ BTFW.define("util:chat-scroll", [], async () => {
   let lastTop = 0;
   let lastHeight = 0;
   let lastClientHeight = 0;
+  let layoutChanged = false;
   let observer = null;
   let resizeObserver = null;
   let wrappedScroll = null;
@@ -45,13 +46,18 @@ BTFW.define("util:chat-scroll", [], async () => {
     if (!following && pausedUntil && Date.now() >= pausedUntil) follow();
     else scheduleFollow();
   }
-  function scheduleFollow() {
-    if (!buffer || !following || pending) return;
+  function scheduleFollow(settleLayout = false) {
+    if (!buffer || (!following && settleLayout !== true) || pending) return;
     pending = true;
     requestAnimationFrame(() => {
       pending = false;
       // An upward gesture can cancel work queued by an earlier message.
-      if (!following || !buffer) return;
+      if (!buffer) return;
+      if (!following) {
+        rememberPosition();
+        layoutChanged = false;
+        return;
+      }
       window.SCROLLCHAT = true;
       const bottom = Math.max(0, buffer.scrollHeight - buffer.clientHeight);
       // Don't write the same position again (or leave IGNORE_SCROLL_EVENT set).
@@ -62,6 +68,7 @@ BTFW.define("util:chat-scroll", [], async () => {
         if (buffer.scrollTop === previousTop) window.IGNORE_SCROLL_EVENT = false;
       }
       rememberPosition();
+      layoutChanged = false;
     });
   }
   function guardNativeScroll() {
@@ -86,25 +93,43 @@ BTFW.define("util:chat-scroll", [], async () => {
     // Wheel/touch/key intent is caught before movement. This also catches
     // scrollbar dragging without mistaking buffer trimming/resizing for input.
     const sameSize = buffer.scrollHeight === lastHeight && buffer.clientHeight === lastClientHeight;
-    if (!nativeScrollEvents.has(e) && sameSize && buffer.scrollTop < lastTop - 1) pause();
+    const manualMovement = !nativeScrollEvents.has(e) && sameSize;
+    if (manualMovement && !layoutChanged && buffer.scrollTop < lastTop - 1) pause();
     // Layout/media growth can move the bottom between a programmatic write
     // and its scroll event. Only upward input pauses an active follower.
-    else if (!following && !pausedUntil && sameSize && atBottom()) following = true;
+    else if (!following && manualMovement && buffer.scrollTop > lastTop + 1 && atBottom()) follow();
     rememberPosition();
+    layoutChanged = false;
     // Override CyTube's whole-last-message threshold (wrong for tall GIFs).
     window.SCROLLCHAT = following;
   }
-  function onWheel(e) { if (e.deltaY < 0) pause(); }
+  function onDownwardIntent() {
+    window.IGNORE_SCROLL_EVENT = false;
+    // Reaching the live edge is an explicit choice to follow, even while the
+    // reading cooldown is active or an overscroll produces no scroll event.
+    if (atBottom()) follow();
+  }
+  function onPointerDown(e) {
+    // A native compensation clamped at scrollTop=0 can leave the ignore flag
+    // set without emitting an event. A scrollbar gesture is fresh user input.
+    if (e.target === buffer) window.IGNORE_SCROLL_EVENT = false;
+  }
+  function onWheel(e) {
+    if (e.deltaY < 0) pause();
+    else if (e.deltaY > 0) onDownwardIntent();
+  }
   function onTouchStart(e) { touchY = e.touches[0]?.clientY ?? null; }
   function onTouchMove(e) {
     const y = e.touches[0]?.clientY;
     if (touchY !== null && y > touchY + 2) pause();
+    else if (touchY !== null && y < touchY - 2) onDownwardIntent();
     if (typeof y === "number") touchY = y;
   }
   function onTouchEnd() { touchY = null; }
   function onKey(e) {
     if (e.target?.closest?.("input, textarea, select, [contenteditable]")) return;
     if (["ArrowUp", "PageUp", "Home"].includes(e.key) || (e.key === " " && e.shiftKey)) pause();
+    else if (["ArrowDown", "PageDown", "End"].includes(e.key) || (e.key === " " && !e.shiftKey)) onDownwardIntent();
   }
   function observeRows() {
     if (!resizeObserver) return;
@@ -122,12 +147,18 @@ BTFW.define("util:chat-scroll", [], async () => {
     }
   }
   function onMutations(records) {
+    // A full buffer may replace equal-height rows. Scroll anchoring then
+    // moves scrollTop upward even though scrollHeight stays exactly the same.
+    layoutChanged = true;
     observeRows();
     // Decorating an existing row or removing old history isn't a new message.
     const newMessage = records.some(record => record.target === buffer &&
       Array.from(record.addedNodes).some(node => node.nodeType === 1));
     if (newMessage) onNewMessage();
     else scheduleFollow();
+    // Keep the baseline current while reading, too. This frame only measures
+    // position when paused; it never moves the viewport or ends the cooldown.
+    scheduleFollow(true);
   }
   function onResize() {
     // Remember layout changes even while paused so the next scrollbar gesture
@@ -138,7 +169,7 @@ BTFW.define("util:chat-scroll", [], async () => {
     scheduleFollow();
   }
   const listeners = {
-    scroll: onScroll, wheel: onWheel, touchstart: onTouchStart,
+    scroll: onScroll, wheel: onWheel, pointerdown: onPointerDown, touchstart: onTouchStart,
     touchmove: onTouchMove, touchend: onTouchEnd, touchcancel: onTouchEnd,
     keydown: onKey, load: scheduleFollow, loadedmetadata: scheduleFollow
   };
@@ -156,6 +187,7 @@ BTFW.define("util:chat-scroll", [], async () => {
     observedRows.clear();
     buffer = next;
     touchY = null;
+    layoutChanged = false;
     following = !pausedUntil && window.SCROLLCHAT !== false;
     rememberPosition();
     // Binding establishes the baseline even if an earlier native write never

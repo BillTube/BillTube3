@@ -140,19 +140,100 @@ for (const mobile of [true, false]) {
     assert.equal(h.calls(), 1);
   });
 
-  test(`${mode}: reaching bottom during pause does not silently resume, jump is explicit`, async () => {
+  test(`${mode}: manually returning to bottom ends the pause immediately`, async () => {
     const h = await harness({ mobile });
     h.buffer.fire('keydown', { key: 'PageUp' });
     h.buffer.scrollTop = 400; h.buffer.fire('scroll');
     h.buffer.scrollTop = 700; h.buffer.fire('scroll');
     h.message(); h.flush();
-    assert.equal(h.buffer.scrollTop, 700);
-    assert.equal(h.window.SCROLLCHAT, false);
-    h.jump(); h.window.scrollChat(); h.flush();
     assert.equal(h.buffer.scrollTop, 780);
     assert.equal(h.calls(), 1);
+    assert.equal(h.window.SCROLLCHAT, true);
     h.message(); h.flush();
     assert.equal(h.buffer.scrollTop, 860);
+  });
+
+  test(`${mode}: replacing an old row with an equal-height message cannot pause follow`, async () => {
+    const h = await harness({ mobile });
+    h.flush();
+    // A full buffer trims its first row as a new row arrives. Browser scroll
+    // anchoring moves scrollTop up, although the total height hasn't changed.
+    h.message(0);
+    h.buffer.scrollTop = 620;
+    h.buffer.fire('scroll');
+    assert.equal(h.window.SCROLLCHAT, true);
+    h.flush();
+    assert.equal(h.buffer.scrollTop, 700);
+    h.message(); h.flush();
+    assert.equal(h.buffer.scrollTop, 780);
+  });
+
+  test(`${mode}: scrolling partway through a tall last message stays paused`, async () => {
+    const h = await harness({ mobile });
+    h.flush();
+    h.buffer.fire('wheel', { deltaY: -1 });
+    h.buffer.scrollTop = 400; h.buffer.fire('scroll');
+    h.buffer.fire('wheel', { deltaY: 1 });
+    h.buffer.scrollTop = 660; h.window.SCROLLCHAT = true; h.buffer.fire('scroll');
+    h.message(); h.flush();
+    assert.equal(h.window.SCROLLCHAT, false);
+    assert.equal(h.buffer.scrollTop, 660);
+  });
+
+  test(`${mode}: downward wheel, touch, and End at bottom resume even without movement`, async () => {
+    for (const input of ['wheel', 'touch', 'key']) {
+      const h = await harness({ mobile });
+      h.flush();
+      h.buffer.fire('wheel', { deltaY: -1 });
+      if (input === 'wheel') h.buffer.fire('wheel', { deltaY: 1 });
+      if (input === 'touch') {
+        h.buffer.fire('touchstart', { touches: [{ clientY: 200 }] });
+        h.buffer.fire('touchmove', { touches: [{ clientY: 180 }] });
+      }
+      if (input === 'key') h.buffer.fire('keydown', { key: 'End' });
+      h.message(); h.flush();
+      assert.equal(h.window.SCROLLCHAT, true, input);
+      assert.equal(h.buffer.scrollTop, 780, input);
+    }
+  });
+
+  test(`${mode}: native scroll compensation landing at bottom cannot end the pause`, async () => {
+    const h = await harness({ mobile });
+    h.flush();
+    h.buffer.fire('wheel', { deltaY: -1 });
+    h.buffer.scrollTop = 500; h.buffer.fire('scroll');
+    h.window.IGNORE_SCROLL_EVENT = true;
+    h.buffer.scrollTop = 700; h.buffer.fire('scroll');
+    h.message(); h.flush();
+    assert.equal(h.window.SCROLLCHAT, false);
+    assert.equal(h.calls(), 0);
+  });
+
+  test(`${mode}: pending layout changes don't mask a later scrollbar gesture`, async () => {
+    const h = await harness({ mobile });
+    h.flush();
+    h.buffer.fire('wheel', { deltaY: -1 });
+    h.buffer.scrollTop = 500; h.buffer.fire('scroll');
+    h.decorate(); h.flush();
+    h.advance(24000);
+    h.buffer.scrollTop = 480; h.buffer.fire('scroll');
+    h.advance(1000); h.message(); h.flush();
+    assert.equal(h.window.SCROLLCHAT, false);
+    h.advance(24000); h.message(); h.flush();
+    assert.equal(h.window.SCROLLCHAT, true);
+  });
+
+  test(`${mode}: a scrollbar gesture clears a stale native ignore flag`, async () => {
+    const h = await harness({ mobile });
+    h.flush();
+    h.buffer.fire('wheel', { deltaY: -1 });
+    h.buffer.scrollTop = 0; h.buffer.fire('scroll');
+    h.window.IGNORE_SCROLL_EVENT = true;
+    h.buffer.fire('pointerdown', { target: h.buffer });
+    h.buffer.scrollTop = 700; h.buffer.fire('scroll');
+    h.message(); h.flush();
+    assert.equal(h.window.SCROLLCHAT, true);
+    assert.equal(h.buffer.scrollTop, 780);
   });
 }
 

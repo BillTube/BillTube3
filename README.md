@@ -55,6 +55,7 @@ flowchart LR
 - Emote picker with channel emotes, animated emoji, recent emotes, and searchable community packs
 - Inline emote autocomplete with image previews
 - GIF search and favorites
+- Scrolling up pauses chat follow for 25 seconds after the last upward input; the next message then resumes it. Manually returning to the bottom or clicking **New Messages Below** resumes immediately.
 - GIFs and emotes outside a 600 px buffer around the chat viewport are suspended with their layout space preserved, and restored before scrolling into view
 - Avatars, timestamps, mentions, and notification sounds
 - Spoilers, text styling, chat colors, ignore controls, and a user-list overlay
