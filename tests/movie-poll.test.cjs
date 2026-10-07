@@ -12,6 +12,9 @@ const source = fs.readFileSync(path.join(__dirname, '../modules/feature-poll-ove
     readMovieHistory, saveMovieHistory, recordMovieWinner, recordMoviePlayback, rememberMovieNominations,
     syncMovieHistoryControl, removeMovieHistoryControl, wireSocketEvents, rerollRandomMovies, closeRandomPollBuilder, startAutomaticPoll,
     launchAutomaticPoll, trackAutomaticPoll, finishAutomaticPoll,
+    openRandomPollBuilder, syncAutoCreditsPollControl, saveAutoCreditsSettings, loadPollPreferences,
+    evaluateAutoCreditsPoll, updateAutoCreditsMedia, applyRandomMoviePollIntegration,
+    getAutoCreditsSettings: () => { loadPollPreferences(); return { ...autoCreditsSettings }; },
     name: "feature:poll-overlay",`);
 
 function movieRow(uid, title, id = String(uid)) {
@@ -30,6 +33,7 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
   rows.forEach((row, index) => { row.nextElementSibling = rows[index + 1] || null; });
   const elements = new Map();
   let builder = null;
+  let deferredClose = false;
   const frames = [], timers = [], socketListeners = {};
   function element(tag) {
     const node = {
@@ -37,14 +41,14 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
       setAttribute(name, value) { this.attributes[name] = value; },
       focus() { this.focused = true; },
       showModal() { this.open = true; },
-      close() { this.open = false; this.listeners.close?.(); },
+      close() { this.open = false; if (deferredClose) timers.push(() => this.listeners.close?.()); else this.listeners.close?.(); },
       getBoundingClientRect: () => ({ left: 100, right: 500, top: 100, bottom: 500 }),
       addEventListener(event, callback) { this.listeners[event] = callback; },
-      appendChild(child) { this.children.push(child); child.isConnected = true; if (child.id) elements.set(child.id, child); },
+      appendChild(child) { this.children.push(child); child.isConnected = true; if (child.id) elements.set(child.id, child); if (child.tag === 'section') builder = child; },
       append(...children) { children.forEach((child) => this.appendChild(child)); },
       insertBefore(child) { this.appendChild(child); if (child.tag === 'section') builder = child; },
       replaceChildren() { this.children = []; },
-      remove() { elements.delete(this.id); if (builder === this) builder = null; },
+      remove() { if (elements.get(this.id) === this) elements.delete(this.id); if (builder === this) builder = null; },
       querySelector(selector) { return this.parts?.[selector] || null; },
       querySelectorAll(selector) {
         if (selector === '[data-setting]') return [];
@@ -61,8 +65,13 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
         if (tag === 'section') this.parts = Object.fromEntries([
           '.btfw-random-poll-close', '.btfw-random-poll-cancel', '.btfw-random-poll-reroll',
           '.btfw-random-poll-start', '#btfw-random-poll-count', '#btfw-random-poll-minutes',
-          '.btfw-random-poll-list', '.btfw-random-poll-warning', '.btfw-random-poll-eligible', '.btfw-random-poll-pool'
+          '.btfw-random-poll-list', '.btfw-random-poll-warning', '.btfw-random-poll-eligible', '.btfw-random-poll-pool',
+          '.btfw-poll-auto-enabled', '.btfw-poll-bustin-mode'
         ].map((selector) => [selector, element('div')]));
+        if (tag === 'section' && value.includes('Enable auto credits polls')) {
+          delete this.parts['.btfw-random-poll-list'];
+          delete this.parts['.btfw-random-poll-reroll'];
+        }
       }
     };
     return node;
@@ -80,6 +89,7 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
     querySelector(selector) {
       if (selector === '#pollwrap .poll-controls') return controls;
       if (selector === '#pollwrap .btfw-random-poll-builder') return builder;
+      if (selector === '#pollwrap .poll-menu, #pollwrap .btfw-random-poll-builder') return builder;
       if (selector === '.btfw-random-poll-start') return builder?.parts[selector] || null;
       return selector.startsWith('#queue >') && selector.includes('queue_active') ? active : null;
     },
@@ -91,21 +101,24 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
     hasPermission: () => true,
     jQuery: (row) => ({ data: (key) => key === 'uid' ? row?.uid : row?.media }),
     requestAnimationFrame: (callback) => frames.push(callback),
+    setInterval: () => 1, clearInterval() {},
     socket: { emit: (...args) => emitted.push(args), on: (event, callback) => { socketListeners[event] = callback; } }
   };
   const context = {
     window, document, console: { log() {}, warn() {} }, location: { pathname: '/r/TestChannel' },
-    setTimeout: (callback) => timers.push(callback),
+    setTimeout: (callback) => timers.push(callback), performance: { now: () => 1000 },
     localStorage: {
       getItem: (key) => storage.get(key) || null,
-      setItem(key, value) { if (failStorage) throw Error('Storage blocked'); storage.set(key, value); }
+      setItem(key, value) { if (failStorage) throw Error('Storage blocked'); storage.set(key, value); },
+      removeItem: (key) => storage.delete(key)
     },
     BTFW: { init: async () => ({}), define: (_, __, factory) => { modulePromise = factory(); } }
   };
   vm.runInNewContext(source, context);
   return {
-    api: await modulePromise, emitted, storage, elements, socketListeners,
+    api: await modulePromise, emitted, storage, elements, socketListeners, window,
     getBuilder: () => builder,
+    deferDialogClose() { deferredClose = true; },
     setActive(row) { active = row; },
     async flushSelection() { frames.splice(0).forEach((callback) => callback()); timers.splice(0).forEach((callback) => callback()); await Promise.resolve(); }
   };
@@ -146,7 +159,7 @@ test('diagnostics account for every upcoming row and show fresh movies by decade
   assert.equal(stats.upcoming, 6);
   assert.equal(stats.eligible, 2);
   assert.equal(stats.fresh, 1);
-  assert.deepEqual({ ...stats.excluded }, { missingIdentity: 1, history: 1, duplicates: 1, current: 1 });
+  assert.deepEqual({ ...stats.excluded }, { missingIdentity: 1, history: 1, duplicates: 1, current: 1, interlude: 0 });
   assert.deepEqual(JSON.parse(JSON.stringify(stats.decades)), [
     { decade: 1990, eligible: 1, fresh: 0 }, { decade: null, eligible: 1, fresh: 1 }
   ]);
@@ -548,4 +561,173 @@ test('stale drafts require rerolling instead of silently losing decade variety',
   const movies = api.eligiblePlaylistMovies();
   api.recordMoviePlayback({ type: 'fi', id: '1', title: 'Film (1930)' });
   assert.equal(api.launchAutomaticPoll({ movies, quiet: true }), false);
+});
+
+test('auto credits opens shared settings without nominating movies, and saves count, time and toggles', async () => {
+  const h = await harness([movieRow(0, 'Current'), movieRow(1, 'A'), movieRow(2, 'B')], new Map(), false, true);
+  h.api.syncAutoCreditsPollControl();
+  const trigger = h.elements.get('btfw-auto-credits-poll-control');
+  assert.equal(trigger.tag, 'button');
+  assert.equal(trigger.parts.span.textContent, 'Auto credits polls · Off');
+  trigger.listeners.click();
+  const builder = h.getBuilder();
+  assert.equal(h.elements.get('btfw-poll-settings-dialog').open, true);
+  assert.equal(builder.querySelector('.btfw-random-poll-list'), null);
+  assert.equal(builder.querySelector('.btfw-random-poll-reroll'), null);
+  assert.equal(h.api.readMovieHistory().recentPolls.length, 0);
+  builder.querySelector('#btfw-random-poll-count').listeners.change({ target: { value: '8' } });
+  builder.querySelector('#btfw-random-poll-minutes').listeners.change({ target: { value: '180' } });
+  builder.querySelector('.btfw-poll-auto-enabled').listeners.change({ target: { checked: true } });
+  builder.querySelector('.btfw-poll-bustin-mode').listeners.change({ target: { checked: true } });
+  builder.querySelector('.btfw-random-poll-start').listeners.click();
+  assert.equal(h.getBuilder(), null);
+  assert.deepEqual({ ...h.api.getAutoCreditsSettings() }, { enabled: true, count: 8, durationSeconds: 180, bustinMode: true });
+  const reloaded = await harness([movieRow(0, 'Current'), movieRow(1, 'A')], h.storage);
+  assert.deepEqual({ ...reloaded.api.getAutoCreditsSettings() }, { ...h.api.getAutoCreditsSettings() });
+  reloaded.api.saveAutoCreditsSettings({ ...reloaded.api.getAutoCreditsSettings(), enabled: false });
+  const disabled = await harness([movieRow(0, 'Current')], h.storage);
+  assert.equal(disabled.api.getAutoCreditsSettings().enabled, false);
+});
+
+test('cancelling auto settings discards unsaved edits and never queues Bustin', async () => {
+  const h = await harness([movieRow(0, 'Current'), movieRow(1, 'Bustin'), movieRow(2, 'A')], new Map(), false, true);
+  h.api.openAutoCreditsPoll();
+  h.getBuilder().querySelector('.btfw-poll-auto-enabled').listeners.change({ target: { checked: true } });
+  h.getBuilder().querySelector('.btfw-poll-bustin-mode').listeners.change({ target: { checked: true } });
+  h.api.closeRandomPollBuilder();
+  assert.equal(h.api.getAutoCreditsSettings().enabled, false);
+  assert.equal(h.api.getAutoCreditsSettings().bustinMode, false);
+  assert.equal(h.emitted.length, 0);
+});
+
+test('invalid auto preferences are bounded and disabling the integration preserves the saved choice', async () => {
+  const h = await harness([movieRow(0, 'Current')]);
+  h.api.saveAutoCreditsSettings({ enabled: true, count: 999, durationSeconds: -10, bustinMode: true });
+  assert.equal(h.api.getAutoCreditsSettings().count, 10);
+  assert.equal(h.api.getAutoCreditsSettings().durationSeconds, 30);
+  h.api.applyRandomMoviePollIntegration(false);
+  const reloaded = await harness([movieRow(0, 'Current')], h.storage);
+  assert.equal(reloaded.api.getAutoCreditsSettings().enabled, true);
+});
+
+test('credits trigger uses saved count and voting time and starts earlier for a longer poll', async () => {
+  const rows = [movieRow(0, 'Current'), ...Array.from({ length: 12 }, (_, i) => movieRow(i + 2, `Film ${i} (2000)`)), movieRow(1, 'Bustin')];
+  const h = await harness(rows);
+  h.api.saveAutoCreditsSettings({ enabled: true, count: 8, durationSeconds: 300, bustinMode: true });
+  h.api.updateAutoCreditsMedia({ type: 'fi', id: '0', seconds: 3600, currentTime: 3250, paused: false }, true);
+  await h.api.evaluateAutoCreditsPoll();
+  assert.equal(h.emitted.length, 0);
+  h.api.updateAutoCreditsMedia({ type: 'fi', id: '0', seconds: 3600, currentTime: 3290, paused: false });
+  const pending = h.api.evaluateAutoCreditsPoll();
+  await h.flushSelection();
+  await pending;
+  const request = h.emitted.find(([event]) => event === 'newPoll')[1];
+  assert.equal(request.opts.length, 8);
+  assert.equal(request.timeout, 280); // 310 seconds left minus the 30-second buffer.
+  assert.ok(!request.opts.includes('Bustin'));
+  h.api.trackAutomaticPoll({ title: request.title, options: request.opts, counts: new Array(8).fill(0) });
+  assert.deepEqual(JSON.parse(JSON.stringify(h.emitted.find(([event]) => event === 'moveMedia')[1])), { from: 1, after: 0 });
+});
+
+function pollRequest(h) { return h.emitted.find(([event]) => event === 'newPoll')[1]; }
+function moves(h) { return JSON.parse(JSON.stringify(h.emitted.filter(([event]) => event === 'moveMedia').map(([, move]) => move))); }
+
+test('manual Bustin mode queues the interlude on confirmed poll opening, then places the winner after it', async () => {
+  const h = await harness([movieRow(0, 'Current'), movieRow(1, 'A'), movieRow(2, 'B'), movieRow(3, 'Bustin')], new Map(), false, true);
+  h.api.openRandomMoviePoll();
+  h.getBuilder().querySelector('.btfw-poll-bustin-mode').listeners.change({ target: { checked: true } });
+  await h.flushSelection();
+  assert.equal(h.api.startAutomaticPoll(), true);
+  assert.equal(moves(h).length, 0);
+  const request = pollRequest(h);
+  h.api.trackAutomaticPoll({ title: request.title, options: request.opts, counts: request.opts.map((title) => title === 'B' ? 3 : 1) });
+  assert.deepEqual(moves(h), [{ from: 3, after: 0 }]);
+  h.api.finishAutomaticPoll();
+  assert.deepEqual(moves(h), [{ from: 3, after: 0 }, { from: 3, after: 0 }, { from: 2, after: 3 }]);
+});
+
+test('Bustin is found above the current movie despite playback history, and restored after a queue change', async () => {
+  const bustin = movieRow(3, 'Bustin'), current = movieRow(0, 'Current'), a = movieRow(1, 'A'), b = movieRow(2, 'B');
+  const rows = [bustin, current, a, b];
+  const h = await harness(rows);
+  h.setActive(current);
+  h.api.recordMoviePlayback({ type: 'fi', id: '3', title: 'Bustin' });
+  h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies(), quiet: true, bustinMode: true });
+  const request = pollRequest(h);
+  h.api.trackAutomaticPoll({ title: request.title, options: request.opts, counts: [0, 3] });
+  // Another moderator moves Bustin away before voting finishes.
+  rows.splice(0, rows.length, current, a, b, bustin);
+  rows.forEach((row, i) => { row.nextElementSibling = rows[i + 1] || null; });
+  h.api.finishAutomaticPoll();
+  assert.deepEqual(moves(h).at(-2), { from: 3, after: 0 });
+  assert.deepEqual(moves(h).at(-1), { from: 2, after: 3 });
+});
+
+test('when Bustin is playing at poll closure, the winner follows it without moving the active entry', async () => {
+  const current = movieRow(0, 'Current'), bustin = movieRow(3, 'Bustin'), a = movieRow(1, 'A'), b = movieRow(2, 'B');
+  const h = await harness([current, bustin, a, b]);
+  h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies(), quiet: true, bustinMode: true });
+  const request = pollRequest(h);
+  h.api.trackAutomaticPoll({ title: request.title, options: request.opts, counts: [0, 3] });
+  assert.equal(moves(h).length, 0); // Bustin was already next.
+  h.setActive(bustin);
+  h.api.finishAutomaticPoll();
+  assert.deepEqual(moves(h), [{ from: 2, after: 3 }]);
+});
+
+test('missing Bustin falls back to queuing the winner normally', async () => {
+  const h = await harness([movieRow(0, 'Current'), movieRow(1, 'A'), movieRow(2, 'B')]);
+  h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies(), quiet: true, bustinMode: true });
+  const request = pollRequest(h);
+  h.api.trackAutomaticPoll({ title: request.title, options: request.opts, counts: [0, 3] });
+  h.api.finishAutomaticPoll();
+  assert.deepEqual(moves(h), [{ from: 2, after: 0 }]);
+});
+
+test('Bustin remains an interlude and never appears among movie nominations', async () => {
+  const h = await harness([movieRow(0, 'Current'), movieRow(1, 'Bustin'), movieRow(2, 'A')]);
+  assert.equal(h.api.eligiblePlaylistMovies().length, 1);
+  assert.equal(h.api.getMovieSelectionDiagnostics().excluded.interlude, 1);
+});
+
+test('a rejected launch does not queue Bustin or record nominations', async () => {
+  const h = await harness([movieRow(0, 'Current'), movieRow(1, 'A'), movieRow(2, 'B'), movieRow(3, 'Bustin')]);
+  h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies(), quiet: true, bustinMode: true });
+  h.emitted[0][2]({ error: { message: 'Poll denied' } });
+  assert.equal(moves(h).length, 0);
+  assert.equal(h.api.readMovieHistory().recentPolls.length, 0);
+});
+
+test('winner already next is still placed after Bustin when mode is enabled', async () => {
+  const h = await harness([movieRow(0, 'Current'), movieRow(1, 'A'), movieRow(2, 'B'), movieRow(3, 'Bustin')]);
+  h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies(), quiet: true, bustinMode: true });
+  const request = pollRequest(h);
+  h.api.trackAutomaticPoll({ title: request.title, options: request.opts, counts: [3, 0] });
+  h.api.finishAutomaticPoll();
+  assert.deepEqual(moves(h).at(-1), { from: 1, after: 3 });
+});
+
+test('losing queue permission prevents Bustin and winner moves', async () => {
+  const h = await harness([movieRow(0, 'Current'), movieRow(1, 'A'), movieRow(2, 'B'), movieRow(3, 'Bustin')]);
+  h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies(), quiet: true, bustinMode: true });
+  const request = pollRequest(h);
+  h.window.hasPermission = (permission) => permission !== 'playlistmove';
+  h.api.trackAutomaticPoll({ title: request.title, options: request.opts, counts: [3, 0] });
+  h.api.finishAutomaticPoll();
+  assert.equal(moves(h).length, 0);
+});
+
+test('a delayed native close event cannot discard settings opened in a new dialog', async () => {
+  const h = await harness([movieRow(0, 'Current'), movieRow(1, 'A')], new Map(), false, true);
+  h.api.openAutoCreditsPoll();
+  h.deferDialogClose();
+  h.api.closeRandomPollBuilder();
+  h.api.openAutoCreditsPoll();
+  const current = h.getBuilder();
+  await h.flushSelection();
+  assert.equal(h.getBuilder(), current);
+  assert.equal(h.elements.get('btfw-poll-settings-dialog').open, true);
+  current.querySelector('#btfw-random-poll-count').listeners.change({ target: { value: '7' } });
+  current.querySelector('.btfw-random-poll-start').listeners.click();
+  assert.equal(h.api.getAutoCreditsSettings().count, 7);
 });
