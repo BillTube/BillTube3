@@ -596,7 +596,7 @@ test('auto credits opens shared settings without nominating movies, and saves co
   h.api.syncAutoCreditsPollControl();
   const trigger = h.elements.get('btfw-auto-credits-poll-control');
   assert.equal(trigger.tag, 'button');
-  assert.equal(trigger.parts.span.textContent, 'Auto credits polls · Off');
+  assert.equal(trigger.parts.span.textContent, 'Auto credits polls · On');
   trigger.listeners.click();
   const builder = h.getBuilder();
   assert.equal(h.elements.get('btfw-poll-settings-dialog').open, true);
@@ -621,10 +621,10 @@ test('auto credits opens shared settings without nominating movies, and saves co
 test('cancelling auto settings discards unsaved edits and never queues Bustin', async () => {
   const h = await harness([movieRow(0, 'Current'), movieRow(1, 'Bustin'), movieRow(2, 'A')], new Map(), false, true);
   h.api.openAutoCreditsPoll();
-  h.getBuilder().querySelector('.btfw-poll-auto-enabled').listeners.change({ target: { checked: true } });
+  h.getBuilder().querySelector('.btfw-poll-auto-enabled').listeners.change({ target: { checked: false } });
   h.getBuilder().querySelector('.btfw-poll-bustin-mode').listeners.change({ target: { checked: true } });
   h.api.closeRandomPollBuilder();
-  assert.equal(h.api.getAutoCreditsSettings().enabled, false);
+  assert.equal(h.api.getAutoCreditsSettings().enabled, true);
   assert.equal(h.api.getAutoCreditsSettings().bustinMode, false);
   assert.equal(h.emitted.length, 0);
 });
@@ -772,6 +772,68 @@ function serverFrame(h, counts = [0, 0]) {
   const request = pollRequest(h);
   return { title: request.title, options: request.opts, counts, initiator: h.window.CLIENT.name, timestamp: h.now() };
 }
+
+test('auto credits defaults on for a non-owner with both required permissions', async () => {
+  const h = await harness(basicRows(), new Map(), false, true, { random: 0 });
+  h.window.CLIENT.rank = 2;
+  h.api.syncAutoCreditsPollControl();
+  assert.equal(h.elements.get('btfw-auto-credits-poll-control').parts.span.textContent, 'Auto credits polls · On');
+  h.api.openAutoCreditsPoll();
+  assert.ok(h.getBuilder());
+  h.api.closeRandomPollBuilder();
+  h.api.wireSocketEvents();
+  h.api.updateAutoCreditsMedia({ type: 'fi', id: '0', seconds: 3600, currentTime: 3470, paused: false }, true);
+  const pending = h.api.evaluateAutoCreditsPoll();
+  await h.advance(0); await pending;
+  assert.equal(h.emitted.filter(([event]) => event === 'newPoll').length, 1);
+});
+
+test('saved on and off choices preserve all settings without rewriting storage', async () => {
+  const key = 'btfw:auto-credits-poll:settings:testchannel';
+  for (const enabled of [true, false]) {
+    const saved = { enabled, count: 9, durationSeconds: 240, bustinMode: true, balancedPicks: true };
+    const storage = new Map([[key, JSON.stringify(saved)]]);
+    const h = await harness(basicRows(), storage, false, true, { random: 0 });
+    h.window.CLIENT.rank = 2;
+    h.api.syncAutoCreditsPollControl();
+    assert.deepEqual({ ...h.api.getAutoCreditsSettings() }, saved);
+    assert.equal(h.elements.get('btfw-auto-credits-poll-control').parts.span.textContent, `Auto credits polls · ${enabled ? 'On' : 'Off'}`);
+    assert.equal(storage.get(key), JSON.stringify(saved));
+    if (!enabled) {
+      h.api.wireSocketEvents();
+      h.api.updateAutoCreditsMedia({ type: 'fi', id: '0', seconds: 3600, currentTime: 3470, paused: false }, true);
+      await h.api.evaluateAutoCreditsPoll();
+      await h.advance(10000);
+      assert.equal(h.emitted.length, 0);
+      const reloaded = await harness(basicRows(), storage);
+      assert.deepEqual({ ...reloaded.api.getAutoCreditsSettings() }, saved);
+    }
+  }
+});
+
+test('older preferences without an enabled choice default on and preserve other options', async () => {
+  const saved = { count: 7, durationSeconds: 150, bustinMode: true, balancedPicks: true };
+  const storage = new Map([['btfw:auto-credits-poll:settings:testchannel', JSON.stringify(saved)]]);
+  const h = await harness(basicRows(), storage);
+  assert.deepEqual({ ...h.api.getAutoCreditsSettings() }, { enabled: true, ...saved });
+});
+
+test('auto credits requires both permissions even when enabled by default', async () => {
+  for (const missing of ['pollctl', 'playlistmove']) {
+    const h = await harness(basicRows(), new Map(), false, true, { random: 0 });
+    h.window.CLIENT.rank = 2;
+    h.window.hasPermission = (permission) => permission !== missing;
+    h.api.syncAutoCreditsPollControl();
+    assert.equal(h.elements.get('btfw-auto-credits-poll-control'), undefined);
+    h.api.openAutoCreditsPoll();
+    assert.equal(h.getBuilder(), null);
+    h.api.wireSocketEvents();
+    h.api.updateAutoCreditsMedia({ type: 'fi', id: '0', seconds: 3600, currentTime: 3470, paused: false }, true);
+    await h.api.evaluateAutoCreditsPoll();
+    await h.advance(10000);
+    assert.equal(h.emitted.length, 0, missing);
+  }
+});
 
 test('independent viewers stagger attempts and cancel when the first poll is broadcast', async () => {
   const first = await harness(basicRows(), new Map(), false, false, { random: .1 });

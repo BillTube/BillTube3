@@ -614,7 +614,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let restorablePoll = null;
   let autoCreditsRetryAfter = 0;
   let autoCreditsPollEnabled = false;
-  let autoCreditsSettings = { enabled: false, count: RANDOM_POLL_DEFAULT_COUNT, durationSeconds: AUTO_POLL_DURATION_SECONDS, bustinMode: false, balancedPicks: false };
+  let autoCreditsSettings = { enabled: true, count: RANDOM_POLL_DEFAULT_COUNT, durationSeconds: AUTO_POLL_DURATION_SECONDS, bustinMode: false, balancedPicks: false };
   let pollPreferencesLoaded = false;
   let manualBustinMode = false;
   let manualBalancedPicks = false;
@@ -646,6 +646,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
     return Number.isFinite(rank) && rank >= 3;
   }
 
+  function canRunAutoCreditsPoll() {
+    return hasChannelPermission("pollctl") && hasChannelPermission("playlistmove");
+  }
+
   function channelStorageName() {
     const configured = String(window.CHANNEL?.name || window.CHANNELNAME || "").trim();
     if (configured) return configured.toLocaleLowerCase();
@@ -660,7 +664,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       const saved = JSON.parse(localStorage.getItem(`btfw:auto-credits-poll:settings:${channelStorageName()}`) || "null");
       if (saved && typeof saved === "object") {
         autoCreditsSettings = {
-          enabled: saved.enabled === true,
+          enabled: typeof saved.enabled === "boolean" ? saved.enabled : true,
           count: boundedInteger(saved.count, 2, 10, RANDOM_POLL_DEFAULT_COUNT),
           durationSeconds: boundedInteger(saved.durationSeconds, AUTO_POLL_MIN_VOTING_SECONDS, 15 * 60, AUTO_POLL_DURATION_SECONDS),
           bustinMode: saved.bustinMode === true,
@@ -1361,7 +1365,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const credits = mode === "credits";
     if (!randomMoviePollIntegrationEnabled) return;
     if (!hasChannelPermission("pollctl")) return;
-    if (credits && (!isChannelOwner() || !hasChannelPermission("playlistmove"))) return;
+    if (credits && !canRunAutoCreditsPoll()) return;
     loadPollPreferences();
     if (!credits && activeNativePoll()) {
       pollNotice("End the active poll first.", "warn");
@@ -1751,7 +1755,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const wrap = document.getElementById("pollwrap");
     const controls = wrap?.querySelector(".poll-controls");
     let control = document.getElementById("btfw-auto-credits-poll-control");
-    if (!randomMoviePollIntegrationEnabled || !isChannelOwner() || !hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) {
+    if (!randomMoviePollIntegrationEnabled || !canRunAutoCreditsPoll()) {
       control?.remove();
       if (randomPollDraft?.mode === "credits") closeRandomPollBuilder();
       stopAutoCreditsPolling();
@@ -1895,9 +1899,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   async function evaluateAutoCreditsPoll() {
-    if (!randomMoviePollIntegrationEnabled || autoCreditsPollChecking || !autoCreditsPollEnabled || !isChannelOwner()) return;
+    if (!randomMoviePollIntegrationEnabled || autoCreditsPollChecking || !autoCreditsPollEnabled) return;
     if (!window.socket?.emit || window.socket.connected === false || Date.now() < autoCreditsRetryAfter) return;
-    if (!hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) return;
+    if (!canRunAutoCreditsPoll()) return;
     loadPollSession();
 
     const currentKey = autoMediaKey(null);
@@ -1944,8 +1948,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       });
       if (!waited || version !== pollBroadcastVersion || !randomMoviePollIntegrationEnabled || !autoCreditsPollEnabled
         || mediaKey !== autoCreditsMedia.key || mediaKey !== autoMediaKey(null)
-        || autoCreditsTriggeredMediaKey === mediaKey || !isChannelOwner()
-        || !hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")
+        || autoCreditsTriggeredMediaKey === mediaKey || !canRunAutoCreditsPoll()
         || !window.socket?.emit || window.socket.connected === false
         || automaticPoll || activeNativePoll()
         || document.querySelector("#pollwrap .poll-menu, #pollwrap .btfw-random-poll-builder")) return;
@@ -1988,7 +1991,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     loadPollPreferences();
     loadPollSession();
     stopAutoCreditsPolling();
-    if (!randomMoviePollIntegrationEnabled || !autoCreditsPollEnabled || !isChannelOwner()) return;
+    if (!randomMoviePollIntegrationEnabled || !autoCreditsPollEnabled || !canRunAutoCreditsPoll()) return;
     if (window.socket && window.socket.connected === false) return;
     updateAutoCreditsMedia(null);
     // Server mediaUpdate events perform the real checks. This low-frequency
