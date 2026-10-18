@@ -4548,7 +4548,7 @@ function replaceBlock(original, startMarker, endMarker, block){
                 </span>
               </button>
               <input type="checkbox" id="btfw-theme-random-movie-poll-enabled" data-btfw-bind="integrations.randomMoviePoll.enabled" hidden>
-              <p class="help">Shows random movie poll settings to users with poll permissions and auto credits poll settings to the channel owner. Auto settings save the enabled choice, movie count, voting time, and Bustin mode in this browser for this channel. Both modes can queue Bustin before the winner. Polls mix decades where title years are available and use clearable movie history.</p>
+              <p class="help">Shows random movie poll settings to users with poll permissions and auto credits poll settings to the channel owner. Auto settings are saved in this browser for this channel. Auto polls wait a random 0–10 seconds and cancel if another viewer opens a poll. Both modes offer Bustin mode and optional Balanced picks, favor fresh choices across decades, and use local clearable history with a three-poll cooldown.</p>
             </div>
           </div>
         </details>

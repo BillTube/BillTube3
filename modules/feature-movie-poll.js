@@ -815,6 +815,9 @@
             year: data.release_date ? data.release_date.substring(0, 4) : 'Unknown',
             director: director ? director.name : 'Unknown Director',
             rating: data.vote_average || 0,
+            votes: data.vote_count || 0,
+            runtime: data.runtime || 0,
+            collection: data.belongs_to_collection?.id || 0,
             overview: data.overview || 'No overview available.',
             genres: data.genres || [],
             cast: cast.map(actor => ({
@@ -965,6 +968,11 @@
                   const movieData = await fetchMovieDetails(movieId);
                   
                   if (movieData) {
+                    // Reuse the details already fetched for posters. Poll selection
+                    // never needs to make hundreds of lookups at launch time.
+                    document.dispatchEvent(new CustomEvent('btfw:movieMetadata', {
+                      detail: { title: movieTitle, metadata: movieData }
+                    }));
                     // Create poster container
                     const posterContainer = document.createElement('div');
                     posterContainer.className = 'movie-poster-container';

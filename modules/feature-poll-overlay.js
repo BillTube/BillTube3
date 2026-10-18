@@ -585,7 +585,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
   const RANDOM_POLL_TIMER_RE = /\s*[·•]\s*(\d{1,3})\s*(min(?:ute)?s?|sec(?:ond)?s?)\s*$/i;
   const RANDOM_POLL_DEFAULT_COUNT = 5;
   const RANDOM_POLL_DEFAULT_MINUTES = 2;
-  const RECENT_NOMINATION_LIMIT = 20;
+  const RECENT_NOMINATION_LIMIT = 3;
+  const PREVIEW_NOMINATION_LIMIT = 20;
   const RECENT_PLAYBACK_LIMIT = 50;
   const AUTO_POLL_TRIGGER_SECONDS = 2 * 60;
   const AUTO_POLL_DURATION_SECONDS = 90;
@@ -596,21 +597,33 @@ BTFW.define("feature:poll-overlay", [], async () => {
   // the current movie ends.
   const AUTO_POLL_MIN_REMAINING_SECONDS = AUTO_POLL_MIN_VOTING_SECONDS + AUTO_POLL_QUEUE_BUFFER_SECONDS;
   const AUTO_POLL_FALLBACK_INTERVAL_MS = 30 * 1000;
+  const AUTO_POLL_JITTER_MS = 10 * 1000;
+  const POLL_CONFIRMATION_TIMEOUT_MS = 10 * 1000;
+  const POLL_CLOSE_GRACE_MS = 250;
   let randomPollDraft = null;
   let automaticPoll = null;
   let nativePollActive = false;
   let randomPollTimer = null;
   let autoCreditsPollTimer = null;
   let autoCreditsPollChecking = false;
+  let pendingAutoCreditsPoll = null;
+  let pollLaunchTimer = null;
+  let pollCloseTimer = null;
+  let pollBroadcastVersion = 0;
+  let pollSessionLoaded = false;
+  let restorablePoll = null;
+  let autoCreditsRetryAfter = 0;
   let autoCreditsPollEnabled = false;
-  let autoCreditsSettings = { enabled: false, count: RANDOM_POLL_DEFAULT_COUNT, durationSeconds: AUTO_POLL_DURATION_SECONDS, bustinMode: false };
+  let autoCreditsSettings = { enabled: false, count: RANDOM_POLL_DEFAULT_COUNT, durationSeconds: AUTO_POLL_DURATION_SECONDS, bustinMode: false, balancedPicks: false };
   let pollPreferencesLoaded = false;
   let manualBustinMode = false;
+  let manualBalancedPicks = false;
   let randomMoviePollIntegrationEnabled = Boolean(
     window.BTFW_CONFIG?.integrations?.randomMoviePoll?.enabled
       || document.body?.dataset?.btfwRandomMoviePollEnabled === "1"
   );
   let autoCreditsTriggeredMediaKey = "";
+  let autoCreditsTriggeredAt = 0;
   const autoCreditsMedia = {
     key: "",
     provider: "",
@@ -640,10 +653,6 @@ BTFW.define("feature:poll-overlay", [], async () => {
     return decodeURIComponent(match?.[1] || "channel").toLocaleLowerCase();
   }
 
-  function autoCreditsClaimKey() {
-    return `btfw:auto-credits-poll:claim:${channelStorageName()}`;
-  }
-
   function loadPollPreferences() {
     if (pollPreferencesLoaded) return;
     pollPreferencesLoaded = true;
@@ -654,7 +663,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
           enabled: saved.enabled === true,
           count: boundedInteger(saved.count, 2, 10, RANDOM_POLL_DEFAULT_COUNT),
           durationSeconds: boundedInteger(saved.durationSeconds, AUTO_POLL_MIN_VOTING_SECONDS, 15 * 60, AUTO_POLL_DURATION_SECONDS),
-          bustinMode: saved.bustinMode === true
+          bustinMode: saved.bustinMode === true,
+          balancedPicks: saved.balancedPicks === true
         };
       }
     } catch (_) {}
@@ -667,7 +677,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
       enabled: settings.enabled === true,
       count: boundedInteger(settings.count, 2, 10, RANDOM_POLL_DEFAULT_COUNT),
       durationSeconds: boundedInteger(settings.durationSeconds, AUTO_POLL_MIN_VOTING_SECONDS, 15 * 60, AUTO_POLL_DURATION_SECONDS),
-      bustinMode: settings.bustinMode === true
+      bustinMode: settings.bustinMode === true,
+      balancedPicks: settings.balancedPicks === true
     };
     autoCreditsPollEnabled = autoCreditsSettings.enabled;
     try {
@@ -707,6 +718,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
   let movieHistoryFallback = { winners: [], played: [], recentPolls: [] };
   let lastObservedMovie = "";
   let movieHistoryStorageUnavailable = false;
+  let previewNominations = [];
+  let cachedMovieMetadata = null;
   function movieHistoryStorageKey() {
     return `btfw:movie-poll:history:${channelStorageName()}`;
   }
@@ -719,7 +732,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
         movieHistoryFallback = {
           winners: saved.winners.filter((movie) => movie && typeof movie.key === "string" && typeof movie.title === "string"),
           played: (Array.isArray(saved.played) ? saved.played : []).filter((movie) => movie && typeof movie.key === "string" && typeof movie.title === "string").slice(-RECENT_PLAYBACK_LIMIT),
-          recentPolls: saved.recentPolls.filter(Array.isArray).map((poll) => poll.filter((key) => typeof key === "string")).slice(-RECENT_NOMINATION_LIMIT)
+          recentPolls: saved.recentPolls.filter(Array.isArray).map((poll) => poll.filter((key) => typeof key === "string")).slice(-RECENT_NOMINATION_LIMIT),
+          recentPollIds: (Array.isArray(saved.recentPollIds) ? saved.recentPollIds : []).filter((id) => typeof id === "string").slice(-RECENT_NOMINATION_LIMIT)
         };
       } else movieHistoryFallback = { winners: [], played: [], recentPolls: [] };
     } catch (_) {}
@@ -763,29 +777,80 @@ BTFW.define("feature:poll-overlay", [], async () => {
     saveMovieHistory(history);
   }
 
-  function rememberMovieNominations(movies) {
+  function rememberMovieNominations(movies, pollId = "") {
     if (!movies.length) return;
     const history = readMovieHistory();
+    if (pollId && history.recentPollIds?.includes(pollId)) return;
     const keys = movies.flatMap((movie) => [movie.key, ...(movie.mediaKey ? [`media:${movie.mediaKey}`] : [])]);
-    // Starting an already displayed draft shouldn't use a second history slot.
-    if (JSON.stringify(history.recentPolls.at(-1)) === JSON.stringify(keys)) return;
     history.recentPolls = [...history.recentPolls, keys].slice(-RECENT_NOMINATION_LIMIT);
+    history.recentPollIds = [...(history.recentPollIds || []), pollId].slice(-RECENT_NOMINATION_LIMIT);
     saveMovieHistory(history);
   }
+
+  function rememberPreviewNominations(movies) {
+    if (movies.length) previewNominations = [...previewNominations,
+      movies.flatMap((movie) => [movie.key, ...(movie.mediaKey ? [`media:${movie.mediaKey}`] : [])])
+    ].slice(-PREVIEW_NOMINATION_LIMIT);
+  }
+
+  function movieMetadataCache() {
+    if (cachedMovieMetadata) return cachedMovieMetadata;
+    cachedMovieMetadata = new Map();
+    try {
+      const entries = JSON.parse(localStorage.getItem(`btfw:movie-poll:metadata:${channelStorageName()}`) || "[]");
+      if (Array.isArray(entries)) entries.slice(-1000).forEach((entry) => {
+        if (entry && typeof entry.key === "string" && entry.metadata && typeof entry.metadata === "object"
+          && Date.now() - Number(entry.savedAt) < 90 * 86400 * 1000) {
+          cachedMovieMetadata.set(entry.key, { ...entry, metadata: normalizeMovieMetadata(entry.metadata) });
+        }
+      });
+    } catch (_) {}
+    return cachedMovieMetadata;
+  }
+
+  function normalizeMovieMetadata(metadata) {
+    const positiveNumber = (value) => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
+    return {
+      year: positiveNumber(metadata.year), rating: Math.min(10, positiveNumber(metadata.rating)),
+      votes: positiveNumber(metadata.votes), runtime: positiveNumber(metadata.runtime),
+      collection: positiveNumber(metadata.collection),
+      genres: Array.isArray(metadata.genres)
+        ? metadata.genres.map((genre) => positiveNumber(genre?.id ?? genre)).filter((id) => id > 0) : []
+    };
+  }
+
+  function cacheMovieMetadata(title, metadata) {
+    const key = movieKey(title);
+    if (!key || !metadata || typeof metadata !== "object") return;
+    const cache = movieMetadataCache();
+    cache.delete(key);
+    cache.set(key, { key, metadata: normalizeMovieMetadata(metadata), savedAt: Date.now() });
+    while (cache.size > 1000) cache.delete(cache.keys().next().value);
+    try {
+      localStorage.setItem(`btfw:movie-poll:metadata:${channelStorageName()}`, JSON.stringify(Array.from(cache.values())));
+    } catch (_) {}
+  }
+
+  document.addEventListener("btfw:movieMetadata", (event) => {
+    cacheMovieMetadata(event.detail?.title, event.detail?.metadata);
+  });
 
   function playlistMovieMetadata(row, title) {
     let media;
     try { media = (window.jQuery || window.$)?.(row)?.data("media"); } catch (_) {}
     const provider = String(media?.type || "").toLocaleLowerCase();
     const mediaKey = provider && media?.id != null ? `${provider}:${media.id}` : "";
-    // Prefer an explicit release year. Otherwise use the last year
-    // in the title, so "2001: A Space Odyssey (1968)" belongs to the 1960s.
+    const details = movieMetadataCache().get(movieKey(title))?.metadata;
+    const currentYear = new Date().getFullYear();
+    const validYear = (year) => Number(year) >= 1900 && Number(year) <= currentYear + 1;
+    // Prefer verified movie details, then a tagged or appended release year.
+    // A bare numeric title such as "1917" is not release metadata.
     const taggedYear = title.match(/[([]\s*((?:19|20)\d{2})\s*[)\]]/);
-    // Upload titles often attach the release year to the last word (Alien1979).
-    // Digit boundaries avoid mistaking part of a longer number for a year.
-    const years = title.match(/(?<!\d)(?:19|20)\d{2}(?!\d)/g);
-    const year = Number(taggedYear?.[1] || years?.[years.length - 1] || 0);
-    return { mediaKey, decade: year ? Math.floor(year / 10) * 10 : null };
+    const attachedYear = title.match(/[^\d\s]((?:19|20)\d{2})(?!\d)/);
+    const trailingYear = title.match(/\S.+?\s+((?:19|20)\d{2})\s*$/);
+    const guessedYear = Number(taggedYear?.[1] || attachedYear?.[1] || trailingYear?.[1] || 0);
+    const year = validYear(details?.year) ? Number(details.year) : validYear(guessedYear) ? guessedYear : 0;
+    return { mediaKey, decade: year ? Math.floor(year / 10) * 10 : null, details: details || null };
   }
 
   function movieSelectionPool() {
@@ -867,15 +932,35 @@ BTFW.define("feature:poll-overlay", [], async () => {
     return items.length ? items[Math.floor(Math.random() * items.length)] : null;
   }
 
-  function sampleMovies(items, count) {
+  function sampleMovies(items, count, balancedPicks = false) {
     const nominated = new Map();
-    readMovieHistory().recentPolls.forEach((poll, index) => poll.forEach((key) => nominated.set(key, index)));
+    [...previewNominations, ...readMovieHistory().recentPolls].forEach((poll, index) => poll.forEach((key) => nominated.set(key, index)));
     const age = (movie) => Math.max(nominated.get(movie.key) ?? -1, nominated.get(`media:${movie.mediaKey}`) ?? -1);
     const result = [];
-    const pick = (pool) => {
+    const pick = (pool, wildcard = false) => {
       const unused = pool.filter((item) => !result.includes(item));
       const oldest = unused.reduce((value, movie) => Math.min(value, age(movie)), Infinity);
-      const movie = randomChoice(unused.filter((item) => age(item) === oldest));
+      const candidates = unused.filter((item) => age(item) === oldest);
+      let movie = randomChoice(candidates);
+      if (balancedPicks && !wildcard && candidates.length > 1) {
+        const usedGenres = new Set(result.flatMap((item) => item.details?.genres || []));
+        const collections = new Set(result.map((item) => item.details?.collection).filter(Boolean));
+        const weights = candidates.map((item) => {
+          const data = item.details;
+          if (!data) return 1;
+          const confidence = Math.max(0, data.votes) / (Math.max(0, data.votes) + 200);
+          const score = 6.5 + (Math.min(10, Math.max(0, data.rating)) - 6.5) * confidence;
+          const genreWeight = data.genres?.some((genre) => usedGenres.has(genre)) ? .75 : 1;
+          return (.8 + score / 25) * genreWeight * (collections.has(data.collection) ? .4 : 1)
+            * (data.runtime > 0 && data.runtime < 40 ? .4 : 1);
+        });
+        let draw = Math.random() * weights.reduce((sum, weight) => sum + weight, 0);
+        movie = candidates[candidates.length - 1];
+        for (let index = 0; index < weights.length; index++) {
+          draw -= weights[index];
+          if (draw < 0) { movie = candidates[index]; break; }
+        }
+      }
       if (movie) result.push(movie);
     };
     const buckets = new Map();
@@ -884,12 +969,17 @@ BTFW.define("feature:poll-overlay", [], async () => {
       if (!buckets.has(movie.decade)) buckets.set(movie.decade, []);
       buckets.get(movie.decade).push(movie);
     });
-    // Four distinct decades, including older films. Prefer decades with fresh
-    // choices so a small, exhausted bucket doesn't force repeated nominations.
+    // Give unknown-year films proportional wildcard space, even in small polls.
+    const unknownCount = items.filter((movie) => movie.decade == null).length;
+    const wildcardSlots = Math.max(1, Math.round(count * unknownCount / Math.max(1, items.length)));
+    const decadeSlots = Math.min(4, Math.max(0, count - wildcardSlots));
+    // Fresh choices take precedence over a strict decade quota.
     const decades = Array.from(buckets.keys());
     const decadeAge = (decade) => buckets.get(decade).reduce((value, movie) => Math.min(value, age(movie)), Infinity);
-    while (decades.length && result.length < Math.min(4, count)) {
+    while (decades.length && result.length < decadeSlots) {
       const oldest = Math.min(...decades.map(decadeAge));
+      const freshestRemaining = items.filter((movie) => !result.includes(movie)).reduce((value, movie) => Math.min(value, age(movie)), Infinity);
+      if (oldest > freshestRemaining) break;
       const decade = randomChoice(decades.filter((value) => decadeAge(value) === oldest));
       decades.splice(decades.indexOf(decade), 1);
       pick(buckets.get(decade));
@@ -897,7 +987,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     // The remaining slots are wildcards from the full pool, including titles
     // without a year. Exhausted pools repeat the least recent choices first.
     while (result.length < Math.min(count, items.length)) {
-      pick(items);
+      pick(items, true);
     }
     return result;
   }
@@ -992,10 +1082,12 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function updateAutoCreditsMedia(data, reset = false) {
+    loadPollSession();
     if (data && typeof data === "object") {
       const key = autoMediaKey(data);
       const previousKey = autoCreditsMedia.key;
       const previousTime = autoCreditsMedia.currentTime;
+      const firstPlaybackSample = !autoCreditsMedia.sampledAt;
       if (reset && key && key !== autoCreditsMedia.key) {
         autoCreditsMedia.duration = 0;
         autoCreditsMedia.currentTime = 0;
@@ -1012,8 +1104,12 @@ BTFW.define("feature:poll-overlay", [], async () => {
         .map(finitePlaybackNumber).find((value) => value >= 0);
       const restartedSameEntry = reset && key && key === previousKey
         && Number.isFinite(currentTime) && currentTime < 60 && previousTime > 60;
-      if ((key && key !== previousKey) || restartedSameEntry) {
+      const restoredReplay = reset && firstPlaybackSample && key === autoCreditsTriggeredMediaKey
+        && Number.isFinite(currentTime) && currentTime < 60 && autoCreditsTriggeredAt > 0
+        && Date.now() - autoCreditsTriggeredAt > 3 * 60 * 1000;
+      if ((key && key !== previousKey && (previousKey || autoCreditsTriggeredMediaKey !== key)) || restartedSameEntry || restoredReplay) {
         autoCreditsTriggeredMediaKey = "";
+        autoCreditsTriggeredAt = 0;
       }
       if (Number.isFinite(duration)) autoCreditsMedia.duration = duration;
       if (Number.isFinite(currentTime)) {
@@ -1028,14 +1124,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
         autoCreditsMedia.sampledAt = performance.now();
       }
 
-      // A replay of the same playlist entry is a new movie session. Clear its
-      // previous claim near the beginning. A short age guard preserves the
-      // claim when a late viewer refresh initially reports position zero.
-      if (reset && key && Number.isFinite(currentTime) && currentTime < 60) {
-        const claim = readAutoCreditsClaim();
-        if (claim?.mediaKey === key && Date.now() - Number(claim.claimedAt || 0) > 3 * 60 * 1000) {
-          releaseAutoCreditsClaim(key);
-        }
+      if ((key && key !== previousKey) || restartedSameEntry) {
+        cancelPendingAutoCreditsPoll();
+        autoCreditsRetryAfter = 0;
+        writePollSession();
       }
     } else {
       const key = autoMediaKey(null);
@@ -1043,30 +1135,92 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
   }
 
-  function readAutoCreditsClaim() {
-    try { return JSON.parse(localStorage.getItem(autoCreditsClaimKey()) || "null"); }
-    catch (_) { return null; }
-  }
-
-  function releaseAutoCreditsClaim(mediaKey, token = "") {
+  function loadPollSession() {
+    if (pollSessionLoaded) return;
+    pollSessionLoaded = true;
     try {
-      const claim = readAutoCreditsClaim();
-      if (!claim || claim.mediaKey !== mediaKey || (token && claim.token !== token)) return;
-      localStorage.removeItem(autoCreditsClaimKey());
+      const saved = JSON.parse(sessionStorage.getItem(`btfw:movie-poll:session:${channelStorageName()}`) || "null");
+      if (typeof saved?.seenMediaKey === "string") autoCreditsTriggeredMediaKey = saved.seenMediaKey;
+      autoCreditsTriggeredAt = Number(saved?.seenAt) || 0;
+      const poll = saved?.poll;
+      if (poll?.phase === "active" && typeof poll.title === "string" && Array.isArray(poll.movies)
+        && poll.movies.length >= 2 && poll.movies.length <= 10
+        && poll.movies.every((movie) => movie && typeof movie.key === "string" && typeof movie.title === "string")
+        && Array.isArray(poll.counts) && poll.counts.length === poll.movies.length
+        && Number(poll.deadline) > Date.now() - AUTO_POLL_QUEUE_BUFFER_SECONDS * 1000) restorablePoll = poll;
     } catch (_) {}
   }
 
-  async function claimAutoCreditsPoll(mediaKey) {
-    const existing = readAutoCreditsClaim();
-    if (existing?.mediaKey === mediaKey) return "";
-    const token = `${Date.now()}:${Math.random().toString(36).slice(2)}`;
+  function writePollSession(poll = automaticPoll || restorablePoll) {
     try {
-      localStorage.setItem(autoCreditsClaimKey(), JSON.stringify({ mediaKey, token, claimedAt: Date.now() }));
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      return readAutoCreditsClaim()?.token === token ? token : "";
-    } catch (_) {
-      return token;
+      sessionStorage.setItem(`btfw:movie-poll:session:${channelStorageName()}`, JSON.stringify({
+        seenMediaKey: autoCreditsTriggeredMediaKey, seenAt: autoCreditsTriggeredAt, poll: poll?.phase === "active" ? poll : null
+      }));
+    } catch (_) {}
+  }
+
+  function cancelPendingAutoCreditsPoll() {
+    const pending = pendingAutoCreditsPoll;
+    if (!pending) return;
+    pendingAutoCreditsPoll = null;
+    window.clearTimeout(pending.timer);
+    pending.resolve(false);
+  }
+
+  function discardAutomaticPoll(retry = false) {
+    const discarded = automaticPoll;
+    window.clearTimeout(pollLaunchTimer);
+    window.clearTimeout(pollCloseTimer);
+    pollLaunchTimer = null;
+    pollCloseTimer = null;
+    automaticPoll = null;
+    restorablePoll = null;
+    if (retry && !nativePollActive && discarded?.mediaKey && autoCreditsTriggeredMediaKey === discarded.mediaKey) {
+      autoCreditsTriggeredMediaKey = "";
+      autoCreditsTriggeredAt = 0;
+      autoCreditsRetryAfter = Date.now() + AUTO_POLL_JITTER_MS;
     }
+    writePollSession();
+  }
+
+  function autoPollTriggerSeconds() {
+    return Math.max(AUTO_POLL_TRIGGER_SECONDS,
+      autoCreditsSettings.durationSeconds + AUTO_POLL_QUEUE_BUFFER_SECONDS + AUTO_POLL_JITTER_MS / 1000);
+  }
+
+  function noteObservedPoll(poll) {
+    loadPollSession();
+    pollBroadcastVersion++;
+    const pendingKey = pendingAutoCreditsPoll?.mediaKey;
+    cancelPendingAutoCreditsPoll();
+    window.clearTimeout(pollCloseTimer);
+    pollCloseTimer = null;
+    const playback = readAutoCreditsPlayback();
+    const remaining = playback.duration - playback.currentTime;
+    if (pendingKey || (remaining >= 0 && remaining <= autoPollTriggerSeconds())) {
+      autoCreditsTriggeredMediaKey = pendingKey || autoMediaKey(null);
+      autoCreditsTriggeredAt = Date.now();
+    }
+    nativePollActive = true;
+    if (!automaticPoll && restorablePoll) {
+      automaticPoll = restorablePoll;
+      restorablePoll = null;
+      if (!automaticPollMatches(poll)) automaticPoll = null;
+    }
+    if (automaticPoll?.phase === "active" && !automaticPollMatches(poll)) discardAutomaticPoll();
+    trackAutomaticPoll(poll);
+    // Each viewer remembers actual movie polls locally, including those opened
+    // by someone else. This does not give that viewer ownership of the winner.
+    if (!automaticPoll && resolvePollTitle(poll?.title).startsWith(`${RANDOM_POLL_TITLE} · `) && Array.isArray(poll.options)) {
+      const titles = poll.options.map((title) => decodeHtmlEntities(title));
+      rememberMovieNominations(titles.map((title) => ({ title, key: movieKey(title) })), pollHistoryId(poll));
+    }
+    writePollSession();
+  }
+
+  function pollHistoryId(poll) {
+    return poll?.timestamp != null
+      ? JSON.stringify([String(poll.timestamp), resolvePollTitle(poll.title), poll.options]) : "";
   }
 
   function pollNotice(message, kind = "info") {
@@ -1098,6 +1252,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     dialog?.remove();
     document.querySelector("#pollwrap .btfw-random-poll-builder")?.remove();
     randomPollDraft = null;
+    previewNominations = [];
     syncRandomPollButton();
   }
 
@@ -1110,6 +1265,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       builder.querySelector("#btfw-random-poll-minutes").value = String(randomPollDraft.durationSeconds);
       builder.querySelector(".btfw-poll-auto-enabled").checked = randomPollDraft.enabled;
       builder.querySelector(".btfw-poll-bustin-mode").checked = randomPollDraft.bustinMode;
+      builder.querySelector(".btfw-poll-balanced-picks").checked = randomPollDraft.balancedPicks;
       return;
     }
 
@@ -1175,8 +1331,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
     });
     if (randomPollDraft !== draft) return;
     try {
-      draft.movies = sampleMovies(eligiblePlaylistMovies(), draft.count);
-      rememberMovieNominations(draft.movies);
+      draft.movies = sampleMovies(eligiblePlaylistMovies(), draft.count, draft.balancedPicks);
+      rememberPreviewNominations(draft.movies);
     } catch (error) {
       pollNotice("Could not pick movies. Try rerolling again.", "warn");
       console.warn("[poll-overlay] Movie selection failed:", error);
@@ -1251,11 +1407,13 @@ BTFW.define("feature:poll-overlay", [], async () => {
       </div>
       <label class="btfw-poll-mode-option"><input class="btfw-poll-bustin-mode" type="checkbox">Bustin mode</label>
       <p class="btfw-poll-help">Play “Bustin” before the winning movie. It is queued when the poll starts.</p>
+      <label class="btfw-poll-mode-option"><input class="btfw-poll-balanced-picks" type="checkbox">Balanced picks</label>
+      <p class="btfw-poll-help">Favor well-rated movies and varied genres when movie information is available. Wildcards stay random.</p>
       ${credits ? '<p class="btfw-random-poll-eligible">Movies are picked automatically when the poll starts. Voting ends before the current movie finishes. Your settings are saved in this browser for this channel.</p>' : `
       <p class="btfw-random-poll-eligible" aria-live="polite"></p>
       <details class="btfw-random-poll-eligible">
         <summary>Movie pool by decade</summary>
-        <p>Four different decades where available, plus wildcards. A decade with few eligible movies can repeat sooner.</p>
+        <p>Up to four different decades, plus wildcards. Fresh movies take priority when a decade has no fresh choices.</p>
         <p class="btfw-random-poll-pool"></p>
       </details>
       <ol class="btfw-random-poll-list"></ol>`}
@@ -1277,7 +1435,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
       dialog.remove();
       // Native close events are asynchronous. A previous dialog must not
       // discard a newer draft if the user has already opened another mode.
-      if (randomPollDraft === openedDraft) randomPollDraft = null;
+      if (randomPollDraft === openedDraft) {
+        randomPollDraft = null;
+        previewNominations = [];
+      }
       syncRandomPollButton();
       if (!document.getElementById("btfw-poll-settings-dialog")) document.getElementById(triggerId)?.focus();
     });
@@ -1296,6 +1457,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       count: RANDOM_POLL_DEFAULT_COUNT,
       minutes: RANDOM_POLL_DEFAULT_MINUTES,
       bustinMode: manualBustinMode,
+      balancedPicks: manualBalancedPicks,
       movies: []
     };
     const openedDraft = randomPollDraft;
@@ -1315,6 +1477,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
     builder.querySelector(".btfw-poll-bustin-mode").addEventListener("change", (event) => {
       randomPollDraft.bustinMode = event.target.checked;
       if (!credits) manualBustinMode = randomPollDraft.bustinMode;
+    });
+    builder.querySelector(".btfw-poll-balanced-picks").checked = randomPollDraft.balancedPicks;
+    builder.querySelector(".btfw-poll-balanced-picks").addEventListener("change", (event) => {
+      randomPollDraft.balancedPicks = event.target.checked;
+      if (!credits) { manualBalancedPicks = randomPollDraft.balancedPicks; rerollRandomMovies(); }
     });
     builder.querySelectorAll("[data-setting]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -1348,7 +1515,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     });
   }
 
-  function launchAutomaticPoll({ movies, minutes, durationSeconds = null, quiet = false, mediaKey = "", claimToken = "", bustinMode = false }) {
+  function launchAutomaticPoll({ movies, minutes, durationSeconds = null, quiet = false, mediaKey = "", bustinMode = false }) {
     if (!randomMoviePollIntegrationEnabled || automaticPoll) return false;
     if (!hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) {
       if (!quiet) pollNotice("Poll and playlist move permissions are required.", "warn");
@@ -1369,7 +1536,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       if (!quiet) pollNotice("At least two eligible movies below the current playlist movie are required. Add upcoming movies or clear history to allow previous winners below it again.", "warn");
       return false;
     }
-    if (!window.socket || typeof window.socket.emit !== "function") {
+    if (!window.socket || window.socket.connected === false || typeof window.socket.emit !== "function") {
       if (!quiet) pollNotice("CyTube is not connected.", "warn");
       return false;
     }
@@ -1387,11 +1554,12 @@ BTFW.define("feature:poll-overlay", [], async () => {
       counts: new Array(pollMovies.length).fill(0),
       source: quiet ? "credits" : "manual",
       mediaKey,
-      claimToken,
-      bustinMode: Boolean(bustinMode)
+      bustinMode: Boolean(bustinMode),
+      requestedBy: String(window.CLIENT?.name || ""),
+      openedAt: Date.now(),
+      deadline: Date.now() + pollDurationSeconds * 1000
     };
     const launchedPoll = automaticPoll;
-    nativePollActive = true;
     const button = quiet ? null : document.querySelector(".btfw-random-poll-start");
     if (button) {
       button.disabled = true;
@@ -1401,14 +1569,15 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const rollbackLaunch = (message) => {
       if (automaticPoll !== launchedPoll) return;
       pollNotice(message || "CyTube could not create the poll.", "warn");
-      if (launchedPoll.mediaKey) {
-        releaseAutoCreditsClaim(launchedPoll.mediaKey, launchedPoll.claimToken);
-        if (autoCreditsTriggeredMediaKey === launchedPoll.mediaKey) autoCreditsTriggeredMediaKey = "";
-      }
-      automaticPoll = null;
-      nativePollActive = false;
+      discardAutomaticPoll(true);
       renderRandomPollBuilder();
+      syncRandomPollButton();
     };
+    pollLaunchTimer = window.setTimeout(() => {
+      if (automaticPoll === launchedPoll && launchedPoll.phase === "opening") {
+        rollbackLaunch("Poll creation was not confirmed. Automatic polling will retry if there is still time.");
+      }
+    }, POLL_CONFIRMATION_TIMEOUT_MS);
     try {
       window.socket.emit("newPoll", {
         title: pollTitle,
@@ -1429,17 +1598,26 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function automaticPollMatches(poll) {
     if (!automaticPoll || !poll || !Array.isArray(poll.options)) return false;
     if (resolvePollTitle(poll.title) !== automaticPoll.title) return false;
+    if (automaticPoll.requestedBy && window.CLIENT?.name && movieKey(window.CLIENT.name) !== movieKey(automaticPoll.requestedBy)) return false;
+    if (automaticPoll.pollTimestamp != null && poll.timestamp != null && String(poll.timestamp) !== automaticPoll.pollTimestamp) return false;
+    if (automaticPoll.requestedBy && poll.initiator && movieKey(poll.initiator) !== movieKey(automaticPoll.requestedBy)) return false;
     return poll.options.length === automaticPoll.movies.length && poll.options.every((option, index) => {
       return movieKey(decodeHtmlEntities(option)) === automaticPoll.movies[index].key;
     });
   }
 
   function trackAutomaticPoll(poll) {
-    if (!automaticPoll || !automaticPollMatches(poll)) return;
+    if (!automaticPoll) return;
+    if (!automaticPollMatches(poll)) {
+      if (automaticPoll.phase === "active" && Array.isArray(poll?.options) && poll.title != null) discardAutomaticPoll();
+      return;
+    }
     if (automaticPoll.phase === "opening") {
       automaticPoll.phase = "active";
+      window.clearTimeout(pollLaunchTimer);
+      pollLaunchTimer = null;
       if (automaticPoll.bustinMode) queueBustinNext();
-      rememberMovieNominations(automaticPoll.movies);
+      rememberMovieNominations(automaticPoll.movies, pollHistoryId(poll));
       if (randomPollDraft?.mode !== "credits") closeRandomPollBuilder();
       pollNotice(
         automaticPoll.source === "credits"
@@ -1449,12 +1627,15 @@ BTFW.define("feature:poll-overlay", [], async () => {
       );
     }
     if (Array.isArray(poll.counts) && poll.counts.length === automaticPoll.movies.length) {
-      automaticPoll.counts = poll.counts.map((count) => Number.parseInt(count, 10) || 0);
+      automaticPoll.counts = poll.counts.map((count) => Math.max(0, Number.parseInt(count, 10) || 0));
     }
+    if (poll.timestamp != null) automaticPoll.pollTimestamp = String(poll.timestamp);
+    automaticPoll.deadline = pollTiming(poll).deadline || automaticPoll.deadline;
+    writePollSession();
   }
 
   function queueBustinNext() {
-    if (!hasChannelPermission("playlistmove") || !window.socket?.emit) return null;
+    if (!hasChannelPermission("playlistmove") || !window.socket?.emit || window.socket.connected === false) return null;
     const active = activePlaylistRow();
     const bustin = Array.from(document.querySelectorAll("#queue > .queue_entry"))
       .find((row) => movieKey(playlistTitle(row)) === "bustin");
@@ -1477,9 +1658,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function queueWinningMovie(movie, bustinMode = false) {
-    if (!hasChannelPermission("playlistmove")) {
+    if (!hasChannelPermission("playlistmove") || !window.socket?.emit || window.socket.connected === false) {
       pollNotice(`“${movie.title}” won, but playlist move permission is no longer available.`, "warn");
-      return;
+      return false;
     }
     const rows = Array.from(document.querySelectorAll("#queue > .queue_entry"));
     const winner = rows.find((row) => playlistUid(row) === movie.uid)
@@ -1489,11 +1670,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const activeUid = playlistUid(active);
     if (winnerUid == null || activeUid == null) {
       pollNotice(`“${movie.title}” won, but its playlist position could not be resolved.`, "warn");
-      return;
+      return false;
     }
     if (winnerUid === activeUid) {
       pollNotice(`“${movie.title}” won and is already playing.`, "success");
-      return;
+      return true;
     }
     if (bustinMode) {
       const bustin = queueBustinNext();
@@ -1502,29 +1683,38 @@ BTFW.define("feature:poll-overlay", [], async () => {
           window.socket.emit("moveMedia", { from: winnerUid, after: bustin.uid });
         }
         pollNotice(`“${movie.title}” won and was queued after Bustin.`, "success");
-        return;
+        return true;
       }
     }
     if (active.nextElementSibling === winner) {
       pollNotice(`“${movie.title}” won and is already queued next.`, "success");
-      return;
+      return true;
     }
     window.socket.emit("moveMedia", { from: winnerUid, after: activeUid });
     pollNotice(`“${movie.title}” won and was queued next.`, "success");
+    return true;
   }
 
   function finishAutomaticPoll() {
     if (!automaticPoll || automaticPoll.phase !== "active") return;
     const finished = automaticPoll;
     automaticPoll = null;
+    window.clearTimeout(pollLaunchTimer);
+    window.clearTimeout(pollCloseTimer);
+    pollLaunchTimer = null;
+    pollCloseTimer = null;
+    writePollSession(null);
     const highest = Math.max(0, ...finished.counts);
     const finalists = finished.movies.filter((_, index) => finished.counts[index] === highest);
     const winner = randomChoice(finalists.length ? finalists : finished.movies);
     if (!winner) return;
-    recordMovieWinner(winner);
     if (highest === 0) pollNotice(`No votes were cast, so “${winner.title}” was picked at random.`);
     else if (finalists.length > 1) pollNotice(`The poll tied; “${winner.title}” won the random tiebreak.`);
-    queueWinningMovie(winner, finished.bustinMode);
+    try {
+      if (queueWinningMovie(winner, finished.bustinMode)) recordMovieWinner(winner);
+    } catch (_) {
+      pollNotice(`“${winner.title}” won, but could not be queued.`, "warn");
+    }
   }
 
   function syncRandomPollButton() {
@@ -1628,7 +1818,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
           <h3 id="btfw-movie-history-heading">Movie history</h3>
           <button type="button" class="btfw-history-close" aria-label="Close movie history" autofocus>&times;</button>
         </div>
-        <p id="btfw-movie-history-description" class="btfw-history-description">Previous poll winners and the last ${RECENT_PLAYBACK_LIMIT} movies played while this browser was connected are excluded for this channel. The last ${RECENT_NOMINATION_LIMIT} selections are avoided when possible. Clear history to allow repeats again.</p>
+        <p id="btfw-movie-history-description" class="btfw-history-description">Previous poll winners and the last ${RECENT_PLAYBACK_LIMIT} movies played while this browser was connected are excluded for this channel. Choices from the last ${RECENT_NOMINATION_LIMIT} actual polls are avoided when possible. Preview rerolls do not use this cooldown. Clear history to allow repeats again.</p>
         <p class="btfw-history-empty">No movies recorded yet. Movies appear here when played or when they win a poll.</p>
         <ol class="btfw-history-list" aria-label="Played movies and poll winners"></ol>
         <div class="btfw-history-footer"><button type="button" class="btfw-history-clear">Clear movie history</button></div>`;
@@ -1650,6 +1840,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
         backdropPress = false;
       });
       dialog.querySelector(".btfw-history-clear").addEventListener("click", () => {
+        previewNominations = [];
         saveMovieHistory({ winners: [], played: [], recentPolls: [] });
         if (randomPollDraft) rerollRandomMovies();
         dialog.querySelector(".btfw-history-close").focus();
@@ -1705,13 +1896,15 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   async function evaluateAutoCreditsPoll() {
     if (!randomMoviePollIntegrationEnabled || autoCreditsPollChecking || !autoCreditsPollEnabled || !isChannelOwner()) return;
+    if (!window.socket?.emit || window.socket.connected === false || Date.now() < autoCreditsRetryAfter) return;
     if (!hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")) return;
-    if (automaticPoll || activeNativePoll() || document.querySelector("#pollwrap .poll-menu, #pollwrap .btfw-random-poll-builder")) return;
+    loadPollSession();
 
     const currentKey = autoMediaKey(null);
     if (currentKey && currentKey !== autoCreditsMedia.key) {
       autoCreditsMedia.key = currentKey;
       autoCreditsTriggeredMediaKey = "";
+      autoCreditsTriggeredAt = 0;
       autoCreditsMedia.provider = "";
       autoCreditsMedia.duration = 0;
       autoCreditsMedia.currentTime = 0;
@@ -1724,27 +1917,45 @@ BTFW.define("feature:poll-overlay", [], async () => {
     const playback = readAutoCreditsPlayback();
     if (!(playback.duration >= AUTO_POLL_MIN_DURATION_SECONDS) || !(playback.currentTime >= 0)) return;
     const remaining = playback.duration - playback.currentTime;
-    const triggerSeconds = Math.max(AUTO_POLL_TRIGGER_SECONDS, autoCreditsSettings.durationSeconds + AUTO_POLL_QUEUE_BUFFER_SECONDS);
+    const triggerSeconds = autoPollTriggerSeconds();
     if (remaining > triggerSeconds || remaining < AUTO_POLL_MIN_REMAINING_SECONDS) return;
-
-    const movies = sampleMovies(eligiblePlaylistMovies(), autoCreditsSettings.count);
-    if (movies.length < 2) return;
+    if (automaticPoll || activeNativePoll()) {
+      autoCreditsTriggeredMediaKey = autoCreditsMedia.key;
+      autoCreditsTriggeredAt = Date.now();
+      writePollSession();
+      return;
+    }
+    if (playback.paused || document.querySelector("#pollwrap .poll-menu, #pollwrap .btfw-random-poll-builder")) return;
 
     autoCreditsPollChecking = true;
     const mediaKey = autoCreditsMedia.key;
-    const claimToken = await claimAutoCreditsPoll(mediaKey);
+    const version = pollBroadcastVersion;
     try {
-      if (!claimToken) return;
-      if (!randomMoviePollIntegrationEnabled || !autoCreditsPollEnabled || mediaKey !== autoCreditsMedia.key) {
-        releaseAutoCreditsClaim(mediaKey, claimToken);
-        return;
-      }
+      // Independent viewers each wait 0–10 seconds. A server poll broadcast
+      // cancels their pending attempt; no cross-browser localStorage lock is used.
+      const waited = await new Promise((resolve) => {
+        const pending = { mediaKey, resolve, timer: null };
+        pendingAutoCreditsPoll = pending;
+        pending.timer = window.setTimeout(() => {
+          if (pendingAutoCreditsPoll !== pending) return;
+          pendingAutoCreditsPoll = null;
+          resolve(true);
+        }, Math.floor(Math.random() * (AUTO_POLL_JITTER_MS + 1)));
+      });
+      if (!waited || version !== pollBroadcastVersion || !randomMoviePollIntegrationEnabled || !autoCreditsPollEnabled
+        || mediaKey !== autoCreditsMedia.key || mediaKey !== autoMediaKey(null)
+        || autoCreditsTriggeredMediaKey === mediaKey || !isChannelOwner()
+        || !hasChannelPermission("pollctl") || !hasChannelPermission("playlistmove")
+        || !window.socket?.emit || window.socket.connected === false
+        || automaticPoll || activeNativePoll()
+        || document.querySelector("#pollwrap .poll-menu, #pollwrap .btfw-random-poll-builder")) return;
       const latest = readAutoCreditsPlayback();
       const latestRemaining = latest.duration - latest.currentTime;
-      if (latestRemaining > triggerSeconds || latestRemaining < AUTO_POLL_MIN_REMAINING_SECONDS) {
-        releaseAutoCreditsClaim(mediaKey, claimToken);
-        return;
-      }
+      if (latest.paused || latest.duration < AUTO_POLL_MIN_DURATION_SECONDS
+        || latestRemaining > autoPollTriggerSeconds() || latestRemaining < AUTO_POLL_MIN_REMAINING_SECONDS || isYouTubeMedia()) return;
+      // Sample after waiting, using the current playlist and local history.
+      const movies = sampleMovies(eligiblePlaylistMovies(), autoCreditsSettings.count, autoCreditsSettings.balancedPicks);
+      if (movies.length < 2) return;
       const votingSeconds = Math.min(
         autoCreditsSettings.durationSeconds,
         Math.floor(latestRemaining - AUTO_POLL_QUEUE_BUFFER_SECONDS)
@@ -1754,17 +1965,20 @@ BTFW.define("feature:poll-overlay", [], async () => {
         durationSeconds: votingSeconds,
         quiet: true,
         mediaKey,
-        claimToken,
         bustinMode: autoCreditsSettings.bustinMode
       });
-      if (started) autoCreditsTriggeredMediaKey = mediaKey;
-      else releaseAutoCreditsClaim(mediaKey, claimToken);
+      if (started) {
+        autoCreditsTriggeredMediaKey = mediaKey;
+        autoCreditsTriggeredAt = Date.now();
+        writePollSession();
+      }
     } finally {
       autoCreditsPollChecking = false;
     }
   }
 
   function stopAutoCreditsPolling() {
+    cancelPendingAutoCreditsPoll();
     if (!autoCreditsPollTimer) return;
     window.clearInterval(autoCreditsPollTimer);
     autoCreditsPollTimer = null;
@@ -1772,6 +1986,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
   function setupAutoCreditsPolling() {
     loadPollPreferences();
+    loadPollSession();
     stopAutoCreditsPolling();
     if (!randomMoviePollIntegrationEnabled || !autoCreditsPollEnabled || !isChannelOwner()) return;
     if (window.socket && window.socket.connected === false) return;
@@ -2292,6 +2507,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
         });
         
         console.log("Extracted poll data:", pollData);
+        noteObservedPoll(pollData);
         showVideoOverlay(pollData);
         return true;
       }
@@ -2306,9 +2522,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
       // Listen for new polls
       window.socket.on("newPoll", (poll) => {
         if (poll) {
-          nativePollActive = true;
+          noteObservedPoll(poll);
           showVideoOverlay(poll);
-          trackAutomaticPoll(poll);
         }
       });
 
@@ -2324,8 +2539,15 @@ BTFW.define("feature:poll-overlay", [], async () => {
       window.socket.on("closePoll", () => {
         nativePollActive = false;
         hideVideoOverlay();
-        finishAutomaticPoll();
-        if (autoCreditsPollEnabled) setTimeout(evaluateAutoCreditsPoll, 250);
+        const closing = automaticPoll;
+        window.clearTimeout(pollCloseTimer);
+        // CyTube closes the old poll immediately before broadcasting a
+        // replacement. Let that broadcast cancel the old winner action.
+        pollCloseTimer = window.setTimeout(() => {
+          pollCloseTimer = null;
+          if (automaticPoll === closing && !nativePollActive && window.socket?.connected !== false) finishAutomaticPoll();
+          if (autoCreditsPollEnabled) evaluateAutoCreditsPoll();
+        }, POLL_CLOSE_GRACE_MS);
       });
 
       window.socket.on("changeMedia", (media) => {
@@ -2351,6 +2573,16 @@ BTFW.define("feature:poll-overlay", [], async () => {
         // Pause work while offline, keeping the browser-saved settings.
         stopAutoCreditsPolling();
         autoCreditsMedia.sampledAt = 0;
+        window.clearTimeout(pollLaunchTimer);
+        window.clearTimeout(pollCloseTimer);
+        pollLaunchTimer = null;
+        pollCloseTimer = null;
+        if (automaticPoll?.phase === "active") {
+          restorablePoll = automaticPoll;
+          writePollSession();
+          automaticPoll = null;
+        } else discardAutomaticPoll(true);
+        nativePollActive = false;
       });
 
       // Handle socket reconnection

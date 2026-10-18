@@ -14,6 +14,9 @@ const source = fs.readFileSync(path.join(__dirname, '../modules/feature-poll-ove
     launchAutomaticPoll, trackAutomaticPoll, finishAutomaticPoll,
     openRandomPollBuilder, syncAutoCreditsPollControl, saveAutoCreditsSettings, loadPollPreferences,
     evaluateAutoCreditsPoll, updateAutoCreditsMedia, applyRandomMoviePollIntegration,
+    noteObservedPoll, cancelPendingAutoCreditsPoll, cacheMovieMetadata, rememberPreviewNominations,
+    getPreviewNominations: () => previewNominations,
+    getAutomaticPoll: () => automaticPoll,
     getAutoCreditsSettings: () => { loadPollPreferences(); return { ...autoCreditsSettings }; },
     name: "feature:poll-overlay",`);
 
@@ -26,7 +29,7 @@ function movieRow(uid, title, id = String(uid)) {
   };
 }
 
-async function harness(rows, storage = new Map(), failStorage = false, showControls = false) {
+async function harness(rows, storage = new Map(), failStorage = false, showControls = false, options = {}) {
   let modulePromise;
   const emitted = [];
   let active = rows[0];
@@ -34,14 +37,32 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
   const elements = new Map();
   let builder = null;
   let deferredClose = false;
-  const frames = [], timers = [], socketListeners = {};
+  const frames = [], timers = new Map(), socketListeners = {}, documentListeners = {};
+  const session = options.session || new Map();
+  let clock = Date.UTC(2026, 9, 18), timerId = 0, random = options.random ?? Math.random;
+  const setTimer = (callback, delay = 0) => { const id = ++timerId; timers.set(id, { callback, at: clock + delay }); return id; };
+  const clearTimer = (id) => timers.delete(id);
+  class TestDate extends Date { static now() { return clock; } }
+  const math = Object.create(Math);
+  math.random = () => typeof random === 'function' ? random() : random;
+  async function advance(ms) {
+    const end = clock + ms;
+    for (;;) {
+      const next = [...timers].filter(([, timer]) => timer.at <= end).sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
+      if (!next) break;
+      timers.delete(next[0]); clock = next[1].at; next[1].callback();
+      await Promise.resolve(); await Promise.resolve();
+    }
+    clock = end;
+    await Promise.resolve(); await Promise.resolve();
+  }
   function element(tag) {
     const node = {
       children: [], listeners: {}, attributes: {}, textContent: '', tag, open: false,
       setAttribute(name, value) { this.attributes[name] = value; },
       focus() { this.focused = true; },
       showModal() { this.open = true; },
-      close() { this.open = false; if (deferredClose) timers.push(() => this.listeners.close?.()); else this.listeners.close?.(); },
+      close() { this.open = false; if (deferredClose) setTimer(() => this.listeners.close?.()); else this.listeners.close?.(); },
       getBoundingClientRect: () => ({ left: 100, right: 500, top: 100, bottom: 500 }),
       addEventListener(event, callback) { this.listeners[event] = callback; },
       appendChild(child) { this.children.push(child); child.isConnected = true; if (child.id) elements.set(child.id, child); if (child.tag === 'section') builder = child; },
@@ -66,7 +87,7 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
           '.btfw-random-poll-close', '.btfw-random-poll-cancel', '.btfw-random-poll-reroll',
           '.btfw-random-poll-start', '#btfw-random-poll-count', '#btfw-random-poll-minutes',
           '.btfw-random-poll-list', '.btfw-random-poll-warning', '.btfw-random-poll-eligible', '.btfw-random-poll-pool',
-          '.btfw-poll-auto-enabled', '.btfw-poll-bustin-mode'
+          '.btfw-poll-auto-enabled', '.btfw-poll-bustin-mode', '.btfw-poll-balanced-picks'
         ].map((selector) => [selector, element('div')]));
         if (tag === 'section' && value.includes('Enable auto credits polls')) {
           delete this.parts['.btfw-random-poll-list'];
@@ -84,7 +105,7 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
   }
   const document = {
     readyState: 'loading', body: Object.assign(element('body'), { dataset: {} }),
-    addEventListener() {}, getElementById: (id) => elements.get(id) || null,
+    addEventListener(name, callback) { documentListeners[name] = callback; }, getElementById: (id) => elements.get(id) || null,
     createElement: element,
     querySelector(selector) {
       if (selector === '#pollwrap .poll-controls') return controls;
@@ -102,11 +123,13 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
     jQuery: (row) => ({ data: (key) => key === 'uid' ? row?.uid : row?.media }),
     requestAnimationFrame: (callback) => frames.push(callback),
     setInterval: () => 1, clearInterval() {},
-    socket: { emit: (...args) => emitted.push(args), on: (event, callback) => { socketListeners[event] = callback; } }
+    setTimeout: setTimer, clearTimeout: clearTimer,
+    socket: { connected: true, emit: (...args) => emitted.push(args), on: (event, callback) => { socketListeners[event] = callback; } }
   };
   const context = {
     window, document, console: { log() {}, warn() {} }, location: { pathname: '/r/TestChannel' },
-    setTimeout: (callback) => timers.push(callback), performance: { now: () => 1000 },
+    setTimeout: setTimer, clearTimeout: clearTimer, Date: TestDate, Math: math, performance: { now: () => clock },
+    sessionStorage: { getItem: (key) => session.get(key) || null, setItem: (key, value) => session.set(key, value), removeItem: (key) => session.delete(key) },
     localStorage: {
       getItem: (key) => storage.get(key) || null,
       setItem(key, value) { if (failStorage) throw Error('Storage blocked'); storage.set(key, value); },
@@ -116,11 +139,13 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
   };
   vm.runInNewContext(source, context);
   return {
-    api: await modulePromise, emitted, storage, elements, socketListeners, window,
+    api: await modulePromise, emitted, storage, session, elements, socketListeners, documentListeners, window, advance,
+    now: () => clock,
+    setRandom(value) { random = value; },
     getBuilder: () => builder,
     deferDialogClose() { deferredClose = true; },
     setActive(row) { active = row; },
-    async flushSelection() { frames.splice(0).forEach((callback) => callback()); timers.splice(0).forEach((callback) => callback()); await Promise.resolve(); }
+    async flushSelection() { frames.splice(0).forEach((callback) => callback()); await advance(0); }
   };
 }
 
@@ -142,6 +167,7 @@ test('canonical media titles and UIDs remain selectable when row decorations are
   assert.equal(movie.title, 'Alien1979');
   assert.equal(movie.decade, 1970);
   assert.equal(api.playlistMovieMetadata(future, 'Serial 119790').decade, null);
+  assert.equal(api.playlistMovieMetadata(future, 'Alien1979 [1080p]').decade, 1970);
   assert.equal(api.playlistMovieMetadata(future, '2001 A Space Odyssey (1968)').decade, 1960);
 });
 
@@ -185,14 +211,14 @@ test('an incomplete mounted playlist never silently narrows random selections', 
   assert.equal(h.getBuilder().querySelector('.btfw-random-poll-start').disabled, false);
 });
 
-test('four available decades can force a scarce decade to repeat despite a large pool', async () => {
+test('a scarce decade yields to fresh choices for the next three actual polls', async () => {
   const rows = [movieRow(0, 'Current'), movieRow(1, 'Only seventies (1979)'),
     ...Array.from({ length: 300 }, (_, i) => movieRow(i + 2, `Movie ${i} (${1980 + (i % 3) * 10})`))];
   const { api } = await harness(rows);
   for (let i = 0; i < 5; i++) {
     const movies = api.sampleMovies(api.eligiblePlaylistMovies(), 5);
-    assert.equal(new Set(movies.map((movie) => movie.decade)).size, 4);
-    assert.ok(movies.some((movie) => movie.title === 'Only seventies (1979)'));
+    assert.equal(new Set(movies.map((movie) => movie.decade)).size, i === 0 || i === 4 ? 4 : 3);
+    assert.equal(movies.some((movie) => movie.title === 'Only seventies (1979)'), i === 0 || i === 4);
     api.rememberMovieNominations(movies);
   }
   const stats = api.getMovieSelectionDiagnostics();
@@ -425,7 +451,7 @@ test('no-vote and tied polls record exactly one randomly chosen winner', async (
   }
 });
 
-test('800 movies support twenty remembered selections without repeats', async () => {
+test('800 movies support twenty preview rerolls without using actual-poll cooldown', async () => {
   const rows = [movieRow(0, 'Current'), ...Array.from({ length: 800 }, (_, i) => movieRow(i + 1, `Film ${i} (${1930 + i % 10 * 10})`))];
   const { api } = await harness(rows);
   const seen = new Set();
@@ -434,9 +460,10 @@ test('800 movies support twenty remembered selections without repeats', async ()
     assert.equal(selected.length, 10);
     assert.ok(new Set(selected.map((movie) => movie.decade)).size >= 4);
     selected.forEach((movie) => { assert.ok(!seen.has(movie.key)); seen.add(movie.key); });
-    api.rememberMovieNominations(selected);
+    api.rememberPreviewNominations(selected);
   }
-  assert.equal(api.readMovieHistory().recentPolls.length, 20);
+  assert.equal(api.getPreviewNominations().length, 20);
+  assert.equal(api.readMovieHistory().recentPolls.length, 0);
 });
 
 test('exhausted small decade is skipped when four fresh decades exist', async () => {
@@ -513,23 +540,24 @@ test('actual builder shows busy feedback, blocks overlapping starts, and remembe
   await h.flushSelection();
   assert.equal(builder.attributes['aria-busy'], 'false');
   assert.equal(builder.querySelector('.btfw-random-poll-list').children.length, 5);
-  const seen = new Set(h.api.readMovieHistory().recentPolls.flat());
+  const seen = new Set(h.api.getPreviewNominations().flat());
   const previousList = builder.querySelector('.btfw-random-poll-list').children;
   for (let i = 0; i < 10; i++) {
     const pending = h.api.rerollRandomMovies();
     if (i === 0) assert.equal(builder.querySelector('.btfw-random-poll-list').children, previousList);
     await h.flushSelection();
     await pending;
-    const keys = h.api.readMovieHistory().recentPolls.at(-1);
+    const keys = h.api.getPreviewNominations().at(-1);
     keys.forEach((key) => { assert.ok(!seen.has(key)); seen.add(key); });
   }
-  assert.equal(h.api.readMovieHistory().recentPolls.length, 11);
+  assert.equal(h.api.readMovieHistory().recentPolls.length, 0);
+  assert.equal(h.api.getPreviewNominations().length, 11);
   assert.equal(builder.querySelector('.btfw-random-poll-start').disabled, false);
   assert.equal(builder.querySelector('.btfw-random-poll-list').children.length, 5);
   assert.equal(h.api.startAutomaticPoll(), true);
   const request = h.emitted.find(([event]) => event === 'newPoll')[1];
   h.api.trackAutomaticPoll({ title: request.title, options: request.opts, counts: [0, 0, 0, 0, 0] });
-  assert.equal(h.api.readMovieHistory().recentPolls.length, 11);
+  assert.equal(h.api.readMovieHistory().recentPolls.length, 1);
 });
 
 test('closing a pending reroll prevents stale selections from consuming history', async () => {
@@ -541,10 +569,10 @@ test('closing a pending reroll prevents stale selections from consuming history'
   assert.equal(h.getBuilder(), null);
 });
 
-test('old nomination history expires after twenty selections', async () => {
+test('old nomination history expires after three actual polls', async () => {
   const { api } = await harness([movieRow(0, 'Current'), movieRow(1, 'A'), movieRow(2, 'B')]);
-  for (let i = 0; i < 21; i++) api.rememberMovieNominations([{ key: `nomination-${i}`, title: `Film ${i}` }]);
-  assert.equal(api.readMovieHistory().recentPolls.length, 20);
+  for (let i = 0; i < 4; i++) api.rememberMovieNominations([{ key: `nomination-${i}`, title: `Film ${i}` }]);
+  assert.equal(api.readMovieHistory().recentPolls.length, 3);
   assert.ok(!api.readMovieHistory().recentPolls.flat().includes('nomination-0'));
 });
 
@@ -579,9 +607,10 @@ test('auto credits opens shared settings without nominating movies, and saves co
   builder.querySelector('#btfw-random-poll-minutes').listeners.change({ target: { value: '180' } });
   builder.querySelector('.btfw-poll-auto-enabled').listeners.change({ target: { checked: true } });
   builder.querySelector('.btfw-poll-bustin-mode').listeners.change({ target: { checked: true } });
+  builder.querySelector('.btfw-poll-balanced-picks').listeners.change({ target: { checked: true } });
   builder.querySelector('.btfw-random-poll-start').listeners.click();
   assert.equal(h.getBuilder(), null);
-  assert.deepEqual({ ...h.api.getAutoCreditsSettings() }, { enabled: true, count: 8, durationSeconds: 180, bustinMode: true });
+  assert.deepEqual({ ...h.api.getAutoCreditsSettings() }, { enabled: true, count: 8, durationSeconds: 180, bustinMode: true, balancedPicks: true });
   const reloaded = await harness([movieRow(0, 'Current'), movieRow(1, 'A')], h.storage);
   assert.deepEqual({ ...reloaded.api.getAutoCreditsSettings() }, { ...h.api.getAutoCreditsSettings() });
   reloaded.api.saveAutoCreditsSettings({ ...reloaded.api.getAutoCreditsSettings(), enabled: false });
@@ -613,6 +642,7 @@ test('invalid auto preferences are bounded and disabling the integration preserv
 test('credits trigger uses saved count and voting time and starts earlier for a longer poll', async () => {
   const rows = [movieRow(0, 'Current'), ...Array.from({ length: 12 }, (_, i) => movieRow(i + 2, `Film ${i} (2000)`)), movieRow(1, 'Bustin')];
   const h = await harness(rows);
+  h.setRandom(0);
   h.api.saveAutoCreditsSettings({ enabled: true, count: 8, durationSeconds: 300, bustinMode: true });
   h.api.updateAutoCreditsMedia({ type: 'fi', id: '0', seconds: 3600, currentTime: 3250, paused: false }, true);
   await h.api.evaluateAutoCreditsPoll();
@@ -730,4 +760,241 @@ test('a delayed native close event cannot discard settings opened in a new dialo
   current.querySelector('#btfw-random-poll-count').listeners.change({ target: { value: '7' } });
   current.querySelector('.btfw-random-poll-start').listeners.click();
   assert.equal(h.api.getAutoCreditsSettings().count, 7);
+});
+
+function basicRows() { return [movieRow(0, 'Current'), movieRow(1, 'A (1980)'), movieRow(2, 'B (1990)'), movieRow(3, 'C (2000)')]; }
+function enableCredits(h, remaining = 130) {
+  h.api.wireSocketEvents();
+  h.api.saveAutoCreditsSettings({ enabled: true, count: 2, durationSeconds: 90, bustinMode: false });
+  h.api.updateAutoCreditsMedia({ type: 'fi', id: '0', seconds: 3600, currentTime: 3600 - remaining, paused: false }, true);
+}
+function serverFrame(h, counts = [0, 0]) {
+  const request = pollRequest(h);
+  return { title: request.title, options: request.opts, counts, initiator: h.window.CLIENT.name, timestamp: h.now() };
+}
+
+test('independent viewers stagger attempts and cancel when the first poll is broadcast', async () => {
+  const first = await harness(basicRows(), new Map(), false, false, { random: .1 });
+  const standby = await harness(basicRows(), new Map(), false, false, { random: .9 });
+  first.window.CLIENT.name = 'First'; standby.window.CLIENT.name = 'Standby';
+  enableCredits(first); enableCredits(standby);
+  const attempts = [first.api.evaluateAutoCreditsPoll(), standby.api.evaluateAutoCreditsPoll()];
+  assert.equal(first.emitted.length, 0);
+  await first.advance(999);
+  assert.equal(first.emitted.length, 0);
+  await first.advance(1);
+  const frame = serverFrame(first);
+  first.socketListeners.newPoll(frame); standby.socketListeners.newPoll(frame);
+  await standby.advance(10000);
+  await Promise.all(attempts);
+  assert.equal([...first.emitted, ...standby.emitted].filter(([event]) => event === 'newPoll').length, 1);
+  standby.socketListeners.closePoll(); await standby.advance(250);
+  await standby.api.evaluateAutoCreditsPoll();
+  assert.equal(standby.emitted.length, 0); // No second poll in the same movie's credits.
+  assert.equal(standby.api.readMovieHistory().recentPolls.length, 1);
+});
+
+test('even zero-delay attempts still check the server poll state before sending', async () => {
+  const h = await harness(basicRows(), new Map(), false, false, { random: 0 });
+  enableCredits(h);
+  const pending = h.api.evaluateAutoCreditsPoll();
+  h.socketListeners.newPoll({ title: 'A moderator poll', options: ['Yes', 'No'], counts: [0, 0], timestamp: h.now() });
+  await h.advance(10000); await pending;
+  assert.equal(h.emitted.length, 0);
+});
+
+test('the ten-second delay preserves voting time and the queue buffer', async () => {
+  const h = await harness(basicRows(), new Map(), false, false, { random: .999999 });
+  enableCredits(h, 130);
+  const pending = h.api.evaluateAutoCreditsPoll();
+  await h.advance(9999);
+  assert.equal(h.emitted.length, 0);
+  await h.advance(1); await pending;
+  assert.equal(pollRequest(h).timeout, 90);
+});
+
+test('a late attempt is cancelled if too little voting time remains after waiting', async () => {
+  const h = await harness(basicRows(), new Map(), false, false, { random: .999999 });
+  enableCredits(h, 65);
+  const pending = h.api.evaluateAutoCreditsPoll();
+  await h.advance(10000); await pending;
+  assert.equal(h.emitted.length, 0);
+});
+
+test('pending attempts recheck disconnect, pause, settings, permissions and playlist changes', async () => {
+  for (const change of ['disconnect', 'paused', 'disabled', 'permission', 'movie']) {
+    const h = await harness(basicRows(), new Map(), false, false, { random: .5 });
+    enableCredits(h);
+    const pending = h.api.evaluateAutoCreditsPoll();
+    if (change === 'disconnect') { h.window.socket.connected = false; h.socketListeners.disconnect(); }
+    if (change === 'paused') h.api.updateAutoCreditsMedia({ currentTime: 3470, paused: true });
+    if (change === 'disabled') h.api.saveAutoCreditsSettings({ enabled: false });
+    if (change === 'permission') h.window.hasPermission = () => false;
+    if (change === 'movie') h.setActive(movieRow(99, 'Different movie'));
+    await h.advance(10000); await pending;
+    assert.equal(h.emitted.length, 0, change);
+  }
+});
+
+test('a disconnected socket never accepts a manual launch', async () => {
+  const h = await harness(basicRows());
+  h.window.socket.connected = false;
+  assert.equal(h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies(), quiet: false }), false);
+  assert.equal(h.emitted.length, 0);
+});
+
+test('a missing launch confirmation times out without blocking later polls', async () => {
+  const h = await harness(basicRows());
+  const movies = h.api.eligiblePlaylistMovies();
+  assert.equal(h.api.launchAutomaticPoll({ movies, quiet: true }), true);
+  await h.advance(10000);
+  assert.equal(h.api.getAutomaticPoll(), null);
+  assert.equal(h.api.launchAutomaticPoll({ movies, quiet: true }), true);
+});
+
+test('a replacement poll cancels the old winner action during closure grace', async () => {
+  const h = await harness(basicRows());
+  h.api.wireSocketEvents();
+  h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies().slice(0, 2), quiet: true });
+  h.socketListeners.newPoll(serverFrame(h, [0, 5]));
+  h.socketListeners.closePoll();
+  h.socketListeners.newPoll({ title: 'Replacement', options: ['X', 'Y'], counts: [0, 0], timestamp: h.now() + 1 });
+  await h.advance(250);
+  assert.equal(moves(h).length, 0);
+  assert.equal(h.api.readMovieHistory().winners.length, 0);
+});
+
+test('same-looking polls are distinguished by timestamp and initiator', async () => {
+  const h = await harness(basicRows());
+  h.window.CLIENT.name = 'Owner';
+  h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies().slice(0, 2), quiet: true });
+  const frame = serverFrame(h, [0, 5]);
+  h.api.noteObservedPoll(frame);
+  h.api.noteObservedPoll({ ...frame, timestamp: frame.timestamp + 1 });
+  h.api.finishAutomaticPoll();
+  assert.equal(moves(h).length, 0);
+});
+
+test('a simultaneous-request collision keeps ownership of the poll the server ultimately opens', async () => {
+  const first = await harness(basicRows()), second = await harness(basicRows());
+  first.window.CLIENT.name = 'First'; second.window.CLIENT.name = 'Second';
+  for (const h of [first, second]) {
+    h.api.wireSocketEvents();
+    h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies().slice(0, 2), quiet: true });
+  }
+  const frame1 = serverFrame(first, [0, 0]), frame2 = { ...serverFrame(second, [0, 3]), timestamp: second.now() + 1 };
+  for (const h of [first, second]) h.socketListeners.newPoll(frame1);
+  for (const h of [first, second]) h.socketListeners.closePoll();
+  for (const h of [first, second]) h.socketListeners.newPoll(frame2);
+  for (const h of [first, second]) h.socketListeners.closePoll();
+  await Promise.all([first.advance(250), second.advance(250)]);
+  assert.equal(moves(first).length, 0);
+  assert.equal(moves(second).length, 1);
+});
+
+test('the owning tab can recover an active poll after reload, while other viewers do not adopt it', async () => {
+  const owner = await harness(basicRows());
+  owner.window.CLIENT.name = 'Owner';
+  owner.api.launchAutomaticPoll({ movies: owner.api.eligiblePlaylistMovies().slice(0, 2), quiet: true });
+  const frame = serverFrame(owner, [0, 4]);
+  owner.api.noteObservedPoll(frame);
+  const restored = await harness(basicRows(), owner.storage, false, false, { session: owner.session });
+  const observer = await harness(basicRows());
+  restored.window.CLIENT.name = 'Owner'; observer.window.CLIENT.name = 'Other';
+  for (const h of [restored, observer]) { h.api.wireSocketEvents(); h.socketListeners.newPoll(frame); h.socketListeners.closePoll(); }
+  await Promise.all([restored.advance(250), observer.advance(250)]);
+  assert.equal(moves(restored).length, 1);
+  assert.equal(moves(observer).length, 0);
+  assert.equal(restored.api.readMovieHistory().recentPolls.length, 1);
+});
+
+test('reconnect reconciles state instead of queuing an old poll that closed while offline', async () => {
+  const h = await harness(basicRows());
+  h.api.wireSocketEvents();
+  h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies().slice(0, 2), quiet: true });
+  h.socketListeners.newPoll(serverFrame(h, [0, 5]));
+  h.window.socket.connected = false; h.socketListeners.disconnect();
+  assert.equal(h.api.getAutomaticPoll(), null);
+  h.window.socket.connected = true; h.socketListeners.connect();
+  h.socketListeners.closePoll(); await h.advance(250);
+  assert.equal(moves(h).length, 0);
+  assert.equal(h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies().slice(0, 2), quiet: true }), true);
+});
+
+test('a failed winner placement does not exclude an unqueued movie from local history', async () => {
+  const h = await harness(basicRows());
+  h.api.launchAutomaticPoll({ movies: h.api.eligiblePlaylistMovies().slice(0, 2), quiet: true });
+  h.api.trackAutomaticPoll(serverFrame(h, [0, 5]));
+  h.window.hasPermission = () => false;
+  h.api.finishAutomaticPoll();
+  assert.equal(h.api.readMovieHistory().winners.length, 0);
+});
+
+test('numeric movie titles do not create false release decades; cached movie details resolve them', async () => {
+  const h = await harness(basicRows());
+  assert.equal(h.api.playlistMovieMetadata(null, 'Blade Runner 2049').decade, null);
+  assert.equal(h.api.playlistMovieMetadata(null, '1917').decade, null);
+  assert.equal(h.api.playlistMovieMetadata(null, '2001: A Space Odyssey').decade, null);
+  h.api.cacheMovieMetadata('Blade Runner 2049', { year: 2017, rating: 8, votes: 10000 });
+  h.documentListeners['btfw:movieMetadata']({ detail: { title: '1917', metadata: { year: 2019 } } });
+  assert.equal(h.api.playlistMovieMetadata(null, 'Blade Runner 2049').decade, 2010);
+  const reloaded = await harness(basicRows(), h.storage);
+  assert.equal(reloaded.api.playlistMovieMetadata(null, '1917').decade, 2010);
+});
+
+test('unknown-year movies receive wildcard exposure in smaller polls too', async () => {
+  const { api } = await harness([movieRow(0, 'Current'), movieRow(1, 'Known (1980)'), movieRow(2, 'Known (1990)'),
+    ...Array.from({ length: 10 }, (_, i) => movieRow(i + 3, `Unknown ${i}`))]);
+  let unknown = 0;
+  for (let i = 0; i < 100; i++) unknown += api.sampleMovies(api.eligiblePlaylistMovies(), 2).filter((movie) => movie.decade == null).length;
+  assert.ok(unknown > 100);
+});
+
+test('balanced picks mildly favor established ratings while keeping unrated films and random wildcards', async () => {
+  const h = await harness(basicRows());
+  let seed = 42;
+  h.setRandom(() => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 2 ** 32; });
+  const movies = [
+    { key: 'a', title: 'A', decade: 1980, details: { rating: 9, votes: 10000, genres: [] } },
+    { key: 'b', title: 'B', decade: 1980, details: { rating: 3, votes: 10000, genres: [] } }
+  ];
+  let preferred = 0;
+  for (let i = 0; i < 10000; i++) if (h.api.sampleMovies(movies, 2, true)[0].key === 'a') preferred++;
+  assert.ok(preferred > 5300 && preferred < 6500, String(preferred));
+  const unknown = { key: 'unknown', title: 'Unknown', decade: null };
+  assert.ok(h.api.sampleMovies([...movies, unknown], 3, true).includes(unknown));
+});
+
+test('closing the builder forgets preview avoidance while retaining actual-poll history', async () => {
+  const h = await harness(basicRows(), new Map(), false, true);
+  h.api.rememberMovieNominations([h.api.eligiblePlaylistMovies()[0]]);
+  h.api.openRandomMoviePoll(); await h.flushSelection();
+  assert.equal(h.api.getPreviewNominations().length, 1);
+  h.api.closeRandomPollBuilder();
+  assert.equal(h.api.getPreviewNominations().length, 0);
+  assert.equal(h.api.readMovieHistory().recentPolls.length, 1);
+});
+
+test('replaying one server poll in multiple tabs does not consume multiple local cooldown slots', async () => {
+  const first = await harness(basicRows());
+  const second = await harness(basicRows(), first.storage);
+  const frame = { title: 'What should we watch next? · 90 sec', options: ['A (1980)', 'B (1990)'], counts: [0, 0], timestamp: first.now() };
+  first.api.noteObservedPoll(frame); second.api.noteObservedPoll(frame); second.api.noteObservedPoll(frame);
+  assert.equal(second.api.readMovieHistory().recentPolls.length, 1);
+});
+
+test('metadata errors cannot make a movie unselectable', async () => {
+  const h = await harness(basicRows());
+  h.api.cacheMovieMetadata('A (1980)', { rating: Infinity, votes: NaN, genres: [null, { id: 12 }], runtime: -1 });
+  const selected = h.api.sampleMovies(h.api.eligiblePlaylistMovies(), 3, true);
+  assert.equal(selected.length, 3);
+});
+
+test('a restored marker cannot suppress a later replay of the same playlist entry', async () => {
+  const h = await harness(basicRows(), new Map(), false, false, { random: 0 });
+  h.session.set('btfw:movie-poll:session:testchannel', JSON.stringify({ seenMediaKey: 'playlist:0', seenAt: h.now() - 4 * 60 * 1000, poll: null }));
+  enableCredits(h, 3600);
+  h.api.updateAutoCreditsMedia({ type: 'fi', id: '0', seconds: 3600, currentTime: 3470, paused: false });
+  const pending = h.api.evaluateAutoCreditsPoll(); await h.advance(0); await pending;
+  assert.equal(h.emitted.filter(([event]) => event === 'newPoll').length, 1);
 });
