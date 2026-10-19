@@ -31,7 +31,7 @@ function movieRow(uid, title, id = String(uid)) {
 
 async function harness(rows, storage = new Map(), failStorage = false, showControls = false, options = {}) {
   let modulePromise;
-  const emitted = [];
+  const emitted = [], notices = [];
   let active = rows[0];
   rows.forEach((row, index) => { row.nextElementSibling = rows[index + 1] || null; });
   const elements = new Map();
@@ -117,6 +117,7 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
     querySelectorAll: (selector) => selector === '#queue > .queue_entry' ? rows : []
   };
   const window = {
+    BTFW_notify: Object.fromEntries(['info', 'success', 'warn'].map((kind) => [kind, (notice) => notices.push({ kind, ...notice })])),
     BTFW_CONFIG: { integrations: { randomMoviePoll: { enabled: true } } },
     CHANNEL: { name: 'TestChannel' }, CLIENT: { rank: 3 },
     hasPermission: () => true,
@@ -139,7 +140,7 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
   };
   vm.runInNewContext(source, context);
   return {
-    api: await modulePromise, emitted, storage, session, elements, socketListeners, documentListeners, window, advance,
+    api: await modulePromise, emitted, notices, storage, session, elements, socketListeners, documentListeners, window, advance,
     now: () => clock,
     setRandom(value) { random = value; },
     getBuilder: () => builder,
@@ -439,7 +440,7 @@ test('duplicates of the currently playing movie are excluded', async () => {
   assert.equal(api.eligiblePlaylistMovies().length, 1);
 });
 
-test('no-vote and tied polls record exactly one randomly chosen winner', async () => {
+test('no-vote and tied polls record exactly one winner from the shared tiebreak', async () => {
   for (const counts of [[0, 0], [2, 2]]) {
     const { api, emitted } = await harness([movieRow(0, 'Current'), movieRow(1, 'A'), movieRow(2, 'B')]);
     api.launchAutomaticPoll({ movies: api.eligiblePlaylistMovies(), quiet: true });
@@ -935,6 +936,130 @@ test('same-looking polls are distinguished by timestamp and initiator', async ()
   h.api.noteObservedPoll({ ...frame, timestamp: frame.timestamp + 1 });
   h.api.finishAutomaticPoll();
   assert.equal(moves(h).length, 0);
+});
+
+test('ordinary viewers see the final movie winner once without poll or queue permissions', async () => {
+  const creator = await harness(basicRows());
+  const viewer = await harness(basicRows());
+  creator.window.CLIENT.name = 'Creator';
+  viewer.window.CLIENT = { name: 'Viewer', rank: 0 };
+  viewer.window.hasPermission = () => false;
+  viewer.api.saveAutoCreditsSettings({ enabled: false });
+  creator.api.launchAutomaticPoll({ movies: creator.api.eligiblePlaylistMovies().slice(0, 2), quiet: true });
+  const opening = serverFrame(creator);
+  for (const h of [creator, viewer]) {
+    h.api.wireSocketEvents();
+    h.socketListeners.newPoll(opening);
+    h.notices.length = 0;
+    h.socketListeners.updatePoll({ ...opening, counts: [1, 5] });
+    h.socketListeners.closePoll();
+    h.socketListeners.closePoll();
+  }
+  await Promise.all([creator.advance(250), viewer.advance(250)]);
+  assert.equal(viewer.notices.length, 1);
+  assert.match(viewer.notices[0].html, /B \(1990\).*won the movie poll/);
+  assert.equal(viewer.notices[0].kind, 'success');
+  assert.equal(creator.notices.length, 1);
+  assert.match(creator.notices[0].html, /B \(1990\)/);
+  assert.equal(viewer.emitted.length, 0);
+  assert.equal(viewer.api.readMovieHistory().winners.length, 0);
+  assert.equal(creator.api.readMovieHistory().winners[0].title, 'B (1990)');
+  viewer.socketListeners.closePoll(); await viewer.advance(250);
+  assert.equal(viewer.notices.length, 1);
+});
+
+test('tied and empty polls announce the movie the creator queues on every client', async () => {
+  for (const counts of [[0, 0], [3, 3]]) {
+    const creator = await harness(basicRows(), new Map(), false, false, { random: .01 });
+    const viewer = await harness(basicRows(), new Map(), false, false, { random: .99 });
+    creator.window.CLIENT.name = 'Creator';
+    viewer.window.hasPermission = () => false;
+    creator.api.launchAutomaticPoll({ movies: creator.api.eligiblePlaylistMovies().slice(0, 2), quiet: true });
+    const frame = serverFrame(creator, counts);
+    for (const h of [creator, viewer]) {
+      h.api.wireSocketEvents(); h.socketListeners.newPoll(frame); h.notices.length = 0; h.socketListeners.closePoll();
+    }
+    await Promise.all([creator.advance(250), viewer.advance(250)]);
+    const winner = creator.api.readMovieHistory().winners[0];
+    assert.ok(viewer.notices[0].html.includes(winner.title));
+    assert.match(viewer.notices[0].html, /tiebreak/);
+    assert.equal(creator.notices[0].html, viewer.notices[0].html);
+    assert.equal(viewer.notices.length, 1);
+    assert.equal(viewer.emitted.length, 0);
+  }
+});
+
+test('observers use public vote snapshots without needing an overlay or a loaded playlist', async () => {
+  const viewer = await harness([]);
+  viewer.window.hasPermission = () => false;
+  viewer.api.wireSocketEvents();
+  viewer.socketListeners.newPoll({ title: 'What should we watch next? · 2 min', options: ['A', 'B'], votes: [0, 0], timestamp: viewer.now() });
+  viewer.socketListeners.updatePoll({ votes: [8, 1] });
+  viewer.socketListeners.closePoll(); await viewer.advance(250);
+  assert.equal(viewer.notices.length, 1);
+  assert.match(viewer.notices[0].html, /A.*won the movie poll/);
+  assert.equal(viewer.emitted.length, 0);
+});
+
+test('partial vote updates select the same final winner for creators and observers', async () => {
+  const creator = await harness(basicRows()), viewer = await harness([]);
+  creator.window.CLIENT.name = 'Creator';
+  creator.api.launchAutomaticPoll({ movies: creator.api.eligiblePlaylistMovies().slice(0, 2), quiet: true });
+  const frame = serverFrame(creator, [8, 1]);
+  for (const h of [creator, viewer]) {
+    h.api.wireSocketEvents(); h.socketListeners.newPoll(frame); h.notices.length = 0;
+    h.socketListeners.updatePoll({ votes: [8, 12] });
+    h.socketListeners.closePoll();
+  }
+  await Promise.all([creator.advance(250), viewer.advance(250)]);
+  assert.equal(creator.api.readMovieHistory().winners[0].title, 'B (1990)');
+  assert.match(viewer.notices[0].html, /B \(1990\)/);
+});
+
+test('ordinary, obscured and unavailable poll results do not announce a movie winner', async () => {
+  const frames = [
+    { title: 'A moderator poll', counts: [2, 1] },
+    { title: 'What should we watch next? · 90 sec', counts: [2, 1], obscured: true },
+    { title: 'What should we watch next? · 90 sec' },
+    { title: 'What should we watch next? · 90 sec', counts: [null, null] }
+  ];
+  for (const frame of frames) {
+    const viewer = await harness(basicRows());
+    viewer.api.wireSocketEvents();
+    viewer.socketListeners.newPoll({ ...frame, options: ['A', 'B'], timestamp: viewer.now() });
+    viewer.socketListeners.closePoll(); await viewer.advance(250);
+    assert.equal(viewer.notices.length, 0);
+  }
+});
+
+test('replacement polls and disconnects cancel pending public winner announcements', async () => {
+  for (const replacement of [true, false]) {
+    const viewer = await harness(basicRows());
+    viewer.api.wireSocketEvents();
+    viewer.socketListeners.newPoll({ title: 'What should we watch next? · 90 sec', options: ['A', 'B'], counts: [2, 1], timestamp: viewer.now() });
+    viewer.socketListeners.closePoll();
+    if (replacement) viewer.socketListeners.newPoll({ title: 'Replacement', options: ['Yes', 'No'], counts: [0, 0], timestamp: viewer.now() + 1 });
+    else { viewer.window.socket.connected = false; viewer.socketListeners.disconnect(); }
+    await viewer.advance(250);
+    assert.equal(viewer.notices.length, 0);
+    if (!replacement) {
+      viewer.window.socket.connected = true; viewer.socketListeners.connect();
+    }
+    viewer.socketListeners.closePoll(); await viewer.advance(250);
+    assert.equal(viewer.notices.length, 0);
+  }
+});
+
+test('movie winner toast escapes movie titles and ignores updates belonging to other polls', async () => {
+  const viewer = await harness([]);
+  viewer.api.wireSocketEvents();
+  const frame = { title: 'What should we watch next? · 90 sec', options: ['<img src=x onerror=alert(1)>', 'B'], counts: [2, 1], timestamp: viewer.now() };
+  viewer.socketListeners.newPoll(frame);
+  viewer.socketListeners.updatePoll({ ...frame, counts: [1, 4], timestamp: frame.timestamp + 1 });
+  viewer.socketListeners.closePoll(); await viewer.advance(250);
+  assert.equal(viewer.notices.length, 1);
+  assert.match(viewer.notices[0].html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.ok(!viewer.notices[0].html.includes('<img'));
 });
 
 test('a simultaneous-request collision keeps ownership of the poll the server ultimately opens', async () => {

@@ -602,6 +602,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   const POLL_CLOSE_GRACE_MS = 250;
   let randomPollDraft = null;
   let automaticPoll = null;
+  let observedMoviePoll = null;
   let nativePollActive = false;
   let randomPollTimer = null;
   let autoCreditsPollTimer = null;
@@ -1206,6 +1207,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       autoCreditsTriggeredAt = Date.now();
     }
     nativePollActive = true;
+    observedMoviePoll = moviePollSnapshot(poll);
     if (!automaticPoll && restorablePoll) {
       automaticPoll = restorablePoll;
       restorablePoll = null;
@@ -1225,6 +1227,66 @@ BTFW.define("feature:poll-overlay", [], async () => {
   function pollHistoryId(poll) {
     return poll?.timestamp != null
       ? JSON.stringify([String(poll.timestamp), resolvePollTitle(poll.title), poll.options]) : "";
+  }
+
+  function moviePollCounts(poll, length) {
+    const counts = Array.isArray(poll?.counts) ? poll.counts : poll?.votes;
+    if (!Array.isArray(counts) || counts.length !== length
+      || counts.some((count) => !["number", "string"].includes(typeof count)
+        || String(count).trim() === "" || !Number.isSafeInteger(Number(count)) || Number(count) < 0)) return null;
+    return counts.map(Number);
+  }
+
+  function moviePollSnapshot(poll) {
+    const title = resolvePollTitle(poll?.title);
+    if (!RANDOM_POLL_TIMER_RE.test(title) || pollTiming(poll).title !== RANDOM_POLL_TITLE
+      || poll.obscured || !Array.isArray(poll.options) || poll.options.length < 2) return null;
+    return {
+      title,
+      pollTimestamp: poll.timestamp == null ? "" : String(poll.timestamp),
+      movies: poll.options.map((option) => ({ title: decodeHtmlEntities(option) })),
+      counts: moviePollCounts(poll, poll.options.length)
+    };
+  }
+
+  function moviePollUpdateMatches(tracked, poll) {
+    return !!tracked && !!poll
+      && (poll.title == null || resolvePollTitle(poll.title) === tracked.title)
+      && (poll.timestamp == null || !tracked.pollTimestamp || String(poll.timestamp) === tracked.pollTimestamp)
+      && (!Array.isArray(poll.options) || (poll.options.length === tracked.movies.length
+        && poll.options.every((option, index) => movieKey(decodeHtmlEntities(option)) === movieKey(tracked.movies[index].title))));
+  }
+
+  function updateObservedMoviePoll(poll) {
+    if (!moviePollUpdateMatches(observedMoviePoll, poll)) return;
+    if (poll.timestamp != null) observedMoviePoll.pollTimestamp = String(poll.timestamp);
+    if (poll.obscured) observedMoviePoll.counts = null;
+    else {
+      const counts = moviePollCounts(poll, observedMoviePoll.movies.length);
+      if (counts) observedMoviePoll.counts = counts;
+    }
+  }
+
+  function moviePollResult(poll) {
+    if (!poll?.counts || poll.counts.length !== poll.movies.length) return null;
+    const highest = Math.max(0, ...poll.counts);
+    const finalists = poll.movies.filter((_, index) => poll.counts[index] === highest);
+    if (!finalists.length) return null;
+    // The public server timestamp and options seed the tiebreak. Every viewer,
+    // including the creator who queues the movie, must select the same finalist.
+    const seed = JSON.stringify([poll.pollTimestamp || "", poll.title, poll.resultTitles || poll.movies.map((movie) => movie.title)]);
+    let hash = 2166136261;
+    for (let index = 0; index < seed.length; index++) hash = Math.imul(hash ^ seed.charCodeAt(index), 16777619) >>> 0;
+    return { winner: finalists[hash % finalists.length], highest, tied: finalists.length > 1 };
+  }
+
+  function announceMoviePollResult(result) {
+    if (!result) return;
+    const { winner, highest, tied } = result;
+    const message = highest === 0
+      ? `No votes were cast; “${winner.title}” was selected in the tiebreak.`
+      : tied ? `The poll tied; “${winner.title}” won the tiebreak.` : `“${winner.title}” won the movie poll!`;
+    pollNotice(message, "success");
   }
 
   function pollNotice(message, kind = "info") {
@@ -1610,9 +1672,17 @@ BTFW.define("feature:poll-overlay", [], async () => {
     });
   }
 
-  function trackAutomaticPoll(poll) {
+  function trackAutomaticPoll(poll, partial = false) {
     if (!automaticPoll) return;
-    if (!automaticPollMatches(poll)) {
+    if (partial && automaticPoll.phase === "active") {
+      if (automaticPoll.requestedBy && window.CLIENT?.name
+        && movieKey(window.CLIENT.name) !== movieKey(automaticPoll.requestedBy)) {
+        discardAutomaticPoll();
+        return;
+      }
+      if (!moviePollUpdateMatches(automaticPoll, poll)
+        || (automaticPoll.requestedBy && poll.initiator && movieKey(poll.initiator) !== movieKey(automaticPoll.requestedBy))) return;
+    } else if (!automaticPollMatches(poll)) {
       if (automaticPoll.phase === "active" && Array.isArray(poll?.options) && poll.title != null) discardAutomaticPoll();
       return;
     }
@@ -1630,8 +1700,10 @@ BTFW.define("feature:poll-overlay", [], async () => {
         "success"
       );
     }
-    if (Array.isArray(poll.counts) && poll.counts.length === automaticPoll.movies.length) {
-      automaticPoll.counts = poll.counts.map((count) => Math.max(0, Number.parseInt(count, 10) || 0));
+    const counts = moviePollCounts(poll, automaticPoll.movies.length);
+    if (counts) automaticPoll.counts = counts;
+    if (!automaticPoll.resultTitles && Array.isArray(poll.options)) {
+      automaticPoll.resultTitles = poll.options.map((option) => decodeHtmlEntities(option));
     }
     if (poll.timestamp != null) automaticPoll.pollTimestamp = String(poll.timestamp);
     automaticPoll.deadline = pollTiming(poll).deadline || automaticPoll.deadline;
@@ -1708,12 +1780,12 @@ BTFW.define("feature:poll-overlay", [], async () => {
     pollLaunchTimer = null;
     pollCloseTimer = null;
     writePollSession(null);
-    const highest = Math.max(0, ...finished.counts);
-    const finalists = finished.movies.filter((_, index) => finished.counts[index] === highest);
-    const winner = randomChoice(finalists.length ? finalists : finished.movies);
-    if (!winner) return;
-    if (highest === 0) pollNotice(`No votes were cast, so “${winner.title}” was picked at random.`);
-    else if (finalists.length > 1) pollNotice(`The poll tied; “${winner.title}” won the random tiebreak.`);
+    const result = moviePollResult(finished);
+    if (!result) return;
+    const { winner } = result;
+    // The creator keeps its queue-status toast. Other clients announce the
+    // public result in closePoll without acquiring queue or history ownership.
+    if (result.tied) announceMoviePollResult(result);
     try {
       if (queueWinningMovie(winner, finished.bustinMode)) recordMovieWinner(winner);
     } catch (_) {
@@ -2532,10 +2604,11 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
       // Listen for poll updates (vote counts)
       window.socket.on("updatePoll", (poll) => {
+        updateObservedMoviePoll(poll);
         if (poll && currentPoll) {
           updateVoteDisplay(poll);
         }
-        if (poll) trackAutomaticPoll(poll);
+        if (poll) trackAutomaticPoll(poll, true);
       });
 
       // Listen for poll closure
@@ -2543,12 +2616,20 @@ BTFW.define("feature:poll-overlay", [], async () => {
         nativePollActive = false;
         hideVideoOverlay();
         const closing = automaticPoll;
+        const closingObserved = observedMoviePoll;
         window.clearTimeout(pollCloseTimer);
         // CyTube closes the old poll immediately before broadcasting a
         // replacement. Let that broadcast cancel the old winner action.
         pollCloseTimer = window.setTimeout(() => {
           pollCloseTimer = null;
-          if (automaticPoll === closing && !nativePollActive && window.socket?.connected !== false) finishAutomaticPoll();
+          if (!nativePollActive && window.socket?.connected !== false) {
+            const creatorFinishing = closing?.phase === "active" && automaticPoll === closing;
+            if (creatorFinishing) finishAutomaticPoll();
+            if (closingObserved && observedMoviePoll === closingObserved) {
+              observedMoviePoll = null;
+              if (!creatorFinishing) announceMoviePollResult(moviePollResult(closingObserved));
+            }
+          }
           if (autoCreditsPollEnabled) evaluateAutoCreditsPoll();
         }, POLL_CLOSE_GRACE_MS);
       });
@@ -2586,6 +2667,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
           automaticPoll = null;
         } else discardAutomaticPoll(true);
         nativePollActive = false;
+        observedMoviePoll = null;
       });
 
       // Handle socket reconnection
