@@ -141,9 +141,6 @@ BTFW.define("feature:playlistCatalog", [], async () => {
         #btfw-playlist-catalogue .btfw-catalogue__dialog { transform:none !important; transition:none !important; }
       }
       #btfw-playlist-catalogue .btfw-catalogue__head { display:flex; align-items:center; gap:12px; padding:18px 20px 14px; border-bottom:1px solid rgba(255,255,255,.09); }
-      #btfw-playlist-catalogue .btfw-catalogue__head { flex-wrap:wrap; }
-      #btfw-playlist-catalogue [data-action="toggle-suggestions"] { font-size:.75rem; white-space:nowrap; }
-      #btfw-playlist-catalogue [data-action="toggle-suggestions"][aria-pressed="true"] { background:color-mix(in srgb,var(--btfw-color-accent) 45%,#ffffff18); }
       #btfw-playlist-catalogue h2 { margin:0; font-size:1.2rem; flex:1; }
       #btfw-playlist-catalogue button { border:0; border-radius:9px; cursor:pointer; color:inherit; background:rgba(255,255,255,.09); padding:8px 11px; }
       #btfw-playlist-catalogue button:hover { background:rgba(255,255,255,.16); }
@@ -232,7 +229,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     modal.id = "btfw-playlist-catalogue";
     modal.innerHTML = `
       <section class="btfw-catalogue__dialog" role="dialog" aria-modal="true" aria-labelledby="btfw-catalogue-title">
-        <header class="btfw-catalogue__head"><h2 id="btfw-catalogue-title">Movie Catalogue</h2><button type="button" data-action="toggle-suggestions" hidden aria-pressed="false">Poll suggestions: Off</button><button type="button" class="btfw-catalogue__view-toggle" data-action="toggle-vhs" aria-label="Use VHS catalogue design" aria-pressed="false"><span>VHS</span><span class="btfw-catalogue__switch" aria-hidden="true"></span></button><button type="button" data-action="close" aria-label="Close catalogue">×</button></header>
+        <header class="btfw-catalogue__head"><h2 id="btfw-catalogue-title">Movie Catalogue</h2><button type="button" class="btfw-catalogue__view-toggle" data-action="toggle-vhs" aria-label="Use VHS catalogue design" aria-pressed="false"><span>VHS</span><span class="btfw-catalogue__switch" aria-hidden="true"></span></button><button type="button" data-action="close" aria-label="Close catalogue">×</button></header>
         <div class="btfw-catalogue__filters"><label class="btfw-catalogue__filter"><span>Search catalog</span><input type="search" data-role="query" placeholder="Find a movie…"></label><label class="btfw-catalogue__filter"><span>Format</span><select data-role="type"><option value="">All media</option><option value="movie">Movies</option><option value="tv">TV shows</option></select></label><label class="btfw-catalogue__filter"><span>Sort by</span><select data-role="sort"><option value="order">Default</option><option value="title">Title</option><option value="date">Release date</option><option value="rating">TMDB rating</option></select></label><label class="btfw-catalogue__filter"><span>Order</span><select data-role="direction"><option value="asc">Ascending</option><option value="desc">Descending</option></select></label></div>
         <div class="btfw-catalogue__status" data-role="suggestions-status" hidden></div><div class="btfw-catalogue__status" data-role="status"></div><main class="btfw-catalogue__body"><div class="btfw-catalogue__grid" data-role="list"></div></main>
         <footer class="btfw-catalogue__foot"><span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span><span class="btfw-catalogue__load-status" data-role="load-status"></span></footer>
@@ -249,7 +246,6 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     state.directionEl = $("[data-role=direction]", modal);
     modal.addEventListener("click", event => { if (event.target === modal || event.target.closest("[data-action=close]")) closeModal(); });
     $("[data-action=toggle-vhs]", modal).addEventListener("click", () => setViewMode(state.viewMode === "vhs" ? "poster" : "vhs"));
-    $("[data-action=toggle-suggestions]", modal).addEventListener("click", () => suggestions.setEnabled?.(!suggestions.enabled?.()));
     modal.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
     const updateFilters = () => {
       state.visibleCount = RENDER_BATCH_SIZE;
@@ -326,12 +322,6 @@ BTFW.define("feature:playlistCatalog", [], async () => {
 
   function render(){
     if (!state.listEl) return;
-    const toggle = $("[data-action=toggle-suggestions]", state.modal);
-    if (toggle) {
-      toggle.hidden = !suggestions.canToggle?.();
-      toggle.textContent = `Poll suggestions: ${suggestions.enabled?.() ? "On" : "Off"}`;
-      toggle.setAttribute("aria-pressed", String(!!suggestions.enabled?.()));
-    }
     const suggestionStatus = $("[data-role=suggestions-status]", state.modal);
     if (suggestionStatus) {
       suggestionStatus.hidden = !suggestions.enabled?.();

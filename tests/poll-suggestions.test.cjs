@@ -37,6 +37,7 @@ async function harness(storage = new Map(), options = {}) {
     CHANNEL: { name: 'TestChannel', css: 'body { color: red; }\n/* BTFW_POLL_SUGGESTIONS:1 */' },
     CLIENT: { name: 'Alice', rank: 3, logged_in: true, guest: false },
     BTFW_CONFIG: { integrations: { randomMoviePoll: { enabled: true } } },
+    BTFW_THEME_ADMIN: { playlistCatalog: { pollSuggestionsEnabled: true } },
     hasPermission: () => true,
     BTFW_notify: Object.fromEntries(['info', 'success', 'warn'].map(kind => [kind, data => notices.push({ kind, ...data })])),
     setInterval: () => ++id, setTimeout: (callback, delay) => { timers.push({ callback, delay }); return ++id; },
@@ -176,17 +177,36 @@ test('moderator clear is broadcast through chat and its replay boundary prevents
   h.chat('Alice', 'Alien 1979', old + 3); assert.equal(h.api.getQueue().length, 1);
 });
 
-test('admin toggle preserves CSS, waits for the server broadcast, rejects non-admins and oversized CSS', async () => {
+function channelConfiguration(enabled) {
+  return { js: '// ==BTFW_THEME_ADMIN_START==\nwindow.BTFW_THEME_ADMIN = ' + JSON.stringify({ playlistCatalog: { pollSuggestionsEnabled: enabled } }) + ';\n// ==BTFW_THEME_ADMIN_END==' };
+}
+
+test('published channel configuration changes suggestions for all clients without reading or writing CSS', async () => {
+  const a = await harness(), b = await harness();
+  for (const h of [a, b]) {
+    h.fire('channelCSSJS', { css: 'x'.repeat(30000) });
+    assert.equal(h.api.enabled(), true);
+    h.fire('channelCSSJS', channelConfiguration(false)); assert.equal(h.api.enabled(), false);
+    h.chat('Alice', 'Alien 1979'); assert.equal(h.api.getQueue().length, 0);
+    h.fire('channelCSSJS', { ...channelConfiguration(true), css: 'x'.repeat(30000) });
+    assert.equal(h.api.enabled(), true);
+    h.chat('Alice', 'Alien 1979'); assert.equal(h.api.getQueue().length, 1);
+    assert.equal(h.emitted.length, 0);
+    assert.equal(h.api.setEnabled, undefined);
+    assert.equal(h.document.head.children.length, 0);
+  }
+});
+
+test('toolkit runtime updates apply immediately and malformed published settings are ignored safely', async () => {
   const h = await harness();
-  h.window.CLIENT.rank = 2; assert.equal(h.api.setEnabled(false), false);
-  h.window.CLIENT.rank = 3; assert.equal(h.api.setEnabled(false), true);
-  const [event, payload] = h.emitted.at(-1);
-  assert.equal(event, 'setChannelCSS'); assert.match(payload.css, /^body \{ color: red; \}/);
-  assert.equal((payload.css.match(/BTFW_POLL_SUGGESTIONS/g) || []).length, 1);
-  assert.equal(h.api.enabled(), true);
-  h.fire('channelCSSJS', payload); assert.equal(h.api.enabled(), false);
-  h.chat('Alice', 'Alien 1979'); assert.equal(h.api.getQueue().length, 0);
-  h.fire('channelCSSJS', { css: 'x'.repeat(20000) }); assert.equal(h.api.setEnabled(true), false);
+  h.window.BTFW_THEME_ADMIN.playlistCatalog.pollSuggestionsEnabled = false;
+  h.document.dispatchEvent({ type: 'btfw:playlistCatalogChanged' });
+  assert.equal(h.api.enabled(), false);
+  h.fire('channelCSSJS', { js: '// ==BTFW_THEME_ADMIN_START==\nwindow.BTFW_THEME_ADMIN = {bad};\n// ==BTFW_THEME_ADMIN_END==' });
+  assert.equal(h.api.enabled(), false);
+  h.fire('channelCSSJS', channelConfiguration('true')); assert.equal(h.api.enabled(), false);
+  h.fire('channelCSSJS', channelConfiguration(true)); assert.equal(h.api.enabled(), true);
+  h.fire('channelCSSJS', { js: '// No theme configuration' }); assert.equal(h.api.enabled(), false);
 });
 
 test('queue is bounded and blocked storage keeps nominations for the current session', async () => {
@@ -210,12 +230,12 @@ test('suggestions dialog uses text nodes, clears through the shared protocol, an
 
 test('turning suggestions off preserves pending entries and restores unchanged random selections', async () => {
   const h = await harness(); h.chat('Alice', 'Alien 1979');
-  h.fire('channelCSSJS', { css: '/* BTFW_POLL_SUGGESTIONS:0 */' });
+  h.fire('channelCSSJS', channelConfiguration(false));
   const pool = [movie('Alien (1979)'), movie('Other (2000)', 2)];
   const random = [pool[1]];
   assert.equal(h.api.mix(pool, random, 2), random);
   assert.equal(h.api.getQueue().length, 1);
-  h.fire('channelCSSJS', { css: '/* BTFW_POLL_SUGGESTIONS:1 */' });
+  h.fire('channelCSSJS', channelConfiguration(true));
   assert.equal(h.api.mix(pool, random, 2)[0].title, 'Alien (1979)');
 });
 

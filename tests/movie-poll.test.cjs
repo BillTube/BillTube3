@@ -148,7 +148,7 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
   };
   let suggestionApi = {};
   if (options.suggestionsEnabled) {
-    window.CHANNEL.css = '/* BTFW_POLL_SUGGESTIONS:1 */';
+    window.BTFW_THEME_ADMIN = { playlistCatalog: { pollSuggestionsEnabled: true } };
     window.CLIENT.name = 'Moderator'; window.CLIENT.logged_in = true;
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../modules/util-poll-suggestions.js'), 'utf8'), context);
     suggestionApi = await modulePromise;

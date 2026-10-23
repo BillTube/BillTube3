@@ -198,7 +198,7 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     moviePoll: { enabled: false },
     // Public TMDB list used by the playlist catalogue. The TMDB account session
     // is intentionally local-only and never stored in this channel config.
-    playlistCatalog: { enabled: false, tmdbListUrl: "" }
+    playlistCatalog: { enabled: false, tmdbListUrl: "", pollSuggestionsEnabled: false }
   };
 
   const TINT_PRESETS = {
@@ -1518,12 +1518,13 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     if (!theme || typeof theme !== "object" || typeof window === "undefined") return;
     const catalog = theme.playlistCatalog && typeof theme.playlistCatalog === "object"
       ? theme.playlistCatalog
-      : { enabled: false, tmdbListUrl: "" };
+      : { enabled: false, tmdbListUrl: "", pollSuggestionsEnabled: false };
     catalog.enabled = Boolean(catalog.enabled);
+    catalog.pollSuggestionsEnabled = catalog.pollSuggestionsEnabled === true;
     catalog.tmdbListUrl = typeof catalog.tmdbListUrl === "string" ? catalog.tmdbListUrl.trim() : "";
     theme.playlistCatalog = catalog;
     window.BTFW_CONFIG = window.BTFW_CONFIG || {};
-    window.BTFW_CONFIG.playlistCatalog = { enabled: catalog.enabled, tmdbListUrl: catalog.tmdbListUrl };
+    window.BTFW_CONFIG.playlistCatalog = { enabled: catalog.enabled, tmdbListUrl: catalog.tmdbListUrl, pollSuggestionsEnabled: catalog.pollSuggestionsEnabled };
     try { document.dispatchEvent(new CustomEvent("btfw:playlistCatalogChanged", { detail: window.BTFW_CONFIG.playlistCatalog })); } catch (_) {}
   }
 
@@ -3068,13 +3069,15 @@ BTFW.define("feature:channelThemeAdmin", [], async () => {
     }
 
     if (!normalized.playlistCatalog || typeof normalized.playlistCatalog !== "object") {
-      normalized.playlistCatalog = { enabled: false, tmdbListUrl: "" };
+      normalized.playlistCatalog = { enabled: false, tmdbListUrl: "", pollSuggestionsEnabled: false };
     } else {
       normalized.playlistCatalog.enabled = Boolean(normalized.playlistCatalog.enabled);
       normalized.playlistCatalog.tmdbListUrl = typeof normalized.playlistCatalog.tmdbListUrl === "string"
         ? normalized.playlistCatalog.tmdbListUrl.trim()
         : "";
     }
+
+    normalized.playlistCatalog.pollSuggestionsEnabled = normalized.playlistCatalog.pollSuggestionsEnabled === true;
 
     return normalized;
   }
@@ -4570,6 +4573,13 @@ function replaceBlock(original, startMarker, endMarker, block){
               <p class="help">Guests can browse the synced TMDB list even when the CyTube playlist itself is hidden.</p>
             </div>
             <div class="field">
+              <label class="btfw-checkbox" for="btfw-poll-suggestions-enabled">
+                <input type="checkbox" id="btfw-poll-suggestions-enabled" data-btfw-bind="playlistCatalog.pollSuggestionsEnabled">
+                <span>Enable poll suggestions</span>
+              </label>
+              <p class="help">Let signed-in CyTube users suggest one movie from the catalogue per round. Random Movie Poll and Auto credits polls include up to six suggestions and carry extra suggestions over. Requires the Random Movie Poll integration. Click Apply to publish this setting to everyone in the channel.</p>
+            </div>
+            <div class="field">
               <label for="btfw-playlist-catalog-url">Public TMDB list URL</label>
               <input type="url" id="btfw-playlist-catalog-url" data-btfw-bind="playlistCatalog.tmdbListUrl" placeholder="https://www.themoviedb.org/list/123456">
               <p class="help">This public URL is the only catalogue identifier stored in Channel JS.</p>
@@ -5909,9 +5919,10 @@ function replaceBlock(original, startMarker, endMarker, block){
     }
     updated.integrations.randomMoviePoll.enabled = Boolean(updated.integrations.randomMoviePoll.enabled);
     if (!updated.playlistCatalog || typeof updated.playlistCatalog !== "object") {
-      updated.playlistCatalog = { enabled: false, tmdbListUrl: "" };
+      updated.playlistCatalog = { enabled: false, tmdbListUrl: "", pollSuggestionsEnabled: false };
     }
     updated.playlistCatalog.enabled = Boolean(updated.playlistCatalog.enabled);
+    updated.playlistCatalog.pollSuggestionsEnabled = updated.playlistCatalog.pollSuggestionsEnabled === true;
     updated.playlistCatalog.tmdbListUrl = String(updated.playlistCatalog.tmdbListUrl || "").trim();
     if (updated.features && typeof updated.features === "object") {
       delete updated.features.videoOverlayPoll;

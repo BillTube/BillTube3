@@ -3047,3 +3047,25 @@ html[data-btfw-theme="dark"] .panel {
   will-change: auto;
 }
 :root[data-btfw-motion="reduced"] .btfw-notice::after{ display:none; }
+
+/* Movie poll suggestions dialog */
+.btfw-suggestions-dialog {
+  width: min(560px, calc(100vw - 24px));
+  max-height: 80vh;
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid var(--btfw-border, #444);
+  border-radius: 14px;
+  color: var(--btfw-color-text, #eee);
+  background: var(--btfw-color-panel, #191b24);
+}
+.btfw-suggestions-dialog::backdrop { background: #0009; }
+.btfw-suggestions-dialog p { line-height: 1.5; opacity: .8; }
+.btfw-suggestions-dialog li { margin: 8px 0; }
+.btfw-suggestions-dialog button {
+  padding: 7px 12px;
+  border: 1px solid var(--btfw-border, #555);
+  border-radius: 7px;
+  background: var(--btfw-color-surface, #222);
+  color: inherit;
+}

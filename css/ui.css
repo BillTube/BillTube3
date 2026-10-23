@@ -776,3 +776,14 @@ html { font-size: 16px; }
 :root[data-btfw-motion="reduced"] .button:not([disabled]):not([aria-disabled="true"]):active {
   transform: none !important;
 }
+
+/* Catalogue nominations for the existing movie polls */
+#btfw-playlist-catalogue .btfw-catalogue__suggest {
+  margin-top: 10px;
+  padding: 6px 10px;
+  border: 1px solid currentColor;
+  border-radius: 7px;
+  color: var(--btfw-color-text, #eee);
+  background: var(--btfw-color-panel, #191b24);
+}
+#btfw-playlist-catalogue .btfw-catalogue__suggest:disabled { opacity: .5; cursor: not-allowed; }

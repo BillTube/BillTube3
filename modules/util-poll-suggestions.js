@@ -2,18 +2,16 @@
 BTFW.define("util:pollSuggestions", [], async () => {
   "use strict";
   const LIMIT = 100;
-  const MARKER = /\/\* BTFW_POLL_SUGGESTIONS:[01] \*\//g;
   const storageKey = "btfw:poll-suggestions:v1:" + String(window.CHANNEL?.name || location.pathname).toLowerCase();
   const decoder = document.createElement("textarea");
   const users = new Map();
   let state = { queue: [], used: [], boundary: 0, seen: [], polls: [], media: "", active: false };
-  let socketRef = null, pendingSend = 0, pendingToggle = false, readPool = () => [];
-  let css = typeof window.CHANNEL?.css === "string" ? window.CHANNEL.css : null;
-  let enabled = /\/\* BTFW_POLL_SUGGESTIONS:1 \*\//.test(css || "");
+  let socketRef = null, pendingSend = 0, readPool = () => [];
+  const catalogConfig = () => (window.BTFW_THEME_ADMIN || window.BTFW?.channelTheme || window.BTFW_CONFIG || {}).playlistCatalog;
+  let enabled = catalogConfig()?.pollSuggestionsEnabled === true;
   const username = value => typeof value === "string" && /^[\w-]{1,20}$/.test(value) ? value.toLowerCase() : "";
   const permission = key => { try { return !!window.hasPermission?.(key); } catch (_) { return false; } };
   const canManage = () => Number(window.CLIENT?.rank) >= 2 && permission("pollctl") && permission("playlistmove");
-  const canToggle = () => Number(window.CLIENT?.rank) >= 3;
   const integrated = () => Boolean(window.BTFW_CONFIG?.integrations?.randomMoviePoll?.enabled || document.body?.dataset?.btfwRandomMoviePollEnabled === "1");
   function decode(value) { decoder.innerHTML = String(value || ""); return decoder.value; }
   // Keep the year as part of identity: remakes and numeric movie names must stay distinct.
@@ -179,16 +177,22 @@ BTFW.define("util:pollSuggestions", [], async () => {
     if (playing) state.queue = state.queue.filter(entry => entry.key !== playing);
     state.media = key; changed();
   }
-  function setEnabled(value) {
-    if (!canToggle() || !window.socket?.emit || window.socket.connected === false || pendingToggle) return false;
-    if (css === null) { notify("Channel settings are still loading. Try again shortly.", "warn"); return false; }
-    const next = css.replace(MARKER, "").trimEnd() + "\n/* BTFW_POLL_SUGGESTIONS:" + (value ? "1" : "0") + " */";
-    if (next.length > 20000) { notify("Channel CSS is too large to safely save this setting.", "warn"); return false; }
-    pendingToggle = true;
-    window.setTimeout(() => { if (pendingToggle) { pendingToggle = false; notify("Setting change was not confirmed. Try again.", "warn"); } }, 10000);
-    try { window.socket.emit("setChannelCSS", { css: next }); }
-    catch (_) { pendingToggle = false; notify("Could not save this setting. Try again.", "warn"); return false; }
-    return true;
+  function syncConfiguration(catalog = catalogConfig()) {
+    const next = catalog?.pollSuggestionsEnabled === true;
+    if (next === enabled) return;
+    enabled = next;
+    document.dispatchEvent(new CustomEvent("btfw:pollSuggestionsChanged"));
+    renderControl();
+  }
+  function observeChannelConfiguration(data) {
+    if (typeof data?.js !== "string") return;
+    const start = data.js.indexOf("// ==BTFW_THEME_ADMIN_START==");
+    const end = data.js.indexOf("// ==BTFW_THEME_ADMIN_END==", start);
+    if (start < 0 || end < start) { syncConfiguration({}); return; }
+    const block = data.js.slice(start + "// ==BTFW_THEME_ADMIN_START==".length, end).trim();
+    const assignment = block.match(/^window\.BTFW_THEME_ADMIN\s*=\s*([\s\S]*);$/);
+    if (!assignment) return;
+    try { syncConfiguration(JSON.parse(assignment[1])?.playlistCatalog || {}); } catch (_) {}
   }
   function renderControl() {
     const controls = document.querySelector("#pollwrap .poll-controls");
@@ -244,11 +248,7 @@ BTFW.define("util:pollSuggestions", [], async () => {
     socket.on("setUserRank", user => { const key = username(user.name); users.set(key, { ...users.get(key), ...user }); renderControl(); });
     socket.on("setUserMeta", user => { const key = username(user.name); if (users.has(key)) users.set(key, { ...users.get(key), meta: user.meta }); });
     socket.on("userLeave", user => users.delete(username(user?.name || user)));
-    socket.on("channelCSSJS", data => {
-      if (typeof data?.css !== "string") return;
-      css = data.css; enabled = /\/\* BTFW_POLL_SUGGESTIONS:1 \*\//.test(css); pendingToggle = false;
-      document.dispatchEvent(new CustomEvent("btfw:pollSuggestionsChanged")); renderControl();
-    });
+    socket.on("channelCSSJS", observeChannelConfiguration);
     socket.on("newPoll", observePoll);
     socket.on("closePoll", () => { if (state.active) endRound(); });
     socket.on("setCurrent", () => {
@@ -260,13 +260,11 @@ BTFW.define("util:pollSuggestions", [], async () => {
     socket.on("login", () => document.dispatchEvent(new CustomEvent("btfw:pollSuggestionsChanged")));
     socket.on("rank", renderControl);
   }
-  const style = document.createElement("style");
-  style.textContent = '.btfw-suggestions-dialog { width:min(560px,calc(100vw - 24px)); max-height:80vh; overflow:auto; padding:24px; border:1px solid var(--btfw-border,#444); border-radius:14px; color:var(--btfw-color-text,#eee); background:var(--btfw-color-panel,#191b24); } .btfw-suggestions-dialog::backdrop { background:#0009; } .btfw-suggestions-dialog p { line-height:1.5; opacity:.8; } .btfw-suggestions-dialog li { margin:8px 0; } .btfw-suggestions-dialog button { padding:7px 12px; border:1px solid var(--btfw-border,#555); border-radius:7px; background:var(--btfw-color-surface,#222); color:inherit; } .btfw-catalogue__suggest { margin-top:10px; padding:6px 10px; border:1px solid currentColor; border-radius:7px; color:var(--btfw-color-text,#eee); background:var(--btfw-color-panel,#191b24); } .btfw-catalogue__suggest:disabled { opacity:.5; }';
-  document.head.appendChild(style);
   wire();
   window.setInterval(() => { wire(); renderControl(); }, 2000);
   document.addEventListener("btfw:channelIntegrationsChanged", renderControl);
-  const api = { reconcilePoll: active => { if (!active && state.active && window.socket?.connected !== false) endRound(); }, setPoolReader: callback => { readPool = callback; }, enabled: () => enabled && integrated(), canToggle, canManage, available, statusMessage, nominate, setEnabled, mix, resolve, observePoll,
+  document.addEventListener("btfw:playlistCatalogChanged", event => syncConfiguration(event.detail || catalogConfig()));
+  const api = { reconcilePoll: active => { if (!active && state.active && window.socket?.connected !== false) endRound(); }, setPoolReader: callback => { readPool = callback; }, enabled: () => enabled && integrated(), canManage, available, statusMessage, nominate, mix, resolve, observePoll,
     onChat, mediaChanged, endRound, identity, getQueue: () => state.queue.map(entry => ({ ...entry })), renderControl };
   return api;
 });
