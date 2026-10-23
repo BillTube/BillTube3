@@ -8,7 +8,7 @@ const { test } = require('node:test');
 // test copy. Sampling internals stay private in production; no live channel is needed.
 const source = fs.readFileSync(path.join(__dirname, '../modules/feature-poll-overlay.js'), 'utf8')
   .replace('name: "feature:poll-overlay",', `
-    sampleMovies, eligiblePlaylistMovies, playlistMovieMetadata,
+    sampleMovies, eligiblePlaylistMovies, suggestionPlaylistMovies, playlistMovieMetadata,
     readMovieHistory, saveMovieHistory, recordMovieWinner, recordMoviePlayback, rememberMovieNominations,
     syncMovieHistoryControl, removeMovieHistoryControl, wireSocketEvents, rerollRandomMovies, closeRandomPollBuilder, startAutomaticPoll,
     launchAutomaticPoll, trackAutomaticPoll, finishAutomaticPoll,
@@ -1231,4 +1231,61 @@ test('credits polls use the real suggestion pool and failed server creation keep
   assert.ok(sent); assert.equal(sent[1].opts[0], 'Alien (1979)');
   sent[2]({ error: { message: 'Rejected' } });
   assert.equal(h.suggestionApi.getQueue().length, 1);
+});
+
+
+test('an exact Terror Train suggestion above current enters the manual poll and its winning UID queues next', async () => {
+  const rows = [movieRow(12, 'Terror Train 1980'), movieRow(13, 'Other old movie (1986)'), movieRow(44, 'Nightwish 1989'), ...Array.from({ length: 8 }, (_, i) => movieRow(50 + i, 'Upcoming ' + i + ' (2000)'))];
+  const h = await harness(rows, new Map(), false, true, { suggestionsEnabled: true });
+  h.setActive(rows[2]); h.api.wireSocketEvents();
+  h.socketListeners.chatMsg({ username: 'Alice', msg: '&lt;PS:Terror Train 1980&gt;', time: h.now() });
+  assert.ok(!h.api.eligiblePlaylistMovies().some(movie => movie.uid === 12));
+  assert.equal(h.suggestionApi.resolve(h.api.suggestionPlaylistMovies())[0].movie.uid, 12);
+  h.api.openRandomPollBuilder(); await h.flushSelection();
+  assert.equal(h.getBuilder().parts['.btfw-random-poll-list'].children[0].children[1].textContent, 'Terror Train 1980');
+  assert.equal(h.api.startAutomaticPoll(), true);
+  const request = h.emitted.find(([name]) => name === 'newPoll')[1];
+  assert.equal(request.opts[0], 'Terror Train 1980');
+  h.socketListeners.newPoll({ title: request.title, options: request.opts, timestamp: h.now(), counts: request.opts.map((_, index) => index === 0 ? 8 : 0) });
+  h.api.finishAutomaticPoll();
+  const move = h.emitted.find(([name]) => name === 'moveMedia')[1];
+  assert.equal(move.from, 12); assert.equal(move.after, 44);
+  assert.equal(h.suggestionApi.getQueue().length, 0);
+});
+
+test('credits polls can use two suggested movies above current even with no eligible random picks', async () => {
+  const rows = [movieRow(12, 'Terror Train 1980'), movieRow(6, 'Nightmare Weekend 1986'), movieRow(44, 'Nightwish 1989')];
+  const h = await harness(rows, new Map(), false, false, { suggestionsEnabled: true, random: 0 });
+  h.setActive(rows[2]); h.api.wireSocketEvents();
+  h.socketListeners.chatMsg({ username: 'Alice', msg: '&lt;PS:Terror Train 1980&gt;', time: h.now() });
+  h.socketListeners.chatMsg({ username: 'Bob', msg: '&lt;PS:Nightmare Weekend 1986&gt;', time: h.now() });
+  assert.equal(h.api.eligiblePlaylistMovies().length, 0);
+  h.api.syncAutoCreditsPollControl();
+  h.api.updateAutoCreditsMedia({ type: 'fi', id: '44', seconds: 7200, currentTime: 7080, paused: false }, true);
+  const pending = h.api.evaluateAutoCreditsPoll(); await h.advance(0); await pending;
+  const request = h.emitted.find(([name]) => name === 'newPoll')[1];
+  assert.deepEqual(Array.from(request.opts), ['Terror Train 1980', 'Nightmare Weekend 1986']);
+});
+
+test('explicit suggestions bypass local winner history while random picks still exclude it', async () => {
+  const h = await harness([movieRow(1, 'Current 2000'), movieRow(12, 'Terror Train 1980'), movieRow(3, 'Other 2001')], new Map(), false, false, { suggestionsEnabled: true });
+  h.api.recordMovieWinner(h.api.eligiblePlaylistMovies().find(movie => movie.uid === 12));
+  assert.ok(!h.api.eligiblePlaylistMovies().some(movie => movie.uid === 12));
+  h.socketListeners.chatMsg({ username: 'Alice', msg: '&lt;PS:Terror Train 1980&gt;', time: h.now() });
+  assert.equal(h.suggestionApi.resolve(h.api.suggestionPlaylistMovies())[0].movie.uid, 12);
+});
+
+test('full-playlist suggestions skip current media, duplicates and Bustin and require a fully loaded playlist', async () => {
+  const rows = [movieRow(12, 'Terror Train 1980'), movieRow(13, 'Terror Train 1980'), movieRow(44, 'Nightwish 1989'), movieRow(15, 'Renamed current 1989', '44'), movieRow(16, 'Bustin')];
+  const h = await harness(rows); h.setActive(rows[2]);
+  assert.deepEqual(Array.from(h.api.suggestionPlaylistMovies(), movie => movie.uid), [12]);
+  h.elements.set('plcount', { textContent: '396 items' });
+  assert.equal(h.api.suggestionPlaylistMovies().length, 0);
+});
+
+test('an ordinary unsuggested draft cannot bypass the random pool position rules', async () => {
+  const rows = [movieRow(12, 'Terror Train 1980'), movieRow(44, 'Nightwish 1989'), movieRow(50, 'Other 2000')];
+  const h = await harness(rows, new Map(), false, false, { suggestionsEnabled: true }); h.setActive(rows[1]);
+  assert.equal(h.api.launchAutomaticPoll({ movies: h.api.suggestionPlaylistMovies(), minutes: 2 }), false);
+  assert.equal(h.emitted.filter(([name]) => name === 'newPoll').length, 0);
 });

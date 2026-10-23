@@ -255,3 +255,12 @@ test('a suggested movie played outside a poll is removed automatically and custo
   h.api.mediaChanged({ type: 'fi', id: 'alien', title: 'Alien (1979)' });
   assert.deepEqual(Array.from(h.api.getQueue(), x => x.user), ['bob']);
 });
+
+
+test('random gap filling cannot pick unsuggested entries from above the current movie', async () => {
+  const h = await harness(); h.chat('Alice', 'Terror Train 1980');
+  const nominated = movie('Terror Train 1980', 12), unsuggestedOld = movie('Old movie 1981', 13);
+  const randomPool = [movie('Upcoming 2001', 50), movie('Upcoming 2002', 51)];
+  const result = h.api.mix([nominated, unsuggestedOld, ...randomPool], [], 5, randomPool);
+  assert.deepEqual(Array.from(result).map(movie => movie.uid).sort((a,b) => a-b), [12, 50, 51]);
+});

@@ -114,7 +114,7 @@ BTFW.define("util:pollSuggestions", [], async () => {
     if (name === username(window.CLIENT?.name)) { pendingSend = 0; notify("Movie suggested for an upcoming poll.", "success"); }
     changed();
   }
-  // Resolve strictly against eligible upcoming rows. Ambiguous matches stay pending.
+  // Resolve title/year against the full playlist supplied by the poll module.
   function resolve(pool) {
     if (!enabled || !integrated()) return [];
     const index = new Map();
@@ -132,7 +132,7 @@ BTFW.define("util:pollSuggestions", [], async () => {
       seen.add(key); return true;
     }).slice(0, 6);
   }
-  function mix(pool, random, count) {
+  function mix(pool, random, count, randomPool = pool) {
     if (!enabled || !integrated()) return random;
     const nominations = resolve(pool).map(item => item.movie);
     const result = [...nominations];
@@ -146,7 +146,7 @@ BTFW.define("util:pollSuggestions", [], async () => {
       result.push(movie); keys.add(movie.key); if (movie.mediaKey) media.add(movie.mediaKey);
     }
     // Random selections may overlap nominations. Fill any resulting gaps from the same eligible pool.
-    const remaining = pool.filter(movie => !overflow.has(identity(movie.title)) && !keys.has(movie.key) && (!movie.mediaKey || !media.has(movie.mediaKey)));
+    const remaining = randomPool.filter(movie => !overflow.has(identity(movie.title)) && !keys.has(movie.key) && (!movie.mediaKey || !media.has(movie.mediaKey)));
     while (result.length < target && remaining.length) {
       const movie = remaining.splice(Math.floor(Math.random() * remaining.length), 1)[0];
       if (keys.has(movie.key) || (movie.mediaKey && media.has(movie.mediaKey))) continue;
@@ -228,7 +228,7 @@ BTFW.define("util:pollSuggestions", [], async () => {
     if (!dialog) {
       dialog = document.createElement("dialog"); dialog.id = "btfw-suggestions-dialog";
       dialog.className = "btfw-suggestions-dialog"; dialog.setAttribute("aria-labelledby", "btfw-suggestions-heading");
-      dialog.innerHTML = '<h3 id="btfw-suggestions-heading">Poll suggestions</h3><p>Up to six matching upcoming movies enter each movie poll. Extra suggestions carry over. Unavailable or ambiguous titles stay pending.</p><p data-empty>No suggestions yet.</p><ol></ol><div><button type="button" data-clear>Clear suggestions for everyone</button> <button type="button" data-close>Close</button></div>';
+      dialog.innerHTML = '<h3 id="btfw-suggestions-heading">Poll suggestions</h3><p>Suggestions match movies anywhere in the playlist, above or below the current movie. Up to six enter each poll; extra suggestions carry over. The currently playing movie is excluded.</p><p data-empty>No suggestions yet.</p><ol></ol><div><button type="button" data-clear>Clear suggestions for everyone</button> <button type="button" data-close>Close</button></div>';
       dialog.querySelector("[data-close]").addEventListener("click", () => dialog.close());
       dialog.addEventListener("close", () => document.getElementById("btfw-poll-suggestions")?.focus());
       dialog.querySelector("[data-clear]").addEventListener("click", () => {
