@@ -791,3 +791,24 @@ html { font-size: 16px; }
 /* Compact moderator access to poll suggestions. */
 #btfw-poll-suggestions { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 44px; }
 #btfw-poll-suggestions .btfw-suggestions-count { min-width: 17px; padding: 1px 4px; border-radius: 5px; background: color-mix(in srgb, currentColor 10%, transparent); font-size: 11px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+
+/* Catalogue discovery controls and a quiet, centered loading state. */
+#btfw-playlist-catalogue .btfw-catalogue__filters { grid-template-columns: minmax(210px, 1.5fr) repeat(4, minmax(120px, 1fr)); }
+#btfw-playlist-catalogue .btfw-catalogue__grid.is-loading { min-height: 240px; }
+#btfw-playlist-catalogue .btfw-catalogue__loading { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 240px; width: 100%; font-size: 12px; color: color-mix(in srgb, var(--btfw-color-text, #eee) 60%, transparent); }
+#btfw-playlist-catalogue .btfw-catalogue__loading-track { display: block; position: relative; width: 140px; height: 3px; overflow: hidden; border-radius: 99px; background: color-mix(in srgb, var(--btfw-color-accent, #a99aff) 14%, transparent); }
+#btfw-playlist-catalogue .btfw-catalogue__loading-track > span { position: absolute; inset-block: 0; left: 0; width: 35%; border-radius: inherit; background: var(--btfw-color-accent, #a99aff); animation: btfw-catalogue-loading 1.2s linear infinite; }
+@keyframes btfw-catalogue-loading { from { transform: translateX(-110%); } to { transform: translateX(390%); } }
+@media (max-width: 980px) {
+  #btfw-playlist-catalogue .btfw-catalogue__filters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #btfw-playlist-catalogue .btfw-catalogue__filters > label:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  #btfw-playlist-catalogue .btfw-catalogue__filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #btfw-playlist-catalogue .btfw-catalogue__foot { flex-wrap: wrap; gap: 6px; }
+  #btfw-playlist-catalogue .btfw-catalogue__body { min-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #btfw-playlist-catalogue .btfw-catalogue__loading-track > span { animation: none; left: 32.5%; }
+}
+:root[data-btfw-motion="reduced"] #btfw-playlist-catalogue .btfw-catalogue__loading-track > span { animation: none; left: 32.5%; }

@@ -12,7 +12,8 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     statusEl: null,
     loadStatusEl: null,
     queryEl: null,
-    typeEl: null,
+    decadeEl: null,
+    ratingEl: null,
     sortEl: null,
     directionEl: null,
     items: [],
@@ -153,7 +154,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       #btfw-playlist-catalogue .btfw-catalogue__view-toggle[aria-pressed="true"] { color:var(--btfw-color-text,#eef2ff); background:color-mix(in srgb,var(--btfw-color-accent) 16%,rgba(255,255,255,.06)); }
       #btfw-playlist-catalogue .btfw-catalogue__view-toggle[aria-pressed="true"] .btfw-catalogue__switch { border-color:color-mix(in srgb,var(--btfw-color-accent) 64%,#fff 10%); background:color-mix(in srgb,var(--btfw-color-accent) 62%,#10131a); }
       #btfw-playlist-catalogue .btfw-catalogue__view-toggle[aria-pressed="true"] .btfw-catalogue__switch::after { transform:translateX(13px); background:#fff; }
-      #btfw-playlist-catalogue .btfw-catalogue__filters { display:grid; grid-template-columns:minmax(210px,1fr) repeat(3,minmax(120px,.45fr)); gap:10px; padding:14px 20px 16px; border-bottom:1px solid color-mix(in srgb,var(--btfw-border,#2a2f3a) 72%,transparent); background-color:var(--btfw-nested-surface-soft,color-mix(in srgb,var(--btfw-color-panel,#171d2b) 80%,transparent)); background-image:none; background-size:var(--btfw-panel-background-size); background-position:var(--btfw-panel-background-position); }
+      #btfw-playlist-catalogue .btfw-catalogue__filters { display:grid; gap:10px; padding:14px 20px 16px; border-bottom:1px solid color-mix(in srgb,var(--btfw-border,#2a2f3a) 72%,transparent); background-color:var(--btfw-nested-surface-soft,color-mix(in srgb,var(--btfw-color-panel,#171d2b) 80%,transparent)); background-image:none; background-size:var(--btfw-panel-background-size); background-position:var(--btfw-panel-background-position); }
       #btfw-playlist-catalogue .btfw-catalogue__filter { min-width:0; display:flex; flex-direction:column; gap:5px; color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 66%,transparent); font-size:.68rem; font-weight:700; letter-spacing:.075em; text-transform:uppercase; }
       #btfw-playlist-catalogue input, #btfw-playlist-catalogue select { box-sizing:border-box; width:100%; min-width:0; min-height:40px; border:1px solid color-mix(in srgb,var(--btfw-border,#2a2f3a) 70%,transparent); border-radius:12px; padding:9px 13px; color:var(--btfw-color-text,#eef2ff); background:color-mix(in srgb,var(--btfw-color-panel,#171d2b) 84%,transparent); box-shadow:inset 0 1px 0 rgba(255,255,255,.035); transition:border-color .14s ease,box-shadow .14s ease,background .14s ease; }
       #btfw-playlist-catalogue input::placeholder { color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 42%,transparent); }
@@ -217,7 +218,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       #btfw-playlist-catalogue .btfw-catalogue__foot { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 20px 14px; color:rgba(238,242,255,.48); font-size:.72rem; border-top:1px solid rgba(255,255,255,.08); }
       #btfw-playlist-catalogue .btfw-catalogue__foot span:first-child { min-width:0; }
       #btfw-playlist-catalogue .btfw-catalogue__load-status { margin-left:auto; color:color-mix(in srgb,var(--btfw-color-text,#eef2ff) 68%,transparent); font-variant-numeric:tabular-nums; white-space:nowrap; text-align:right; }
-      @media(max-width:640px){ #btfw-playlist-catalogue .btfw-catalogue__filters { grid-template-columns:1fr; } #btfw-playlist-catalogue { padding:0; } #btfw-playlist-catalogue .btfw-catalogue__dialog { max-height:100vh; min-height:100vh; border-radius:0; } }
+      @media(max-width:640px){ #btfw-playlist-catalogue { padding:0; } #btfw-playlist-catalogue .btfw-catalogue__dialog { max-height:100vh; min-height:100vh; border-radius:0; } }
     `;
     document.head.appendChild(style);
   }
@@ -227,10 +228,18 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     injectStyles();
     const modal = document.createElement("div");
     modal.id = "btfw-playlist-catalogue";
+    const currentDecade = Math.floor(new Date().getFullYear() / 10) * 10;
+    const decades = Array.from({ length: (currentDecade - 1880) / 10 + 1 }, (_, i) => currentDecade - i * 10);
     modal.innerHTML = `
       <section class="btfw-catalogue__dialog" role="dialog" aria-modal="true" aria-labelledby="btfw-catalogue-title">
         <header class="btfw-catalogue__head"><h2 id="btfw-catalogue-title">Movie Catalogue</h2><button type="button" class="btfw-catalogue__view-toggle" data-action="toggle-vhs" aria-label="Use VHS catalogue design" aria-pressed="false"><span>VHS</span><span class="btfw-catalogue__switch" aria-hidden="true"></span></button><button type="button" data-action="close" aria-label="Close catalogue">×</button></header>
-        <div class="btfw-catalogue__filters"><label class="btfw-catalogue__filter"><span>Search catalog</span><input type="search" data-role="query" placeholder="Find a movie…"></label><label class="btfw-catalogue__filter"><span>Format</span><select data-role="type"><option value="">All media</option><option value="movie">Movies</option><option value="tv">TV shows</option></select></label><label class="btfw-catalogue__filter"><span>Sort by</span><select data-role="sort"><option value="order">Default</option><option value="title">Title</option><option value="date">Release date</option><option value="rating">TMDB rating</option></select></label><label class="btfw-catalogue__filter"><span>Order</span><select data-role="direction"><option value="asc">Ascending</option><option value="desc">Descending</option></select></label></div>
+        <div class="btfw-catalogue__filters">
+          <label class="btfw-catalogue__filter"><span>Search catalog</span><input type="search" data-role="query" placeholder="Find a movie…"></label>
+          <label class="btfw-catalogue__filter"><span>Decade</span><select aria-label="Decade" data-role="decade"><option value="">All years</option>${decades.map(year => `<option value="${year}">${year}s</option>`).join("")}</select></label>
+          <label class="btfw-catalogue__filter"><span>Minimum rating</span><select aria-label="Minimum rating" data-role="rating" title="Minimum TMDB rating out of 10"><option value="">Any rating</option><option value="2">★ 2+ / 10</option><option value="4">★ 4+ / 10</option><option value="6">★ 6+ / 10</option><option value="8">★ 8+ / 10</option></select></label>
+          <label class="btfw-catalogue__filter"><span>Sort by</span><select aria-label="Sort by" data-role="sort"><option value="order">Default</option><option value="title">Title</option><option value="date">Release date</option><option value="rating">TMDB rating</option></select></label>
+          <label class="btfw-catalogue__filter"><span>Order</span><select aria-label="Order" data-role="direction"><option value="asc">Ascending</option><option value="desc">Descending</option></select></label>
+        </div>
         <div class="btfw-catalogue__status" data-role="suggestions-status" hidden></div><div class="btfw-catalogue__status" data-role="status"></div><main class="btfw-catalogue__body"><div class="btfw-catalogue__grid" data-role="list"></div></main>
         <footer class="btfw-catalogue__foot"><span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span><span class="btfw-catalogue__load-status" data-role="load-status"></span></footer>
       </section>`;
@@ -241,7 +250,8 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     state.statusEl = $("[data-role=status]", modal);
     state.loadStatusEl = $("[data-role=load-status]", modal);
     state.queryEl = $("[data-role=query]", modal);
-    state.typeEl = $("[data-role=type]", modal);
+    state.decadeEl = $("[data-role=decade]", modal);
+    state.ratingEl = $("[data-role=rating]", modal);
     state.sortEl = $("[data-role=sort]", modal);
     state.directionEl = $("[data-role=direction]", modal);
     modal.addEventListener("click", event => { if (event.target === modal || event.target.closest("[data-action=close]")) closeModal(); });
@@ -253,7 +263,8 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       render();
       if (needsFullList()) loadAllPages();
     };
-    [state.queryEl, state.typeEl, state.directionEl].forEach(el => el.addEventListener("input", updateFilters));
+    state.queryEl.addEventListener("input", updateFilters);
+    [state.decadeEl, state.ratingEl, state.directionEl].forEach(el => el.addEventListener("change", updateFilters));
     state.sortEl.addEventListener("change", () => {
       state.directionEl.value = ["date", "rating"].includes(state.sortEl.value) ? "desc" : "asc";
       updateFilters();
@@ -291,17 +302,25 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   function itemDate(item){ return item.release_date || item.first_air_date || ""; }
   function itemType(item){ return item.media_type || (item.title ? "movie" : "tv"); }
   function needsFullList(){
-    return Boolean(state.queryEl?.value.trim() || state.typeEl?.value ||
+    return Boolean(state.queryEl?.value.trim() || state.decadeEl?.value || state.ratingEl?.value ||
       (state.sortEl?.value || "order") !== "order" || state.directionEl?.value === "desc");
   }
 
   function filteredItems(){
     const query = String(state.queryEl?.value || "").trim().toLowerCase();
-    const type = state.typeEl?.value || "";
+    const decade = Number(state.decadeEl?.value) || 0;
+    const minimumRating = Number(state.ratingEl?.value) || 0;
     const sort = state.sortEl?.value || "order";
     const direction = state.directionEl?.value === "desc" ? -1 : 1;
     const rows = state.items.map((item, index) => ({ item, index })).filter(({ item }) => {
-      if (type && itemType(item) !== type) return false;
+      if (decade) {
+        const date = itemDate(item), year = /^\d{4}(?:-|$)/.test(date) ? Number(date.slice(0, 4)) : 0;
+        if (year < decade || year >= decade + 10) return false;
+      }
+      if (minimumRating) {
+        const rating = Number(item.vote_average);
+        if (!Number.isFinite(rating) || rating < minimumRating || rating > 10) return false;
+      }
       if (!query) return true;
       return [itemTitle(item), item.original_title, item.original_name, item.overview].filter(Boolean).join(" ").toLowerCase().includes(query);
     });
@@ -320,6 +339,11 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     return rows.map(row => row.item);
   }
 
+  function renderLoading(){
+    // Keep the same node while pages arrive so the animation never restarts.
+    if (!state.listEl.querySelector("[data-role=loading]")) state.listEl.innerHTML = '<div class="btfw-catalogue__loading" data-role="loading" role="status"><span class="btfw-catalogue__loading-track" aria-hidden="true"><span></span></span><span>Loading catalog</span></div>';
+  }
+
   function render(){
     if (!state.listEl) return;
     const suggestionStatus = $("[data-role=suggestions-status]", state.modal);
@@ -330,13 +354,14 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     const total = Math.max(state.items.length, Number(state.totalResults || 0));
     const loadedText = total ? `${state.items.length}/${total} loaded` : `${state.items.length} loaded`;
     const completeText = state.loadedAll && !state.loadFailed && total ? ` · ${total} total` : "";
-    const sortingText = needsFullList() && !state.loadedAll && !state.loadFailed ? " · loading full catalog for accurate results" : "";
+    const waiting = !state.loadFailed && ((needsFullList() && !state.loadedAll) || (state.loading && !state.items.length));
+    state.listEl.classList.toggle("is-loading", waiting);
+    state.listEl.setAttribute("aria-busy", String(waiting));
     if (needsFullList() && !state.loadedAll) {
       state.filteredCount = 0;
-      showLoadStatus(`${loadedText}${sortingText}`);
-      state.listEl.innerHTML = state.loadFailed
-        ? '<div class="btfw-catalogue__empty">Could not load the full catalog. <button type="button" data-action="retry-page">Retry loading</button></div>'
-        : '<div class="btfw-catalogue__empty">Loading the full catalog before sorting and filtering…</div>';
+      showLoadStatus(loadedText);
+      if (state.loadFailed) state.listEl.innerHTML = '<div class="btfw-catalogue__empty">Could not load the full catalog. <button type="button" data-action="retry-page">Retry loading</button></div>';
+      else renderLoading();
       return;
     }
     const items = filteredItems();
@@ -345,8 +370,9 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     const shownText = state.loadedAll && items.length > state.visibleCount ? ` · ${state.visibleCount} shown` : "";
     showLoadStatus(`${loadedText}${visibleText}${completeText}${shownText}`);
     if (!items.length) {
+      if (waiting) { renderLoading(); return; }
       const message = state.loadFailed ? 'Could not load the catalog. <button type="button" data-action="retry-page">Retry loading</button>' :
-        state.loading ? "Loading catalogue…" : "No matching titles found.";
+        "No matching titles found.";
       state.listEl.innerHTML = `<div class="btfw-catalogue__empty">${message}</div>`;
       return;
     }
@@ -398,7 +424,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
         state.items.push(...items);
         state.page = Number(payload.page || next);
         state.totalPages = Math.max(1, Number(payload.total_pages || 1));
-        const totalResults = Number(payload.total_results ?? payload.total_items ?? 0);
+        const totalResults = Number(payload.total_results ?? payload.total_items ?? payload.item_count ?? 0);
         if (Number.isFinite(totalResults) && totalResults >= 0) state.totalResults = Math.max(state.totalResults, totalResults);
         state.loadedAll = state.page >= state.totalPages || !items.length;
       } catch (error) {
