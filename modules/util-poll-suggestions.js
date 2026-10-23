@@ -96,10 +96,6 @@ BTFW.define("util:pollSuggestions", [], async () => {
       || !Number.isFinite(at) || at <= state.boundary || at > Date.now() + 30000) return;
     const eventId = name + ":" + at + ":" + text;
     if (state.seen.includes(eventId)) return;
-    const clearRank = Math.max(2, Number(window.CHANNEL?.perms?.pollctl) || 2, Number(window.CHANNEL?.perms?.playlistmove) || 2);
-    if (text === "<PS-CLEAR>" && Number(user.rank) >= clearRank) {
-      state.queue = []; state.used = []; state.boundary = at; state.seen = []; changed(); return;
-    }
     if (!enabled || !integrated()) return;
     const match = text.match(/^<PS:([^<>\r\n]{1,180})>$/), key = identity(match?.[1]);
     if (!key || state.used.includes(name) || state.queue.some(entry => entry.user === name || entry.key === key) || state.queue.length >= LIMIT) return;
@@ -159,6 +155,13 @@ BTFW.define("util:pollSuggestions", [], async () => {
   function endRound(at = Date.now()) {
     state.used = []; state.active = false; state.boundary = Math.max(state.boundary, at); changed();
   }
+  function clearLocal() {
+    if (!canManage() || !state.queue.length) return;
+    // Keep consumed-user locks and poll tracking; only this browser's pending
+    // suggestions are discarded. The boundary also blocks chat-buffer replays.
+    state.boundary = Math.max(state.boundary, Date.now(), ...state.queue.map(entry => entry.at));
+    state.queue = []; changed();
+  }
   function mediaChanged(media) {
     if (!media || typeof media !== "object" || !media.type || media.id == null) return;
     const key = media.type + ":" + media.id;
@@ -197,8 +200,12 @@ BTFW.define("util:pollSuggestions", [], async () => {
       button.type = "button"; button.className = "btn btn-sm btn-default button is-small";
       button.setAttribute("aria-haspopup", "dialog"); button.addEventListener("click", openDialog); controls.appendChild(button);
     }
-    const label = "Suggestions (" + state.queue.length + ")";
-    if (button.textContent !== label) button.textContent = label;
+    const label = "Poll suggestions (" + state.queue.length + ")";
+    if (button._btfwSuggestionCount !== state.queue.length) {
+      button._btfwSuggestionCount = state.queue.length;
+      button.innerHTML = '<i class="fa fa-lightbulb" aria-hidden="true"></i><span class="btfw-suggestions-count" aria-hidden="true">' + state.queue.length + '</span>';
+      button.setAttribute("aria-label", label); button.setAttribute("title", label);
+    }
     const dialog = document.getElementById("btfw-suggestions-dialog");
     if (dialog?.open) fillDialog(dialog);
   }
@@ -206,17 +213,31 @@ BTFW.define("util:pollSuggestions", [], async () => {
     const list = dialog.querySelector("ol");
     const pool = state.queue.length ? readPool() : [], index = movieTitle.createIndex(pool);
     const next = new Set(resolve(pool).map(item => item.entry.key));
-    const lines = state.queue.map(entry => {
+    const rows = state.queue.map(entry => {
       const candidates = index.candidates(entry.title);
-      const status = next.has(entry.key) ? "next poll" : candidates.length > 1 ? "multiple title/year matches" : candidates.length ? "later poll" : "waiting for an eligible playlist match";
-      return entry.title + " — " + entry.user + " (" + status + ")";
+      const status = next.has(entry.key) ? "next" : candidates.length > 1 ? "ambiguous" : candidates.length ? "later" : "unmatched";
+      return { title: entry.title, user: entry.user, status };
     });
-    const signature = JSON.stringify(lines);
+    const signature = JSON.stringify(rows);
     if (dialog._btfwSuggestionsSignature === signature) return;
     dialog._btfwSuggestionsSignature = signature;
     list.replaceChildren();
-    for (const text of lines) { const li = document.createElement("li"); li.textContent = text; list.appendChild(li); }
+    const statuses = {
+      next: ["Next poll", "This movie will be included in the next movie poll."],
+      later: ["Queued", "This suggestion carries over to a later poll."],
+      ambiguous: ["Check match", "Multiple playlist movies match this title and year."],
+      unmatched: ["No match", "Waiting for an eligible playlist movie with this title and year."]
+    };
+    for (const row of rows) {
+      const li = document.createElement("li"), details = document.createElement("div"), title = document.createElement("strong"), user = document.createElement("span"), badge = document.createElement("span");
+      details.className = "btfw-suggestion-movie"; title.textContent = row.title;
+      user.className = "btfw-suggestion-user"; user.textContent = row.user;
+      badge.className = "btfw-suggestion-status"; badge.setAttribute("data-status", row.status);
+      badge.textContent = statuses[row.status][0]; badge.setAttribute("title", statuses[row.status][1]);
+      details.appendChild(title); details.appendChild(user); li.appendChild(details); li.appendChild(badge); list.appendChild(li);
+    }
     dialog.querySelector("[data-empty]").hidden = state.queue.length > 0;
+    dialog.querySelector("[data-clear]").disabled = state.queue.length === 0;
   }
   function openDialog() {
     if (!canManage()) return;
@@ -224,12 +245,11 @@ BTFW.define("util:pollSuggestions", [], async () => {
     if (!dialog) {
       dialog = document.createElement("dialog"); dialog.id = "btfw-suggestions-dialog";
       dialog.className = "btfw-suggestions-dialog"; dialog.setAttribute("aria-labelledby", "btfw-suggestions-heading");
-      dialog.innerHTML = '<h3 id="btfw-suggestions-heading">Poll suggestions</h3><p>Suggestions match movies anywhere in the playlist, above or below the current movie. Up to six enter each poll; extra suggestions carry over. The currently playing movie is excluded.</p><p data-empty>No suggestions yet.</p><ol></ol><div><button type="button" data-clear>Clear suggestions for everyone</button> <button type="button" data-close>Close</button></div>';
+      dialog.setAttribute("aria-describedby", "btfw-suggestions-help");
+      dialog.innerHTML = '<header class="btfw-suggestions-header"><div><h3 id="btfw-suggestions-heading"><i class="fa fa-lightbulb" aria-hidden="true"></i> Poll suggestions</h3><p id="btfw-suggestions-help">Up to 6 per poll · Extras carry over</p></div><div class="btfw-suggestions-actions"><button type="button" data-clear aria-label="Clear suggestions in this browser" title="Clear suggestions in this browser only"><i class="fa fa-trash" aria-hidden="true"></i></button><button type="button" data-close aria-label="Close suggestions" title="Close suggestions"><i class="fa fa-xmark" aria-hidden="true"></i></button></div></header><div class="btfw-suggestions-body"><p data-empty><i class="fa fa-lightbulb" aria-hidden="true"></i><strong>No suggestions yet</strong><span>Movies suggested from the catalog appear here.</span></p><ol aria-label="Suggested movies"></ol></div><footer class="btfw-suggestions-footer"><i class="fa fa-desktop" aria-hidden="true"></i><span>Clearing affects this browser only.</span></footer>';
       dialog.querySelector("[data-close]").addEventListener("click", () => dialog.close());
       dialog.addEventListener("close", () => document.getElementById("btfw-poll-suggestions")?.focus());
-      dialog.querySelector("[data-clear]").addEventListener("click", () => {
-        if (canManage() && window.socket?.connected !== false) window.socket?.emit("chatMsg", { msg: "<PS-CLEAR>" });
-      });
+      dialog.querySelector("[data-clear]").addEventListener("click", clearLocal);
       document.body.appendChild(dialog);
     }
     fillDialog(dialog); if (!dialog.open) dialog.showModal();

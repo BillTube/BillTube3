@@ -3050,22 +3050,65 @@ html[data-btfw-theme="dark"] .panel {
 
 /* Movie poll suggestions dialog */
 .btfw-suggestions-dialog {
-  width: min(560px, calc(100vw - 24px));
-  max-height: 80vh;
-  overflow: auto;
-  padding: 24px;
+  width: min(580px, calc(100vw - 24px));
+  max-height: min(720px, 85dvh);
+  overflow: hidden;
+  padding: 0;
   border: 1px solid var(--btfw-border, #444);
-  border-radius: 14px;
+  border-radius: 18px;
   color: var(--btfw-color-text, #eee);
   background: var(--btfw-color-panel, #191b24);
+  box-shadow: 0 24px 80px #0006;
 }
+.btfw-suggestions-dialog[open] { display: flex; flex-direction: column; }
 .btfw-suggestions-dialog::backdrop { background: #0009; }
-.btfw-suggestions-dialog p { line-height: 1.5; opacity: .8; }
-.btfw-suggestions-dialog li { margin: 8px 0; }
-.btfw-suggestions-dialog button {
-  padding: 7px 12px;
+.btfw-suggestions-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 22px 18px; }
+.btfw-suggestions-header h3 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 18px; font-weight: 650; }
+.btfw-suggestions-header h3 i { color: var(--btfw-color-accent, #a99aff); font-size: 16px; }
+.btfw-suggestions-header p { margin: 7px 0 0; font-size: 12px; opacity: .65; }
+.btfw-suggestions-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.btfw-suggestions-actions button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   border: 1px solid var(--btfw-border, #555);
-  border-radius: 7px;
+  border-radius: 10px;
   background: var(--btfw-color-surface, #222);
   color: inherit;
+  cursor: pointer;
+}
+.btfw-suggestions-actions button:disabled { opacity: .3; cursor: default; }
+.btfw-suggestions-actions button:active:not(:disabled) { transform: scale(.97); }
+.btfw-suggestions-actions button:focus-visible { outline: 2px solid var(--btfw-color-accent, #a99aff); outline-offset: 3px; }
+.btfw-suggestions-body { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 22px; }
+.btfw-suggestions-body ol { list-style: none; counter-reset: suggestions; padding: 0; margin: 0 0 8px; }
+.btfw-suggestions-body li { counter-increment: suggestions; display: flex; align-items: center; gap: 12px; padding: 15px 0; border-top: 1px solid var(--btfw-border, #444); }
+.btfw-suggestions-body li::before { content: counter(suggestions, decimal-leading-zero); font-size: 11px; font-variant-numeric: tabular-nums; opacity: .4; flex-shrink: 0; }
+.btfw-suggestion-movie { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.btfw-suggestion-movie strong { font-size: 14px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.btfw-suggestion-user { font-size: 12px; opacity: .55; overflow-wrap: anywhere; }
+.btfw-suggestion-status { flex-shrink: 0; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; line-height: 1.4; color: var(--btfw-color-accent, #a99aff); background: color-mix(in srgb, currentColor 10%, transparent); }
+.btfw-suggestion-status[data-status="next"] { color: var(--btfw-color-success, #4ade80); }
+.btfw-suggestion-status[data-status="ambiguous"],
+.btfw-suggestion-status[data-status="unmatched"] { color: var(--btfw-color-warning, #f6c870); }
+.btfw-suggestions-dialog [data-empty]:not([hidden]) { display: grid; justify-items: center; gap: 8px; padding: 32px 12px 40px; text-align: center; }
+.btfw-suggestions-dialog [data-empty] > i { font-size: 24px; opacity: .3; margin-bottom: 6px; }
+.btfw-suggestions-dialog [data-empty] strong { font-size: 14px; font-weight: 600; }
+.btfw-suggestions-dialog [data-empty] span { font-size: 12px; opacity: .6; }
+.btfw-suggestions-footer { display: flex; align-items: center; gap: 7px; padding: 14px 22px; border-top: 1px solid var(--btfw-border, #444); font-size: 11px; color: color-mix(in srgb, var(--btfw-color-text, #eee) 55%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  .btfw-suggestions-actions button:hover:not(:disabled) { border-color: currentColor; }
+  .btfw-suggestions-actions [data-clear]:hover:not(:disabled) { color: var(--btfw-color-danger, #fb7185); }
+}
+@media (max-width: 480px) {
+  .btfw-suggestions-header { padding: 18px 16px 16px; gap: 8px; }
+  .btfw-suggestions-header h3 { font-size: 16px; gap: 8px; }
+  .btfw-suggestions-body { padding: 0 16px; }
+  .btfw-suggestions-actions button { width: 40px; height: 40px; }
+  .btfw-suggestions-body li { gap: 9px; flex-wrap: wrap; }
+  .btfw-suggestion-movie { flex-basis: calc(100% - 30px); }
+  .btfw-suggestion-status { margin-left: 24px; }
+  .btfw-suggestions-footer { padding: 14px 16px; }
 }

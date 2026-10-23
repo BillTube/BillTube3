@@ -10,7 +10,9 @@ async function harness(storage = new Map(), options = {}) {
   const handlers = {}, emitted = [], notices = [], timers = [], elements = new Map(), events = {};
   function element(tag) {
     const node = {
-      tag, children: [], parts: {}, listeners: {}, open: false, textContent: '',
+      tag, children: [], parts: {}, listeners: {}, open: false, _text: '',
+      get textContent() { return this._text + this.children.map(child => child.textContent).join(''); },
+      set textContent(value) { this._text = value; this.children = []; },
       appendChild(child) { this.children.push(child); child.isConnected = true; if (child.id) elements.set(child.id, child); },
       replaceChildren() { this.children = []; },
       setAttribute(name, value) { this[name] = value; },
@@ -169,15 +171,31 @@ test('movie changes reset served usernames but preserve pending overflow even ac
   assert.equal(reloaded.api.getQueue().length, 2);
 });
 
-test('moderator clear is broadcast through chat and its replay boundary prevents old suggestions returning', async () => {
-  const h = await harness(); h.chat('Alice', 'Alien 1979');
-  const old = h.now();
-  h.fire('chatMsg', { username: 'Bob', time: old + 1, msg: '&lt;PS-CLEAR&gt;' });
-  assert.equal(h.api.getQueue().length, 1);
-  h.fire('chatMsg', { username: 'Mod', time: old + 2, msg: '&lt;PS-CLEAR&gt;' });
+test('local clear is private, survives reload and blocks old replayed suggestions while accepting new ones', async () => {
+  const h = await harness(), other = await harness();
+  for (const client of [h, other]) client.chat('Alice', 'Alien 1979');
+  const old = h.now(); h.api.renderControl();
+  h.elements.get('btfw-poll-suggestions').listeners.click();
+  h.window.socket.connected = false;
+  h.elements.get('btfw-suggestions-dialog').parts['[data-clear]'].listeners.click();
   assert.equal(h.api.getQueue().length, 0);
-  h.chat('Alice', 'Alien 1979', old); assert.equal(h.api.getQueue().length, 0);
-  h.chat('Alice', 'Alien 1979', old + 3); assert.equal(h.api.getQueue().length, 1);
+  assert.equal(h.emitted.length, 0);
+  assert.equal(other.api.getQueue().length, 1);
+  const reloaded = await harness(h.storage);
+  reloaded.chat('Alice', 'Alien 1979', old); assert.equal(reloaded.api.getQueue().length, 0);
+  reloaded.chat('Alice', 'Aliens 1986', old + 3); assert.equal(reloaded.api.getQueue().length, 1);
+  reloaded.fire('chatMsg', { username: 'Mod', time: old + 4, msg: '&lt;PS-CLEAR&gt;' });
+  assert.equal(reloaded.api.getQueue().length, 1); // Legacy shared clear commands are ignored.
+});
+
+test('local clear preserves served-user locks until the current poll ends', async () => {
+  const h = await harness(); h.chat('Alice', 'Alien 1979'); h.chat('Bob', 'Aliens 1986');
+  h.fire('newPoll', { title: 'What should we watch next? · 2 min', timestamp: 1, options: ['Alien (1979)', 'Other 2000'] });
+  h.api.renderControl(); h.elements.get('btfw-poll-suggestions').listeners.click();
+  h.elements.get('btfw-suggestions-dialog').parts['[data-clear]'].listeners.click();
+  h.chat('Alice', 'Another 2000'); assert.equal(h.api.getQueue().length, 0);
+  h.fire('closePoll'); h.advance(1); h.chat('Alice', 'Another 2000');
+  assert.equal(h.api.getQueue().length, 1);
 });
 
 function channelConfiguration(enabled) {
@@ -219,13 +237,19 @@ test('queue is bounded and blocked storage keeps nominations for the current ses
   assert.equal(h.notices.filter(x => x.kind === 'warn').length, 1);
 });
 
-test('suggestions dialog uses text nodes, clears through the shared protocol, and respects permissions', async () => {
+test('suggestions dialog uses text nodes, local icon controls and moderator permissions', async () => {
   const h = await harness(); h.chat('Bob', 'Alien 1979'); h.api.renderControl();
   h.elements.get('btfw-poll-suggestions').listeners.click();
   const dialog = h.elements.get('btfw-suggestions-dialog');
   assert.equal(dialog.open, true);
-  assert.equal(dialog.parts.ol.children[0].textContent, 'Alien 1979 — bob (waiting for an eligible playlist match)');
-  dialog.parts['[data-clear]'].listeners.click(); assert.equal(h.emitted.at(-1)[1].msg, '<PS-CLEAR>');
+  assert.equal(dialog.parts.ol.children[0].textContent, 'Alien 1979bobNo match');
+  assert.match(dialog.value, /fa-trash/);
+  assert.match(dialog.value, /aria-label="Clear suggestions in this browser"/);
+  h.window.hasPermission = () => false; dialog.parts['[data-clear]'].listeners.click();
+  assert.equal(h.api.getQueue().length, 1);
+  h.window.hasPermission = () => true; dialog.parts['[data-clear]'].listeners.click();
+  assert.equal(h.api.getQueue().length, 0); assert.equal(h.emitted.length, 0);
+  assert.equal(dialog.parts['[data-clear]'].disabled, true);
   h.window.hasPermission = () => false; h.api.renderControl();
   assert.equal(h.elements.has('btfw-poll-suggestions'), false);
 });
@@ -250,7 +274,7 @@ test('refresh after a poll closed offline releases served usernames without disc
   assert.equal(reloaded.api.getQueue().length, 2);
 });
 
-test('a suggested movie played outside a poll is removed automatically and custom clear permissions are respected', async () => {
+test('a suggested movie played outside a poll is removed automatically and legacy shared clears are ignored', async () => {
   const h = await harness(); h.chat('Alice', 'Alien 1979'); h.chat('Bob', 'Aliens 1986');
   h.window.CHANNEL.perms = { pollctl: 3, playlistmove: 2 };
   h.fire('chatMsg', { username: 'Mod', time: h.now(), msg: '<PS-CLEAR>' });
@@ -292,7 +316,7 @@ test('an unchanged open suggestions list reuses its rows and updates when a matc
   assert.equal(dialog.parts.ol.children[0], original);
   pool = [movie('Terror Train Extended Edition (1980)', 42)]; h.api.renderControl();
   assert.notEqual(dialog.parts.ol.children[0], original);
-  assert.match(dialog.parts.ol.children[0].textContent, /next poll/);
+  assert.match(dialog.parts.ol.children[0].textContent, /Next poll/);
   h.api.mediaChanged({ type: 'fi', id: '42', title: pool[0].title });
   assert.equal(h.api.getQueue().length, 0);
 });
