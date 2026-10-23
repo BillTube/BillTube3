@@ -229,7 +229,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     const modal = document.createElement("div");
     modal.id = "btfw-playlist-catalogue";
     const currentDecade = Math.floor(new Date().getFullYear() / 10) * 10;
-    const decades = Array.from({ length: (currentDecade - 1880) / 10 + 1 }, (_, i) => currentDecade - i * 10);
+    const decades = Array.from({ length: (currentDecade - 1960) / 10 + 1 }, (_, i) => currentDecade - i * 10);
     modal.innerHTML = `
       <section class="btfw-catalogue__dialog" role="dialog" aria-modal="true" aria-labelledby="btfw-catalogue-title">
         <header class="btfw-catalogue__head"><h2 id="btfw-catalogue-title">Movie Catalogue</h2><button type="button" class="btfw-catalogue__view-toggle" data-action="toggle-vhs" aria-label="Use VHS catalogue design" aria-pressed="false"><span>VHS</span><span class="btfw-catalogue__switch" aria-hidden="true"></span></button><button type="button" data-action="close" aria-label="Close catalogue">×</button></header>

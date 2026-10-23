@@ -779,8 +779,12 @@ html { font-size: 16px; }
 
 /* Catalogue nominations for the existing movie polls */
 #btfw-playlist-catalogue .btfw-catalogue__suggest {
-  margin-top: 10px;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 12px auto 0;
   padding: 6px 10px;
+  text-align: center;
   border: 1px solid currentColor;
   border-radius: 7px;
   color: var(--btfw-color-text, #eee);
