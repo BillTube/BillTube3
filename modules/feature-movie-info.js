@@ -542,13 +542,19 @@ BTFW.define("feature:movie-info", [], async () => {
     const contentDiv = document.createElement("div");
     contentDiv.className = "btfw-movie-content";
     state.header.appendChild(contentDiv);
+    const visualsDiv = document.createElement("div");
+    visualsDiv.className = "btfw-movie-visuals";
     if (movie.poster) {
       const posterEl = document.createElement("img");
       posterEl.src = movie.poster;
       posterEl.alt = `${movie.title} Poster`;
       posterEl.className = "btfw-movie-poster";
-      contentDiv.appendChild(posterEl);
+      visualsDiv.appendChild(posterEl);
     }
+    if (CONFIG.ENABLE_RATING && movie.rating > 0) {
+      visualsDiv.appendChild(createRatingElement(movie.rating, movie.voteCount));
+    }
+    if (visualsDiv.childElementCount) contentDiv.appendChild(visualsDiv);
     const detailsDiv = document.createElement("div");
     detailsDiv.className = "btfw-movie-details";
     contentDiv.appendChild(detailsDiv);
@@ -561,10 +567,6 @@ BTFW.define("feature:movie-info", [], async () => {
       summaryEl.textContent = movie.summary;
       summaryEl.className = "btfw-movie-summary";
       detailsDiv.appendChild(summaryEl);
-    }
-    if (CONFIG.ENABLE_RATING && movie.rating > 0) {
-      const ratingEl = createRatingElement(movie.rating, movie.voteCount);
-      contentDiv.appendChild(ratingEl);
     }
   }
 

@@ -1866,9 +1866,14 @@ cubic-bezier(0.4, 0, 1, 1) 0s running;
 }
 
 /* Give the current-movie hover card more room for its synopsis. */
+#btfw-movie-header .btfw-movie-content { align-items: flex-start; }
+#btfw-movie-header .btfw-movie-visuals { display: flex; flex: 0 0 100px; flex-direction: column; align-items: center; gap: 10px; }
+#btfw-movie-header .btfw-movie-details { min-width: 0; }
+#btfw-movie-header .btfw-movie-rating { position: static; margin: 0; align-items: center; }
 #btfw-movie-header .btfw-movie-summary { -webkit-line-clamp: 8; }
-#btfw-movie-header .btfw-movie-poster { align-self: flex-start; }
+#btfw-movie-header .btfw-movie-poster { align-self: center; }
 @media (max-width: 768px) {
+  #btfw-movie-header .btfw-movie-visuals { flex-basis: 64px; }
   #btfw-movie-header .btfw-movie-summary { -webkit-line-clamp: 6; }
 }
 
