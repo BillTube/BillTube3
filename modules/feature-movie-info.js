@@ -221,6 +221,7 @@ BTFW.define("feature:movie-info", [], async () => {
       if (e.target.closest("#" + CONFIG.CONTAINER_ID)) return;
       if (e.target.closest(CONFIG.TITLE_SELECTOR)) return;
       state.header.classList.remove("show");
+      setMovieExpanded(false);
     };
     document.addEventListener("pointerup", onDocTap);
     registerCleanup(() => document.removeEventListener("pointerup", onDocTap));
@@ -246,6 +247,7 @@ BTFW.define("feature:movie-info", [], async () => {
         if (state.header && state.header.classList.contains("show")) {
           cancelHideTimer();
           state.header.classList.remove("show");
+          setMovieExpanded(false);
         } else {
           showMovieHeader();
         }
@@ -347,6 +349,17 @@ BTFW.define("feature:movie-info", [], async () => {
     }
   }
 
+  function setMovieExpanded(expanded) {
+    if (!state.header) return;
+    state.header.classList.toggle("is-expanded", expanded);
+    const button = state.header.querySelector(".btfw-movie-expand");
+    if (button) {
+      button.setAttribute("aria-expanded", String(expanded));
+      button.textContent = expanded ? "Collapse" : "Expand";
+    }
+    if (!expanded) state.header.scrollTop = 0;
+  }
+
   // Fill the rating ring + count the % up the first time a movie's card is
   // shown (tracked per rating element, so it plays once per movie, not per
   // hover). No-op under reduced motion or if anime.js can't load (ring stays
@@ -373,6 +386,7 @@ BTFW.define("feature:movie-info", [], async () => {
       // Just remove .show — the transition on .btfw-movie-header animates
       // both directions (opacity + transform) so we get a smooth close.
       state.header.classList.remove("show");
+      setMovieExpanded(false);
     }, 300);
   }
 
@@ -485,6 +499,7 @@ BTFW.define("feature:movie-info", [], async () => {
 
   function showLoadingState() {
     if (!state.header) return;
+    setMovieExpanded(false);
     resetBackdrop();
     state.header.innerHTML = `
       <div class="btfw-movie-content">
@@ -498,6 +513,7 @@ BTFW.define("feature:movie-info", [], async () => {
 
   function showErrorState() {
     if (!state.header) return;
+    setMovieExpanded(false);
     resetBackdrop();
     state.header.innerHTML = `
       <div class="btfw-movie-content">
@@ -512,6 +528,7 @@ BTFW.define("feature:movie-info", [], async () => {
 
   function resetMovieHeader() {
     if (!state.header) return;
+    setMovieExpanded(false);
     resetBackdrop();
     state.header.innerHTML = `
       <div class="btfw-movie-content">
@@ -528,6 +545,7 @@ BTFW.define("feature:movie-info", [], async () => {
 
   function displayMovieInfo(movie) {
     if (!state.header) return;
+    setMovieExpanded(false);
     state.header.innerHTML = "";
     if (CONFIG.ENABLE_BACKDROP && movie.backdrop) {
       state.header.style.backgroundImage = `url(${movie.backdrop})`;
@@ -542,19 +560,13 @@ BTFW.define("feature:movie-info", [], async () => {
     const contentDiv = document.createElement("div");
     contentDiv.className = "btfw-movie-content";
     state.header.appendChild(contentDiv);
-    const visualsDiv = document.createElement("div");
-    visualsDiv.className = "btfw-movie-visuals";
     if (movie.poster) {
       const posterEl = document.createElement("img");
       posterEl.src = movie.poster;
       posterEl.alt = `${movie.title} Poster`;
       posterEl.className = "btfw-movie-poster";
-      visualsDiv.appendChild(posterEl);
+      contentDiv.appendChild(posterEl);
     }
-    if (CONFIG.ENABLE_RATING && movie.rating > 0) {
-      visualsDiv.appendChild(createRatingElement(movie.rating, movie.voteCount));
-    }
-    if (visualsDiv.childElementCount) contentDiv.appendChild(visualsDiv);
     const detailsDiv = document.createElement("div");
     detailsDiv.className = "btfw-movie-details";
     contentDiv.appendChild(detailsDiv);
@@ -566,7 +578,26 @@ BTFW.define("feature:movie-info", [], async () => {
       const summaryEl = document.createElement("p");
       summaryEl.textContent = movie.summary;
       summaryEl.className = "btfw-movie-summary";
+      summaryEl.id = "btfw-movie-summary";
       detailsDiv.appendChild(summaryEl);
+    }
+    if (CONFIG.ENABLE_RATING && movie.rating > 0) {
+      const ratingEl = createRatingElement(movie.rating, movie.voteCount);
+      contentDiv.appendChild(ratingEl);
+    }
+    if (CONFIG.SHOW_SUMMARY && movie.summary) {
+      const actions = document.createElement("div");
+      actions.className = "btfw-movie-actions";
+      const button = document.createElement("button");
+      button.type = "button"; button.className = "btfw-movie-expand";
+      button.textContent = "Expand";
+      button.setAttribute("aria-expanded", "false");
+      button.setAttribute("aria-controls", "btfw-movie-summary");
+      button.addEventListener("click", () => {
+        cancelHideTimer();
+        setMovieExpanded(!state.header.classList.contains("is-expanded"));
+      });
+      actions.appendChild(button); state.header.appendChild(actions);
     }
   }
 

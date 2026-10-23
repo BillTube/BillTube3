@@ -1865,16 +1865,20 @@ cubic-bezier(0.4, 0, 1, 1) 0s running;
   -webkit-box-orient: vertical;
 }
 
-/* Give the current-movie hover card more room for its synopsis. */
-#btfw-movie-header .btfw-movie-content { align-items: flex-start; }
-#btfw-movie-header .btfw-movie-visuals { display: flex; flex: 0 0 100px; flex-direction: column; align-items: center; gap: 10px; }
-#btfw-movie-header .btfw-movie-details { min-width: 0; }
-#btfw-movie-header .btfw-movie-rating { position: static; margin: 0; align-items: center; }
-#btfw-movie-header .btfw-movie-summary { -webkit-line-clamp: 8; }
-#btfw-movie-header .btfw-movie-poster { align-self: center; }
-@media (max-width: 768px) {
-  #btfw-movie-header .btfw-movie-visuals { flex-basis: 64px; }
-  #btfw-movie-header .btfw-movie-summary { -webkit-line-clamp: 6; }
+/* Keep the original compact movie card; reveal the full synopsis on demand. */
+#btfw-movie-header .btfw-movie-actions { position: sticky; bottom: 0; z-index: 3; display: flex; justify-content: center; padding: 8px 10px; border-top: 1px solid rgba(255,255,255,.1); background: var(--btfw-color-surface, #141414); visibility: hidden; }
+#btfw-movie-header.show .btfw-movie-actions { visibility: visible; }
+#btfw-movie-header .btfw-movie-expand { width: 100%; min-height: 32px; padding: 5px 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; color: var(--btfw-color-text, #eee); background: rgba(255,255,255,.06); font: inherit; font-size: .78rem; cursor: pointer; }
+#btfw-movie-header .btfw-movie-expand:focus-visible { outline: 2px solid var(--btfw-color-accent, #a99aff); outline-offset: 2px; }
+#btfw-movie-header.is-expanded .btfw-movie-summary { display: block; -webkit-line-clamp: unset; overflow: visible; }
+#btfw-movie-header.is-expanded .btfw-movie-content { align-items: flex-start; }
+#btfw-movie-header.is-expanded .btfw-movie-details { min-width: 0; overflow-wrap: anywhere; }
+#btfw-movie-header.is-expanded .btfw-movie-rating { position: static; flex-shrink: 0; }
+@media (min-width: 769px) {
+  #btfw-movie-header.is-expanded { left: auto; right: 0; width: min(520px, calc(100vw - 24px)); max-height: min(72dvh, 720px); overflow-y: auto; overscroll-behavior: contain; }
+}
+@media (hover: hover) and (pointer: fine) {
+  #btfw-movie-header .btfw-movie-expand:hover { background: rgba(255,255,255,.12); }
 }
 
 /* ------------------------------------------------------------------
