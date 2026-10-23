@@ -344,6 +344,7 @@ function resolveBranchToSHA(){
       "modules/feature-connection-status.js",
       "modules/feature-gifs.js",
       "modules/feature-video-overlay.js",
+      "modules/util-poll-suggestions.js",
       "modules/feature-poll-overlay.js",
       "modules/feature-movie-poll.js",
       "modules/feature-pip.js",

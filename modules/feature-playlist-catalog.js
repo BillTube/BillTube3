@@ -1,5 +1,6 @@
 /* BillTube Framework — public TMDB playlist catalogue */
 BTFW.define("feature:playlistCatalog", [], async () => {
+  const suggestions = await BTFW.init("util:pollSuggestions");
   const TMDB_API = "https://api.themoviedb.org";
   const PAGE_SIZE = 20;
   const RENDER_BATCH_SIZE = 40;
@@ -140,6 +141,9 @@ BTFW.define("feature:playlistCatalog", [], async () => {
         #btfw-playlist-catalogue .btfw-catalogue__dialog { transform:none !important; transition:none !important; }
       }
       #btfw-playlist-catalogue .btfw-catalogue__head { display:flex; align-items:center; gap:12px; padding:18px 20px 14px; border-bottom:1px solid rgba(255,255,255,.09); }
+      #btfw-playlist-catalogue .btfw-catalogue__head { flex-wrap:wrap; }
+      #btfw-playlist-catalogue [data-action="toggle-suggestions"] { font-size:.75rem; white-space:nowrap; }
+      #btfw-playlist-catalogue [data-action="toggle-suggestions"][aria-pressed="true"] { background:color-mix(in srgb,var(--btfw-color-accent) 45%,#ffffff18); }
       #btfw-playlist-catalogue h2 { margin:0; font-size:1.2rem; flex:1; }
       #btfw-playlist-catalogue button { border:0; border-radius:9px; cursor:pointer; color:inherit; background:rgba(255,255,255,.09); padding:8px 11px; }
       #btfw-playlist-catalogue button:hover { background:rgba(255,255,255,.16); }
@@ -228,9 +232,9 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     modal.id = "btfw-playlist-catalogue";
     modal.innerHTML = `
       <section class="btfw-catalogue__dialog" role="dialog" aria-modal="true" aria-labelledby="btfw-catalogue-title">
-        <header class="btfw-catalogue__head"><h2 id="btfw-catalogue-title">Movie Catalogue</h2><button type="button" class="btfw-catalogue__view-toggle" data-action="toggle-vhs" aria-label="Use VHS catalogue design" aria-pressed="false"><span>VHS</span><span class="btfw-catalogue__switch" aria-hidden="true"></span></button><button type="button" data-action="close" aria-label="Close catalogue">×</button></header>
+        <header class="btfw-catalogue__head"><h2 id="btfw-catalogue-title">Movie Catalogue</h2><button type="button" data-action="toggle-suggestions" hidden aria-pressed="false">Poll suggestions: Off</button><button type="button" class="btfw-catalogue__view-toggle" data-action="toggle-vhs" aria-label="Use VHS catalogue design" aria-pressed="false"><span>VHS</span><span class="btfw-catalogue__switch" aria-hidden="true"></span></button><button type="button" data-action="close" aria-label="Close catalogue">×</button></header>
         <div class="btfw-catalogue__filters"><label class="btfw-catalogue__filter"><span>Search catalog</span><input type="search" data-role="query" placeholder="Find a movie…"></label><label class="btfw-catalogue__filter"><span>Format</span><select data-role="type"><option value="">All media</option><option value="movie">Movies</option><option value="tv">TV shows</option></select></label><label class="btfw-catalogue__filter"><span>Sort by</span><select data-role="sort"><option value="order">Default</option><option value="title">Title</option><option value="date">Release date</option><option value="rating">TMDB rating</option></select></label><label class="btfw-catalogue__filter"><span>Order</span><select data-role="direction"><option value="asc">Ascending</option><option value="desc">Descending</option></select></label></div>
-        <div class="btfw-catalogue__status" data-role="status"></div><main class="btfw-catalogue__body"><div class="btfw-catalogue__grid" data-role="list"></div></main>
+        <div class="btfw-catalogue__status" data-role="suggestions-status" hidden></div><div class="btfw-catalogue__status" data-role="status"></div><main class="btfw-catalogue__body"><div class="btfw-catalogue__grid" data-role="list"></div></main>
         <footer class="btfw-catalogue__foot"><span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span><span class="btfw-catalogue__load-status" data-role="load-status"></span></footer>
       </section>`;
     document.body.appendChild(modal);
@@ -245,6 +249,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
     state.directionEl = $("[data-role=direction]", modal);
     modal.addEventListener("click", event => { if (event.target === modal || event.target.closest("[data-action=close]")) closeModal(); });
     $("[data-action=toggle-vhs]", modal).addEventListener("click", () => setViewMode(state.viewMode === "vhs" ? "poster" : "vhs"));
+    $("[data-action=toggle-suggestions]", modal).addEventListener("click", () => suggestions.setEnabled?.(!suggestions.enabled?.()));
     modal.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
     const updateFilters = () => {
       state.visibleCount = RENDER_BATCH_SIZE;
@@ -258,6 +263,12 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       updateFilters();
     });
     state.listEl.addEventListener("click", event => {
+      const suggest = event.target.closest("[data-suggest-id]");
+      if (suggest) {
+        const item = state.items.find(item => String(item.id) === suggest.dataset.suggestId && itemType(item) !== "tv");
+        if (item) suggestions.nominate?.(`${itemTitle(item)} ${itemDate(item).slice(0, 4)}`);
+        return;
+      }
       if (!event.target.closest("[data-action=retry-page]")) return;
       state.loadFailed = false;
       showStatus("");
@@ -315,6 +326,17 @@ BTFW.define("feature:playlistCatalog", [], async () => {
 
   function render(){
     if (!state.listEl) return;
+    const toggle = $("[data-action=toggle-suggestions]", state.modal);
+    if (toggle) {
+      toggle.hidden = !suggestions.canToggle?.();
+      toggle.textContent = `Poll suggestions: ${suggestions.enabled?.() ? "On" : "Off"}`;
+      toggle.setAttribute("aria-pressed", String(!!suggestions.enabled?.()));
+    }
+    const suggestionStatus = $("[data-role=suggestions-status]", state.modal);
+    if (suggestionStatus) {
+      suggestionStatus.hidden = !suggestions.enabled?.();
+      suggestionStatus.textContent = suggestions.enabled?.() ? suggestions.statusMessage?.() || "" : "";
+    }
     const total = Math.max(state.items.length, Number(state.totalResults || 0));
     const loadedText = total ? `${state.items.length}/${total} loaded` : `${state.items.length} loaded`;
     const completeText = state.loadedAll && !state.loadFailed && total ? ` · ${total} total` : "";
@@ -349,7 +371,9 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       const url = `https://www.themoviedb.org/${itemType(item) === "tv" ? "tv" : "movie"}/${id}`;
       const meta = `${type}${year ? ` · ${escapeHtml(year)}` : ""}${rating ? ` · ★ ${rating.toFixed(1)}` : ""}`;
       const overview = item.overview ? escapeHtml(item.overview) : "No synopsis available.";
-      return `<article class="btfw-catalogue__card"><img class="btfw-catalogue__poster btfw-catalogue__poster--classic" ${poster ? `data-src="${escapeAttr(poster)}"` : ""} alt="" loading="lazy"><a class="btfw-catalogue__vhs" href="${url}" target="_blank" rel="noopener" aria-label="View ${escapeAttr(itemTitle(item))} on TMDB"><span class="btfw-catalogue__vhs-rotor"><span class="btfw-catalogue__vhs-face btfw-catalogue__vhs-front" aria-hidden="true"><span class="btfw-catalogue__vhs-label"><img class="btfw-catalogue__vhs-art" ${poster ? `data-src="${escapeAttr(poster)}"` : ""} alt="" loading="lazy"></span><span class="btfw-catalogue__vhs-reel btfw-catalogue__vhs-reel--left"></span><span class="btfw-catalogue__vhs-reel btfw-catalogue__vhs-reel--right"></span><span class="btfw-catalogue__vhs-mark">VHS · BT-120</span></span><span class="btfw-catalogue__vhs-face btfw-catalogue__vhs-back" aria-hidden="true"><span class="btfw-catalogue__vhs-info"><span class="btfw-catalogue__vhs-title">${title}</span><span class="btfw-catalogue__vhs-meta">${meta}</span><span class="btfw-catalogue__vhs-overview">${overview}</span></span></span></span></a><div class="btfw-catalogue__copy"><a class="btfw-catalogue__title" href="${url}" target="_blank" rel="noopener">${title}</a><div class="btfw-catalogue__meta">${meta}</div>${item.overview ? `<p class="btfw-catalogue__overview">${overview}</p>` : ""}</div></article>`;
+      const suggestButton = suggestions.enabled?.() && itemType(item) !== "tv" && year
+        ? `<button type="button" class="btfw-catalogue__suggest" data-suggest-id="${escapeAttr(item.id)}" ${suggestions.available?.() ? "" : "disabled"} title="One suggestion per signed-in username; pending movies carry over">Suggest for poll</button>` : "";
+      return `<article class="btfw-catalogue__card"><img class="btfw-catalogue__poster btfw-catalogue__poster--classic" ${poster ? `data-src="${escapeAttr(poster)}"` : ""} alt="" loading="lazy"><a class="btfw-catalogue__vhs" href="${url}" target="_blank" rel="noopener" aria-label="View ${escapeAttr(itemTitle(item))} on TMDB"><span class="btfw-catalogue__vhs-rotor"><span class="btfw-catalogue__vhs-face btfw-catalogue__vhs-front" aria-hidden="true"><span class="btfw-catalogue__vhs-label"><img class="btfw-catalogue__vhs-art" ${poster ? `data-src="${escapeAttr(poster)}"` : ""} alt="" loading="lazy"></span><span class="btfw-catalogue__vhs-reel btfw-catalogue__vhs-reel--left"></span><span class="btfw-catalogue__vhs-reel btfw-catalogue__vhs-reel--right"></span><span class="btfw-catalogue__vhs-mark">VHS · BT-120</span></span><span class="btfw-catalogue__vhs-face btfw-catalogue__vhs-back" aria-hidden="true"><span class="btfw-catalogue__vhs-info"><span class="btfw-catalogue__vhs-title">${title}</span><span class="btfw-catalogue__vhs-meta">${meta}</span><span class="btfw-catalogue__vhs-overview">${overview}</span></span></span></span></a><div class="btfw-catalogue__copy"><a class="btfw-catalogue__title" href="${url}" target="_blank" rel="noopener">${title}</a><div class="btfw-catalogue__meta">${meta}</div>${item.overview ? `<p class="btfw-catalogue__overview">${overview}</p>` : ""}${suggestButton}</div></article>`;
     }).join("") + (state.loadFailed ? '<div class="btfw-catalogue__empty"><button type="button" data-action="retry-page">Retry loading remaining titles</button></div>' : "");
     state.listEl.querySelectorAll("img[data-src]").forEach(img => { img.src = img.dataset.src; });
   }
@@ -812,6 +836,7 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   window.BTFW_PlaylistCatalog = { activeList, canSync, getWriteSession, validateWriteSession, beginTmdbSignIn, clearWriteToken, getAccountLists, createList, sync, open:openModal };
   document.addEventListener("btfw:playlistCatalogChanged", () => { ensureLauncher(); if (!enabled()) closeModal(); });
   document.addEventListener("btfw:channelIntegrationsChanged", ensureLauncher);
+  document.addEventListener("btfw:pollSuggestionsChanged", () => { if (state.modal?.classList.contains("is-open")) render(); });
   bindPlaylistCache();
   ensureLauncher();
   const navObserver = new MutationObserver(() => ensureLauncher());

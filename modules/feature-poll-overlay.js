@@ -3,6 +3,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   "use strict";
 
   const anime = await BTFW.init("util:anime");
+  const suggestions = await BTFW.init("util:pollSuggestions");
   const CSS_ID = "btfw-poll-overlay-styles";
   const POLL_OVERLAY_CSS = `
     /* Poll Display Overlay on Video */
@@ -1215,6 +1216,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
     if (automaticPoll?.phase === "active" && !automaticPollMatches(poll)) discardAutomaticPoll();
     trackAutomaticPoll(poll);
+    suggestions.observePoll?.(poll);
     // Each viewer remembers actual movie polls locally, including those opened
     // by someone else. This does not give that viewer ownership of the winner.
     if (!automaticPoll && resolvePollTitle(poll?.title).startsWith(`${RANDOM_POLL_TITLE} · `) && Array.isArray(poll.options)) {
@@ -1397,7 +1399,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
     });
     if (randomPollDraft !== draft) return;
     try {
-      draft.movies = sampleMovies(eligiblePlaylistMovies(), draft.count, draft.balancedPicks);
+      const pool = eligiblePlaylistMovies();
+      const random = sampleMovies(pool, draft.count, draft.balancedPicks);
+      draft.movies = suggestions.mix?.(pool, random, draft.count) || random;
       rememberPreviewNominations(draft.movies);
     } catch (error) {
       pollNotice("Could not pick movies. Try rerolling again.", "warn");
@@ -1592,12 +1596,14 @@ BTFW.define("feature:poll-overlay", [], async () => {
       return false;
     }
     if (quiet && document.querySelector("#pollwrap .btfw-random-poll-builder")) return false;
-    const eligibleKeys = new Set(eligiblePlaylistMovies().map((movie) => movie.key));
+    const eligible = eligiblePlaylistMovies();
+    const eligibleKeys = new Set(eligible.map((movie) => movie.key));
     if (Array.isArray(movies) && movies.some((movie) => !eligibleKeys.has(movie.key))) {
       if (!quiet) pollNotice("Movie history or the playlist changed. Reroll before starting this poll.", "warn");
       return false;
     }
     movies = Array.isArray(movies) ? movies : [];
+    movies = suggestions.mix?.(eligible, movies, movies.length) || movies;
     if (movies.length < 2) {
       if (!quiet) pollNotice("At least two eligible movies below the current playlist movie are required. Add upcoming movies or clear history to allow previous winners below it again.", "warn");
       return false;
@@ -1949,6 +1955,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
   }
 
   function setupRandomPollControls() {
+    suggestions.renderControl?.();
+    try { suggestions.mediaChanged?.((window.jQuery || window.$)?.(activePlaylistRow())?.data("media")); } catch (_) {}
     recordMoviePlayback();
     syncMovieHistoryControl();
     if (!randomMoviePollIntegrationEnabled) {
@@ -2029,7 +2037,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
       if (latest.paused || latest.duration < AUTO_POLL_MIN_DURATION_SECONDS
         || latestRemaining > autoPollTriggerSeconds() || latestRemaining < AUTO_POLL_MIN_REMAINING_SECONDS || isYouTubeMedia()) return;
       // Sample after waiting, using the current playlist and local history.
-      const movies = sampleMovies(eligiblePlaylistMovies(), autoCreditsSettings.count, autoCreditsSettings.balancedPicks);
+      const pool = eligiblePlaylistMovies();
+      const random = sampleMovies(pool, autoCreditsSettings.count, autoCreditsSettings.balancedPicks);
+      const movies = suggestions.mix?.(pool, random, autoCreditsSettings.count) || random;
       if (movies.length < 2) return;
       const votingSeconds = Math.min(
         autoCreditsSettings.durationSeconds,
@@ -2719,7 +2729,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
       
       // Check for existing poll after a short delay to ensure DOM is ready
       setTimeout(() => {
-        checkForExistingPoll();
+        const existing = checkForExistingPoll();
+        suggestions.reconcilePoll?.(existing || nativePollActive);
       }, 500);
       
     } catch (e) {
@@ -2739,9 +2750,18 @@ BTFW.define("feature:poll-overlay", [], async () => {
     setTimeout(boot, 200);
   });
 
+  document.addEventListener("btfw:pollSuggestionsChanged", () => {
+    if (randomPollDraft?.mode !== "manual" || randomPollDraft.loading || automaticPoll) return;
+    const pool = eligiblePlaylistMovies();
+    randomPollDraft.movies = suggestions.mix?.(pool, randomPollDraft.movies, randomPollDraft.count) || randomPollDraft.movies;
+    renderRandomPollBuilder();
+  });
+
   document.addEventListener("btfw:channelIntegrationsChanged", (event) => {
     applyRandomMoviePollIntegration(Boolean(event?.detail?.randomMoviePollEnabled));
   });
+
+  suggestions.setPoolReader?.(eligiblePlaylistMovies);
 
   return {
     name: "feature:poll-overlay",

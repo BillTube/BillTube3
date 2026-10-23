@@ -76,7 +76,7 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
         return tag === 'section' ? [this.parts['#btfw-random-poll-count'], this.parts['.btfw-random-poll-reroll']] : [];
       },
       set innerHTML(value) {
-        this.value = value;
+        this.value = tag === 'textarea' ? value.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&') : value;
         this.children = [];
         if (tag === 'button') this.parts = { span: element('span') };
         if (tag === 'dialog') this.parts = {
@@ -104,8 +104,12 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
     elements.set('pollwrap', wrap);
   }
   const document = {
-    readyState: 'loading', body: Object.assign(element('body'), { dataset: {} }),
-    addEventListener(name, callback) { documentListeners[name] = callback; }, getElementById: (id) => elements.get(id) || null,
+    readyState: 'loading', head: element('head'), body: Object.assign(element('body'), { dataset: {} }),
+    dispatchEvent(event) { documentListeners[event.type]?.(event); },
+    addEventListener(name, callback) {
+      const previous = documentListeners[name];
+      documentListeners[name] = previous ? (...args) => { previous(...args); callback(...args); } : callback;
+    }, getElementById: (id) => elements.get(id) || null,
     createElement: element,
     querySelector(selector) {
       if (selector === '#pollwrap .poll-controls') return controls;
@@ -125,10 +129,14 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
     requestAnimationFrame: (callback) => frames.push(callback),
     setInterval: () => 1, clearInterval() {},
     setTimeout: setTimer, clearTimeout: clearTimer,
-    socket: { connected: true, emit: (...args) => emitted.push(args), on: (event, callback) => { socketListeners[event] = callback; } }
+    socket: { connected: true, emit: (...args) => emitted.push(args), on: (event, callback) => {
+      const previous = socketListeners[event];
+      socketListeners[event] = previous ? (...args) => { previous(...args); callback(...args); } : callback;
+    } }
   };
   const context = {
     window, document, console: { log() {}, warn() {} }, location: { pathname: '/r/TestChannel' },
+    CustomEvent: class { constructor(type) { this.type = type; } },
     setTimeout: setTimer, clearTimeout: clearTimer, Date: TestDate, Math: math, performance: { now: () => clock },
     sessionStorage: { getItem: (key) => session.get(key) || null, setItem: (key, value) => session.set(key, value), removeItem: (key) => session.delete(key) },
     localStorage: {
@@ -138,9 +146,18 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
     },
     BTFW: { init: async () => ({}), define: (_, __, factory) => { modulePromise = factory(); } }
   };
+  let suggestionApi = {};
+  if (options.suggestionsEnabled) {
+    window.CHANNEL.css = '/* BTFW_POLL_SUGGESTIONS:1 */';
+    window.CLIENT.name = 'Moderator'; window.CLIENT.logged_in = true;
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../modules/util-poll-suggestions.js'), 'utf8'), context);
+    suggestionApi = await modulePromise;
+    context.BTFW.init = async name => name === 'util:pollSuggestions' ? suggestionApi : {};
+    socketListeners.userlist([{ name: 'Moderator', rank: 3 }, { name: 'Alice', rank: 1 }, { name: 'Bob', rank: 1 }]);
+  }
   vm.runInNewContext(source, context);
   return {
-    api: await modulePromise, emitted, notices, storage, session, elements, socketListeners, documentListeners, window, advance,
+    api: await modulePromise, suggestionApi, emitted, notices, storage, session, elements, socketListeners, documentListeners, window, advance,
     now: () => clock,
     setRandom(value) { random = value; },
     getBuilder: () => builder,
@@ -1184,4 +1201,34 @@ test('a restored marker cannot suppress a later replay of the same playlist entr
   h.api.updateAutoCreditsMedia({ type: 'fi', id: '0', seconds: 3600, currentTime: 3470, paused: false });
   const pending = h.api.evaluateAutoCreditsPoll(); await h.advance(0); await pending;
   assert.equal(h.emitted.filter(([event]) => event === 'newPoll').length, 1);
+});
+
+
+test('catalog chat nominations enter the real manual builder and confirmed poll uses exact playlist titles', async () => {
+  const rows = [movieRow(1, 'Current (2000)'), movieRow(2, 'Alien (1979)'), movieRow(3, 'Aliens 1986'), ...Array.from({ length: 12 }, (_, i) => movieRow(10 + i, 'Random ' + i + ' (2001)'))];
+  const h = await harness(rows, new Map(), false, true, { suggestionsEnabled: true });
+  h.api.wireSocketEvents();
+  h.socketListeners.chatMsg({ username: 'Alice', msg: '&lt;PS:Alien 1979&gt;', time: h.now() });
+  h.api.openRandomPollBuilder(); await h.flushSelection();
+  assert.match(h.getBuilder().parts['.btfw-random-poll-list'].children[0].children[1].textContent, /Alien \(1979\)/);
+  assert.equal(h.api.startAutomaticPoll(), true);
+  const request = h.emitted.find(([name]) => name === 'newPoll')[1];
+  assert.equal(request.opts[0], 'Alien (1979)');
+  assert.equal(h.suggestionApi.getQueue().length, 1);
+  h.socketListeners.newPoll({ title: request.title, options: request.opts, timestamp: h.now(), counts: request.opts.map(() => 0) });
+  assert.equal(h.suggestionApi.getQueue().length, 0);
+});
+
+test('credits polls use the real suggestion pool and failed server creation keeps nominations pending', async () => {
+  const rows = [movieRow(1, 'Current (2000)'), movieRow(2, 'Alien (1979)'), ...Array.from({ length: 8 }, (_, i) => movieRow(10 + i, 'Random ' + i + ' (2001)'))];
+  const h = await harness(rows, new Map(), false, false, { suggestionsEnabled: true, random: 0 });
+  h.api.wireSocketEvents();
+  h.socketListeners.chatMsg({ username: 'Alice', msg: '&lt;PS:Alien 1979&gt;', time: h.now() });
+  h.api.syncAutoCreditsPollControl();
+  h.api.updateAutoCreditsMedia({ type: 'fi', id: '1', seconds: 7200, currentTime: 7080, paused: false }, true);
+  const attempt = h.api.evaluateAutoCreditsPoll(); await h.advance(0); await attempt;
+  const sent = h.emitted.find(([name]) => name === 'newPoll');
+  assert.ok(sent); assert.equal(sent[1].opts[0], 'Alien (1979)');
+  sent[2]({ error: { message: 'Rejected' } });
+  assert.equal(h.suggestionApi.getQueue().length, 1);
 });
