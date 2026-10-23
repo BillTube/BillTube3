@@ -1865,6 +1865,13 @@ cubic-bezier(0.4, 0, 1, 1) 0s running;
   -webkit-box-orient: vertical;
 }
 
+/* Give the current-movie hover card more room for its synopsis. */
+#btfw-movie-header .btfw-movie-summary { -webkit-line-clamp: 8; }
+#btfw-movie-header .btfw-movie-poster { align-self: flex-start; }
+@media (max-width: 768px) {
+  #btfw-movie-header .btfw-movie-summary { -webkit-line-clamp: 6; }
+}
+
 /* ------------------------------------------------------------------
    Connection status pill (feature:connection-status)
    Replaces CyTube's inline "Disconnected from server." / "Connected" chat
