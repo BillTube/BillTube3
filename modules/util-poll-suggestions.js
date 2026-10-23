@@ -1,6 +1,7 @@
 /* Shared chat nominations for the existing movie poll builders. No playlist is exposed. */
 BTFW.define("util:pollSuggestions", [], async () => {
   "use strict";
+  const movieTitle = await BTFW.init("util:movieTitle");
   const LIMIT = 100;
   const storageKey = "btfw:poll-suggestions:v1:" + String(window.CHANNEL?.name || location.pathname).toLowerCase();
   const decoder = document.createElement("textarea");
@@ -14,14 +15,7 @@ BTFW.define("util:pollSuggestions", [], async () => {
   const canManage = () => Number(window.CLIENT?.rank) >= 2 && permission("pollctl") && permission("playlistmove");
   const integrated = () => Boolean(window.BTFW_CONFIG?.integrations?.randomMoviePoll?.enabled || document.body?.dataset?.btfwRandomMoviePollEnabled === "1");
   function decode(value) { decoder.innerHTML = String(value || ""); return decoder.value; }
-  // Keep the year as part of identity: remakes and numeric movie names must stay distinct.
-  function identity(value) {
-    const text = String(value || "").normalize("NFKC").trim();
-    const match = text.match(/^(.+?)\s*[([]?((?:18|19|20)\d{2})[)\]]?\s*$/);
-    if (!match || Number(match[2]) > new Date().getFullYear() + 2) return "";
-    const title = match[1].normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
-    return title ? title + ":" + match[2] : "";
-  }
+  const identity = movieTitle.identity;
   function validEntry(entry) {
     return entry && username(entry.user) && typeof entry.title === "string" && entry.title.length <= 180
       && entry.key === identity(entry.title) && entry.key && Number.isFinite(entry.at) && entry.at > 0;
@@ -93,6 +87,7 @@ BTFW.define("util:pollSuggestions", [], async () => {
   }
   function onChat(data) {
     if (!data || data.meta?.shadow || data.meta?.addClass === "server-whisper") return;
+    if (typeof data.msg !== "string" || data.msg.length > 1200 || !data.msg.includes("PS")) return;
     const text = decode(data.msg).trim();
     if (text.length > 200 || !text.startsWith("<PS")) return;
     const name = username(data.username), user = userData(name), at = Number(data.time);
@@ -117,15 +112,9 @@ BTFW.define("util:pollSuggestions", [], async () => {
   // Resolve title/year against the full playlist supplied by the poll module.
   function resolve(pool) {
     if (!enabled || !integrated()) return [];
-    const index = new Map();
-    for (const movie of pool) {
-      const key = identity(movie.title);
-      if (!key) continue;
-      if (!index.has(key)) index.set(key, movie);
-      else if (index.get(key)?.key !== movie.key) index.set(key, null);
-    }
+    const index = movieTitle.createIndex(pool);
     const seen = new Set();
-    return state.queue.map(entry => ({ entry, movie: index.get(entry.key) })).filter(item => {
+    return state.queue.map(entry => ({ entry, movie: index.find(entry.title) })).filter(item => {
       if (!item.movie) return false;
       const key = item.movie.mediaKey || item.movie.key;
       if (seen.has(key)) return false;
@@ -134,19 +123,20 @@ BTFW.define("util:pollSuggestions", [], async () => {
   }
   function mix(pool, random, count, randomPool = pool) {
     if (!enabled || !integrated()) return random;
-    const nominations = resolve(pool).map(item => item.movie);
+    const resolved = resolve(pool), nominations = resolved.map(item => item.movie);
     const result = [...nominations];
-    const nominatedKeys = new Set(nominations.map(movie => identity(movie.title)));
-    const overflow = new Set(state.queue.filter(entry => !nominatedKeys.has(entry.key)).map(entry => entry.key));
+    const nominatedKeys = new Set(resolved.map(item => item.entry.key));
+    const index = movieTitle.createIndex(pool);
+    const overflow = new Set(state.queue.filter(entry => !nominatedKeys.has(entry.key)).flatMap(entry => index.candidates(entry.title)).map(movie => movie.key));
     const keys = new Set(result.map(movie => movie.key)), media = new Set(result.map(movie => movie.mediaKey).filter(Boolean));
     const target = Math.min(10, Math.max(Number(count) || random.length, nominations.length));
     for (const movie of random) {
       if (result.length >= target) break;
-      if (overflow.has(identity(movie.title)) || keys.has(movie.key) || (movie.mediaKey && media.has(movie.mediaKey))) continue;
+      if (overflow.has(movie.key) || keys.has(movie.key) || (movie.mediaKey && media.has(movie.mediaKey))) continue;
       result.push(movie); keys.add(movie.key); if (movie.mediaKey) media.add(movie.mediaKey);
     }
     // Random selections may overlap nominations. Fill any resulting gaps from the same eligible pool.
-    const remaining = randomPool.filter(movie => !overflow.has(identity(movie.title)) && !keys.has(movie.key) && (!movie.mediaKey || !media.has(movie.mediaKey)));
+    const remaining = randomPool.filter(movie => !overflow.has(movie.key) && !keys.has(movie.key) && (!movie.mediaKey || !media.has(movie.mediaKey)));
     while (result.length < target && remaining.length) {
       const movie = remaining.splice(Math.floor(Math.random() * remaining.length), 1)[0];
       if (keys.has(movie.key) || (movie.mediaKey && media.has(movie.mediaKey))) continue;
@@ -159,9 +149,10 @@ BTFW.define("util:pollSuggestions", [], async () => {
     if (!/^What should we watch next\? · \d+ (?:min|sec|minutes?|seconds?)$/.test(title) || !Array.isArray(poll.options)) return;
     const id = String(poll.timestamp || "") + ":" + title + ":" + poll.options.join("|");
     if (state.polls.includes(id)) return;
-    const keys = new Set(poll.options.map(option => identity(decode(option))).filter(Boolean));
-    state.used = [...new Set([...state.used, ...state.queue.filter(entry => keys.has(entry.key)).map(entry => entry.user)])].slice(-LIMIT);
-    state.queue = state.queue.filter(entry => !keys.has(entry.key));
+    const index = movieTitle.createIndex(poll.options.map(option => ({ title: decode(option), key: decode(option) })));
+    const served = new Set(state.queue.filter(entry => index.find(entry.title)).map(entry => entry.key));
+    state.used = [...new Set([...state.used, ...state.queue.filter(entry => served.has(entry.key)).map(entry => entry.user)])].slice(-LIMIT);
+    state.queue = state.queue.filter(entry => !served.has(entry.key));
     state.polls.push(id); state.polls = state.polls.slice(-20); state.active = true;
     changed();
   }
@@ -173,8 +164,8 @@ BTFW.define("util:pollSuggestions", [], async () => {
     const key = media.type + ":" + media.id;
     if (state.media === key) return;
     if (state.media) endRound();
-    const playing = identity(media.title);
-    if (playing) state.queue = state.queue.filter(entry => entry.key !== playing);
+    const playing = movieTitle.createIndex([{ title: media.title, key }]);
+    state.queue = state.queue.filter(entry => !playing.find(entry.title));
     state.media = key; changed();
   }
   function syncConfiguration(catalog = catalogConfig()) {
@@ -212,14 +203,19 @@ BTFW.define("util:pollSuggestions", [], async () => {
     if (dialog?.open) fillDialog(dialog);
   }
   function fillDialog(dialog) {
-    const list = dialog.querySelector("ol"); list.replaceChildren();
-    const pool = readPool();
+    const list = dialog.querySelector("ol");
+    const pool = state.queue.length ? readPool() : [], index = movieTitle.createIndex(pool);
     const next = new Set(resolve(pool).map(item => item.entry.key));
-    const eligible = new Set(pool.map(movie => identity(movie.title)));
-    for (const entry of state.queue) {
-      const status = next.has(entry.key) ? "next poll" : eligible.has(entry.key) ? "later poll" : "waiting for an eligible playlist match";
-      const li = document.createElement("li"); li.textContent = entry.title + " — " + entry.user + " (" + status + ")"; list.appendChild(li);
-    }
+    const lines = state.queue.map(entry => {
+      const candidates = index.candidates(entry.title);
+      const status = next.has(entry.key) ? "next poll" : candidates.length > 1 ? "multiple title/year matches" : candidates.length ? "later poll" : "waiting for an eligible playlist match";
+      return entry.title + " — " + entry.user + " (" + status + ")";
+    });
+    const signature = JSON.stringify(lines);
+    if (dialog._btfwSuggestionsSignature === signature) return;
+    dialog._btfwSuggestionsSignature = signature;
+    list.replaceChildren();
+    for (const text of lines) { const li = document.createElement("li"); li.textContent = text; list.appendChild(li); }
     dialog.querySelector("[data-empty]").hidden = state.queue.length > 0;
   }
   function openDialog() {

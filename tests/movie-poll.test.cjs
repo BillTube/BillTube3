@@ -35,6 +35,8 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
   let active = rows[0];
   rows.forEach((row, index) => { row.nextElementSibling = rows[index + 1] || null; });
   const elements = new Map();
+  const queueObservers = [];
+  if (options.cachePlaylist) elements.set('queue', {});
   let builder = null;
   let deferredClose = false;
   const frames = [], timers = new Map(), socketListeners = {}, documentListeners = {};
@@ -146,10 +148,18 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
     },
     BTFW: { init: async () => ({}), define: (_, __, factory) => { modulePromise = factory(); } }
   };
+  if (options.cachePlaylist) context.MutationObserver = class {
+    constructor(callback) { this.callback = callback; this.records = []; queueObservers.push(this); }
+    observe() {} disconnect() {}
+    takeRecords() { return this.records.splice(0); }
+  };
   let suggestionApi = {};
   if (options.suggestionsEnabled) {
     window.BTFW_THEME_ADMIN = { playlistCatalog: { pollSuggestionsEnabled: true } };
     window.CLIENT.name = 'Moderator'; window.CLIENT.logged_in = true;
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../modules/util-movie-title.js'), 'utf8'), context);
+    const movieTitle = await modulePromise;
+    context.BTFW.init = async () => movieTitle;
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../modules/util-poll-suggestions.js'), 'utf8'), context);
     suggestionApi = await modulePromise;
     context.BTFW.init = async name => name === 'util:pollSuggestions' ? suggestionApi : {};
@@ -157,7 +167,7 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
   }
   vm.runInNewContext(source, context);
   return {
-    api: await modulePromise, suggestionApi, emitted, notices, storage, session, elements, socketListeners, documentListeners, window, advance,
+    api: await modulePromise, suggestionApi, emitted, notices, storage, session, elements, socketListeners, documentListeners, window, advance, queueObservers,
     now: () => clock,
     setRandom(value) { random = value; },
     getBuilder: () => builder,
@@ -1288,4 +1298,47 @@ test('an ordinary unsuggested draft cannot bypass the random pool position rules
   const h = await harness(rows, new Map(), false, false, { suggestionsEnabled: true }); h.setActive(rows[1]);
   assert.equal(h.api.launchAutomaticPoll({ movies: h.api.suggestionPlaylistMovies(), minutes: 2 }), false);
   assert.equal(h.emitted.filter(([name]) => name === 'newPoll').length, 0);
+});
+
+test('suggestion inventory is cached but playlist mutations, current changes and launches revalidate it', async () => {
+  const rows = [movieRow(1, 'Current 2000'), movieRow(12, 'Terror Train 1980'), movieRow(50, 'Other 2001')];
+  const h = await harness(rows, new Map(), false, false, { cachePlaylist: true });
+  const first = h.api.suggestionPlaylistMovies();
+  assert.equal(h.api.suggestionPlaylistMovies(), first);
+  rows[1].media.title = 'Terror Train Extended Edition (1980)';
+  h.queueObservers[0].records.push({ type: 'childList' });
+  const updated = h.api.suggestionPlaylistMovies();
+  assert.notEqual(updated, first); assert.equal(updated[0].title, rows[1].media.title);
+  assert.notEqual(h.api.suggestionPlaylistMovies(true), updated);
+  h.setActive(rows[1]);
+  assert.ok(!h.api.suggestionPlaylistMovies().some(movie => movie.uid === 12));
+  h.api.wireSocketEvents(); const beforeEvent = h.api.suggestionPlaylistMovies();
+  h.socketListeners.playlist([]);
+  assert.notEqual(h.api.suggestionPlaylistMovies(), beforeEvent);
+  const beforeExpiry = h.api.suggestionPlaylistMovies(); await h.advance(30001);
+  assert.notEqual(h.api.suggestionPlaylistMovies(), beforeExpiry);
+});
+
+test('both poll builders use smart title matches and queue the canonical winning movie', async () => {
+  for (const credits of [false, true]) {
+    const title = 'Terror Train Extended Edition (1980) [1080p]';
+    const rows = [movieRow(12, title), movieRow(44, 'Current 2000'), movieRow(50, 'Other 2001'), movieRow(51, 'Filler 2002')];
+    const h = await harness(rows, new Map(), false, true, { suggestionsEnabled: true, random: 0 });
+    h.setActive(rows[1]); h.api.wireSocketEvents();
+    h.socketListeners.chatMsg({ username: 'Alice', msg: '&lt;PS:TerrorTrain1980&gt;', time: h.now() });
+    if (credits) {
+      h.api.syncAutoCreditsPollControl();
+      h.api.updateAutoCreditsMedia({ type: 'fi', id: '44', seconds: 7200, currentTime: 7080, paused: false }, true);
+      const pending = h.api.evaluateAutoCreditsPoll(); await h.advance(0); await pending;
+    } else {
+      h.api.openRandomPollBuilder(); await h.flushSelection();
+      assert.equal(h.api.startAutomaticPoll(), true);
+    }
+    const request = h.emitted.find(([name]) => name === 'newPoll')[1];
+    assert.equal(request.opts[0], title);
+    h.socketListeners.newPoll({ title: request.title, options: request.opts, timestamp: h.now(), counts: request.opts.map((_, i) => i === 0 ? 5 : 0) });
+    h.api.finishAutomaticPoll();
+    assert.equal(h.emitted.find(([name]) => name === 'moveMedia')[1].from, 12);
+    assert.equal(h.suggestionApi.getQueue().length, 0);
+  }
 });

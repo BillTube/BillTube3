@@ -53,6 +53,9 @@ async function harness(storage = new Map(), options = {}) {
     },
     BTFW: { define: (_, __, factory) => { pending = factory(); } }
   };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../modules/util-movie-title.js'), 'utf8'), context);
+  const movieTitle = await pending;
+  context.BTFW.init = async () => movieTitle;
   vm.runInNewContext(source, context);
   const api = await pending;
   const fire = (event, data) => handlers[event]?.forEach(fn => fn(data));
@@ -263,4 +266,33 @@ test('random gap filling cannot pick unsuggested entries from above the current 
   const randomPool = [movie('Upcoming 2001', 50), movie('Upcoming 2002', 51)];
   const result = h.api.mix([nominated, unsuggestedOld, ...randomPool], [], 5, randomPool);
   assert.deepEqual(Array.from(result).map(movie => movie.uid).sort((a,b) => a-b), [12, 50, 51]);
+});
+
+test('extended playlist titles preserve canonical UIDs, overflow limits and confirmed consumption', async () => {
+  const h = await harness();
+  const pool = Array.from({ length: 8 }, (_, i) => movie('Feature ' + i + ' Extended Edition (2004) [1080p]', i));
+  for (let i = 0; i < pool.length; i++) {
+    h.fire('addUser', { name: 'Viewer' + i, rank: 1 }); h.chat('Viewer' + i, 'Feature ' + i + ' 2004');
+  }
+  const mixed = h.api.mix(pool, pool, 10);
+  assert.deepEqual(Array.from(mixed, x => x.uid), [0, 1, 2, 3, 4, 5]);
+  h.fire('newPoll', { title: 'What should we watch next? · 2 min', timestamp: 5, options: mixed.map(x => x.title) });
+  assert.deepEqual(Array.from(h.api.getQueue(), x => x.user), ['viewer6', 'viewer7']);
+  h.fire('closePoll');
+  assert.deepEqual(Array.from(h.api.resolve(pool), x => x.movie.uid), [6, 7]);
+});
+
+test('an unchanged open suggestions list reuses its rows and updates when a match appears', async () => {
+  const h = await harness(); h.chat('Alice', 'Terror Train 1980');
+  let pool = [];
+  h.api.setPoolReader(() => pool); h.api.renderControl();
+  h.elements.get('btfw-poll-suggestions').listeners.click();
+  const dialog = h.elements.get('btfw-suggestions-dialog'), original = dialog.parts.ol.children[0];
+  for (let i = 0; i < 10; i++) h.api.renderControl();
+  assert.equal(dialog.parts.ol.children[0], original);
+  pool = [movie('Terror Train Extended Edition (1980)', 42)]; h.api.renderControl();
+  assert.notEqual(dialog.parts.ol.children[0], original);
+  assert.match(dialog.parts.ol.children[0].textContent, /next poll/);
+  h.api.mediaChanged({ type: 'fi', id: '42', title: pool[0].title });
+  assert.equal(h.api.getQueue().length, 0);
 });

@@ -938,7 +938,22 @@ BTFW.define("feature:poll-overlay", [], async () => {
   // An explicit audience suggestion can come from any playlist position and
   // can repeat a movie from local history. Position/history rules belong to
   // random picks only. Preserve canonical title, UID and media for the winner.
-  function suggestionPlaylistMovies() {
+  let suggestionPoolCache = null, suggestionQueue = null, suggestionObserver = null;
+  function invalidateSuggestionPool() { suggestionPoolCache = null; }
+  function suggestionPlaylistMovies(force = false) {
+    const queue = document.getElementById("queue");
+    const canCache = queue && typeof MutationObserver === "function";
+    if (canCache && queue !== suggestionQueue) {
+      suggestionObserver?.disconnect();
+      suggestionQueue = queue; invalidateSuggestionPool();
+      suggestionObserver = new MutationObserver(invalidateSuggestionPool);
+      suggestionObserver.observe(queue, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class"] });
+    }
+    if (suggestionObserver?.takeRecords().length) invalidateSuggestionPool();
+    const current = document.querySelector("#queue > .queue_active");
+    const countText = document.getElementById("plcount")?.textContent || "";
+    if (!force && canCache && suggestionPoolCache?.queue === queue && suggestionPoolCache.active === current
+      && suggestionPoolCache.countText === countText && Date.now() - suggestionPoolCache.at < 30000) return suggestionPoolCache.movies;
     const { rows, activeRow, activeIndex, reportedTotal } = playlistSelectionState();
     if (rows.length < reportedTotal || activeIndex < 0) return [];
     const activeTitle = movieKey(playlistTitle(activeRow));
@@ -953,6 +968,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
       seen.add(key); if (metadata.mediaKey) seenMedia.add(metadata.mediaKey);
       movies.push({ uid, title, key, ...metadata });
     }
+    if (canCache) suggestionPoolCache = { queue, active: activeRow, countText, at: Date.now(), movies };
     return movies;
   }
 
@@ -1627,7 +1643,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
     if (quiet && document.querySelector("#pollwrap .btfw-random-poll-builder")) return false;
     const eligible = eligiblePlaylistMovies();
-    const suggestionPool = suggestionPlaylistMovies();
+    const suggestionPool = suggestionPlaylistMovies(true);
     const nominations = suggestions.resolve?.(suggestionPool) || [];
     const eligibleKeys = new Set([...eligible.map((movie) => movie.key), ...nominations.map(item => item.movie.key)]);
     if (Array.isArray(movies) && movies.some((movie) => !eligibleKeys.has(movie.key))) {
@@ -2636,6 +2652,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (socketEventsWired || !window.socket) return;
 
     try {
+      ["playlist", "queue", "delete", "moveVideo", "changeMedia", "setCurrent", "connect", "disconnect"].forEach(event => window.socket.on(event, invalidateSuggestionPool));
       // Listen for new polls
       window.socket.on("newPoll", (poll) => {
         if (poll) {

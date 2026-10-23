@@ -1,5 +1,7 @@
 /* BTFW — feature:playlist-tools (merged helpers: search, scroll-to-current, poll add) */
 BTFW.define("feature:playlist-tools", [], async () => {
+  const movieTitle = await BTFW.init("util:movieTitle");
+  const searchTitles = new WeakMap();
   const $  = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
@@ -41,7 +43,7 @@ BTFW.define("feature:playlist-tools", [], async () => {
       <div id="btfw-pl-help-pop" class="btfw-pl-help-pop" hidden>
         <div class="btfw-pl-help-title">Filter tips</div>
         <ul>
-          <li><code>horror</code> — words match the title</li>
+          <li><code>horror</code> — words match the title; spacing, accents and punctuation are ignored</li>
           <li><code>type:</code><span>yt · drive · file · vimeo · twitch</span></li>
           <li><code>user:</code><span>name — who added it</span></li>
           <li><code>&gt;1h</code> <code>&lt;30m</code> — by duration</li>
@@ -276,11 +278,15 @@ BTFW.define("feature:playlist-tools", [], async () => {
         if (sec != null) q.dur = { op: m[1], sec }; else q.text.push(tok.toLowerCase());
       } else q.text.push(tok.toLowerCase());
     });
+    q.text = q.text.map(text => movieTitle.compact(text)).filter(Boolean);
     return q;
   }
   function rowMatches(li, q){
     const a = li.querySelector("a.qe_title");
-    const title = (a ? a.textContent : "").toLowerCase();
+    const rawTitle = a ? a.textContent : "";
+    let cached = searchTitles.get(li);
+    if (!cached || cached.raw !== rawTitle) { cached = { raw: rawTitle, title: movieTitle.compact(rawTitle) }; searchTitles.set(li, cached); }
+    const title = cached.title;
     if (q.text.length && !q.text.every(t => title.includes(t))) return false;
     if (q.type && detectMediaType(a && a.getAttribute("href")).key !== q.type) return false;
     if (q.temp && !li.classList.contains("queue_temp")) return false;
@@ -308,7 +314,8 @@ BTFW.define("feature:playlist-tools", [], async () => {
     entries.forEach(li => {
       let ok = term ? rowMatches(li, parsed) : true;
       if (ok && favoritesOnly) ok = isFavRow(li);
-      li.style.display = ok ? "" : "none";
+      const display = ok ? "" : "none";
+      if (li.style.display !== display) li.style.display = display;
       if (ok) visible++;
     });
     updateCount(visible);
@@ -321,16 +328,17 @@ BTFW.define("feature:playlist-tools", [], async () => {
     const el = $("#btfw-pl-matchinfo");
     if (!el) return;
     if (!active) {
-      el.textContent = "";
+      if (el.textContent) el.textContent = "";
       el.classList.remove("is-visible", "is-empty");
       return;
     }
     el.classList.add("is-visible");
     if (!matches) {
-      el.textContent = "No matches";
+      if (el.textContent !== "No matches") el.textContent = "No matches";
       el.classList.add("is-empty");
     } else {
-      el.textContent = `${matches} of ${total}`;
+      const text = `${matches} of ${total}`;
+      if (el.textContent !== text) el.textContent = text;
       el.classList.remove("is-empty");
     }
   }
@@ -523,7 +531,8 @@ BTFW.define("feature:playlist-tools", [], async () => {
     if (!count || !queue) return;
     const n = (known != null) ? known :
       $$("#queue > .queue_entry").filter(li => li.style.display !== "none").length;
-    count.textContent = n ? `${n} item${n===1?"":"s"}` : "";
+    const text = n ? `${n} item${n===1?"":"s"}` : "";
+    if (count.textContent !== text) count.textContent = text;
   }
 
   /* ---------- Scroll to current ---------- */
