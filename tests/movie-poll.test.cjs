@@ -10,7 +10,7 @@ const source = fs.readFileSync(path.join(__dirname, '../modules/feature-poll-ove
   .replace('name: "feature:poll-overlay",', `
     sampleMovies, eligiblePlaylistMovies, suggestionPlaylistMovies, playlistMovieMetadata,
     readMovieHistory, saveMovieHistory, recordMovieWinner, recordMoviePlayback, rememberMovieNominations,
-    syncMovieHistoryControl, removeMovieHistoryControl, wireSocketEvents, rerollRandomMovies, closeRandomPollBuilder, startAutomaticPoll,
+    syncMovieHistoryControl, removeMovieHistoryControl, wireSocketEvents, rerollRandomMovies, rerollRandomMovie, closeRandomPollBuilder, startAutomaticPoll,
     launchAutomaticPoll, trackAutomaticPoll, finishAutomaticPoll,
     openRandomPollBuilder, syncAutoCreditsPollControl, saveAutoCreditsSettings, loadPollPreferences,
     evaluateAutoCreditsPoll, updateAutoCreditsMedia, applyRandomMoviePollIntegration,
@@ -74,6 +74,8 @@ async function harness(rows, storage = new Map(), failStorage = false, showContr
       remove() { if (elements.get(this.id) === this) elements.delete(this.id); if (builder === this) builder = null; },
       querySelector(selector) { return this.parts?.[selector] || null; },
       querySelectorAll(selector) {
+        if (selector === '.btfw-random-poll-reroll-one') return (this.parts?.['.btfw-random-poll-list']?.children || [])
+          .flatMap(row => row.children.filter(child => child.className === 'btfw-random-poll-reroll-one'));
         if (selector === '[data-setting]') return [];
         return tag === 'section' ? [this.parts['#btfw-random-poll-count'], this.parts['.btfw-random-poll-reroll']] : [];
       },
@@ -1341,4 +1343,162 @@ test('both poll builders use smart title matches and queue the canonical winning
     assert.equal(h.emitted.find(([name]) => name === 'moveMedia')[1].from, 12);
     assert.equal(h.suggestionApi.getQueue().length, 0);
   }
+});
+
+
+const draftTitles = h => h.getBuilder().parts['.btfw-random-poll-list'].children.map(row => row.children[1].textContent);
+const rowRerolls = h => h.getBuilder().querySelectorAll('.btfw-random-poll-reroll-one');
+async function rerollOne(h, index) {
+  const pending = rowRerolls(h)[index].listeners.click();
+  await h.flushSelection();
+  await pending;
+}
+
+test('per-movie reroll changes only the clicked slot, retains order, and launches that exact lineup', async () => {
+  const h = await harness([movieRow(0, 'Current'), ...Array.from({ length: 60 }, (_, i) => movieRow(i + 1, `Film ${i} (${1970 + i % 4 * 10})`))], new Map(), false, true);
+  h.api.openRandomMoviePoll(); await h.flushSelection();
+  const before = draftTitles(h);
+  const button = rowRerolls(h)[2];
+  assert.equal(button.tag, 'button');
+  assert.equal(button.type, 'button');
+  assert.equal(button.attributes['aria-label'], `Reroll ${before[2]}`);
+  const pending = button.listeners.click();
+  assert.equal(h.getBuilder().attributes['aria-busy'], 'true');
+  assert.equal(h.getBuilder().parts['.btfw-random-poll-start'].disabled, true);
+  assert.ok(rowRerolls(h).every(control => control.disabled));
+  assert.match(rowRerolls(h)[2].value, /fa-spinner/);
+  await h.api.rerollRandomMovie(0); // an overlapping click cannot replace a second slot
+  await h.flushSelection(); await pending;
+  const after = draftTitles(h);
+  assert.equal(after.length, before.length);
+  assert.notEqual(after[2], before[2]);
+  assert.deepEqual(after.filter((_, i) => i !== 2), before.filter((_, i) => i !== 2));
+  assert.equal(new Set(after).size, after.length);
+  assert.equal(h.getBuilder().attributes['aria-busy'], 'false');
+  assert.ok(rowRerolls(h).every(control => !control.disabled));
+  assert.equal(rowRerolls(h)[2].focused, true);
+  assert.equal(h.api.getPreviewNominations().at(-1).length, 2, 'only the replacement title/media should age preview history');
+  assert.equal(h.api.readMovieHistory().recentPolls.length, 0);
+  assert.equal(h.api.startAutomaticPoll(), true);
+  assert.deepEqual(Array.from(h.emitted.find(([event]) => event === 'newPoll')[1].opts), after);
+});
+
+test('repeated single-slot rerolls never duplicate or replace another selected movie', async () => {
+  const h = await harness([movieRow(0, 'Current'), ...Array.from({ length: 100 }, (_, i) => movieRow(i + 1, `Film ${i} (${1970 + i % 5 * 10})`))], new Map(), false, true);
+  h.api.openRandomMoviePoll(); await h.flushSelection();
+  for (let turn = 0; turn < 20; turn++) {
+    const before = draftTitles(h), index = turn % before.length;
+    await rerollOne(h, index);
+    const after = draftTitles(h);
+    assert.notEqual(after[index], before[index]);
+    assert.deepEqual(after.filter((_, i) => i !== index), before.filter((_, i) => i !== index));
+    assert.equal(new Set(after).size, after.length);
+  }
+  assert.equal(h.api.readMovieHistory().recentPolls.length, 0);
+  assert.equal(h.api.getPreviewNominations().length, 20);
+});
+
+test('single-slot reroll leaves the lineup intact when no replacement is eligible', async () => {
+  const h = await harness(['Current', 'A', 'B', 'C', 'D', 'E'].map((title, uid) => movieRow(uid, title)), new Map(), false, true);
+  h.api.openRandomMoviePoll(); await h.flushSelection();
+  const before = draftTitles(h), previews = h.api.getPreviewNominations().length;
+  await rerollOne(h, 1);
+  assert.deepEqual(draftTitles(h), before);
+  assert.equal(h.api.getPreviewNominations().length, previews);
+  assert.match(h.notices.at(-1).html, /No other eligible/);
+  assert.equal(h.getBuilder().parts['.btfw-random-poll-start'].disabled, false);
+});
+
+test('single-slot reroll rechecks playback and history before selecting a replacement', async () => {
+  const rows = [movieRow(0, 'Current'), ...Array.from({ length: 50 }, (_, i) => movieRow(i + 1, `Film ${i}`))];
+  const h = await harness(rows, new Map(), false, true, { random: 0 });
+  h.api.openRandomMoviePoll(); await h.flushSelection();
+  const pending = rowRerolls(h)[0].listeners.click();
+  h.setActive(rows[35]);
+  for (let i = 36; i < 50; i++) h.api.recordMovieWinner({ key: `film ${i - 1}`, title: `Film ${i - 1}`, mediaKey: `fi:${i}` });
+  await h.flushSelection(); await pending;
+  assert.equal(draftTitles(h)[0], 'Film 49');
+  assert.equal(h.api.startAutomaticPoll(), false, 'retained stale picks still require a full reroll before launch');
+});
+
+test('closing or replacing the modal during a single-slot reroll cannot alter a newer draft', async () => {
+  const h = await harness([movieRow(0, 'Current'), ...Array.from({ length: 20 }, (_, i) => movieRow(i + 1, `Film ${i}`))], new Map(), false, true);
+  h.api.openRandomMoviePoll(); await h.flushSelection();
+  const pending = rowRerolls(h)[0].listeners.click();
+  h.api.closeRandomPollBuilder();
+  h.api.openRandomMoviePoll();
+  await h.flushSelection(); await pending;
+  assert.equal(h.api.getPreviewNominations().length, 1, 'cancelled replacement must not add preview history');
+  assert.equal(draftTitles(h).length, 5);
+  assert.equal(h.api.readMovieHistory().recentPolls.length, 0);
+});
+
+async function suggestionRerollHarness() {
+  const nominated = Array.from({ length: 7 }, (_, i) => movieRow(i + 1, `Suggested ${i} (${1970 + i})`));
+  const current = movieRow(0, 'Current (2000)');
+  const rows = [...nominated, current, ...Array.from({ length: 30 }, (_, i) => movieRow(20 + i, `Random ${i} (2001)`))];
+  const h = await harness(rows, new Map(), false, true, { suggestionsEnabled: true });
+  h.setActive(current); h.api.wireSocketEvents();
+  h.socketListeners.userlist([{ name: 'Moderator', rank: 3 }, ...nominated.map((_, i) => ({ name: `User${i}`, rank: 1 }))]);
+  for (let i = 0; i < 7; i++) h.socketListeners.chatMsg({ username: `User${i}`, msg: `&lt;PS:Suggested ${i} ${1970 + i}&gt;`, time: h.now() });
+  h.api.openRandomMoviePoll(); await h.flushSelection();
+  return h;
+}
+
+test('rerolling a suggestion promotes the next queued title, keeps the others, and consumes only confirmed picks', async () => {
+  const h = await suggestionRerollHarness();
+  const before = draftTitles(h);
+  assert.equal(before.length, 6);
+  assert.equal(h.suggestionApi.resolve(h.api.suggestionPlaylistMovies()).length, 6);
+  assert.equal(h.suggestionApi.resolve(h.api.suggestionPlaylistMovies(), Infinity).length, 7);
+  await rerollOne(h, 0);
+  const after = draftTitles(h);
+  assert.equal(after[0], 'Suggested 6 (1976)');
+  assert.deepEqual(after.slice(1), before.slice(1));
+  assert.equal(h.suggestionApi.getQueue().length, 7, 'a preview reroll must not delete nominations');
+  h.documentListeners['btfw:pollSuggestionsChanged']();
+  assert.deepEqual(draftTitles(h), after, 'queue updates must not undo an explicit single-slot reroll');
+  assert.equal(h.api.startAutomaticPoll(), true);
+  const request = h.emitted.find(([event]) => event === 'newPoll')[1];
+  assert.deepEqual(Array.from(request.opts), after);
+  h.socketListeners.newPoll({ title: request.title, options: request.opts, timestamp: h.now(), counts: request.opts.map(() => 0) });
+  assert.equal(h.suggestionApi.getQueue().length, 1);
+  assert.equal(h.suggestionApi.getQueue()[0].title, 'Suggested 0 1970');
+});
+
+test('rerolling a random slot preserves the six-suggestion cap and cannot select queued overflow as random filler', async () => {
+  const h = await suggestionRerollHarness();
+  h.getBuilder().parts['#btfw-random-poll-count'].listeners.change({ target: { value: '7' } });
+  await h.flushSelection();
+  const before = draftTitles(h);
+  assert.equal(before.length, 7);
+  assert.match(before[6], /^Random /);
+  await rerollOne(h, 6);
+  const after = draftTitles(h);
+  assert.deepEqual(after.slice(0, 6), before.slice(0, 6));
+  assert.match(after[6], /^Random /);
+  assert.notEqual(after[6], before[6]);
+  assert.equal(h.suggestionApi.getQueue().length, 7);
+});
+
+test('Reroll Movies resets individual overrides and restores the normal suggestion priority', async () => {
+  const h = await suggestionRerollHarness();
+  await rerollOne(h, 0);
+  assert.equal(draftTitles(h)[0], 'Suggested 6 (1976)');
+  const pending = h.api.rerollRandomMovies();
+  await h.flushSelection(); await pending;
+  assert.equal(draftTitles(h)[0], 'Suggested 0 (1970)');
+  assert.equal(draftTitles(h).includes('Suggested 6 (1976)'), false);
+  assert.equal(h.suggestionApi.getQueue().length, 7);
+});
+
+
+test('single-pick replacements honor Balanced picks while ordinary random replacements remain random', async () => {
+  const h = await harness([], new Map(), false, false, { random: 0.45 });
+  const candidates = [
+    { key: 'lower', title: 'Lower', mediaKey: 'fi:1', details: { rating: 1, votes: 10000, runtime: 100, genres: [] } },
+    { key: 'higher', title: 'Higher', mediaKey: 'fi:2', details: { rating: 9, votes: 10000, runtime: 100, genres: [] } }
+  ];
+  assert.equal(h.api.sampleMovies(candidates, 1, false)[0].key, 'lower');
+  assert.equal(h.api.sampleMovies(candidates, 1, true)[0].key, 'higher');
 });

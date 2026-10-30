@@ -492,11 +492,41 @@ BTFW.define("feature:poll-overlay", [], async () => {
     }
 
     .btfw-random-poll-movie-title {
+      flex: 1;
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       font-size: 13px;
       font-weight: 550;
+    }
+
+    .btfw-random-poll-reroll-one {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 30px;
+      width: 30px;
+      height: 30px;
+      margin-left: auto;
+      padding: 0;
+      border: 1px solid var(--btfw-border);
+      border-radius: 7px;
+      background: transparent;
+      color: var(--btfw-color-text-muted);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btfw-random-poll-reroll-one:focus-visible {
+      outline: 2px solid var(--btfw-color-accent);
+      outline-offset: 2px;
+    }
+    .btfw-random-poll-reroll-one:disabled { opacity: .45; cursor: default; }
+    @media (hover: hover) and (pointer: fine) {
+      .btfw-random-poll-reroll-one:not(:disabled):hover {
+        color: var(--btfw-color-accent);
+        background: color-mix(in srgb, var(--btfw-color-accent) 12%, transparent);
+      }
     }
 
     .btfw-random-poll-warning {
@@ -525,7 +555,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
 
     #pollwrap .btfw-random-poll-reroll { min-width: 155px; }
     @media (prefers-reduced-motion: reduce) {
-      #pollwrap .btfw-random-poll-reroll .fa-spin { animation: none; }
+      #pollwrap .btfw-random-poll-reroll .fa-spin,
+      .btfw-random-poll-reroll-one .fa-spin { animation: none; }
     }
 
     @media (max-width: 600px) {
@@ -1035,7 +1066,9 @@ BTFW.define("feature:poll-overlay", [], async () => {
     // The remaining slots are wildcards from the full pool, including titles
     // without a year. Exhausted pools repeat the least recent choices first.
     while (result.length < Math.min(count, items.length)) {
-      pick(items, true);
+      // A single-slot reroll can still honor Balanced picks. Multi-movie polls
+      // retain their existing random wildcard slots.
+      pick(items, count !== 1);
     }
     return result;
   }
@@ -1414,7 +1447,14 @@ BTFW.define("feature:poll-overlay", [], async () => {
         title.className = "btfw-random-poll-movie-title";
         number.textContent = String(index + 1);
         title.textContent = movie.title;
-        item.append(number, title);
+        title.title = movie.title;
+        const reroll = document.createElement("button");
+        reroll.type = "button";
+        reroll.className = "btfw-random-poll-reroll-one";
+        reroll.setAttribute("aria-label", `Reroll ${movie.title}`);
+        reroll.title = `Reroll ${movie.title}`;
+        reroll.addEventListener("click", () => rerollRandomMovie(index));
+        item.append(number, title, reroll);
         list.appendChild(item);
       });
     }
@@ -1427,6 +1467,14 @@ BTFW.define("feature:poll-overlay", [], async () => {
     builder.setAttribute("aria-busy", String(!!randomPollDraft.loading));
     builder.querySelectorAll('[data-setting="count"], #btfw-random-poll-count, .btfw-random-poll-reroll').forEach((control) => {
       control.disabled = !!randomPollDraft.loading;
+    });
+    builder.querySelectorAll(".btfw-random-poll-reroll-one").forEach((control, index) => {
+      control.disabled = !!randomPollDraft.loading;
+      const busy = randomPollDraft.loading && randomPollDraft.rerollIndex === index;
+      control.setAttribute("aria-busy", String(!!busy));
+      control.innerHTML = busy
+        ? '<i class="fa fa-spinner fa-spin" aria-hidden="true"></i>'
+        : '<i class="fa fa-shuffle" aria-hidden="true"></i>';
     });
     builder.querySelector(".btfw-random-poll-reroll").innerHTML = randomPollDraft.loading
       ? '<i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Picking Movies…'
@@ -1448,6 +1496,8 @@ BTFW.define("feature:poll-overlay", [], async () => {
       const pool = eligiblePlaylistMovies();
       const random = sampleMovies(pool, draft.count, draft.balancedPicks);
       draft.movies = suggestions.mix?.(suggestionPlaylistMovies(), random, draft.count, pool) || random;
+      draft.customized = false;
+      draft.skippedSuggestions = new Set();
       rememberPreviewNominations(draft.movies);
     } catch (error) {
       pollNotice("Could not pick movies. Try rerolling again.", "warn");
@@ -1455,6 +1505,64 @@ BTFW.define("feature:poll-overlay", [], async () => {
     } finally {
       draft.loading = false;
       renderRandomPollBuilder();
+    }
+  }
+
+  const samePollMovie = (left, right) => left.key === right.key
+    || Boolean(left.mediaKey && left.mediaKey === right.mediaKey);
+
+  async function rerollRandomMovie(index) {
+    const draft = randomPollDraft;
+    if (!draft || draft.mode !== "manual" || draft.loading || automaticPoll
+      || !Number.isInteger(index) || !draft.movies[index]) return;
+    draft.loading = true;
+    draft.rerollIndex = index;
+    renderRandomPollBuilder();
+    // Give the clicked row time to show feedback before scanning the playlist.
+    await new Promise(resolve => {
+      if (document.hidden) setTimeout(resolve, 0);
+      else window.requestAnimationFrame(() => setTimeout(resolve, 0));
+    });
+    if (randomPollDraft !== draft) return;
+    try {
+      const current = draft.movies[index];
+      const kept = draft.movies.filter((_, at) => at !== index);
+      const pool = eligiblePlaylistMovies();
+      // Include overflow here so it cannot slip in as an ordinary random pick.
+      const nominations = (suggestions.resolve?.(suggestionPlaylistMovies(true), Infinity) || []).map(item => item.movie);
+      const suggested = movie => nominations.some(item => samePollMovie(item, movie));
+      const unused = movie => !draft.movies.some(item => samePollMovie(item, movie));
+      const suggestionCount = kept.filter(suggested).length;
+      let replacement = suggestionCount < 6 ? nominations.find(movie => unused(movie)
+        && !draft.skippedSuggestions?.has(movie.key)) : null;
+      if (!replacement) {
+        const candidates = pool.filter(movie => unused(movie) && !suggested(movie));
+        replacement = sampleMovies(candidates, 1, draft.balancedPicks)[0];
+      }
+      if (!replacement) {
+        pollNotice("No other eligible movies are available for this pick.", "info");
+        return;
+      }
+      if (suggested(current)) {
+        if (!draft.skippedSuggestions) draft.skippedSuggestions = new Set();
+        draft.skippedSuggestions.add(current.key);
+      }
+      draft.movies[index] = replacement;
+      draft.customized = true;
+      // Only the new pick contributes preview avoidance; retained picks do not
+      // become artificially more recent each time a different row is rerolled.
+      rememberPreviewNominations([replacement]);
+    } catch (error) {
+      pollNotice("Could not replace this movie. Try rerolling again.", "warn");
+      console.warn("[poll-overlay] Single movie selection failed:", error);
+    } finally {
+      draft.loading = false;
+      draft.rerollIndex = null;
+      if (randomPollDraft === draft) {
+        renderRandomPollBuilder();
+        document.querySelector("#pollwrap .btfw-random-poll-builder")
+          ?.querySelectorAll(".btfw-random-poll-reroll-one")[index]?.focus();
+      }
     }
   }
 
@@ -1644,14 +1752,18 @@ BTFW.define("feature:poll-overlay", [], async () => {
     if (quiet && document.querySelector("#pollwrap .btfw-random-poll-builder")) return false;
     const eligible = eligiblePlaylistMovies();
     const suggestionPool = suggestionPlaylistMovies(true);
-    const nominations = suggestions.resolve?.(suggestionPool) || [];
+    const customizedDraft = !quiet && randomPollDraft?.mode === "manual"
+      && randomPollDraft.customized && movies === randomPollDraft.movies;
+    const nominations = suggestions.resolve?.(suggestionPool, customizedDraft ? Infinity : 6) || [];
     const eligibleKeys = new Set([...eligible.map((movie) => movie.key), ...nominations.map(item => item.movie.key)]);
     if (Array.isArray(movies) && movies.some((movie) => !eligibleKeys.has(movie.key))) {
       if (!quiet) pollNotice("Movie history, suggestions, or the playlist changed. Reroll before starting this poll.", "warn");
       return false;
     }
     movies = Array.isArray(movies) ? movies : [];
-    movies = suggestions.mix?.(suggestionPool, movies, movies.length, eligible) || movies;
+    // A manually edited lineup is authoritative. Validate every pick above,
+    // but do not reinsert a suggestion the moderator explicitly rerolled away.
+    if (!customizedDraft) movies = suggestions.mix?.(suggestionPool, movies, movies.length, eligible) || movies;
     if (movies.length < 2) {
       if (!quiet) pollNotice("At least two movies are required. Suggest movies from anywhere in the playlist, or add eligible random picks below the current movie.", "warn");
       return false;
@@ -2802,7 +2914,7 @@ BTFW.define("feature:poll-overlay", [], async () => {
   document.addEventListener("btfw:pollSuggestionsChanged", () => {
     if (randomPollDraft?.mode !== "manual" || randomPollDraft.loading || automaticPoll) return;
     const pool = eligiblePlaylistMovies();
-    randomPollDraft.movies = suggestions.mix?.(suggestionPlaylistMovies(), randomPollDraft.movies, randomPollDraft.count, pool) || randomPollDraft.movies;
+    if (!randomPollDraft.customized) randomPollDraft.movies = suggestions.mix?.(suggestionPlaylistMovies(), randomPollDraft.movies, randomPollDraft.count, pool) || randomPollDraft.movies;
     renderRandomPollBuilder();
   });
 

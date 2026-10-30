@@ -106,7 +106,7 @@ BTFW.define("util:pollSuggestions", [], async () => {
     changed();
   }
   // Resolve title/year against the full playlist supplied by the poll module.
-  function resolve(pool) {
+  function resolve(pool, limit = 6) {
     if (!enabled || !integrated()) return [];
     const index = movieTitle.createIndex(pool);
     const seen = new Set();
@@ -115,7 +115,7 @@ BTFW.define("util:pollSuggestions", [], async () => {
       const key = item.movie.mediaKey || item.movie.key;
       if (seen.has(key)) return false;
       seen.add(key); return true;
-    }).slice(0, 6);
+    }).slice(0, limit);
   }
   function mix(pool, random, count, randomPool = pool) {
     if (!enabled || !integrated()) return random;
