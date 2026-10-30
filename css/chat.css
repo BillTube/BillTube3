@@ -1866,9 +1866,9 @@ cubic-bezier(0.4, 0, 1, 1) 0s running;
 }
 
 /* Keep the original compact movie card; reveal the full synopsis on demand. */
-#btfw-movie-header .btfw-movie-actions { position: sticky; bottom: 0; z-index: 3; display: flex; justify-content: center; padding: 6px 10px; border-top: 1px solid rgba(255,255,255,.1); background: var(--btfw-color-surface, #141414); visibility: hidden; }
+#btfw-movie-header .btfw-movie-actions { position: relative; z-index: 3; display: flex; justify-content: center; padding: 6px 10px; border-top: 0; background: transparent; visibility: hidden; }
 #btfw-movie-header.show .btfw-movie-actions { visibility: visible; }
-#btfw-movie-header .btfw-movie-expand { width: auto; flex: 0 0 auto; min-height: 26px; padding: 3px 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; color: var(--btfw-color-text, #eee); background: rgba(255,255,255,.06); font: inherit; font-size: .72rem; line-height: 1.3; cursor: pointer; }
+#btfw-movie-header .btfw-movie-expand { width: auto; flex: 0 0 auto; min-height: 26px; padding: 3px 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; color: var(--btfw-color-text, #eee); background: transparent; font: inherit; font-size: .72rem; line-height: 1.3; cursor: pointer; }
 #btfw-movie-header .btfw-movie-expand:active { transform: scale(.97); }
 #btfw-movie-header .btfw-movie-expand:focus-visible { outline: 2px solid var(--btfw-color-accent, #a99aff); outline-offset: 2px; }
 #btfw-movie-header.is-expanded .btfw-movie-summary { display: block; -webkit-line-clamp: unset; overflow: visible; }
