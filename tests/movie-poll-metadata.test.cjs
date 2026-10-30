@@ -97,12 +97,14 @@ test('sequels, partial words and different subtitles never become the chosen mov
   ]) {
     const { api, requests } = await harness(() => ({ results: [result] }));
     assert.equal(await api.searchMovieOnTMDB(query), null, query);
-    assert.equal(requests.length, 2, query);
-    assert.equal(requests[0].searchParams.get('query'), requests[1].searchParams.get('query'), query);
+    const searches = requests.filter(url => url.pathname === '/3/search/movie');
+    assert.equal(searches.length, 2, query);
+    assert.ok(requests.length <= 3, query);
+    assert.equal(searches[0].searchParams.get('query'), searches[1].searchParams.get('query'), query);
   }
 });
 
-test('the single yearless fallback still requires the correct release year', async () => {
+test('the single yearless fallback still rejects distant remakes', async () => {
   const { api, requests } = await harness((url, count) => ({ results: count === 1 ? [] : [movie(1, 'The Thing', 2011), movie(2, 'The Thing', 1982)] }));
   assert.equal(await api.searchMovieOnTMDB('The Thing (1982)'), 2);
   assert.equal(requests.length, 2);
@@ -153,7 +155,7 @@ test('only the selected movie ID is used to load full poster and cast details', 
 });
 
 
-test('closest-match guesses fix typos and shortened canonical titles using one search', async () => {
+test('closest-match guesses stay bounded after checking aliases and nearby years', async () => {
   for (const [query, result] of [
     ['Haloween (1978)', movie(1, 'Halloween', 1978)],
     ['The Shawshank Redemtion (1994)', movie(2, 'The Shawshank Redemption', 1994)],
@@ -163,7 +165,8 @@ test('closest-match guesses fix typos and shortened canonical titles using one s
   ]) {
     const { api, requests } = await harness(() => ({ results: [result] }));
     assert.equal(await api.searchMovieOnTMDB(query), result.id, query);
-    assert.equal(requests.length, 1, query);
+    assert.ok(requests.filter(url => url.pathname === '/3/search/movie').length <= 2, query);
+    assert.ok(requests.length <= 3, query);
   }
 });
 
@@ -470,4 +473,114 @@ test('poll accepts the same configured, admin, global and DOM API key sources as
     assert.equal(await h.api.searchMovieOnTMDB('Alien (1979)'), 42);
     assert.equal(h.requests[0].searchParams.get('api_key'), 'supported-key');
   }
+});
+
+
+const reportedMovies = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/poll-tmdb-reported-titles.json'), 'utf8'));
+for (const regression of reportedMovies.cases) {
+  test(`live-response regression: ${regression.input} selects the correct movie and poster`, async () => {
+    const h = await harness(url => url.pathname === '/3/search/movie'
+      ? { results: regression.results }
+      : reportedMovies.details[url.pathname.split('/').at(-1)] || { response: { ok: false, status: 404 } });
+    const id = await h.api.searchMovieOnTMDB(regression.input);
+    assert.equal(id, regression.expectedId);
+    const details = await h.api.fetchMovieDetails(id);
+    const expected = reportedMovies.details[String(regression.expectedId)];
+    assert.equal(expected.original_language, 'en', 'the intended record must be an English-language film');
+    assert.ok(details.genres.some(genre => genre.id === 27), 'the selected film must include the Horror genre');
+    assert.equal(details.title, expected.title);
+    assert.equal(details.poster, `https://image.tmdb.org/t/p/w500${expected.poster_path}`);
+    assert.equal(details.director, expected.credits.crew[0].name);
+    assert.equal(h.requests.filter(url => url.pathname === '/3/search/movie').length, 1);
+    assert.ok(h.requests.length <= 3, 'ordinary alias/year cases must not cause a search storm');
+    const coldCount = h.requests.length;
+    assert.equal(await h.api.searchMovieOnTMDB(regression.input), regression.expectedId);
+    await h.api.fetchMovieDetails(regression.expectedId);
+    assert.equal(h.requests.length, coldCount, 'aliases, release dates and displayed details share the session cache');
+  });
+}
+
+test('the requested year wins over previous/following years when titles are equally strong', async () => {
+  const h = await harness();
+  const results = [movie(1, 'Example Movie', 1982), movie(2, 'Example Movie', 1984), movie(3, 'Example Movie', 1983)];
+  assert.equal(h.api.findBestMatch('Example Movie', results, 1983).id, 3);
+  assert.equal(h.api.findBestMatch('Example Movie', results.slice(0, 2), 1983).id, 1);
+  assert.equal(h.api.findBestMatch('Example Movie', [movie(4, 'Example Movie', 1981)], 1983), null);
+});
+
+test('an exact title one year away outranks a loose guess in the supplied year', async () => {
+  const h = await harness();
+  const results = [movie(1, 'The Nest of Wasps', 1987), movie(2, 'The Nest', 1988)];
+  assert.equal(h.api.findBestMatch('The Nest', results, 1987, true).id, 2);
+});
+
+test('the yearless fallback checks both adjacent years before making a title guess', async () => {
+  for (const adjacent of [1986, 1988]) {
+    const h = await harness(url => url.pathname === '/3/search/movie'
+      ? { results: url.searchParams.has('year') ? [] : [movie(1, 'The Nest', 2020), movie(2, 'The Nest', adjacent)] }
+      : { response: { ok: false, status: 404 } });
+    assert.equal(await h.api.searchMovieOnTMDB('The Nest 1987'), 2);
+    assert.equal(h.requests.length, 2);
+  }
+});
+
+test('a confirmed regional year fixes Mortuary without preferring a different same-named movie', async () => {
+  const h = await harness();
+  const american = reportedMovies.details['44859'], indian = reportedMovies.details['1264828'];
+  assert.equal(h.api.findBestMatch('Mortuary', [american, indian], 1983).id, 44859);
+  assert.equal(h.api.findBestMatch('Mortuary', [indian, american], 1983).id, 44859, 'API ordering must not select the unrelated Malayalam film');
+  const oldRerelease = { ...movie(3, 'Mortuary', 1970), release_dates: american.release_dates };
+  assert.equal(h.api.findBestMatch('Mortuary', [oldRerelease], 1983), null);
+});
+
+test('verified alternative names work without guessing unrelated canonical titles', async () => {
+  const h = await harness(url => url.pathname === '/3/search/movie'
+    ? { results: [movie(85184, 'Nightmares', 1980)] }
+    : reportedMovies.details['85184']);
+  assert.equal(await h.api.searchMovieOnTMDB('Stage Fright'), 85184);
+  assert.equal(h.requests.length, 2);
+  assert.equal(h.api.findBestMatch('Different Film', [reportedMovies.details['85184']], 1980, true), null);
+});
+
+test('alias inspection is bounded to three candidates even when a search returns many similar-year films', async () => {
+  const h = await harness(url => url.pathname === '/3/search/movie'
+    ? { results: Array.from({ length: 20 }, (_, index) => movie(index + 1, `Unrelated Film ${index}`, 1980)) }
+    : { response: { ok: false, status: 404 } });
+  assert.equal(await h.api.searchMovieOnTMDB('Stage Fright 1980'), null);
+  assert.equal(h.requests.filter(url => url.pathname === '/3/search/movie').length, 2);
+  assert.equal(h.requests.filter(url => url.pathname !== '/3/search/movie').length, 3);
+});
+
+
+test('all five reported titles render their intended posters and details without error placeholders', async () => {
+  const dom = pollDocument(reportedMovies.cases.map(item => item.input));
+  const h = await harness(url => url.pathname === '/3/search/movie'
+    ? { results: reportedMovies.cases.find(item => item.query === url.searchParams.get('query'))?.results || [] }
+    : reportedMovies.details[url.pathname.split('/').at(-1)] || { response: { ok: false, status: 404 } }, 'test-key', dom.document);
+  await h.api.enhance();
+  await h.runTimers(0);
+  for (let i = 0; i < dom.rows.length; i++) {
+    const { row } = dom.rows[i], regression = reportedMovies.cases[i];
+    const details = reportedMovies.details[String(regression.expectedId)];
+    assert.equal(row.querySelectorAll('.error-placeholder').length, 0, regression.input);
+    assert.equal(row.querySelectorAll('.loading-spinner').length, 0, regression.input);
+    assert.equal(row.querySelectorAll('.movie-poster-container').length, 1, regression.input);
+    assert.equal(row.querySelector('.movie-poster-container').children[0].src, `https://image.tmdb.org/t/p/w500${details.poster_path}`, regression.input);
+    assert.ok(dom.rows[i].text.textContent.startsWith(details.title), regression.input);
+  }
+  assert.equal(dom.events.length, 5);
+  assert.ok(h.requests.filter(url => url.pathname === '/3/search/movie').length <= 5);
+  assert.ok(h.requests.length <= 11, 'five cards should share alias/details work and need only one extra ambiguity check');
+});
+
+
+test('reported English-horror expectations do not restrict other languages or genres', async () => {
+  const frenchComedy = { ...movie(42, 'Amélie', 2001), original_language: 'fr',
+    genres: [{ id: 35, name: 'Comedy' }], poster_path: '/amelie.jpg' };
+  const h = await harness(url => url.pathname === '/3/search/movie' ? { results: [frenchComedy] } : frenchComedy);
+  assert.equal(await h.api.searchMovieOnTMDB('Amelie 2001'), 42);
+  const details = await h.api.fetchMovieDetails(42);
+  assert.equal(details.title, 'Amélie');
+  assert.equal(details.genres[0].name, 'Comedy');
+  assert.equal(details.poster, 'https://image.tmdb.org/t/p/w500/amelie.jpg');
 });

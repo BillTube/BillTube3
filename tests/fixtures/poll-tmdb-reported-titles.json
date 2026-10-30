@@ -1,0 +1,954 @@
+{
+  "source": "Sanitized live TMDB responses captured 2026-10-30; no API credentials.",
+  "cases": [
+    {
+      "input": "Witchboard 2 The Devils Doorway 1993",
+      "query": "Witchboard 2 The Devils Doorway",
+      "expectedId": 40251,
+      "results": [
+        {
+          "id": 40251,
+          "title": "Witchboard 2",
+          "original_title": "Witchboard 2",
+          "release_date": "1993-07-28",
+          "original_language": "en",
+          "vote_count": 70,
+          "vote_average": 4.9,
+          "popularity": 2.295,
+          "poster_path": "/apQdrG3dYseOFsLTatijYHQtZQS.jpg",
+          "overview": "A young woman starts receiving messages through a Ouija board, claiming to be from the former occupant of her apartment."
+        }
+      ]
+    },
+    {
+      "input": "Stage Fright 1980",
+      "query": "Stage Fright",
+      "expectedId": 85184,
+      "results": [
+        {
+          "id": 85184,
+          "title": "Nightmares",
+          "original_title": "Nightmares",
+          "release_date": "1980-10-30",
+          "original_language": "en",
+          "vote_count": 28,
+          "vote_average": 5.1,
+          "popularity": 1.2517,
+          "poster_path": "/434R1OAMAFX2r6PTcdTgv0Gq79i.jpg",
+          "overview": "A little girl named Cathy tries to keep her mother from making out with a man while driving one day, and she inadvertently causes her mother's death in the car crash. 16 years later, Cathy has changed her name to Helen and has become a psychotic actress. Things are going fine until horrible things starts to happened with the cast of her new play."
+        }
+      ]
+    },
+    {
+      "input": "Doom Asylum 1987",
+      "query": "Doom Asylum",
+      "expectedId": 67729,
+      "results": [
+        {
+          "id": 67729,
+          "title": "Doom Asylum",
+          "original_title": "Doom Asylum",
+          "release_date": "1988-03-02",
+          "original_language": "en",
+          "vote_count": 88,
+          "vote_average": 5.2,
+          "popularity": 1.7616,
+          "poster_path": "/3JF6jxFpg7vJftePtIBy42F8p0v.jpg",
+          "overview": "A demented former lawyer uses autopsy equipment to kill off the teenagers who trespass on the long-abandoned asylum he inhabits. Filmed on location in an actual abandoned asylum."
+        }
+      ]
+    },
+    {
+      "input": "Mortuary 1983",
+      "query": "Mortuary",
+      "expectedId": 44859,
+      "results": [
+        {
+          "id": 44859,
+          "title": "Mortuary",
+          "original_title": "Mortuary",
+          "release_date": "1982-05-07",
+          "original_language": "en",
+          "vote_count": 91,
+          "vote_average": 5.2,
+          "popularity": 3.9954,
+          "poster_path": "/lFjv4XTWRW1Q84A42ACzkQgBIDR.jpg",
+          "overview": "A young woman investigates the seemingly accidental death of her father, revealing many unsettling secrets and putting her in mortal danger."
+        },
+        {
+          "id": 1264828,
+          "title": "Mortuary",
+          "original_title": "Mortuary",
+          "release_date": "1983-08-12",
+          "original_language": "ml",
+          "vote_count": 2,
+          "vote_average": 8,
+          "popularity": 2.582,
+          "poster_path": "/9nuawgCJ81QitKg4FG3Zv6aS3O4.jpg",
+          "overview": "After a college dare goes wrong, the investigating officer arrests his son and locks horns with his estranged wife while trying to find the truth."
+        }
+      ]
+    },
+    {
+      "input": "The Nest 1987",
+      "query": "The Nest",
+      "expectedId": 87710,
+      "results": [
+        {
+          "id": 510,
+          "title": "One Flew Over the Cuckoo's Nest",
+          "original_title": "One Flew Over the Cuckoo's Nest",
+          "release_date": "1975-11-19",
+          "original_language": "en",
+          "vote_count": 11920,
+          "vote_average": 8.4,
+          "popularity": 18.5336,
+          "poster_path": "/kjWsMh72V6d8KRLV4EOoSJLT1H7.jpg",
+          "overview": "A petty criminal fakes insanity to serve his sentence in a mental ward rather than prison. He soon finds himself as a leader to the other patients—and an enemy to the cruel, domineering nurse who runs the ward."
+        },
+        {
+          "id": 87710,
+          "title": "The Nest",
+          "original_title": "The Nest",
+          "release_date": "1988-05-13",
+          "original_language": "en",
+          "vote_count": 101,
+          "vote_average": 5.2,
+          "popularity": 2.1034,
+          "poster_path": "/suRyQyDDRNPErMM53dYb7ynPiwk.jpg",
+          "overview": "Horrifying shocker as a biological experiment goes haywire when meat-eating mutant roaches invade an island community, terrorizing a peaceful New England fishing village and hideously butchering its citizens."
+        },
+        {
+          "id": 34416,
+          "title": "The Nest of Wasps",
+          "original_title": "Cuibul de viespi",
+          "release_date": "1987-06-08",
+          "original_language": "ro",
+          "vote_count": 11,
+          "vote_average": 8.1,
+          "popularity": 1.9097,
+          "poster_path": "/3PDpuRuFauCTIAKhYB3qyRwlkba.jpg",
+          "overview": "In 1936, a time when Bucharest was known as the \"Paris of the East\", the three Duduleanu sisters, from a family of prosperous merchants, rule their clan with an iron fist. Young journalist Mircea Aldea joins the clan by marrying their daughter, but the union is short-lived."
+        },
+        {
+          "id": 896086,
+          "title": "The Capercaillie's Nest",
+          "original_title": "Гнездо глухаря",
+          "release_date": "1987-11-23",
+          "original_language": "ru",
+          "vote_count": 0,
+          "vote_average": 0,
+          "popularity": 1.8954,
+          "poster_path": "/62EX1VCmFdShFoE2J5m9wZakuK4.jpg",
+          "overview": "The action takes place in the family of an industrious and responsible worker, Sudakov. He is smart, practical, knows how to maintain useful connections, and, of course, is confident in the well-being of his family. However, it turns out that not everything is well in the \"capercaillie’s nest\"…"
+        },
+        {
+          "id": 708,
+          "title": "The Living Daylights",
+          "original_title": "The Living Daylights",
+          "release_date": "1987-06-29",
+          "original_language": "en",
+          "vote_count": 2132,
+          "vote_average": 6.6,
+          "popularity": 9.3525,
+          "poster_path": "/1oRlmWX9hewpn2B44wawBjHd7dx.jpg",
+          "overview": "After a defecting Russian general reveals a plot to assassinate foreign spies, James Bond is assigned a secret mission to dispatch the new head of the KGB to prevent an escalation of tensions between the Soviet Union and the West."
+        },
+        {
+          "id": 203042,
+          "title": "The Vanishing World",
+          "original_title": "Svet koji nestaje",
+          "release_date": "1987-12-30",
+          "original_language": "sh",
+          "vote_count": 7,
+          "vote_average": 9,
+          "popularity": 0.9086,
+          "poster_path": "/tXw4S7MMVe25QPxmZHeKQKsYbgU.jpg",
+          "overview": "It is a love story. When the twelve-breasted boar's sow farrows thirteen piglets, not having enough \"sucking space\" for the thirteenth, she rejects it and for the most part such piglets die. This drama from the world of animals paints the harshness of nature to the unwanted \"thirteenth piglet\", which we named Gile Baksuz (Gile Bad Luck). The rejected piglet is taken and given shelter by another species - a roe and her fawn..."
+        },
+        {
+          "id": 12764,
+          "title": "Missing in Action 2: The Beginning",
+          "original_title": "Missing in Action 2: The Beginning",
+          "release_date": "1985-03-01",
+          "original_language": "en",
+          "vote_count": 355,
+          "vote_average": 5.81,
+          "popularity": 3.8171,
+          "poster_path": "/vOgiL2KQYyTHJ225lT5QB5B9kO0.jpg",
+          "overview": "Prequel to the first Missing In Action, set in the early 1980s it shows the capture of Colonel Braddock during the Vietnam war in the 1970s, and his captivity with other American POWs in a brutal prison camp, and his plans to escape."
+        }
+      ]
+    }
+  ],
+  "details": {
+    "40251": {
+      "id": 40251,
+      "title": "Witchboard 2",
+      "original_title": "Witchboard 2",
+      "release_date": "1993-07-28",
+      "original_language": "en",
+      "vote_count": 70,
+      "vote_average": 4.9,
+      "popularity": 2.295,
+      "poster_path": "/apQdrG3dYseOFsLTatijYHQtZQS.jpg",
+      "overview": "A young woman starts receiving messages through a Ouija board, claiming to be from the former occupant of her apartment.",
+      "alternative_titles": {
+        "titles": [
+          {
+            "iso_3166_1": "GB",
+            "title": "Witchboard: The Return",
+            "type": "Alternate"
+          },
+          {
+            "iso_3166_1": "MX",
+            "title": "El pasillo del diablo",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "CN",
+            "title": "猛鬼上床",
+            "type": "VHS title"
+          },
+          {
+            "iso_3166_1": "US",
+            "title": "Witchboard 2: The Devil's Doorway",
+            "type": "promotional title"
+          }
+        ]
+      },
+      "release_dates": {
+        "results": [
+          {
+            "iso_3166_1": "DE",
+            "release_dates": [
+              {
+                "certification": "16",
+                "descriptors": [],
+                "iso_639_1": "de",
+                "note": "",
+                "release_date": "1993-07-28T00:00:00.000Z",
+                "type": 3
+              }
+            ]
+          },
+          {
+            "iso_3166_1": "US",
+            "release_dates": [
+              {
+                "certification": "R",
+                "descriptors": [],
+                "iso_639_1": "",
+                "note": "",
+                "release_date": "1993-09-10T00:00:00.000Z",
+                "type": 2
+              }
+            ]
+          }
+        ]
+      },
+      "genres": [
+        {
+          "id": 9648,
+          "name": "Mystery"
+        },
+        {
+          "id": 27,
+          "name": "Horror"
+        }
+      ],
+      "runtime": 98,
+      "credits": {
+        "crew": [
+          {
+            "adult": false,
+            "gender": 2,
+            "id": 82579,
+            "known_for_department": "Directing",
+            "name": "Kevin Tenney",
+            "original_name": "Kevin Tenney",
+            "popularity": 0.8503,
+            "profile_path": "/r4ryNTNtrxXuXkpFHZZrrRfYO3O.jpg",
+            "credit_id": "53b5fe6fc3a3685eba00168d",
+            "department": "Directing",
+            "job": "Director"
+          }
+        ],
+        "cast": [
+          {
+            "adult": false,
+            "gender": 1,
+            "id": 41273,
+            "known_for_department": "Acting",
+            "name": "Ami Dolenz",
+            "original_name": "Ami Dolenz",
+            "popularity": 1.2027,
+            "profile_path": "/srES3Jh2z04nEVCiycnUqekKxBa.jpg",
+            "cast_id": 1,
+            "character": "Paige Benedict",
+            "credit_id": "52fe4589c3a36847f80cce75",
+            "order": 0
+          },
+          {
+            "adult": false,
+            "gender": 2,
+            "id": 158733,
+            "known_for_department": "Acting",
+            "name": "Timothy Gibbs",
+            "original_name": "Timothy Gibbs",
+            "popularity": 1.1081,
+            "profile_path": "/dYs785SUMCJegAtxRuS4ff84Qfz.jpg",
+            "cast_id": 2,
+            "character": "Mitch",
+            "credit_id": "52fe4589c3a36847f80cce79",
+            "order": 1
+          }
+        ]
+      }
+    },
+    "85184": {
+      "id": 85184,
+      "title": "Nightmares",
+      "original_title": "Nightmares",
+      "release_date": "1980-10-30",
+      "original_language": "en",
+      "vote_count": 28,
+      "vote_average": 5.1,
+      "popularity": 1.2517,
+      "poster_path": "/434R1OAMAFX2r6PTcdTgv0Gq79i.jpg",
+      "overview": "A little girl named Cathy tries to keep her mother from making out with a man while driving one day, and she inadvertently causes her mother's death in the car crash. 16 years later, Cathy has changed her name to Helen and has become a psychotic actress. Things are going fine until horrible things starts to happened with the cast of her new play.",
+      "alternative_titles": {
+        "titles": [
+          {
+            "iso_3166_1": "AR",
+            "title": "Terror a medianoche",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "GR",
+            "title": "Kathreftis vammenos me aima!",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "MX",
+            "title": "Pesadillas",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "US",
+            "title": "Stage Fright",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "DE",
+            "title": "Nightmare on the Street",
+            "type": ""
+          }
+        ]
+      },
+      "release_dates": {
+        "results": [
+          {
+            "iso_3166_1": "AU",
+            "release_dates": [
+              {
+                "certification": "",
+                "descriptors": [],
+                "iso_639_1": "",
+                "note": "",
+                "release_date": "1980-10-30T00:00:00.000Z",
+                "type": 3
+              }
+            ]
+          }
+        ]
+      },
+      "genres": [
+        {
+          "id": 27,
+          "name": "Horror"
+        },
+        {
+          "id": 53,
+          "name": "Thriller"
+        }
+      ],
+      "runtime": 83,
+      "credits": {
+        "crew": [
+          {
+            "adult": false,
+            "gender": 2,
+            "id": 223520,
+            "known_for_department": "Directing",
+            "name": "John D. Lamond",
+            "original_name": "John D. Lamond",
+            "popularity": 0.4524,
+            "profile_path": "/bzab43UIInTLBzo9N7UqrYoQMYW.jpg",
+            "credit_id": "52fe49299251416c910a49d1",
+            "department": "Directing",
+            "job": "Director"
+          }
+        ],
+        "cast": [
+          {
+            "adult": false,
+            "gender": 1,
+            "id": 100619,
+            "known_for_department": "Acting",
+            "name": "Jenny Neumann",
+            "original_name": "Jenny Neumann",
+            "popularity": 0.6972,
+            "profile_path": "/dgIWu5m1tGvMj4Cy4iwFDWxfhn5.jpg",
+            "cast_id": 2,
+            "character": "Helen Selleck",
+            "credit_id": "52fe49299251416c910a49d5",
+            "order": 0
+          },
+          {
+            "adult": false,
+            "gender": 2,
+            "id": 75170,
+            "known_for_department": "Acting",
+            "name": "Gary Sweet",
+            "original_name": "Gary Sweet",
+            "popularity": 1.1393,
+            "profile_path": "/gbU6LpVgAwh6ez3h6QlkOLMGNmj.jpg",
+            "cast_id": 3,
+            "character": "Terry Besanko",
+            "credit_id": "52fe49299251416c910a49d9",
+            "order": 1
+          }
+        ]
+      }
+    },
+    "67729": {
+      "id": 67729,
+      "title": "Doom Asylum",
+      "original_title": "Doom Asylum",
+      "release_date": "1988-03-02",
+      "original_language": "en",
+      "vote_count": 88,
+      "vote_average": 5.2,
+      "popularity": 1.7616,
+      "poster_path": "/3JF6jxFpg7vJftePtIBy42F8p0v.jpg",
+      "overview": "A demented former lawyer uses autopsy equipment to kill off the teenagers who trespass on the long-abandoned asylum he inhabits. Filmed on location in an actual abandoned asylum.",
+      "alternative_titles": {
+        "titles": [
+          {
+            "iso_3166_1": "RU",
+            "title": "Резня в психушке",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "PL",
+            "title": "Schronienie przeznaczenia",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "MX",
+            "title": "El manicomio",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "IT",
+            "title": "La casetta degli orrori",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "BG",
+            "title": "Изоставената болница",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "JP",
+            "title": "マッド・アイ／悪魔のホスピタル",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "DE",
+            "title": "Todesparty 4 – Doom Asylum",
+            "type": ""
+          }
+        ]
+      },
+      "release_dates": {
+        "results": [
+          {
+            "iso_3166_1": "DE",
+            "release_dates": [
+              {
+                "certification": "18",
+                "descriptors": [],
+                "iso_639_1": "de",
+                "note": "DVD/BluRay",
+                "release_date": "2026-01-31T00:00:00.000Z",
+                "type": 5
+              }
+            ]
+          },
+          {
+            "iso_3166_1": "IT",
+            "release_dates": [
+              {
+                "certification": "",
+                "descriptors": [],
+                "iso_639_1": "",
+                "note": "MIFED",
+                "release_date": "1987-10-28T00:00:00.000Z",
+                "type": 1
+              }
+            ]
+          },
+          {
+            "iso_3166_1": "US",
+            "release_dates": [
+              {
+                "certification": "R",
+                "descriptors": [],
+                "iso_639_1": "en",
+                "note": "",
+                "release_date": "1988-03-02T00:00:00.000Z",
+                "type": 3
+              }
+            ]
+          }
+        ]
+      },
+      "genres": [
+        {
+          "id": 27,
+          "name": "Horror"
+        },
+        {
+          "id": 35,
+          "name": "Comedy"
+        }
+      ],
+      "runtime": 79,
+      "credits": {
+        "crew": [
+          {
+            "adult": false,
+            "gender": 2,
+            "id": 39167,
+            "known_for_department": "Directing",
+            "name": "Richard Friedman",
+            "original_name": "Richard Friedman",
+            "popularity": 0.8462,
+            "profile_path": null,
+            "credit_id": "52fe4774c3a368484e0c7c97",
+            "department": "Directing",
+            "job": "Director"
+          }
+        ],
+        "cast": [
+          {
+            "adult": false,
+            "gender": 1,
+            "id": 935902,
+            "known_for_department": "Acting",
+            "name": "Patty Mullen",
+            "original_name": "Patty Mullen",
+            "popularity": 0.9842,
+            "profile_path": "/fLvVWXR98VPU01yzbaHlvbKkIoD.jpg",
+            "cast_id": 2,
+            "character": "Judy LaRue / Kiki LaRue",
+            "credit_id": "52fe4774c3a368484e0c7c9b",
+            "order": 0
+          },
+          {
+            "adult": false,
+            "gender": 1,
+            "id": 52316,
+            "known_for_department": "Acting",
+            "name": "Ruth Collins",
+            "original_name": "Ruth Collins",
+            "popularity": 1.2603,
+            "profile_path": "/cxyA4kWJHjMJE3fyC5o2wwgu3Y2.jpg",
+            "cast_id": 4,
+            "character": "Tina",
+            "credit_id": "57dfae21c3a3680c1f0001b7",
+            "order": 1
+          }
+        ]
+      }
+    },
+    "44859": {
+      "id": 44859,
+      "title": "Mortuary",
+      "original_title": "Mortuary",
+      "release_date": "1982-05-07",
+      "original_language": "en",
+      "vote_count": 91,
+      "vote_average": 5.2,
+      "popularity": 3.9954,
+      "poster_path": "/lFjv4XTWRW1Q84A42ACzkQgBIDR.jpg",
+      "overview": "A young woman investigates the seemingly accidental death of her father, revealing many unsettling secrets and putting her in mortal danger.",
+      "alternative_titles": {
+        "titles": [
+          {
+            "iso_3166_1": "GR",
+            "title": "Ο Επικήδειος",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "GB",
+            "title": "Embalmed",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "DE",
+            "title": "Hall of Death - Die Todeshalle",
+            "type": ""
+          }
+        ]
+      },
+      "release_dates": {
+        "results": [
+          {
+            "iso_3166_1": "US",
+            "release_dates": [
+              {
+                "certification": "",
+                "descriptors": [],
+                "iso_639_1": "",
+                "note": "Los Angeles, California / Premiere",
+                "release_date": "1983-03-18T00:00:00.000Z",
+                "type": 1
+              },
+              {
+                "certification": "R",
+                "descriptors": [],
+                "iso_639_1": "en",
+                "note": "",
+                "release_date": "1983-09-02T00:00:00.000Z",
+                "type": 3
+              },
+              {
+                "certification": "R",
+                "descriptors": [],
+                "iso_639_1": "en",
+                "note": "",
+                "release_date": "1982-05-07T00:00:00.000Z",
+                "type": 3
+              }
+            ]
+          }
+        ]
+      },
+      "genres": [
+        {
+          "id": 27,
+          "name": "Horror"
+        }
+      ],
+      "runtime": 92,
+      "credits": {
+        "crew": [
+          {
+            "adult": false,
+            "gender": 2,
+            "id": 930624,
+            "known_for_department": "Directing",
+            "name": "Howard Avedis",
+            "original_name": "Howard Avedis",
+            "popularity": 1.0283,
+            "profile_path": "/5rj3AtAtqb1vKDDKlitWdQihmZb.jpg",
+            "credit_id": "52fe469fc3a36847f8109123",
+            "department": "Directing",
+            "job": "Director"
+          }
+        ],
+        "cast": [
+          {
+            "adult": false,
+            "gender": 1,
+            "id": 161463,
+            "known_for_department": "Acting",
+            "name": "Mary Elizabeth McDonough",
+            "original_name": "Mary Elizabeth McDonough",
+            "popularity": 1.0232,
+            "profile_path": "/3zFrFPQe8Nqvob6FHzbR5okpBLc.jpg",
+            "cast_id": 5,
+            "character": "Christie Parson",
+            "credit_id": "52fe469fc3a36847f8109135",
+            "order": 0
+          },
+          {
+            "adult": false,
+            "gender": 2,
+            "id": 106757,
+            "known_for_department": "Acting",
+            "name": "David Wallace",
+            "original_name": "David Wallace",
+            "popularity": 0.8054,
+            "profile_path": "/e335X2t4K2ofIMtFDJfMWGdceX0.jpg",
+            "cast_id": 6,
+            "character": "Greg Stevens",
+            "credit_id": "52fe469fc3a36847f8109139",
+            "order": 1
+          }
+        ]
+      }
+    },
+    "1264828": {
+      "id": 1264828,
+      "title": "Mortuary",
+      "original_title": "Mortuary",
+      "release_date": "1983-08-12",
+      "original_language": "ml",
+      "vote_count": 2,
+      "vote_average": 8,
+      "popularity": 2.582,
+      "poster_path": "/9nuawgCJ81QitKg4FG3Zv6aS3O4.jpg",
+      "overview": "After a college dare goes wrong, the investigating officer arrests his son and locks horns with his estranged wife while trying to find the truth.",
+      "alternative_titles": {
+        "titles": []
+      },
+      "release_dates": {
+        "results": [
+          {
+            "iso_3166_1": "IN",
+            "release_dates": [
+              {
+                "certification": "U",
+                "descriptors": [],
+                "iso_639_1": "ml",
+                "note": "",
+                "release_date": "1983-08-12T00:00:00.000Z",
+                "type": 3
+              }
+            ]
+          }
+        ]
+      },
+      "genres": [
+        {
+          "id": 18,
+          "name": "Drama"
+        }
+      ],
+      "runtime": 130,
+      "credits": {
+        "crew": [
+          {
+            "adult": false,
+            "gender": 2,
+            "id": 1490439,
+            "known_for_department": "Directing",
+            "name": "Baby",
+            "original_name": "Baby",
+            "popularity": 0.4079,
+            "profile_path": null,
+            "credit_id": "6602997f0c125501650de0ff",
+            "department": "Directing",
+            "job": "Director"
+          }
+        ],
+        "cast": [
+          {
+            "adult": false,
+            "gender": 2,
+            "id": 1116030,
+            "known_for_department": "Acting",
+            "name": "Prem Nazir",
+            "original_name": "Prem Nazir",
+            "popularity": 1.6707,
+            "profile_path": "/jgHAdpcQqybL3p3lidg7GMJFQ6R.jpg",
+            "cast_id": 6,
+            "character": "DySP Rajashekhara Menon",
+            "credit_id": "66029a88197de4016318b538",
+            "order": 0
+          },
+          {
+            "adult": false,
+            "gender": 2,
+            "id": 584639,
+            "known_for_department": "Acting",
+            "name": "Madhu",
+            "original_name": "Madhu",
+            "popularity": 0.9681,
+            "profile_path": "/LZ5Q93nkROAQtb7XlebwVaD2Dx.jpg",
+            "cast_id": 7,
+            "character": "Adv. Krishnadas",
+            "credit_id": "66029aa61b1f3c017c9d27ff",
+            "order": 1
+          }
+        ]
+      }
+    },
+    "87710": {
+      "id": 87710,
+      "title": "The Nest",
+      "original_title": "The Nest",
+      "release_date": "1988-05-13",
+      "original_language": "en",
+      "vote_count": 101,
+      "vote_average": 5.2,
+      "popularity": 2.1034,
+      "poster_path": "/suRyQyDDRNPErMM53dYb7ynPiwk.jpg",
+      "overview": "Horrifying shocker as a biological experiment goes haywire when meat-eating mutant roaches invade an island community, terrorizing a peaceful New England fishing village and hideously butchering its citizens.",
+      "alternative_titles": {
+        "titles": [
+          {
+            "iso_3166_1": "FR",
+            "title": "Voyage au bout de l'horreur",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "DE",
+            "title": "Das Nest - Brutstätte des Grauens",
+            "type": ""
+          },
+          {
+            "iso_3166_1": "RU",
+            "title": "Гнездо",
+            "type": ""
+          }
+        ]
+      },
+      "release_dates": {
+        "results": [
+          {
+            "iso_3166_1": "DE",
+            "release_dates": [
+              {
+                "certification": "18",
+                "descriptors": [],
+                "iso_639_1": "",
+                "note": "",
+                "release_date": "2026-05-22T00:00:00.000Z",
+                "type": 5
+              }
+            ]
+          },
+          {
+            "iso_3166_1": "GB",
+            "release_dates": [
+              {
+                "certification": "18",
+                "descriptors": [],
+                "iso_639_1": "",
+                "note": "",
+                "release_date": "1988-08-08T00:00:00.000Z",
+                "type": 5
+              }
+            ]
+          },
+          {
+            "iso_3166_1": "JP",
+            "release_dates": [
+              {
+                "certification": "R15+",
+                "descriptors": [],
+                "iso_639_1": "",
+                "note": "",
+                "release_date": "1988-12-03T00:00:00.000Z",
+                "type": 3
+              }
+            ]
+          },
+          {
+            "iso_3166_1": "NL",
+            "release_dates": [
+              {
+                "certification": "16",
+                "descriptors": [
+                  "Fear"
+                ],
+                "iso_639_1": "",
+                "note": "",
+                "release_date": "1988-12-31T00:00:00.000Z",
+                "type": 5
+              }
+            ]
+          },
+          {
+            "iso_3166_1": "US",
+            "release_dates": [
+              {
+                "certification": "",
+                "descriptors": [],
+                "iso_639_1": "en",
+                "note": "Dayton, OH",
+                "release_date": "1987-11-20T00:00:00.000Z",
+                "type": 1
+              },
+              {
+                "certification": "R",
+                "descriptors": [],
+                "iso_639_1": "",
+                "note": "",
+                "release_date": "1988-05-13T00:00:00.000Z",
+                "type": 3
+              }
+            ]
+          }
+        ]
+      },
+      "genres": [
+        {
+          "id": 53,
+          "name": "Thriller"
+        },
+        {
+          "id": 878,
+          "name": "Science Fiction"
+        },
+        {
+          "id": 27,
+          "name": "Horror"
+        }
+      ],
+      "runtime": 89,
+      "credits": {
+        "crew": [
+          {
+            "adult": false,
+            "gender": 2,
+            "id": 68913,
+            "known_for_department": "Directing",
+            "name": "Terence H. Winkless",
+            "original_name": "Terence H. Winkless",
+            "popularity": 1.8586,
+            "profile_path": "/vveeQwkV7ZmirDWwE9S0Zd4Cdb1.jpg",
+            "credit_id": "52fe49d49251416c910ba0f1",
+            "department": "Directing",
+            "job": "Director"
+          }
+        ],
+        "cast": [
+          {
+            "adult": false,
+            "gender": 2,
+            "id": 16035,
+            "known_for_department": "Acting",
+            "name": "Robert Lansing",
+            "original_name": "Robert Lansing",
+            "popularity": 1.7752,
+            "profile_path": "/h1ikQw9KaJ7QNT3WRiPsn4JtLK0.jpg",
+            "cast_id": 2,
+            "character": "Elias Johnson",
+            "credit_id": "52fe49d49251416c910ba0f5",
+            "order": 0
+          },
+          {
+            "adult": false,
+            "gender": 1,
+            "id": 28246,
+            "known_for_department": "Acting",
+            "name": "Lisa Langlois",
+            "original_name": "Lisa Langlois",
+            "popularity": 1.1199,
+            "profile_path": "/dOqzxrS31BINarvkx4FQMYYaIW3.jpg",
+            "cast_id": 3,
+            "character": "Elizabeth Johnson",
+            "credit_id": "52fe49d49251416c910ba0f9",
+            "order": 1
+          }
+        ]
+      }
+    }
+  }
+}

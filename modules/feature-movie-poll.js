@@ -616,41 +616,73 @@
         return 1 - row[right.length] / Math.max(left.length, right.length);
       }
 
-      function findBestMatch(title, results, year, allowGuess = false) {
-        const wanted = normalizeTitle(title);
-        if (!wanted || !Array.isArray(results)) return null;
-        const compact = value => value.replace(/ /g, '');
-        const withoutArticle = value => value.replace(/^(?:the|a|an)\s+/, '');
-        const eligible = results.slice(0, 20).filter(movie => Number.isSafeInteger(movie?.id) && movie.id > 0
-          && (!year || Number(String(movie.release_date || '').slice(0, 4)) === Number(year)));
-        let best = null, bestScore = 0;
-        for (const movie of eligible) {
-          let score = 0;
-          for (const name of [movie.title, movie.original_title]) {
-            const candidate = normalizeTitle(name);
-            if (candidate && compact(candidate) === compact(wanted)) score = Math.max(score, 2);
-            else if (candidate && compact(withoutArticle(candidate)) === compact(withoutArticle(wanted))) score = Math.max(score, 1);
-          }
-          if (score > bestScore) { best = movie; bestScore = score; }
+      function movieTitles(movie) {
+        const alternatives = Array.isArray(movie.alternative_titles?.titles) ? movie.alternative_titles.titles : [];
+        return [movie.title, movie.original_title, ...alternatives.slice(0, 100).map(item => item?.title)]
+          .filter(name => typeof name === 'string' && name.trim());
+      }
+
+      function titleMatchScore(title, movie, allowGuess = false) {
+        const wanted = normalizeTitle(title), wantedCompact = compactTitle(title);
+        const names = movieTitles(movie);
+        let score = 0;
+        for (const name of names) {
+          const candidate = normalizeTitle(name);
+          if (candidate.replace(/ /g, '') === wanted.replace(/ /g, '')) return 2;
+          if (compactTitle(candidate) === wantedCompact) score = Math.max(score, 1);
         }
-        if (best || !allowGuess) return best;
-        // Like the hover card, choose from the focused response rather than
-        // issuing speculative title variations. Protect short names and sequels.
-        const wantedCompact = compactTitle(title), numbers = sequelNumbers(title);
-        bestScore = year ? 0.78 : 0.88;
-        for (const movie of eligible) {
-          for (const name of [movie.title, movie.original_title]) {
-            if (typeof name !== 'string' || sequelNumbers(name) !== numbers) continue;
-            let score = titleSimilarity(wantedCompact, compactTitle(name));
-            // A shortened title such as "Halloween 5 (1989)" can identify a
-            // longer canonical title, provided its base and year both agree.
-            if (year && !title.includes(':') && name.includes(':') && compactTitle(name.split(':')[0]) === wantedCompact) score = Math.max(score, 0.92);
-            // Preserve TMDB relevance order when two guesses score equally.
-            if (score > bestScore) { best = movie; bestScore = score; }
+        if (score || !allowGuess) return score;
+        const numbers = sequelNumbers(title);
+        for (const name of names) {
+          if (sequelNumbers(name) !== numbers) continue;
+          let similarity = titleSimilarity(wantedCompact, compactTitle(name));
+          if (!title.includes(':') && name.includes(':') && compactTitle(name.split(':')[0]) === wantedCompact) similarity = Math.max(similarity, 0.92);
+          score = Math.max(score, similarity);
+        }
+        return score;
+      }
+
+      function movieYearDistance(movie, year) {
+        if (!year) return 0;
+        const primary = Number(String(movie.release_date || '').slice(0, 4));
+        const distance = primary ? Math.abs(primary - Number(year)) : Infinity;
+        // Check the previous/following year before considering a title guess.
+        // A distant re-release must not turn an old film into a recent remake.
+        if (distance > 1) return Infinity;
+        const releases = Array.isArray(movie.release_dates?.results) ? movie.release_dates.results : [];
+        const regionalMatch = releases.some(region => Array.isArray(region?.release_dates)
+          && region.release_dates.some(release => Number(String(release?.release_date || '').slice(0, 4)) === Number(year)));
+        return regionalMatch ? 0 : distance;
+      }
+
+      function eligibleSearchResults(results, year) {
+        return (Array.isArray(results) ? results : []).filter(movie => Number.isSafeInteger(movie?.id) && movie.id > 0
+          && Number.isFinite(movieYearDistance(movie, year))).slice(0, 20);
+      }
+
+      function findBestMatch(title, results, year, allowGuess = false) {
+        if (!normalizeTitle(title)) return null;
+        let best = null, bestScore = 0, bestYear = Infinity, bestVotes = 0;
+        for (const movie of eligibleSearchResults(results, year)) {
+          const score = titleMatchScore(title, movie, allowGuess);
+          if (!score || (score < 1 && score <= (year ? 0.78 : 0.88))) continue;
+          const distance = movieYearDistance(movie, year);
+          const strong = score >= 1, bestStrong = bestScore >= 1;
+          // Confirmed names/aliases outrank guesses. Within each group, prefer
+          // the requested release year, then +/- one year, then title strength.
+          // For otherwise identical confirmed titles/years, prefer the more
+          // established record. Equal support retains TMDB relevance order.
+          const votes = Number.isFinite(movie.vote_count) ? movie.vote_count : 0;
+          if (!best || (strong && !bestStrong) || (strong === bestStrong
+            && (distance < bestYear || (distance === bestYear && (score > bestScore
+              || (strong && score === bestScore && votes > bestVotes)))))) {
+            best = movie; bestScore = score; bestYear = distance; bestVotes = votes;
           }
         }
         return best;
       }
+
+      const MOVIE_DETAILS_PARAMS = { append_to_response: 'credits,alternative_titles,release_dates' };
 
       // Cache API responses in memory only. Coalesce duplicate requests and
       // bound memory and traffic; this cache never writes credentials to storage.
@@ -718,21 +750,37 @@
         const query = parsed.title;
         const targetYear = year || parsed.year;
         if (!getTmdbKey() || !query) return null;
-        // Prefer an exact match, then a reasonable guess in the same response.
-        // Only an empty/unusable response needs the single yearless fallback.
+        const results = new Map(), inspected = new Set();
         const filters = targetYear ? [targetYear, null] : [null];
         for (const filter of filters) {
           const data = await requestTMDB('search/movie', { query, ...(filter ? { year: filter } : {}) });
-          if (!data) return null;
-          const match = findBestMatch(query, data.results, targetYear, true);
+          if (!data) break;
+          for (const movie of eligibleSearchResults(data.results, targetYear)) {
+            if (!results.has(movie.id)) results.set(movie.id, movie);
+          }
+          const candidates = Array.from(results.values());
+          const named = candidates.filter(movie => titleMatchScore(query, movie) >= 1);
+          // Search matches alternative titles that its result payload omits.
+          // Read those aliases only when needed, or regional dates when names
+          // collide. These are the same cached details the card will display.
+          const inspect = (named.length ? (named.length > 1 ? named : []) : candidates)
+            .filter(movie => !inspected.has(movie.id)).slice(0, Math.max(0, 3 - inspected.size));
+          await Promise.all(inspect.map(async movie => {
+            inspected.add(movie.id);
+            const details = await requestTMDB(`movie/${movie.id}`, MOVIE_DETAILS_PARAMS);
+            if (details) results.set(movie.id, { ...movie, alternative_titles: details.alternative_titles, release_dates: details.release_dates });
+          }));
+          const match = findBestMatch(query, Array.from(results.values()), targetYear);
           if (match) return match.id;
+          // With a supplied year, inspect nearby-year results before guessing.
+          // No speculative title variations or unbounded searches.
         }
-        return null;
+        return findBestMatch(query, Array.from(results.values()), targetYear, true)?.id || null;
       }
 
       async function fetchMovieDetails(movieId) {
         if (!Number.isSafeInteger(movieId) || movieId <= 0) return null;
-        const data = await requestTMDB(`movie/${movieId}`, { append_to_response: 'credits' });
+        const data = await requestTMDB(`movie/${movieId}`, MOVIE_DETAILS_PARAMS);
         if (!data) return null;
         const crew = Array.isArray(data.credits?.crew) ? data.credits.crew : [];
         const director = crew.find(person => person?.job === 'Director' && typeof person.name === 'string');
