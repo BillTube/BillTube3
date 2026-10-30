@@ -14,9 +14,16 @@
   // Use the channel TMDB key from Theme Settings (never a hardcoded key).
   function getTmdbKey() {
     try {
-      var c = window.BTFW_CONFIG || {};
-      return (c.integrations && c.integrations.tmdb && c.integrations.tmdb.apiKey) || c.tmdbKey || (c.tmdb && c.tmdb.apiKey) || "";
-    } catch (e) { return ""; }
+      const cfg = window.BTFW_CONFIG || {}, admin = window.BTFW_THEME_ADMIN || {};
+      const key = value => typeof value === 'string' ? value.trim() : '';
+      let stored = '';
+      try { stored = key(localStorage.getItem('btfw:tmdb:key')); } catch (_) {}
+      // Match the hover card's supported settings and legacy key sources.
+      return key(admin.integrations?.tmdb?.apiKey) || key(cfg.integrations?.tmdb?.apiKey)
+        || key(cfg.tmdb?.apiKey) || key(cfg.tmdbKey) || stored
+        || key(window.TMDB_API_KEY) || key(window.BTFW_TMDB_KEY) || key(window.tmdb_key)
+        || key(document.body?.dataset?.tmdbKey);
+    } catch (_) { return ''; }
   }
 
   // Optional feature — controlled by the admin-only "Movie poll" toggle in
@@ -532,304 +539,223 @@
         document.head.appendChild(style);
       }
 
+      // Follow the hover card's focused title search. Release labels belong to
+      // the file, not the movie name; keep subtitles and sequel numbers intact.
+      const editionLabel = String.raw`(?:director['’]?s?\s+cut|(?:extended|unrated|uncut|theatrical|special|anniversary|collector['’]?s?)(?:\s+(?:cut|edition|version))?|remaster(?:ed)?|restored)`;
+      const technicalLabel = String.raw`(?:\d{3,4}p|[48]k|uhd|hdr10?\+?|blu[ .-]?ray|brrip|bdrip|web[ .-]?(?:dl|rip)|hdtv|dvd(?:rip)?|[xh][ .-]?26[45]|hevc)`;
+      const releaseLabels = new RegExp(`\\b(?:${editionLabel}|${technicalLabel})\\b`, 'gi');
+      const trailingLabel = new RegExp(`(?:^|[\\s._:|–—-]+)(?:${editionLabel}|${technicalLabel})$`, 'i');
+
+      function cleanMovieTitle(value) {
+        let title = String(value || '').normalize('NFKC')
+          .replace(/^\s*(?:currently|now)\s*playing\s*[:\-]\s*/i, '')
+          .replace(/\(([^()]*)\)|\[([^\[\]]*)\]/g, (whole, paren, bracket) => {
+            const label = (paren ?? bracket).replace(releaseLabels, '').replace(/[\s._+|–—-]+/g, '');
+            return label ? whole : ' ';
+          }).trim();
+        // Single-word labels are removed only at the end or inside metadata
+        // brackets: "Uncut Gems" is a real title, "Alien Uncut" is a file label.
+        let previous;
+        do {
+          previous = title;
+          title = title.replace(/[\s._:|–—-]+$/, '').replace(trailingLabel, '').trim();
+        } while (title !== previous);
+        return title.replace(/\s+/g, ' ').trim();
+      }
+
+      function extractYearAndTitle(value) {
+        const originalTitle = String(value || '');
+        let title = originalTitle.normalize('NFKC')
+          .replace(/^\s*(?:currently|now)\s*playing\s*[:\-]\s*/i, '').trim();
+        const maxYear = new Date().getFullYear() + 2;
+        // Tagged release years can appear before edition/quality labels.
+        const tagged = Array.from(title.matchAll(/[([]\s*((?:18|19|20)\d{2})\s*[)\]]/g))
+          .find(match => /[\p{L}\p{N}]/u.test(title.slice(0, match.index)) && Number(match[1]) <= maxYear);
+        let year = null;
+        if (tagged) {
+          year = Number(tagged[1]);
+          title = title.slice(0, tagged.index) + ' ' + title.slice(tagged.index + tagged[0].length);
+        } else {
+          // Preserve numeric titles (1917, 1984) and title numbers (2049).
+          const bare = Array.from(title.matchAll(/(?:18|19|20)\d{2}/g)).reverse().find(match => {
+            const before = title.slice(0, match.index), after = title.slice(match.index + 4);
+            return /[\p{L}\p{N}]/u.test(before) && !/\d$/.test(before) && !/^\d/.test(after)
+              && Number(match[0]) <= maxYear && !cleanMovieTitle(after);
+          });
+          if (bare) {
+            year = Number(bare[0]);
+            title = title.slice(0, bare.index);
+          }
+        }
+        return { title: cleanMovieTitle(title) || title.trim(), year, originalTitle };
+      }
+
       function normalizeTitle(title) {
-        return title.toLowerCase()
-                    .replace(/[^\w\s]/g, ' ')  // Remove all punctuation
-                    .replace(/\s+/g, ' ')      // Multiple spaces to single
-                    .replace(/\b(the|a|an)\b/g, '') // Remove articles
-                    .trim();
+        return String(title || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase().replace(/['’]/g, '').replace(/&/g, ' and ')
+          .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
       }
 
-      function createSearchVariations(title) {
-        const variations = [];
-        const { title: cleanTitle, year } = extractYearAndTitle(title);
-        
-        // Handle known problematic titles first
-        const titleMappings = {
-          'nightmare elmstreet': 'nightmare elm street',
-          'elmstreet': 'elm street',
-          'lord rings': 'lord of the rings',
-          'star wars episode': 'star wars',
-          'harry potter': 'harry potter'
-        };
-        
-        let mappedTitle = cleanTitle.toLowerCase();
-        Object.keys(titleMappings).forEach(key => {
-          if (mappedTitle.includes(key)) {
-            mappedTitle = mappedTitle.replace(key, titleMappings[key]);
-          }
-        });
-        
-        // Original title
-        variations.push(cleanTitle);
-        
-        // Mapped title if different
-        if (mappedTitle !== cleanTitle.toLowerCase()) {
-          variations.push(mappedTitle);
-        }
-        
-        // Remove common words and punctuation
-        const normalized = cleanTitle.toLowerCase()
-          .replace(/[^\w\s]/g, ' ')
-          .replace(/\b(the|a|an|and|of|in|on|at|to|for|with|by)\b/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        variations.push(normalized);
-        
-        // Replace numbers with words and vice versa
-        const numberWords = {
-          '1': 'one', '2': 'two', '3': 'three', '4': 'four', '5': 'five',
-          '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine', '10': 'ten',
-          'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
-          'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10'
-        };
-        
-        let numberVariation = cleanTitle.toLowerCase();
-        Object.keys(numberWords).forEach(key => {
-          numberVariation = numberVariation.replace(new RegExp(`\\b${key}\\b`, 'g'), numberWords[key]);
-        });
-        if (numberVariation !== cleanTitle.toLowerCase()) {
-          variations.push(numberVariation);
-        }
-        
-        // Remove subtitle after colon
-        if (cleanTitle.includes(':')) {
-          variations.push(cleanTitle.split(':')[0].trim());
-        }
-        
-        // Try without year if it's in the title
-        if (year) {
-          variations.push(cleanTitle.replace(year.toString(), '').trim());
-        }
-        
-        // For "nightmare elm street", add specific variations
-        if (mappedTitle.includes('nightmare') && mappedTitle.includes('elm')) {
-          variations.push('nightmare on elm street 3');
-          variations.push('nightmare elm street dream warriors');
-          variations.push('nightmare on elm street dream warriors');
-        }
-        
-        return [...new Set(variations)]; // Remove duplicates
-      }
+      const compactTitle = value => normalizeTitle(value).replace(/^(?:the|a|an)\s+/, '').replace(/ /g, '');
+      const sequelNumbers = value => normalizeTitle(value).split(' ').filter(word => /^\d+$|^(?:ii|iii|iv|v|vi|vii|viii|ix|x)$/.test(word)).join(' ');
 
-      function calculateSimilarity(str1, str2) {
-        const s1 = normalizeTitle(str1);
-        const s2 = normalizeTitle(str2);
-        
-        // Simple similarity based on common words
-        const words1 = s1.split(' ').filter(w => w.length > 2);
-        const words2 = s2.split(' ').filter(w => w.length > 2);
-        
-        const commonWords = words1.filter(word => 
-          words2.some(w2 => w2.includes(word) || word.includes(w2))
-        );
-        
-        return commonWords.length / Math.max(words1.length, words2.length);
-      }
-
-      function findBestMatch(searchTitle, results, targetYear = null) {
-        let bestMatch = null;
-        let bestScore = 0;
-        
-        for (const movie of results) {
-          const movieYear = movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : null;
-          
-          // Calculate similarity score
-          let score = calculateSimilarity(searchTitle, movie.title);
-          
-          // Boost score if year matches
-          if (targetYear && movieYear && Math.abs(targetYear - movieYear) <= 1) {
-            score += 0.3;
-          }
-          
-          // Boost score for exact year match
-          if (targetYear && movieYear && targetYear === movieYear) {
-            score += 0.5;
-          }
-          
-          if (score > bestScore && score > 0.3) { // Minimum threshold
-            bestScore = score;
-            bestMatch = movie;
+      function titleSimilarity(left, right) {
+        // At most 160 x 160 cells per comparison, with one row of storage.
+        // This runs only when the response has no exact normalized title.
+        if (left.length > 160 || right.length > 160 || Math.min(left.length, right.length) < 6) return 0;
+        const row = Array.from({ length: right.length + 1 }, (_, index) => index);
+        for (let i = 1; i <= left.length; i++) {
+          let diagonal = row[0];
+          row[0] = i;
+          for (let j = 1; j <= right.length; j++) {
+            const above = row[j];
+            row[j] = Math.min(row[j] + 1, row[j - 1] + 1, diagonal + (left[i - 1] === right[j - 1] ? 0 : 1));
+            diagonal = above;
           }
         }
-        
-        return bestMatch;
+        return 1 - row[right.length] / Math.max(left.length, right.length);
       }
 
-      function extractYearAndTitle(title) {
-        const yearParenMatch = title.match(/^(.+?)\s*\((\d{4})\)\s*$/);
-        if (yearParenMatch) {
-          return {
-            title: yearParenMatch[1].trim(),
-            year: parseInt(yearParenMatch[2]),
-            originalTitle: title
-          };
+      function findBestMatch(title, results, year, allowGuess = false) {
+        const wanted = normalizeTitle(title);
+        if (!wanted || !Array.isArray(results)) return null;
+        const compact = value => value.replace(/ /g, '');
+        const withoutArticle = value => value.replace(/^(?:the|a|an)\s+/, '');
+        const eligible = results.slice(0, 20).filter(movie => Number.isSafeInteger(movie?.id) && movie.id > 0
+          && (!year || Number(String(movie.release_date || '').slice(0, 4)) === Number(year)));
+        let best = null, bestScore = 0;
+        for (const movie of eligible) {
+          let score = 0;
+          for (const name of [movie.title, movie.original_title]) {
+            const candidate = normalizeTitle(name);
+            if (candidate && compact(candidate) === compact(wanted)) score = Math.max(score, 2);
+            else if (candidate && compact(withoutArticle(candidate)) === compact(withoutArticle(wanted))) score = Math.max(score, 1);
+          }
+          if (score > bestScore) { best = movie; bestScore = score; }
         }
-        
-        const yearPlainMatch = title.match(/^(.+?)\s+(\d{4})\s*$/);
-        if (yearPlainMatch) {
-          return {
-            title: yearPlainMatch[1].trim(),
-            year: parseInt(yearPlainMatch[2]),
-            originalTitle: title
-          };
+        if (best || !allowGuess) return best;
+        // Like the hover card, choose from the focused response rather than
+        // issuing speculative title variations. Protect short names and sequels.
+        const wantedCompact = compactTitle(title), numbers = sequelNumbers(title);
+        bestScore = year ? 0.78 : 0.88;
+        for (const movie of eligible) {
+          for (const name of [movie.title, movie.original_title]) {
+            if (typeof name !== 'string' || sequelNumbers(name) !== numbers) continue;
+            let score = titleSimilarity(wantedCompact, compactTitle(name));
+            // A shortened title such as "Halloween 5 (1989)" can identify a
+            // longer canonical title, provided its base and year both agree.
+            if (year && !title.includes(':') && name.includes(':') && compactTitle(name.split(':')[0]) === wantedCompact) score = Math.max(score, 0.92);
+            // Preserve TMDB relevance order when two guesses score equally.
+            if (score > bestScore) { best = movie; bestScore = score; }
+          }
         }
-        
-        return {
-          title: title.trim(),
-          year: null,
-          originalTitle: title
-        };
+        return best;
       }
 
-      function isExactTitleMatch(searchTitle, resultTitle, targetYear = null, resultYear = null) {
-        const normalizedSearch = normalizeTitle(searchTitle);
-        const normalizedResult = normalizeTitle(resultTitle);
-        
-        const titleMatch = normalizedSearch === normalizedResult || 
-                          normalizedResult === normalizedSearch ||
-                          normalizedResult.replace(/^(the|a|an)\s+/, '') === normalizedSearch.replace(/^(the|a|an)\s+/, '');
-        
-        if (!titleMatch) return false;
-        
-        if (targetYear && resultYear) {
-          return Math.abs(targetYear - resultYear) <= 1;
+      // Cache API responses in memory only. Coalesce duplicate requests and
+      // bound memory and traffic; this cache never writes credentials to storage.
+      const responseCache = new Map(), pendingRequests = new Map(), requestQueue = [];
+      const MAX_CACHED_RESPONSES = 100, REQUEST_TIMEOUT_MS = 6000, MAX_CONCURRENT_REQUESTS = 4;
+      let activeRequests = 0, blockedKey = '', blockedUntil = 0;
+      function drainRequests() {
+        while (activeRequests < MAX_CONCURRENT_REQUESTS && requestQueue.length) {
+          activeRequests++;
+          requestQueue.shift()();
         }
-        
-        return true;
+      }
+      async function requestTMDB(path, params = {}) {
+        const apiKey = getTmdbKey();
+        if (!apiKey) return null;
+        const url = `https://api.themoviedb.org/3/${path}?${new URLSearchParams({ api_key: apiKey, ...params })}`;
+        const cached = responseCache.get(url);
+        if (cached?.expires > Date.now()) return cached.data;
+        responseCache.delete(url);
+        if (pendingRequests.has(url)) return pendingRequests.get(url);
+        if (blockedKey === apiKey && blockedUntil > Date.now()) return null;
+        const pending = (async () => {
+          await new Promise(resolve => { requestQueue.push(resolve); drainRequests(); });
+          let timeout;
+          try {
+            // A queued option must also honor a rate limit seen by another card.
+            if (blockedKey === apiKey && blockedUntil > Date.now()) return null;
+            const controller = new AbortController();
+            timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+            const response = await fetch(url, { signal: controller.signal });
+            if (!response.ok) {
+              if ([401, 403, 429].includes(response.status)) {
+                const retryAfter = response.headers?.get('Retry-After');
+                const retryMs = retryAfter && /^\d+$/.test(retryAfter) ? Number(retryAfter) * 1000 : Date.parse(retryAfter) - Date.now();
+                blockedKey = apiKey;
+                blockedUntil = Date.now() + (response.status === 429 ? Math.min(300000, Math.max(1000, retryMs || 30000)) : 60000);
+              }
+              return null;
+            }
+            const data = await response.json();
+            const valid = path === 'search/movie'
+              ? Array.isArray(data?.results)
+              : Number.isSafeInteger(data?.id) && data.id > 0 && path === `movie/${data.id}` && typeof data.title === 'string';
+            if (!valid) return null;
+            if (responseCache.size >= MAX_CACHED_RESPONSES) responseCache.delete(responseCache.keys().next().value);
+            const ttl = path === 'search/movie' && !data.results.length ? 60000 : 15 * 60000;
+            responseCache.set(url, { data, expires: Date.now() + ttl });
+            return data;
+          } catch (error) {
+            log('Movie request failed:', error);
+            return null;
+          } finally {
+            clearTimeout(timeout);
+            activeRequests--;
+            drainRequests();
+          }
+        })();
+        pendingRequests.set(url, pending);
+        try { return await pending; }
+        finally { pendingRequests.delete(url); }
       }
 
       async function searchMovieOnTMDB(title, year) {
-        const variations = createSearchVariations(title);
-        log(`Searching for "${title}" with variations:`, variations);
-        
-        // Try each variation
-        for (const variation of variations) {
-          let apiUrl = `https://api.themoviedb.org/3/search/movie?api_key=${getTmdbKey()}&query=${encodeURIComponent(variation)}`;
-          
-          if (year) {
-            apiUrl += `&primary_release_year=${year}`;
-          }
-
-          try {
-            log(`Trying API call: ${apiUrl}`);
-            const response = await fetch(apiUrl);
-            
-            if (!response.ok) {
-              log(`API response not OK: ${response.status} ${response.statusText}`);
-              continue;
-            }
-            
-            const data = await response.json();
-            log(`API response for "${variation}":`, data);
-            
-            if (data.results && data.results.length > 0) {
-              log(`Found ${data.results.length} results for "${variation}"`);
-              
-              // First try exact matching
-              for (const movie of data.results) {
-                const movieYear = movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : null;
-                
-                if (isExactTitleMatch(variation, movie.title, year, movieYear)) {
-                  log(`Exact match found: "${movie.title}" (${movieYear})`);
-                  return movie.id;
-                }
-              }
-              
-              // If no exact match, find best similarity match
-              const bestMatch = findBestMatch(title, data.results, year);
-              if (bestMatch) {
-                log(`Best similarity match: "${bestMatch.title}" (${bestMatch.release_date?.substring(0, 4)})`);
-                return bestMatch.id;
-              }
-            } else {
-              log(`No results found for "${variation}"`);
-            }
-          } catch (error) {
-            log(`Search error for "${variation}":`, error);
-            
-            // Check if it's a network/CORS issue and try without proxy
-            if (error.message.includes('fetch') || error.message.includes('network')) {
-              try {
-                const directUrl = `https://api.themoviedb.org/3/search/movie?api_key=${getTmdbKey()}&query=${encodeURIComponent(variation)}`;
-                log(`Trying direct API call: ${directUrl}`);
-                const directResponse = await fetch(directUrl);
-                const directData = await directResponse.json();
-                
-                if (directData.results && directData.results.length > 0) {
-                  const bestMatch = findBestMatch(title, directData.results, year);
-                  if (bestMatch) {
-                    log(`Direct API success: "${bestMatch.title}"`);
-                    return bestMatch.id;
-                  }
-                }
-              } catch (directError) {
-                log(`Direct API also failed:`, directError);
-              }
-            }
-          }
+        const parsed = extractYearAndTitle(title);
+        const query = parsed.title;
+        const targetYear = year || parsed.year;
+        if (!getTmdbKey() || !query) return null;
+        // Prefer an exact match, then a reasonable guess in the same response.
+        // Only an empty/unusable response needs the single yearless fallback.
+        const filters = targetYear ? [targetYear, null] : [null];
+        for (const filter of filters) {
+          const data = await requestTMDB('search/movie', { query, ...(filter ? { year: filter } : {}) });
+          if (!data) return null;
+          const match = findBestMatch(query, data.results, targetYear, true);
+          if (match) return match.id;
         }
-        
-        // Final fallback: search without year constraint
-        if (year) {
-          log(`Trying fallback search without year for: "${title}"`);
-          for (const variation of variations.slice(0, 2)) { // Try only first 2 variations to avoid too many requests
-            const apiUrl = `https://api.themoviedb.org/3/search/movie?api_key=${getTmdbKey()}&query=${encodeURIComponent(variation)}`;
-            
-            try {
-              const response = await fetch(apiUrl);
-              if (!response.ok) continue;
-              
-              const data = await response.json();
-              
-              if (data.results && data.results.length > 0) {
-                const bestMatch = findBestMatch(title, data.results);
-                if (bestMatch) {
-                  log(`Fallback match found: "${bestMatch.title}" (${bestMatch.release_date?.substring(0, 4)})`);
-                  return bestMatch.id;
-                }
-              }
-            } catch (error) {
-              log(`Fallback search error for "${variation}":`, error);
-            }
-          }
-        }
-        
-        log(`No matches found for: "${title}" after trying all variations and fallbacks`);
         return null;
       }
 
       async function fetchMovieDetails(movieId) {
-        const apiUrl = `https://api.themoviedb.org/3/movie/${movieId}?api_key=${getTmdbKey()}&append_to_response=credits`;
-        
-        try {
-          const response = await fetch(apiUrl);
-          const data = await response.json();
-          
-          const director = data.credits?.crew?.find(person => person.job === 'Director');
-          const cast = data.credits?.cast?.slice(0, 6) || [];
-          
-          return {
-            poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
-            title: data.title,
-            year: data.release_date ? data.release_date.substring(0, 4) : 'Unknown',
-            director: director ? director.name : 'Unknown Director',
-            rating: data.vote_average || 0,
-            votes: data.vote_count || 0,
-            runtime: data.runtime || 0,
-            collection: data.belongs_to_collection?.id || 0,
-            overview: data.overview || 'No overview available.',
-            genres: data.genres || [],
-            cast: cast.map(actor => ({
-              name: actor.name,
-              character: actor.character,
-              profilePath: actor.profile_path ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` : null
-            }))
-          };
-        } catch (error) {
-          log('Movie details error:', error);
-          return null;
-        }
+        if (!Number.isSafeInteger(movieId) || movieId <= 0) return null;
+        const data = await requestTMDB(`movie/${movieId}`, { append_to_response: 'credits' });
+        if (!data) return null;
+        const crew = Array.isArray(data.credits?.crew) ? data.credits.crew : [];
+        const director = crew.find(person => person?.job === 'Director' && typeof person.name === 'string');
+        const cast = (Array.isArray(data.credits?.cast) ? data.credits.cast : [])
+          .filter(actor => actor && typeof actor.name === 'string').slice(0, 6);
+        const positive = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
+        return {
+          poster: typeof data.poster_path === 'string' && data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
+          title: data.title,
+          year: /^\d{4}-/.test(data.release_date || '') ? data.release_date.slice(0, 4) : 'Unknown',
+          director: director ? director.name : 'Unknown Director',
+          rating: Math.min(10, positive(data.vote_average)),
+          votes: positive(data.vote_count),
+          runtime: positive(data.runtime),
+          collection: positive(data.belongs_to_collection?.id),
+          overview: typeof data.overview === 'string' && data.overview ? data.overview : 'No overview available.',
+          genres: (Array.isArray(data.genres) ? data.genres : []).filter(genre => genre && typeof genre.name === 'string'),
+          cast: cast.map(actor => ({
+            name: actor.name,
+            character: typeof actor.character === 'string' ? actor.character : '',
+            profilePath: typeof actor.profile_path === 'string' && actor.profile_path ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` : null
+          }))
+        };
       }
 
       function createStarsRating(rating) {
@@ -908,10 +834,6 @@
         const optionRows = optionsGrid.querySelectorAll('.btfw-poll-option-row');
         if (!optionRows.length) return;
 
-        // Check if already enhanced
-        const existingPosters = optionsGrid.querySelectorAll('.movie-poster-container');
-        if (existingPosters.length > 0) return;
-
         moduleState.isFetching = true;
 
         try {
@@ -954,18 +876,18 @@
             loadingDiv.className = 'loading-spinner';
             optionRow.appendChild(loadingDiv);
 
-            // Process movie in background
+            const isCurrentRow = () => optionRow.isConnected && optionsGrid.contains(optionRow)
+              && pollOverlay.classList.contains('btfw-poll-active');
+            // Start all cards promptly; requestTMDB bounds network concurrency.
             setTimeout(async () => {
               try {
-                const { title: cleanTitle, year } = extractYearAndTitle(movieTitle);
-                const movieId = await searchMovieOnTMDB(cleanTitle, year);
-                
-                if (loadingDiv.parentNode) {
-                  loadingDiv.remove();
-                }
+                if (!isCurrentRow()) return;
+                const movieId = await searchMovieOnTMDB(movieTitle);
+                if (!isCurrentRow()) return;
 
                 if (movieId) {
                   const movieData = await fetchMovieDetails(movieId);
+                  if (!isCurrentRow()) return;
                   
                   if (movieData) {
                     // Reuse the details already fetched for posters. Poll selection
@@ -1046,6 +968,7 @@
                 
               } catch (error) {
                 log(`Error processing ${movieTitle}:`, error);
+                if (!isCurrentRow()) return;
                 
                 if (loadingDiv.parentNode) {
                   loadingDiv.remove();
@@ -1055,8 +978,10 @@
                 errorDiv.className = 'error-placeholder';
                 errorDiv.textContent = `Error loading ${movieTitle}`;
                 optionRow.appendChild(errorDiv);
+              } finally {
+                loadingDiv.remove();
               }
-            }, i * 200);
+            }, 0);
           }
 
           log('Poll enhancement complete!');
