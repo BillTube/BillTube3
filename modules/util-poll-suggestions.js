@@ -62,20 +62,26 @@ BTFW.define("util:pollSuggestions", [], async () => {
   }
   function available() {
     const name = username(window.CLIENT?.name);
+    const pending = state.queue.find(entry => entry.user === name);
     return integrated() && enabled && !!name && window.CLIENT?.logged_in === true && window.CLIENT?.guest !== true
-      && !state.used.includes(name) && !state.queue.some(entry => entry.user === name) && state.queue.length < LIMIT
+      && !state.used.includes(name) && (!pending || pending.at <= state.boundary) && (state.queue.length < LIMIT || !!pending)
       && Date.now() >= pendingSend && window.socket?.connected !== false;
   }
   function statusMessage() {
     const name = username(window.CLIENT?.name);
     if (!name || !window.CLIENT?.logged_in || window.CLIENT?.guest) return "Sign in to a registered CyTube account to suggest a movie.";
-    if (state.queue.some(entry => entry.user === name)) return "Your suggestion is queued. Pending suggestions carry over until they enter a poll.";
+    if (window.socket?.connected === false) return "Reconnecting to CyTube. Suggestions will be available when the connection returns.";
+    if (Date.now() < pendingSend) return "Sending your suggestion. Please wait a moment.";
+    const pending = state.queue.find(entry => entry.user === name);
+    if (pending) return pending.at > state.boundary
+      ? "Your suggestion is queued for this round. You can suggest again after the poll ends or the movie changes."
+      : "Your previous suggestion is still queued. You can replace it with another movie for this round.";
     if (state.used.includes(name)) return "Your suggestion entered this poll. You can suggest again after the poll ends or the movie changes.";
     if (state.queue.length >= LIMIT) return "The suggestions queue is full. Please wait for a poll to make room.";
     return "Suggest one movie per round. Up to six suggestions enter each movie poll; extra suggestions carry over.";
   }
   function nominate(title) {
-    if (!available()) { notify("Sign in to CyTube to suggest one movie per round. Pending suggestions carry over.", "warn"); return false; }
+    if (!available()) { notify(statusMessage(), "warn"); return false; }
     title = String(title || "").replace(/[<>\r\n]/g, " ").replace(/\s+/g, " ").trim();
     const key = identity(title);
     if (!key || title.length > 180 || state.queue.some(entry => entry.key === key)) { notify("This movie is already suggested, or its title/year is unavailable.", "warn"); return false; }
@@ -98,7 +104,12 @@ BTFW.define("util:pollSuggestions", [], async () => {
     if (state.seen.includes(eventId)) return;
     if (!enabled || !integrated()) return;
     const match = text.match(/^<PS:([^<>\r\n]{1,180})>$/), key = identity(match?.[1]);
-    if (!key || state.used.includes(name) || state.queue.some(entry => entry.user === name || entry.key === key) || state.queue.length >= LIMIT) return;
+    const pending = state.queue.find(entry => entry.user === name);
+    // Receivers keep enforcing one choice per round. Only an older pending
+    // entry can be replaced, using the sender identity supplied by CyTube.
+    if (!key || state.used.includes(name) || (pending && pending.at > state.boundary)
+      || state.queue.some(entry => entry.key === key) || (state.queue.length >= LIMIT && !pending)) return;
+    if (pending) state.queue = state.queue.filter(entry => entry !== pending);
     state.seen.push(eventId); state.seen = state.seen.slice(-300);
     state.queue.push({ user: name, title: match[1].trim(), key, at });
     state.queue.sort((a, b) => a.at - b.at || a.user.localeCompare(b.user));
@@ -272,7 +283,8 @@ BTFW.define("util:pollSuggestions", [], async () => {
       try { mediaChanged((window.jQuery || window.$)?.(row)?.data("media")); } catch (_) {}
     });
     socket.on("changeMedia", mediaChanged);
-    socket.on("connect", () => { users.clear(); pendingSend = 0; });
+    socket.on("connect", () => { users.clear(); pendingSend = 0; document.dispatchEvent(new CustomEvent("btfw:pollSuggestionsChanged")); });
+    socket.on("disconnect", () => document.dispatchEvent(new CustomEvent("btfw:pollSuggestionsChanged")));
     socket.on("login", () => document.dispatchEvent(new CustomEvent("btfw:pollSuggestionsChanged")));
     socket.on("rank", renderControl);
   }

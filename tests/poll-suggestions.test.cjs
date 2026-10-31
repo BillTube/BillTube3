@@ -139,7 +139,7 @@ test('confirmed movie polls consume only included suggestions on all clients, re
     assert.deepEqual(Array.from(h.api.getQueue(), x => x.user), ['bob']);
     h.chat('Alice', 'Another 2000'); assert.equal(h.api.getQueue().length, 1);
     h.fire('closePoll'); h.advance(1); h.chat('Alice', 'Another 2000'); h.chat('Bob', 'Third 2000');
-    assert.deepEqual(Array.from(h.api.getQueue(), x => x.user), ['bob', 'alice']);
+    assert.deepEqual(Array.from(h.api.getQueue(), x => [x.user, x.title]), [['alice', 'Another 2000'], ['bob', 'Third 2000']]);
   }
 });
 
@@ -319,4 +319,58 @@ test('an unchanged open suggestions list reuses its rows and updates when a matc
   assert.match(dialog.parts.ol.children[0].textContent, /Next poll/);
   h.api.mediaChanged({ type: 'fi', id: '42', title: pool[0].title });
   assert.equal(h.api.getQueue().length, 0);
+});
+
+test('a new movie releases the catalog button while preserving a pending unmatched suggestion', async () => {
+  const h = await harness(); h.api.mediaChanged({ type: 'fi', id: 'first' });
+  h.chat('Alice', 'Unavailable movie 1980');
+  assert.equal(h.api.available(), false);
+  h.advance(86400000); h.api.mediaChanged({ type: 'fi', id: 'next' });
+  assert.equal(h.api.getQueue().length, 1); // Automatic round reset must not lose overflow.
+  assert.equal(h.api.available(), true);
+});
+
+test('receivers allow one replacement of an older pending entry and reject repeated commands in that round', async () => {
+  const a = await harness(), b = await harness();
+  for (const h of [a, b]) {
+    h.chat('Alice', 'Unavailable movie 1980'); h.chat('Bob', 'Aliens 1986');
+    h.advance(1000); h.api.endRound(); h.advance(1);
+    h.chat('Alice', 'Alien 1979'); h.chat('Alice', 'Another 2000');
+    assert.deepEqual(Array.from(h.api.getQueue(), entry => [entry.user, entry.title]), [['bob', 'Aliens 1986'], ['alice', 'Alien 1979']]);
+    assert.equal(h.api.available(), false);
+  }
+});
+
+test('a replacement cannot steal another username\'s movie or bypass a served-user lock', async () => {
+  const h = await harness(); h.chat('Alice', 'Unavailable movie 1980'); h.chat('Bob', 'Aliens 1986');
+  h.advance(1000); h.api.endRound(); h.advance(1); h.chat('Alice', 'Aliens 1986');
+  assert.equal(h.api.getQueue().find(entry => entry.user === 'alice').title, 'Unavailable movie 1980');
+  h.chat('Alice', 'Alien 1979');
+  h.fire('newPoll', { title: 'What should we watch next? · 2 min', timestamp: 1, options: ['Alien (1979)', 'Other 2000'] });
+  h.chat('Alice', 'Another 2000');
+  assert.equal(h.api.available(), false);
+  assert.deepEqual(Array.from(h.api.getQueue(), entry => entry.user), ['bob']);
+});
+
+test('a replacement at queue capacity keeps other users and both queue and poll limits intact', async () => {
+  const h = await harness(); h.chat('Alice', 'Unavailable movie 1980');
+  for (let i = 0; i < 99; i++) { h.fire('addUser', { name: 'Viewer' + i, rank: 1 }); h.chat('Viewer' + i, 'Feature ' + i + ' 2000'); }
+  const others = Array.from(h.api.getQueue().filter(entry => entry.user !== 'alice'), entry => entry.key);
+  h.advance(1000); h.api.endRound(); h.advance(1);
+  assert.equal(h.api.available(), true);
+  h.chat('Alice', 'Alien 1979');
+  assert.equal(h.api.getQueue().length, 100);
+  assert.deepEqual(Array.from(h.api.getQueue().filter(entry => entry.user !== 'alice'), entry => entry.key), others);
+  const pool = [...others.map((_, i) => movie('Feature ' + i + ' (2000)', i)), movie('Alien (1979)', 100)];
+  assert.equal(h.api.resolve(pool).length, 6);
+  h.chat('Alice', 'Another 2000'); assert.equal(h.api.getQueue().filter(entry => entry.user === 'alice').length, 1);
+});
+
+test('connection changes notify an open catalog to refresh its disabled buttons', async () => {
+  const h = await harness(); let updates = 0;
+  h.document.addEventListener('btfw:pollSuggestionsChanged', () => updates++);
+  h.window.socket.connected = false; h.fire('disconnect');
+  assert.equal(h.api.available(), false); assert.equal(updates, 1);
+  h.window.socket.connected = true; h.fire('connect');
+  assert.equal(h.api.available(), true); assert.equal(updates, 2);
 });

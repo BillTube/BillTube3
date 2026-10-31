@@ -346,10 +346,13 @@ BTFW.define("feature:playlistCatalog", [], async () => {
 
   function render(){
     if (!state.listEl) return;
+    const suggestionsEnabled = suggestions.enabled?.();
+    const canSuggest = suggestions.available?.();
+    const suggestionMessage = suggestions.statusMessage?.() || "";
     const suggestionStatus = $("[data-role=suggestions-status]", state.modal);
     if (suggestionStatus) {
-      suggestionStatus.hidden = !suggestions.enabled?.();
-      suggestionStatus.textContent = suggestions.enabled?.() ? suggestions.statusMessage?.() || "" : "";
+      suggestionStatus.hidden = !suggestionsEnabled;
+      suggestionStatus.textContent = suggestionsEnabled ? suggestionMessage : "";
     }
     const total = Math.max(state.items.length, Number(state.totalResults || 0));
     const loadedText = total ? `${state.items.length}/${total} loaded` : `${state.items.length} loaded`;
@@ -387,8 +390,8 @@ BTFW.define("feature:playlistCatalog", [], async () => {
       const url = `https://www.themoviedb.org/${itemType(item) === "tv" ? "tv" : "movie"}/${id}`;
       const meta = `${type}${year ? ` · ${escapeHtml(year)}` : ""}${rating ? ` · ★ ${rating.toFixed(1)}` : ""}`;
       const overview = item.overview ? escapeHtml(item.overview) : "No synopsis available.";
-      const suggestButton = suggestions.enabled?.() && itemType(item) !== "tv" && year
-        ? `<button type="button" class="btfw-catalogue__suggest" data-suggest-id="${escapeAttr(item.id)}" ${suggestions.available?.() ? "" : "disabled"} title="One suggestion per signed-in username; pending movies carry over">Suggest for poll</button>` : "";
+      const suggestButton = suggestionsEnabled && itemType(item) !== "tv" && year
+        ? `<button type="button" class="btfw-catalogue__suggest" data-suggest-id="${escapeAttr(item.id)}" ${canSuggest ? "" : "disabled"} title="${escapeAttr(suggestionMessage)}">Suggest for poll</button>` : "";
       return `<article class="btfw-catalogue__card"><img class="btfw-catalogue__poster btfw-catalogue__poster--classic" ${poster ? `data-src="${escapeAttr(poster)}"` : ""} alt="" loading="lazy"><a class="btfw-catalogue__vhs" href="${url}" target="_blank" rel="noopener" aria-label="View ${escapeAttr(itemTitle(item))} on TMDB"><span class="btfw-catalogue__vhs-rotor"><span class="btfw-catalogue__vhs-face btfw-catalogue__vhs-front" aria-hidden="true"><span class="btfw-catalogue__vhs-label"><img class="btfw-catalogue__vhs-art" ${poster ? `data-src="${escapeAttr(poster)}"` : ""} alt="" loading="lazy"></span><span class="btfw-catalogue__vhs-reel btfw-catalogue__vhs-reel--left"></span><span class="btfw-catalogue__vhs-reel btfw-catalogue__vhs-reel--right"></span><span class="btfw-catalogue__vhs-mark">VHS · BT-120</span></span><span class="btfw-catalogue__vhs-face btfw-catalogue__vhs-back" aria-hidden="true"><span class="btfw-catalogue__vhs-info"><span class="btfw-catalogue__vhs-title">${title}</span><span class="btfw-catalogue__vhs-meta">${meta}</span><span class="btfw-catalogue__vhs-overview">${overview}</span></span></span></span></a><div class="btfw-catalogue__copy"><a class="btfw-catalogue__title" href="${url}" target="_blank" rel="noopener">${title}</a><div class="btfw-catalogue__meta">${meta}</div>${item.overview ? `<p class="btfw-catalogue__overview">${overview}</p>` : ""}${suggestButton}</div></article>`;
     }).join("") + (state.loadFailed ? '<div class="btfw-catalogue__empty"><button type="button" data-action="retry-page">Retry loading remaining titles</button></div>' : "");
     state.listEl.querySelectorAll("img[data-src]").forEach(img => { img.src = img.dataset.src; });
@@ -455,6 +458,12 @@ BTFW.define("feature:playlistCatalog", [], async () => {
   }
 
   async function openModal(){
+    // Refresh the button against native playback if its initial socket snapshot
+    // arrived before the catalog loaded. This uses the existing round handler.
+    const player = window.PLAYER;
+    if (window.socket?.connected !== false && player?.mediaType && player.mediaId != null && String(player.mediaId)) {
+      suggestions.mediaChanged?.({ type: player.mediaType, id: player.mediaId, title: document.getElementById("currenttitle")?.textContent || "" });
+    }
     const modal = ensureModal();
     modal.classList.add("is-open");
     modal.setAttribute("aria-hidden", "false");
